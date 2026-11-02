@@ -32,6 +32,7 @@ from backend.tags.services.create_url_tag import (
     apply_tags_core,
     build_url_at_tag_limit_response,
     get_tag_applied_counts,
+    record_tag_applied_events,
 )
 from backend.urls.constants import URLErrorCodes, URLState
 from backend.urls.permissions import can_act_as_url_adder
@@ -363,8 +364,7 @@ def _revive_trashed_url_on_edit(
         EventName.URL_TRACKING_PARAMS_STRIPPED,
         dimensions={"stripped": "true" if had_tracking else "false"},
     )
-    for _utub_tag in to_apply:
-        record_event(EventName.TAG_APPLIED)
+    record_tag_applied_events(utub_id=current_utub.id, applied_count=len(to_apply))
 
     safe_add_many_logs(
         [

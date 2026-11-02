@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from datetime import date, datetime, time, timedelta, timezone
-from typing import Any, Generator
+from typing import Any, Generator, Literal
 
 import pytest
 from flask import Flask
@@ -30,7 +30,7 @@ from backend.metrics.query_service import (
     validate_dim_keys,
 )
 from backend.metrics.resources import Resource
-from backend.metrics.suppression import ALLOWED_GROUP_BY_PROJECTIONS
+from backend.metrics.suppression import MIN_CELL_COUNT, SUPPRESSED_DIM_VALUE
 from backend.utils.strings.metrics_strs import METRICS_REDIS
 from tests.integration.system.metrics_helpers import (
     build_pg_conn,
@@ -1942,7 +1942,6 @@ def test_grouped_timeseries_day_groups_under_utc_date_with_non_utc_session_timez
 def test_grouped_timeseries_daily_event_counts_complete_days_only(
     metrics_enabled_runner_app: Flask,
     metrics_pg_conn: Any,
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """
     GIVEN UTUB_OPENED rows at the UTC midnights of Jan 12, 13 and 15 and a
@@ -1951,58 +1950,225 @@ def test_grouped_timeseries_daily_event_counts_complete_days_only(
     THEN both ends floor to UTC midnight: Jan 12 (floored start) and Jan 13
         are returned while the current day (Jan 15) stays hidden.
     """
-    monkeypatch.setitem(
-        ALLOWED_GROUP_BY_PROJECTIONS,
-        EventName.UTUB_OPENED,
-        frozenset({frozenset({"device_type"})}),
-    )
     window_end = _WINDOW_REFERENCE  # 2026-01-15 12:00 UTC
     window_start = window_end - timedelta(days=3)  # 2026-01-12 12:00 UTC
     day_12 = datetime(2026, 1, 12, tzinfo=timezone.utc)
     day_13 = datetime(2026, 1, 13, tzinfo=timezone.utc)
     day_15 = datetime(2026, 1, 15, tzinfo=timezone.utc)
-    for bucket_start, count in ((day_12, 3), (day_13, 5), (day_15, 9)):
+    for bucket_start, count in ((day_12, 6), (day_13, 7), (day_15, 9)):
         _insert_metric_row(
             metrics_pg_conn,
             event_name=EventName.UTUB_OPENED,
             bucket_start=bucket_start,
-            dimensions={"device_type": int(DeviceType.DESKTOP)},
+            dimensions=_utub_opened_dims(),
             count=count,
         )
 
     with metrics_enabled_runner_app.app_context():
         response = grouped_timeseries(
             event_name=EventName.UTUB_OPENED,
-            group_by=["device_type"],
+            group_by=["url_count_bucket"],
             window_start=window_start,
             window_end=window_end,
             resolution="day",
         )
 
     assert [(bucket.bucket, bucket.count) for bucket in response.buckets] == [
-        (day_12, 3),
-        (day_13, 5),
+        (day_12, 6),
+        (day_13, 7),
     ]
+
+
+def _utub_opened_dims(
+    *,
+    url_count_bucket: str = "1-5",
+    age_bucket: str = "0-6d",
+    device_type: DeviceType = DeviceType.DESKTOP,
+) -> dict[str, str | int]:
+    """Return a full UTUB_OPENED dimension dict (both bucket keys + device)."""
+    return {
+        "url_count_bucket": url_count_bucket,
+        "age_bucket": age_bucket,
+        "device_type": int(device_type),
+    }
+
+
+@pytest.mark.parametrize("requested", ["hour", "day"])
+def test_grouped_timeseries_daily_event_reports_effective_day_resolution(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+    requested: Literal["hour", "day"],
+) -> None:
+    """
+    GIVEN a UTUB_OPENED cell of 6 on a complete UTC day
+    WHEN grouped_timeseries is requested at `hour` or `day`
+    THEN the response reports `day` and the bucket is the UTC midnight.
+    """
+    day = datetime(2026, 1, 13, tzinfo=timezone.utc)
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.UTUB_OPENED,
+        bucket_start=day,
+        dimensions=_utub_opened_dims(),
+        count=6,
+    )
+
+    with metrics_enabled_runner_app.app_context():
+        response = grouped_timeseries(
+            event_name=EventName.UTUB_OPENED,
+            group_by=["age_bucket"],
+            window_start=datetime(2026, 1, 13, tzinfo=timezone.utc),
+            window_end=datetime(2026, 1, 14, 12, tzinfo=timezone.utc),
+            resolution=requested,
+        )
+
+    assert response.resolution == "day"
+    assert [(bucket.bucket, bucket.count) for bucket in response.buckets] == [(day, 6)]
+
+
+@pytest.mark.parametrize("dim_key", ["url_count_bucket", "age_bucket"])
+def test_grouped_timeseries_new_dims_floor_and_exact_floor(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+    dim_key: str,
+) -> None:
+    """
+    GIVEN UTUB_OPENED cells of MIN_CELL_COUNT - 1 and MIN_CELL_COUNT in
+        separate day partitions
+    WHEN grouped_timeseries groups by one bucket dim
+    THEN the sub-floor cell reads "suppressed" and the exact-floor cell keeps
+        its real label.
+    """
+    small_label, floor_label = (
+        ("1-5", "6-20")
+        if dim_key == "url_count_bucket"
+        else (
+            "0-6d",
+            "7-29d",
+        )
+    )
+    day_a = datetime(2026, 1, 12, tzinfo=timezone.utc)
+    day_b = datetime(2026, 1, 13, tzinfo=timezone.utc)
+    for day, label, count in (
+        (day_a, small_label, MIN_CELL_COUNT - 1),
+        (day_b, floor_label, MIN_CELL_COUNT),
+    ):
+        _insert_metric_row(
+            metrics_pg_conn,
+            event_name=EventName.UTUB_OPENED,
+            bucket_start=day,
+            dimensions={**_utub_opened_dims(), dim_key: label},
+            count=count,
+        )
+
+    with metrics_enabled_runner_app.app_context():
+        response = grouped_timeseries(
+            event_name=EventName.UTUB_OPENED,
+            group_by=[dim_key],
+            window_start=day_a,
+            window_end=datetime(2026, 1, 15, tzinfo=timezone.utc),
+            resolution="day",
+        )
+
+    cells = [
+        (bucket.bucket, bucket.dimensions[dim_key], bucket.count)
+        for bucket in response.buckets
+    ]
+    assert cells == [
+        (day_a, SUPPRESSED_DIM_VALUE, MIN_CELL_COUNT - 1),
+        (day_b, floor_label, MIN_CELL_COUNT),
+    ]
+
+
+@pytest.mark.parametrize(
+    "dim_key,labels",
+    [
+        ("url_count_bucket", ("1-5", "6-20", "21-50")),
+        ("age_bucket", ("0-6d", "7-29d", "30-89d")),
+    ],
+)
+def test_grouped_count_by_new_dims_merge_and_skip_rows_without_keys(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+    dim_key: str,
+    labels: tuple[str, str, str],
+) -> None:
+    """
+    GIVEN cells of 3, 20 and 30 on a bucket dim plus a legacy row without it
+    WHEN grouped_count_by groups by that dim
+    THEN the lone 3 absorbs the 20 into one sentinel of 23, the 30 survives and
+        the legacy row is absent.
+    """
+    inside = datetime(2026, 1, 13, tzinfo=timezone.utc)
+    for label, count in zip(labels, (3, 20, 30)):
+        _insert_metric_row(
+            metrics_pg_conn,
+            event_name=EventName.UTUB_OPENED,
+            bucket_start=inside,
+            dimensions={**_utub_opened_dims(), dim_key: label},
+            count=count,
+        )
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.UTUB_OPENED,
+        bucket_start=inside,
+        dimensions={"device_type": int(DeviceType.DESKTOP)},
+        count=40,
+    )
+
+    with metrics_enabled_runner_app.app_context():
+        rows = grouped_count_by(
+            event_name=EventName.UTUB_OPENED,
+            window_start=datetime(2026, 1, 13, tzinfo=timezone.utc),
+            window_end=datetime(2026, 1, 15, tzinfo=timezone.utc),
+            group_by=dim_key,
+        )
+
+    assert rows == [(labels[2], 30), (SUPPRESSED_DIM_VALUE, 23)]
+
+
+def test_grouped_count_by_exact_floor_cell_survives(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN size cells of exactly MIN_CELL_COUNT and 30
+    WHEN grouped_count_by groups by url_count_bucket
+    THEN both keep their real labels (no sub-floor sibling).
+    """
+    day = datetime(2026, 1, 13, tzinfo=timezone.utc)
+    for label, count in (("6-20", MIN_CELL_COUNT), ("21-50", 30)):
+        _insert_metric_row(
+            metrics_pg_conn,
+            event_name=EventName.UTUB_OPENED,
+            bucket_start=day,
+            dimensions=_utub_opened_dims(url_count_bucket=label),
+            count=count,
+        )
+
+    with metrics_enabled_runner_app.app_context():
+        rows = grouped_count_by(
+            event_name=EventName.UTUB_OPENED,
+            window_start=day,
+            window_end=datetime(2026, 1, 15, tzinfo=timezone.utc),
+            group_by="url_count_bucket",
+        )
+
+    assert rows == [("21-50", 30), ("6-20", MIN_CELL_COUNT)]
 
 
 def test_grouped_timeseries_non_partitioned_offset_start_uses_utc_midnight(
     metrics_enabled_runner_app: Flask,
     metrics_pg_conn: Any,
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """
     GIVEN UTUB_OPENED rows on Jan 13 and Jan 14 and a -07:00 window starting
         at Jan 12 20:00 local (= Jan 13 03:00 UTC)
-    WHEN grouped_timeseries runs at day resolution with
+    WHEN grouped_timeseries runs at day resolution (requested `hour` too) with
         partition_by_bucket=False
     THEN the single synthetic bucket is the UTC midnight of the start's UTC
         day (Jan 13), never the local midnight, and sums both days.
     """
-    monkeypatch.setitem(
-        ALLOWED_GROUP_BY_PROJECTIONS,
-        EventName.UTUB_OPENED,
-        frozenset({frozenset({"device_type"})}),
-    )
     tz_minus_7 = timezone(timedelta(hours=-7))
     window_start = datetime(2026, 1, 12, 20, 0, tzinfo=tz_minus_7)
     window_end = datetime(2026, 1, 15, 20, 0, tzinfo=tz_minus_7)
@@ -2011,20 +2177,21 @@ def test_grouped_timeseries_non_partitioned_offset_start_uses_utc_midnight(
             metrics_pg_conn,
             event_name=EventName.UTUB_OPENED,
             bucket_start=datetime(2026, 1, day, tzinfo=timezone.utc),
-            dimensions={"device_type": int(DeviceType.DESKTOP)},
+            dimensions=_utub_opened_dims(),
             count=count,
         )
 
     with metrics_enabled_runner_app.app_context():
         response = grouped_timeseries(
             event_name=EventName.UTUB_OPENED,
-            group_by=["device_type"],
+            group_by=["url_count_bucket"],
             window_start=window_start,
             window_end=window_end,
-            resolution="day",
+            resolution="hour",
             partition_by_bucket=False,
         )
 
+    assert response.resolution == "day"
     assert [(bucket.bucket, bucket.count) for bucket in response.buckets] == [
         (datetime(2026, 1, 13, tzinfo=timezone.utc), 5)
     ]

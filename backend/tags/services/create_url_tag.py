@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+from flask import current_app
 from flask_login import current_user
 from sqlalchemy import func
 
@@ -10,12 +11,13 @@ from backend.app_logger import (
     safe_add_many_logs,
     warning_log,
 )
-from backend.extensions.metrics.writer import record_event
+from backend.extensions.metrics.writer import metrics_enabled, record_event
 from backend.metrics.events import EventName
 from backend.metrics.tag_batch import (
     bucket_bulk_tag_url_count,
     bucket_tags_batch_size,
 )
+from backend.metrics.utub_buckets import bucket_utub_size
 from backend.models.utub_tags import Utub_Tags
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utub_urls import Utub_Urls
@@ -104,7 +106,7 @@ def add_tag_to_url_if_valid(
         ]
     )
 
-    record_event(EventName.TAG_APPLIED)
+    record_tag_applied_events(utub_id=utub.id, applied_count=1)
 
     return APIResponse(
         message=TAGS_SUCCESS.TAG_ADDED_TO_URL,
@@ -272,8 +274,7 @@ def add_batch_tags_to_existing_url(
         ]
     )
 
-    for _utub_tag in to_apply:
-        record_event(EventName.TAG_APPLIED)
+    record_tag_applied_events(utub_id=utub.id, applied_count=len(to_apply))
 
     record_event(
         EventName.TAGS_APPLIED_BATCH,
@@ -465,9 +466,10 @@ def add_tags_to_urls_in_utub(
     # iterate the per-URL applied entries, never the deduped all_applied_tag_ids
     # set, which would undercount a tag applied to multiple URLs. Emit a single
     # TAGS_APPLIED_MULTI_URL only when at least one URL actually gained a tag.
-    for entry in applied_results:
-        for _applied_tag_id in entry["applied_tag_ids"]:
-            record_event(EventName.TAG_APPLIED)
+    record_tag_applied_events(
+        utub_id=utub.id,
+        applied_count=sum(len(entry["applied_tag_ids"]) for entry in applied_results),
+    )
 
     if urls_modified_count:
         record_event(
@@ -485,6 +487,41 @@ def add_tags_to_urls_in_utub(
             skipped=skipped_schemas,
         ),
     ).to_response()
+
+
+def _count_live_urls_in_utub(utub_id: int) -> int:
+    """Live (non-trashed) URLs in the UTub. Private so tests can patch it."""
+    return (
+        db.session.query(func.count(Utub_Urls.id))
+        .filter(Utub_Urls.utub_id == utub_id, Utub_Urls.deleted_at.is_(None))
+        .scalar()
+        or 0
+    )
+
+
+def record_tag_applied_events(*, utub_id: int, applied_count: int) -> None:
+    """Emit `applied_count` TAG_APPLIED events carrying the UTub size bucket.
+
+    Post-commit only. Runs the live-URL COUNT once per request, inside a
+    savepoint so a failing COUNT rolls back only the savepoint and leaves the
+    session (and the ORM objects the response is built from) untouched. On a
+    COUNT or bucketing failure, logs and drops the events: the dim is required,
+    so no fallback bucket is recorded.
+    """
+    if applied_count <= 0 or not metrics_enabled():
+        return
+    try:
+        with db.session.begin_nested():
+            live_url_count = _count_live_urls_in_utub(utub_id)
+        bucket = bucket_utub_size(live_url_count)
+    except Exception:
+        current_app.logger.exception(
+            "metrics: tag_applied bucket computation failed "
+            f"(utub_id={utub_id}, applied_count={applied_count})"
+        )
+        return
+    for _ in range(applied_count):
+        record_event(EventName.TAG_APPLIED, dimensions={"utub_size_bucket": bucket})
 
 
 def _url_is_at_url_tag_limit(utub: Utubs, utub_url: Utub_Urls) -> bool:

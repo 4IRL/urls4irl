@@ -826,7 +826,7 @@ const appConfig = {
     METRICS_GAUGE_KIND_DISTRIBUTION_P90: "Distribution (p90)",
     METRICS_GAUGE_SUPPRESSED_ARIA: "Value unavailable",
     METRICS_SUPPRESSED_LABEL: "suppressed (fewer than 5)",
-    METRICS_FLOW_COUNT_SUPPRESSED_ARIA: "Count suppressed (fewer than 5)",
+    METRICS_FLOW_COUNT_SUPPRESSED_ARIA: "Count hidden to protect small groups",
     METRICS_GAUGES_LOADED: "Gauge values updated.",
     METRICS_GAUGE_SELECT_PROMPT: "Select a gauge to view its timeseries.",
     METRICS_GAUGE_COL_NAME: "Gauge",

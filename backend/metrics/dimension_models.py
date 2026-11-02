@@ -20,6 +20,7 @@ from backend.metrics.tag_batch import (
     TAGS_BATCH_SIZE_BUCKETS,
     URL_TAG_COUNT_BUCKETS,
 )
+from backend.metrics.utub_buckets import UTUB_AGE_BUCKETS, UTUB_SIZE_BUCKETS
 from backend.search.constants import SEARCH_FIELD_ORDER_VALUES
 from backend.urls.constants import URL_RESTORE_TARGETS
 
@@ -383,6 +384,24 @@ class _DimTagsAppliedMultiUrl(BaseModel):
     device_type: _StrictDeviceType = Field(default=DeviceType.DESKTOP)
 
 
+class _DimUtubOpened(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    # Both closed sets source the same constants fed to the registry, so the
+    # audit set-compare between these Literals and the registry tuples can never
+    # drift. Both are required: a bare `record_event(UTUB_OPENED)` is dropped.
+    url_count_bucket: Literal[UTUB_SIZE_BUCKETS]  # type: ignore[valid-type]
+    age_bucket: Literal[UTUB_AGE_BUCKETS]  # type: ignore[valid-type]
+    device_type: _StrictDeviceType = Field(default=DeviceType.DESKTOP)
+
+
+class _DimTagApplied(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    # Same closed set as UTUB_OPENED.url_count_bucket, required: a bare
+    # `record_event(TAG_APPLIED)` is dropped.
+    utub_size_bucket: Literal[UTUB_SIZE_BUCKETS]  # type: ignore[valid-type]
+    device_type: _StrictDeviceType = Field(default=DeviceType.DESKTOP)
+
+
 class _DimUrlAddedToUtub(BaseModel):
     model_config = ConfigDict(extra="forbid")
     # Closed set sourced from the same `URL_TAG_COUNT_BUCKETS` constant fed to
@@ -557,7 +576,7 @@ DIMENSION_MODELS: dict[EventName, type[BaseModel] | None] = {
     EventName.SHORT_LINK_MINTED: _DimDeviceOnly,
     EventName.SHORT_LINK_RESOLVED: _DimDeviceOnly,
     EventName.SHORT_LINK_REVOKED: _DimDeviceOnly,
-    EventName.TAG_APPLIED: _DimDeviceOnly,
+    EventName.TAG_APPLIED: _DimTagApplied,
     EventName.TAGS_APPLIED_BATCH: _DimTagsAppliedBatch,
     EventName.TAGS_APPLIED_MULTI_URL: _DimTagsAppliedMultiUrl,
     EventName.TAG_DELETED: _DimDeviceOnly,
@@ -577,7 +596,7 @@ DIMENSION_MODELS: dict[EventName, type[BaseModel] | None] = {
     EventName.UTUB_CREATED: _DimDeviceOnly,
     EventName.UTUB_DELETED: _DimDeviceOnly,
     EventName.UTUB_DESC_UPDATED: _DimDeviceOnly,
-    EventName.UTUB_OPENED: _DimDeviceOnly,
+    EventName.UTUB_OPENED: _DimUtubOpened,
     EventName.UTUB_PURGED_FROM_TRASH: _DimDeviceOnly,
     EventName.UTUB_RESTORED_FROM_TRASH: _DimDeviceOnly,
     EventName.UTUB_TAG_CREATED: _DimDeviceOnly,

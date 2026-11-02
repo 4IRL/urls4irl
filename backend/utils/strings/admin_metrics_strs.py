@@ -212,9 +212,7 @@ class ADMIN_METRICS_STRINGS:
     METRICS_GAUGE_SUPPRESSED_ARIA: str = "Value unavailable"
     METRICS_SUPPRESSED_LABEL: str = f"suppressed (fewer than {MIN_CELL_COUNT})"
     METRICS_PIPELINE_HEALTH_LEGEND_SUPPRESSED: str = METRICS_SUPPRESSED_LABEL
-    METRICS_FLOW_COUNT_SUPPRESSED_ARIA: str = (
-        f"Count suppressed (fewer than {MIN_CELL_COUNT})"
-    )
+    METRICS_FLOW_COUNT_SUPPRESSED_ARIA: str = "Count hidden to protect small groups"
     METRICS_GAUGES_LOADED: str = "Gauge values updated."
     METRICS_GAUGE_SELECT_PROMPT: str = "Select a gauge to view its timeseries."
     METRICS_GAUGE_COL_NAME: str = "Gauge"

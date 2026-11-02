@@ -178,7 +178,10 @@ class GroupedTimeseriesResponseSchema(BaseSchema):
         ),
     )
     resolution: Literal["hour", "day"] = Field(
-        description="date_trunc resolution (hour | day)",
+        description=(
+            "Effective resolution of the returned buckets (hour | day); may "
+            "differ from the requested one for daily-stored events"
+        ),
     )
     window_start: AwareDatetime = Field(
         description="Inclusive UTC start of the window",

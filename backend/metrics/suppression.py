@@ -52,6 +52,10 @@ ALLOWED_GROUP_BY_PROJECTIONS: Final[dict[EventName, frozenset[frozenset[str]]]] 
     EventName.URL_CREATE_REJECTED: frozenset({frozenset({"reason"})}),
     EventName.REGISTER_REJECTED: frozenset({frozenset({"reason"})}),
     EventName.LOGIN_FAILURE: frozenset({frozenset({"reason"})}),
+    EventName.UTUB_OPENED: frozenset(
+        {frozenset({"url_count_bucket"}), frozenset({"age_bucket"})}
+    ),
+    EventName.TAG_APPLIED: frozenset({frozenset({"utub_size_bucket"})}),
 }
 
 

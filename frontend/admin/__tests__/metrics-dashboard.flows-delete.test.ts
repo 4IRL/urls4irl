@@ -34,6 +34,9 @@ vi.mock("../metrics-query-client.js", () => ({
   fetchFlow: fetchFlowSpy,
   fetchMetricFlows: fetchMetricFlowsSpy,
   deleteMetricFlow: deleteMetricFlowSpy,
+  createMetricFlow: vi.fn(),
+  updateMetricFlow: vi.fn(),
+  fetchMetricFlowCatalog: vi.fn(),
 }));
 
 vi.mock("../render-summary.js", () => ({ renderSummary: vi.fn() }));
@@ -74,6 +77,10 @@ const DASHBOARD_HTML = `
         <span id="MetricsFlowsCount" class="flows-count"></span>
         <span id="MetricsFlowsHint" class="flows-hint" hidden></span>
         <span id="MetricsFlowsNotice" class="flows-notice" hidden></span>
+        <span class="flow-new-group">
+          <span id="MetricsFlowNewReason" class="flow-new-reason" hidden></span>
+          <button type="button" id="MetricsFlowNewBtn" class="flow-new-btn">+ New flow</button>
+        </span>
       </div>
       <div id="MetricsFlowGrid" class="flow-grid"></div>
     </section>
@@ -272,6 +279,9 @@ describe("metrics-dashboard flows grid: delete with in-place confirm", () => {
   }
   function heading(): HTMLElement {
     return document.getElementById("MetricsFlowsHeading") as HTMLElement;
+  }
+  function newFlowButton(): HTMLElement {
+    return document.getElementById("MetricsFlowNewBtn") as HTMLElement;
   }
   function countText(): string {
     return (document.getElementById("MetricsFlowsCount") as HTMLElement)
@@ -500,7 +510,7 @@ describe("metrics-dashboard flows grid: delete with in-place confirm", () => {
     );
   });
 
-  it("200: card removed, count drops, focus on the heading, announced once, list refetched", () => {
+  it("200: card removed, count drops, focus on + New flow, announced once, list refetched", () => {
     openFlowsWithList();
     startDelete({ id: CUSTOM_ONE });
     const listRequests = fetchMetricFlowsSpy.mock.calls.length;
@@ -509,7 +519,7 @@ describe("metrics-dashboard flows grid: delete with in-place confirm", () => {
 
     expect(card({ id: CUSTOM_ONE })).toBeUndefined();
     expect(countText()).toBe("4 built-in · 1 custom (of 20)");
-    expect(document.activeElement).toBe(heading());
+    expect(document.activeElement).toBe(newFlowButton());
     expect(actionAnnouncement()).toBe("Flow “Name of custom_1” deleted.");
     expect(fetchMetricFlowsSpy).toHaveBeenCalledTimes(listRequests + 1);
   });
@@ -524,7 +534,7 @@ describe("metrics-dashboard flows grid: delete with in-place confirm", () => {
   });
 
   it.each([200, 404])(
-    "%i moves focus to the heading when focus is on body",
+    "%i moves focus to + New flow when focus is on body",
     (status) => {
       openFlowsWithList();
       startDelete({ id: CUSTOM_ONE });
@@ -535,7 +545,7 @@ describe("metrics-dashboard flows grid: delete with in-place confirm", () => {
       } else {
         latestDelete().reject({ status });
       }
-      expect(document.activeElement).toBe(heading());
+      expect(document.activeElement).toBe(newFlowButton());
     },
   );
 
@@ -607,7 +617,7 @@ describe("metrics-dashboard flows grid: delete with in-place confirm", () => {
     expect(card({ id: CUSTOM_TWO })).toBeDefined();
   });
 
-  it("404: card removed, already-deleted notice and announcement, focus on the heading", () => {
+  it("404: card removed, already-deleted notice and announcement, focus on + New flow", () => {
     openFlowsWithList();
     startDelete({ id: CUSTOM_ONE });
     latestDelete().reject({ status: 404 });
@@ -617,7 +627,7 @@ describe("metrics-dashboard flows grid: delete with in-place confirm", () => {
     expect(notice().hidden).toBe(false);
     expect(notice().textContent).toContain("Name of custom_1");
     expect(actionAnnouncement()).toBe(notice().textContent);
-    expect(document.activeElement).toBe(heading());
+    expect(document.activeElement).toBe(newFlowButton());
   });
 
   it("429: card stays with the rate-limit message, focus returns to Delete, announced", () => {

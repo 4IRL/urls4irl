@@ -362,16 +362,16 @@ def test_bridged_suppressed_dim_value_matches_backend_constant() -> None:
     assert generate_constants_js()["SUPPRESSED_DIM_VALUE"] == SUPPRESSED_DIM_VALUE
 
 
-def test_bridged_suppressed_strings_embed_the_floor() -> None:
+def test_bridged_suppressed_label_embeds_floor_and_aria_names_no_number() -> None:
     """
     GIVEN the strings bridged to the frontend
     WHEN the suppressed label and aria strings are read
-    THEN both name MIN_CELL_COUNT.
+    THEN the label names MIN_CELL_COUNT and the aria copy names no number.
     """
     strings = generate_strings_js()
     assert strings["METRICS_SUPPRESSED_LABEL"] == (
         f"suppressed (fewer than {MIN_CELL_COUNT})"
     )
-    assert strings["METRICS_FLOW_COUNT_SUPPRESSED_ARIA"] == (
-        f"Count suppressed (fewer than {MIN_CELL_COUNT})"
-    )
+    aria = strings["METRICS_FLOW_COUNT_SUPPRESSED_ARIA"]
+    assert aria == "Count hidden to protect small groups"
+    assert not any(character.isdigit() for character in aria)

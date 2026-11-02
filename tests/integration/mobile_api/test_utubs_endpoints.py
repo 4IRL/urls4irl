@@ -22,6 +22,7 @@ from flask.testing import FlaskClient
 
 from backend import db
 from backend.api_v1.services.tokens import create_access_token
+from backend.metrics.events import DEVICE_TYPE_DIM_KEY, DeviceType, EventName
 from backend.models.user_preferences import User_Preferences, UtubSort
 from backend.models.users import Users
 from backend.models.utub_members import Member_Role, Utub_Members
@@ -32,6 +33,11 @@ from backend.utils.strings.json_strs import FAILURE_GENERAL
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.model_strs import MODELS
 from backend.utils.strings.utub_strs import UTUB_NAME, UTUB_SUCCESS
+from tests.integration.system.metrics_helpers import (
+    count_counter_keys,
+    find_counter_keys,
+    parse_dims,
+)
 from tests.models_for_test import valid_empty_utub_1
 from tests.settings_stub import (
     DEFAULT_MEMBER_SETTINGS_DICT,
@@ -438,6 +444,36 @@ def test_get_single_utub_happy_path(
         member for member in response_json[MODELS.MEMBERS] if member[MODELS.ID] == 1
     )
     assert member_entry[MODELS.MEMBER_ROLE] == Member_Role.CREATOR.value
+
+
+def test_get_single_utub_records_utub_opened_dims(
+    metrics_enabled_app: Flask,
+    provide_metrics_redis,
+    api_client: FlaskClient,
+    bearer_headers_first_user: dict[str, str],
+    add_single_utub_as_user_without_logging_in,
+):
+    """
+    GIVEN an empty UTub and metrics enabled
+    WHEN GET /api/v1/utubs/1
+    THEN exactly one UTUB_OPENED counter is written with the "0" size bucket,
+        "0-6d" age bucket and device_type
+    """
+    assert count_counter_keys(provide_metrics_redis, EventName.UTUB_OPENED) == 0
+
+    response = api_client.get(
+        _get_single_utub_url(metrics_enabled_app, utub_id=1),
+        headers=bearer_headers_first_user,
+    )
+
+    assert response.status_code == 200
+    keys = find_counter_keys(provide_metrics_redis, EventName.UTUB_OPENED)
+    assert len(keys) == 1
+    assert parse_dims(keys[0]) == {
+        "url_count_bucket": "0",
+        "age_bucket": "0-6d",
+        DEVICE_TYPE_DIM_KEY: int(DeviceType.DESKTOP),
+    }
 
 
 def test_get_single_utub_includes_settings(

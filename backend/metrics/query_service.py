@@ -551,6 +551,9 @@ def grouped_timeseries(
     `DIMENSION_MODELS[event_name]`. The HTTP route schema bounds the list at
     1-3 entries; this helper raises `ValueError` if any entry is unknown, so
     the route can map the error to a 400 response.
+
+    A daily-stored event is always returned at day resolution; the response's
+    `resolution` reports the effective value, which may differ from the request.
     """
     dim_model = DIMENSION_MODELS[event_name]
     valid_fields: set[str] = (
@@ -564,6 +567,7 @@ def grouped_timeseries(
             f"{', '.join(sorted(valid_fields)) or '(none)'}."
         )
     validate_group_by_projection(event_name, group_by)
+    resolution = _effective_resolution(event_name, resolution)
 
     bucket_column = func.date_trunc(
         resolution, Anonymous_Metrics.bucket_start, "UTC"

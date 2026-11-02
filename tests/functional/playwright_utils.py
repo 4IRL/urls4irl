@@ -406,6 +406,9 @@ def visit_contact_us_page(*, page: Page) -> None:
     expect(page.locator(HPL.CONTACT_US_HEADER).first).to_have_text(
         IDENTIFIERS.CONTACT_US_PAGE
     )
+    # The form's submit handler is bound on document-ready; a click before it
+    # runs falls back to a native POST with no CSRF header (a 403 page).
+    page.wait_for_load_state("load")
 
 
 def contact_form_entry(*, page: Page, subject: str, content: str) -> None:

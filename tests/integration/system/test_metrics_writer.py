@@ -13,6 +13,7 @@ from redis import Redis
 from backend.extensions.metrics.dimensions import canonicalize_dimensions
 from backend.extensions.metrics.writer import (
     MetricsWriter,
+    metrics_enabled,
     record_duration,
     record_event,
 )
@@ -30,6 +31,13 @@ from tests.integration.system.metrics_helpers import (
 )
 
 pytestmark = pytest.mark.cli
+
+# UTUB_OPENED requires both bucket dims; a bare call is silently dropped.
+_UTUB_OPENED_DIMS: dict[str, str] = {"url_count_bucket": "1-5", "age_bucket": "0-6d"}
+_DAILY_EVENT_DIMS: dict[EventName, dict[str, str]] = {
+    EventName.UTUB_OPENED: _UTUB_OPENED_DIMS,
+    EventName.TAG_APPLIED: {"utub_size_bucket": "1-5"},
+}
 
 
 def test_writer_increments_redis_counter_for_api_hit(
@@ -215,6 +223,42 @@ def test_writer_disabled_when_metrics_enabled_false(
     assert provide_metrics_redis.dbsize() == 0
 
 
+def test_is_enabled_false_for_default_writer():
+    """GIVEN a never-configured writer THEN is_enabled() is False."""
+    assert MetricsWriter().is_enabled() is False
+
+
+def test_is_enabled_false_when_enabled_without_redis():
+    """GIVEN a writer flagged enabled but with no Redis client THEN is_enabled() is False."""
+    metrics_writer = MetricsWriter()
+    metrics_writer._enabled = True
+    assert metrics_writer.is_enabled() is False
+
+
+def test_is_enabled_true_when_enabled_with_redis(
+    writer_with_metrics_enabled: MetricsWriter,
+):
+    """GIVEN an enabled writer with a Redis client THEN is_enabled() is True."""
+    assert writer_with_metrics_enabled.is_enabled() is True
+
+
+def test_metrics_enabled_false_outside_app_context():
+    """GIVEN no Flask app context THEN the module-level metrics_enabled() is False."""
+    assert metrics_enabled() is False
+
+
+def test_metrics_enabled_false_when_writer_extension_absent(
+    metrics_enabled_app: Flask,
+):
+    """GIVEN an app context with no metrics_writer extension THEN metrics_enabled() is False."""
+    with metrics_enabled_app.app_context():
+        writer = metrics_enabled_app.extensions.pop("metrics_writer")
+        try:
+            assert metrics_enabled() is False
+        finally:
+            metrics_enabled_app.extensions["metrics_writer"] = writer
+
+
 _URI_PARAM_CASES = [
     pytest.param("redis://localhost:6379/3", id="standard-host-port-db3"),
     pytest.param(
@@ -286,12 +330,12 @@ def test_record_domain_event_auto_injects_device_type_from_request_context(
     with metrics_enabled_app.test_request_context(
         "/", headers={"User-Agent": IPHONE_UA}
     ):
-        record_event(EventName.UTUB_OPENED)
+        record_event(EventName.UTUB_OPENED, dimensions=_UTUB_OPENED_DIMS)
 
     keys = find_counter_keys(provide_metrics_redis, EventName.UTUB_OPENED)
     assert len(keys) == 1
     dims = parse_dims(keys[0])
-    assert dims == {DEVICE_TYPE_DIM_KEY: int(DeviceType.MOBILE)}
+    assert dims == {**_UTUB_OPENED_DIMS, DEVICE_TYPE_DIM_KEY: int(DeviceType.MOBILE)}
 
 
 def test_record_domain_event_auto_injects_device_type_desktop_from_chrome_ua(
@@ -307,12 +351,12 @@ def test_record_domain_event_auto_injects_device_type_desktop_from_chrome_ua(
     with metrics_enabled_app.test_request_context(
         "/", headers={"User-Agent": WINDOWS_CHROME_UA}
     ):
-        record_event(EventName.UTUB_OPENED)
+        record_event(EventName.UTUB_OPENED, dimensions=_UTUB_OPENED_DIMS)
 
     keys = find_counter_keys(provide_metrics_redis, EventName.UTUB_OPENED)
     assert len(keys) == 1
     dims = parse_dims(keys[0])
-    assert dims == {DEVICE_TYPE_DIM_KEY: int(DeviceType.DESKTOP)}
+    assert dims == {**_UTUB_OPENED_DIMS, DEVICE_TYPE_DIM_KEY: int(DeviceType.DESKTOP)}
 
 
 def test_record_domain_event_outside_request_context_falls_back_to_desktop(
@@ -326,12 +370,12 @@ def test_record_domain_event_outside_request_context_falls_back_to_desktop(
         `has_request_context()` returns False.
     """
     with metrics_enabled_app.app_context():
-        record_event(EventName.UTUB_OPENED)
+        record_event(EventName.UTUB_OPENED, dimensions=_UTUB_OPENED_DIMS)
 
     keys = find_counter_keys(provide_metrics_redis, EventName.UTUB_OPENED)
     assert len(keys) == 1
     dims = parse_dims(keys[0])
-    assert dims == {DEVICE_TYPE_DIM_KEY: int(DeviceType.DESKTOP)}
+    assert dims == {**_UTUB_OPENED_DIMS, DEVICE_TYPE_DIM_KEY: int(DeviceType.DESKTOP)}
 
 
 def test_record_ui_event_preserves_caller_supplied_device_type(
@@ -371,7 +415,7 @@ _DAY_SECONDS: int = DAILY_BUCKET_SECONDS
 
 def _record_at(epoch: int, event: EventName) -> None:
     with patch("backend.extensions.metrics.writer.time.time", return_value=epoch):
-        record_event(event)
+        record_event(event, dimensions=_DAILY_EVENT_DIMS.get(event))
 
 
 def _bucket_of(key: bytes, prefix: str) -> int:

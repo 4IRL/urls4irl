@@ -323,6 +323,8 @@ const lastRenderedStates: WeakMap<
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 const SKELETON_BAR_COUNT = 3;
+// Pencil glyph; the accessible name is the button's aria-label.
+const EDIT_GLYPH = "✎";
 const TRASH_OUTER_PATH = "M0 0h24v24H0V0z";
 const TRASH_INNER_PATH =
   "M16 9v10H8V9h8m-1.5-6h-5l-1 1H5v2h14V4h-3.5l-1-1zM18 7H6v12c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7z";
@@ -399,11 +401,26 @@ function buildActions({
       }),
     );
     deleteButton.appendChild(buildTrashIcon());
+    const editButton = buildButton({
+      className: "flow-edit-btn",
+      dataAttribute: "data-flow-edit",
+      text: EDIT_GLYPH,
+    });
+    editButton.setAttribute(
+      "aria-label",
+      fillTemplate({
+        template: APP_CONFIG.strings.METRICS_FLOW_BUILDER_EDIT_LABEL,
+        values: { name: title },
+      }),
+    );
+    actions.appendChild(editButton);
     actions.appendChild(deleteButton);
     if (custom.deleteLocked) {
       const lockedId = `FlowDeleteLocked-${id}`;
-      deleteButton.setAttribute("aria-disabled", "true");
-      deleteButton.setAttribute("aria-describedby", lockedId);
+      for (const locked of [editButton, deleteButton]) {
+        locked.setAttribute("aria-disabled", "true");
+        locked.setAttribute("aria-describedby", lockedId);
+      }
       const lockedHint = document.createElement("span");
       lockedHint.id = lockedId;
       lockedHint.className = "visually-hidden";
