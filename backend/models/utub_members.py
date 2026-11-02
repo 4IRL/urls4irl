@@ -8,12 +8,14 @@ from sqlalchemy import (
     Index,
     Integer,
     UniqueConstraint,
+    func,
     text,
 )
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.dialects.postgresql import JSONB
 
 from backend import db
+from backend.utils.datetime_utils import utc_now
 
 
 class Member_Role(Enum):
@@ -36,7 +38,14 @@ class Utub_Members(db.Model):
         default=Member_Role.MEMBER,
         name="memberRole",
     )
-    # TODO: Add time when member was added
+    # When the member joined; NULL = joined before this was recorded.
+    joined_at: datetime | None = Column(
+        DateTime(timezone=True),
+        nullable=True,
+        default=utc_now,
+        server_default=func.now(),
+        name="joinedAt",
+    )
     # Per-member "last opened this UTub" time; NULL = never recorded.
     last_opened_at: datetime | None = Column(
         DateTime(timezone=True), nullable=True, default=None, name="lastOpenedAt"

@@ -52,6 +52,12 @@ class UtubSort(Enum):
     OLDEST_CREATED = "oldest_created"
 
 
+class MemberSort(Enum):
+    NAME_AZ = "name_az"
+    ROLE_THEN_NAME = "role_then_name"
+    RECENTLY_JOINED = "recently_joined"
+
+
 class Density(Enum):
     COMFORTABLE = "comfortable"
     COMPACT = "compact"
@@ -155,6 +161,17 @@ class User_Preferences(db.Model):
         server_default=UtubSort.RECENT_ACTIVITY.value,
         name="utubSort",
     )
+    member_sort: MemberSort = Column(
+        SQLEnum(
+            MemberSort,
+            values_callable=lambda enum_cls: [member.value for member in enum_cls],
+            name="member_sort_enum",
+        ),
+        nullable=False,
+        default=MemberSort.NAME_AZ,
+        server_default=MemberSort.NAME_AZ.value,
+        name="memberSort",
+    )
     show_row_counts: bool = Column(
         Boolean,
         nullable=False,
@@ -201,6 +218,7 @@ class ResolvedPreferences:
     density: Density
     date_format: DateFormat
     utub_sort: UtubSort
+    member_sort: MemberSort
     show_row_counts: bool
     show_list_totals: bool
 
@@ -223,6 +241,7 @@ def resolve_preferences(row: User_Preferences | None) -> ResolvedPreferences:
             density=Density.COMFORTABLE,
             date_format=DateFormat.ISO,
             utub_sort=UtubSort.RECENT_ACTIVITY,
+            member_sort=MemberSort.NAME_AZ,
             show_row_counts=False,
             show_list_totals=True,
         )
@@ -233,6 +252,7 @@ def resolve_preferences(row: User_Preferences | None) -> ResolvedPreferences:
         density=row.density,
         date_format=row.date_format,
         utub_sort=row.utub_sort,
+        member_sort=row.member_sort,
         show_row_counts=row.show_row_counts,
         show_list_totals=row.show_list_totals,
     )
