@@ -641,6 +641,12 @@ def dispatch_tag_drag_and_drop(
 TAG_BATCH_URL_PATTERN = re.compile(r".*/tags/batch$")
 _PREFLIGHT_URL_PATTERN = re.compile(r".*/utubs/\d+/urls/\d+$")
 _HELD_MARKER_ATTR = "data-test-held-tag-posts"
+# `ajaxCall` gives the tags/batch POST a 1s jQuery timeout. A held POST outlives
+# that under full-suite load, so jQuery aborts it and the release never gets a
+# response. Disabling the client timeout for this URL keeps the hold deterministic.
+_NO_CLIENT_TIMEOUT_JS = """() => window.jQuery.ajaxPrefilter((options) => {
+    if (/\\/tags\\/batch$/.test(options.url)) options.timeout = 0;
+})"""
 _ROUND_TRIP_JS = (
     "() => fetch(window.location.href, { method: 'HEAD' }).then((r) => r.status)"
 )
@@ -682,6 +688,8 @@ class TagBatchRoute:
         self.request_count = 0
         self.preflight_count = 0
         self._held: list[Route] = []
+        if hold:
+            page.evaluate(_NO_CLIENT_TIMEOUT_JS)
         page.on("request", self._on_request)
         page.route(TAG_BATCH_URL_PATTERN, self._handle)
 
