@@ -32,6 +32,7 @@ _EXPECTED_USER_PREFERENCES_COLUMNS = {
     "density",
     "dateFormat",
     "utubSort",
+    "memberSort",
     "showRowCounts",
     "showListTotals",
     "createdAt",
@@ -47,6 +48,7 @@ _ENUM_BACKED_COLUMNS = {
     "density",
     "dateFormat",
     "utubSort",
+    "memberSort",
 }
 
 _PRE_UTUB_LIST_REVISION = _VIEW_SPLIT_REVISION
