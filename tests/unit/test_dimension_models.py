@@ -494,6 +494,31 @@ def test_utub_opened_rejects_invalid_dims(bad_dims: dict[str, str]):
         validate_dimensions(EventName.UTUB_OPENED, bad_dims)
 
 
+@pytest.mark.parametrize("size_bucket", ["0", "1-5", "6-20", "21-50", "51+"])
+def test_tag_applied_accepts_every_bucket(size_bucket: str):
+    """Every UTub size bucket validates, with or without `device_type`."""
+    dims = {"utub_size_bucket": size_bucket}
+    validate_dimensions(EventName.TAG_APPLIED, dims)
+    validate_dimensions(
+        EventName.TAG_APPLIED, {**dims, "device_type": DeviceType.MOBILE}
+    )
+
+
+@pytest.mark.parametrize(
+    "bad_dims",
+    [
+        {},
+        {"utub_size_bucket": "suppressed"},
+        {"utub_size_bucket": "100"},
+        {"utub_size_bucket": "1-5", "extra": "x"},
+    ],
+)
+def test_tag_applied_rejects_invalid_dims(bad_dims: dict[str, str]):
+    """Missing dim, forged `suppressed`, unknown value and extra key are rejected."""
+    with pytest.raises(ValidationError):
+        validate_dimensions(EventName.TAG_APPLIED, bad_dims)
+
+
 def test_mobile_nav_rejects_unknown_trigger():
     """`_DimMobileNav.trigger` accepts only `tap`/`history_nav`.
 

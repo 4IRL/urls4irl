@@ -40,6 +40,7 @@ from backend.tags.services.create_url_tag import (
     apply_tags_core,
     build_url_at_tag_limit_response,
     get_tag_applied_counts,
+    record_tag_applied_events,
 )
 from backend.urls.constants import URLErrorCodes, URLNormalizationResult, URLState
 from backend.urls.data_models import NormalizedUrl, ValidatedUrl
@@ -501,8 +502,7 @@ def _associate_url_with_utub(
         EventName.URL_TRACKING_PARAMS_STRIPPED,
         dimensions={"stripped": "true" if had_tracking else "false"},
     )
-    for _utub_tag in applied:
-        record_event(EventName.TAG_APPLIED)
+    record_tag_applied_events(utub_id=current_utub.id, applied_count=len(applied))
 
     # Successfully added a URL, and associated it to a UTub
     safe_add_many_logs(
@@ -708,8 +708,7 @@ def _revive_trashed_url_in_utub(
         EventName.URL_TRACKING_PARAMS_STRIPPED,
         dimensions={"stripped": "true" if had_tracking else "false"},
     )
-    for _utub_tag in to_apply:
-        record_event(EventName.TAG_APPLIED)
+    record_tag_applied_events(utub_id=current_utub.id, applied_count=len(to_apply))
 
     safe_add_many_logs(
         [

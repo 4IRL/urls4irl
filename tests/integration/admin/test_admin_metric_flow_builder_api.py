@@ -161,6 +161,27 @@ def test_catalog_lists_utub_opened_bucket_dims(
         assert dims[key]["groupable"] is True
 
 
+def test_catalog_lists_tag_applied_utub_size_bucket_dim(
+    login_admin_user_with_register: AdminSession,
+) -> None:
+    """
+    GIVEN a logged-in admin
+    WHEN GET /admin/metrics/flows/catalog
+    THEN tag_applied lists utub_size_bucket with the size tuple values,
+         filter_kind "values" and groupable true
+    """
+    client, _, _, _ = login_admin_user_with_register
+
+    dims = {
+        dim["key"]: dim
+        for dim in _events_by_name(_get_catalog(client))["tag_applied"]["dims"]
+    }
+
+    assert dims["utub_size_bucket"]["values"] == list(UTUB_SIZE_BUCKETS)
+    assert dims["utub_size_bucket"]["filter_kind"] == "values"
+    assert dims["utub_size_bucket"]["groupable"] is True
+
+
 def test_catalog_api_endpoints(
     login_admin_user_with_register: AdminSession,
 ) -> None:
