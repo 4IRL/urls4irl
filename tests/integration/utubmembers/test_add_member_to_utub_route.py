@@ -119,6 +119,11 @@ def test_add_valid_users_to_utub_as_creator(
             == other_user
         )
         assert (
+            added_user_response_json[MEMBER_SUCCESS.MEMBER][MODELS.MEMBER_ROLE]
+            == Member_Role.MEMBER.value
+        )
+        assert added_user_response_json[MEMBER_SUCCESS.MEMBER][MODELS.JOINED_AT]
+        assert (
             int(added_user_response_json[MEMBER_SUCCESS.UTUB_ID])
             == utub_id_of_current_user
         )

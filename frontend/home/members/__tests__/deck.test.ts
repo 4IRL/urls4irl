@@ -87,7 +87,7 @@ describe("Member deck visibility on UTub selection", () => {
     expect(wrap.hasClass("hidden")).toBe(true);
 
     setMemberDeckOnUTubSelected(
-      [{ id: 1, username: "owner", memberRole: "creator" }],
+      [{ id: 1, username: "owner", memberRole: "creator", joinedAt: null }],
       1,
       true,
       1,
@@ -138,7 +138,7 @@ describe("Member deck visibility on UTub selection", () => {
     setState({ isCoCreator: true });
 
     setMemberDeckOnUTubSelected(
-      [{ id: 1, username: "owner", memberRole: "creator" }],
+      [{ id: 1, username: "owner", memberRole: "creator", joinedAt: null }],
       1,
       false,
       1,
@@ -156,7 +156,7 @@ describe("Member deck visibility on UTub selection", () => {
     setState({ isCoCreator: false });
 
     setMemberDeckOnUTubSelected(
-      [{ id: 1, username: "owner", memberRole: "creator" }],
+      [{ id: 1, username: "owner", memberRole: "creator", joinedAt: null }],
       1,
       false,
       1,
@@ -168,8 +168,18 @@ describe("Member deck visibility on UTub selection", () => {
 });
 
 describe("Standalone transfer-ownership trigger visibility (Step 4)", () => {
-  const OWNER = { id: 1, username: "owner", memberRole: "creator" };
-  const MEMBER = { id: 2, username: "devin", memberRole: "member" };
+  const OWNER = {
+    id: 1,
+    username: "owner",
+    memberRole: "creator",
+    joinedAt: null,
+  };
+  const MEMBER = {
+    id: 2,
+    username: "devin",
+    memberRole: "member",
+    joinedAt: null,
+  };
 
   beforeEach(() => {
     document.body.innerHTML = MEMBER_DECK_HTML;
@@ -185,7 +195,12 @@ describe("Standalone transfer-ownership trigger visibility (Step 4)", () => {
   // utubOwnerID), which buildSelectedUTub sets before UTUB_SELECTED fires, so
   // seed state to match the members being rendered.
   function selectUTub(
-    members: { id: number; username: string; memberRole: string }[],
+    members: {
+      id: number;
+      username: string;
+      memberRole: string;
+      joinedAt: string | null;
+    }[],
     {
       isCurrentUserOwner,
       isCurrentUTubLocked = false,
@@ -361,15 +376,15 @@ describe("updateMemberDeck — targeted role swap via real applyDeckDiff (DD-17/
 
     setState({
       members: [
-        { id: 101, username: "u101", memberRole: "member" },
-        { id: 202, username: "u202", memberRole: "cocreator" },
+        { id: 101, username: "u101", memberRole: "member", joinedAt: null },
+        { id: 202, username: "u202", memberRole: "cocreator", joinedAt: null },
       ],
     });
 
     updateMemberDeck(
       [
-        { id: 101, username: "u101", memberRole: "cocreator" },
-        { id: 202, username: "u202", memberRole: "cocreator" },
+        { id: 101, username: "u101", memberRole: "cocreator", joinedAt: null },
+        { id: 202, username: "u202", memberRole: "cocreator", joinedAt: null },
       ],
       true,
       42,

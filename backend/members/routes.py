@@ -25,6 +25,7 @@ from backend.schemas.requests.members import (
     TransferOwnershipRequest,
 )
 from backend.schemas.users import (
+    AddMemberResponseSchema,
     CoMemberListSchema,
     MemberModifiedResponseSchema,
     OwnershipTransferredResponseSchema,
@@ -134,13 +135,13 @@ def transfer_utub_ownership(
 @utub_manager_required
 @api_route(
     request_schema=AddMemberRequest,
-    response_schema=MemberModifiedResponseSchema,
+    response_schema=AddMemberResponseSchema,
     error_message=MEMBER_FAILURE.UNABLE_TO_ADD_MEMBER,
     error_code=UTubMembersErrorCodes.INVALID_FORM_INPUT,
     tags=[OPEN_API.MEMBERS],
     description="Add a member to a UTub",
     status_codes={
-        200: MemberModifiedResponseSchema,
+        200: AddMemberResponseSchema,
         400: ErrorResponse,
         403: ErrorResponse,
         404: ErrorResponse,

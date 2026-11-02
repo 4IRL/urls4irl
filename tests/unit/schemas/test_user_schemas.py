@@ -173,11 +173,13 @@ def test_ownership_transferred_response_schema_dump():
             MODELS.ID: 2,
             MODELS.USERNAME: "alice",
             MODELS.MEMBER_ROLE: "creator",
+            MODELS.JOINED_AT: None,
         },
         MODELS.PREVIOUS_OWNER: {
             MODELS.ID: 1,
             MODELS.USERNAME: "bob",
             MODELS.MEMBER_ROLE: "cocreator",
+            MODELS.JOINED_AT: None,
         },
     }
 

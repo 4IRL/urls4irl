@@ -47,6 +47,7 @@ from backend.schemas.urls import (
     UrlUpdatedResponseSchema,
 )
 from backend.schemas.users import (
+    AddMemberResponseSchema,
     EmailValidationResponseSchema,
     ForgotPasswordResponseSchema,
     LoginRedirectResponseSchema,
@@ -595,11 +596,11 @@ ALL_API_ROUTES = [
     (
         "members.create_member",
         AddMemberRequest,
-        MemberModifiedResponseSchema,
+        AddMemberResponseSchema,
         [OPEN_API.MEMBERS],
         "Add a member to a UTub",
         {
-            200: MemberModifiedResponseSchema,
+            200: AddMemberResponseSchema,
             400: ErrorResponse,
             403: ErrorResponse,
             404: ErrorResponse,

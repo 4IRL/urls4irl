@@ -60,7 +60,9 @@ function seedMemberRow(
       utubID: 1,
     }),
   );
-  setState({ members: [{ id: memberID, username, memberRole }] });
+  setState({
+    members: [{ id: memberID, username, memberRole, joinedAt: null }],
+  });
 }
 
 function mockAjaxSuccess(): void {

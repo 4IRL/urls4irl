@@ -15,6 +15,7 @@ from backend.schemas.exports import (
     ExportUtubSchema,
     UserDataExportSchema,
 )
+from backend.utils.datetime_utils import to_iso_milliseconds
 from backend.utils.strings.model_strs import MODELS as MODEL_STRS
 
 # Fallback attribution when a contributor's Users row can't be resolved (should
@@ -56,6 +57,11 @@ def _build_export_utub(
         role=membership.member_role.value,
         is_locked=utub.is_locked,
         created_at=utub.created_at,
+        joined_at=(
+            to_iso_milliseconds(membership.joined_at)
+            if membership.joined_at is not None
+            else None
+        ),
         member_settings=membership.settings,
         urls=[
             _build_export_url(utub_url=utub_url, username_by_id=username_by_id)
@@ -135,6 +141,7 @@ def build_user_data_export_core(
         density=resolved_preferences.density.value,
         date_format=resolved_preferences.date_format.value,
         utub_sort=resolved_preferences.utub_sort.value,
+        member_sort=resolved_preferences.member_sort.value,
         show_row_counts=resolved_preferences.show_row_counts,
         show_list_totals=resolved_preferences.show_list_totals,
     )

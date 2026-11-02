@@ -290,6 +290,7 @@ function projectUTubContent({
       id: member.id,
       username: member.username,
       memberRole: member.memberRole,
+      joinedAt: member.joinedAt ?? null,
     })),
     name: name ?? "",
     description: description ?? "",

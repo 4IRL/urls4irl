@@ -1562,6 +1562,23 @@ export interface paths {
     patch: operations["updateUtubListPreferences"];
     trace?: never;
   };
+  "/users/preferences/members": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /** @description Partially update the authenticated user's member-list preferences (member sort). Acts only on the logged-in user and never touches the display or UTub-list preferences; the preferences row is created on the first real change, and a no-op returns 200 'No change'. An empty body, unknown key, explicit null or unknown sort is a 400. An unauthenticated request is answered by the app-wide login_manager unauthorized_handler with a 302 redirect to the splash page (with next), and an authenticated user with an unvalidated email gets a 302 to the splash page (no next). Metrics: API_HIT only (no DOMAIN event). */
+    patch: operations["updateMemberListPreferences"];
+    trace?: never;
+  };
   "/users/{user_id}/password": {
     parameters: {
       query?: never;
@@ -2561,6 +2578,42 @@ export interface components {
        */
       source: components["schemas"]["MemberAddSource"];
     };
+    /**
+     * @description A member of a UTub, carrying their role and join date.
+     *
+     *     Returned by the open-UTub detail response, the add-member responses (web and
+     *     api_v1) and the transfer-ownership response.
+     *
+     *     Distinct from the shared ``UserSchema``/``MemberSchema`` (reused where a
+     *     role isn't naturally present, e.g. the remove-member response).
+     */
+    UtubMemberSchema: {
+      /** @description Unique user ID */
+      id: number;
+      /** @description Username of the user */
+      username: string;
+      /** @description Role of the member in the UTub */
+      memberRole: string;
+      /**
+       * @description When the member joined (UTC, millisecond precision), null if joined before this was recorded
+       * @default null
+       */
+      joinedAt: string | null;
+    };
+    AddMemberResponseSchema: {
+      /** @description ID of the UTub the member was added to */
+      utubID: number;
+      /** @description The added member with their role and join date */
+      member: components["schemas"]["UtubMemberSchema"];
+    };
+    ErrorResponse_UTubMembersErrorCodes: components["schemas"]["ErrorResponse"] & {
+      errorCode?: components["schemas"]["UTubMembersErrorCodes"];
+    };
+    /**
+     * @description Error codes for UTubMembersErrorCodes
+     * @enum {integer}
+     */
+    UTubMembersErrorCodes: 1 | 2 | 3 | 4 | 5 | 6;
     UserSchema: {
       /** @description Unique user ID */
       id: number;
@@ -2573,14 +2626,6 @@ export interface components {
       /** @description User object for the member added or removed */
       member: components["schemas"]["UserSchema"];
     };
-    ErrorResponse_UTubMembersErrorCodes: components["schemas"]["ErrorResponse"] & {
-      errorCode?: components["schemas"]["UTubMembersErrorCodes"];
-    };
-    /**
-     * @description Error codes for UTubMembersErrorCodes
-     * @enum {integer}
-     */
-    UTubMembersErrorCodes: 1 | 2 | 3 | 4 | 5 | 6;
     /**
      * @description Target role carried by the grant/revoke co-owner endpoint's request body.
      *
@@ -2597,21 +2642,6 @@ export interface components {
     TransferOwnershipRequest: {
       /** @description User ID of the member to promote to UTub owner */
       new_owner_id: number;
-    };
-    /**
-     * @description A member of a UTub, carrying their role, for the open-UTub detail response.
-     *
-     *     Distinct from the shared ``UserSchema``/``MemberSchema`` (reused by the
-     *     add/remove-member responses where a role isn't naturally present) so that
-     *     role exposure is scoped to the detail response only.
-     */
-    UtubMemberSchema: {
-      /** @description Unique user ID */
-      id: number;
-      /** @description Username of the user */
-      username: string;
-      /** @description Role of the member in the UTub */
-      memberRole: string;
     };
     /**
      * @description Response for the transfer-ownership endpoint (web + /api/v1 twin).
@@ -2866,6 +2896,11 @@ export interface components {
       settings?: components["schemas"]["UtubSettings"];
       /** @description The current user's own resolved view settings for this UTub */
       memberSettings?: components["schemas"]["UtubMemberSettings"];
+      /**
+       * @description The viewer's member sort; `members` is already in this order
+       * @enum {string}
+       */
+      memberSort: "name_az" | "role_then_name" | "recently_joined";
     };
     UpdateUTubNameRequest: {
       /** @description New name for the UTub */
@@ -3947,6 +3982,40 @@ export interface components {
       /** @description Human-readable, server-sourced banner text */
       message: string;
     };
+    /** @enum {string} */
+    MemberSort: "name_az" | "role_then_name" | "recently_joined";
+    /**
+     * @description Partial write of the member-list preferences. Omitted means "not sent";
+     *     an explicit ``null`` is never a value and is rejected, as are unknown keys
+     *     and an empty body.
+     */
+    UpdateMemberListPreferencesRequest: {
+      /**
+       * @description How the member list is sorted: name_az, role_then_name, or recently_joined
+       * @default null
+       */
+      memberSort: components["schemas"]["MemberSort"] | null;
+    };
+    /**
+     * @description Response for ``PATCH /users/preferences/members``.
+     *
+     *     Echoes the resolved member sort (never the request value); ``status`` is
+     *     ``No change`` when nothing differed (no row created).
+     */
+    UpdateMemberListPreferencesResponseSchema: {
+      /**
+       * @description How the member list is sorted
+       * @enum {string}
+       */
+      memberSort: "name_az" | "role_then_name" | "recently_joined";
+      /**
+       * @description Response status: Success or No change
+       * @enum {string}
+       */
+      status: "Success" | "No change";
+      /** @description Human-readable, server-sourced banner text */
+      message: string;
+    };
     ChangePasswordRequest: {
       /** @description Current account password, re-authenticated before the change. Length is validated against the stored hash in the service (min 1, like LoginRequest), not against the new-password policy */
       currentPassword: string;
@@ -4113,6 +4182,8 @@ export interface components {
       dateFormat: string;
       /** @description The UTub list sort order (recent_activity/last_opened/name_az/newest_created/oldest_created) */
       utubSort: string;
+      /** @description The member list sort order (name_az/role_then_name/recently_joined) */
+      memberSort: string;
       /** @description Whether each UTub row shows its URL and member counts */
       showRowCounts: boolean;
       /** @description Whether the UTub list totals are shown */
@@ -4170,6 +4241,11 @@ export interface components {
        * @description UTub creation timestamp (ISO 8601)
        */
       createdAt: string;
+      /**
+       * @description When the acting user joined this UTub (ISO 8601), or null when not recorded
+       * @default null
+       */
+      joinedAt: string | null;
       /**
        * @description The acting user's sparse private view overrides for this UTub, or null when none
        * @default null
@@ -7163,14 +7239,14 @@ export interface operations {
       };
     };
     responses: {
-      /** @description Member modified */
+      /** @description Add member */
       200: {
         headers: {
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["SuccessEnvelope"] &
-            components["schemas"]["MemberModifiedResponseSchema"];
+            components["schemas"]["AddMemberResponseSchema"];
         };
       };
       /** @description Bad request */
@@ -7999,14 +8075,14 @@ export interface operations {
       };
     };
     responses: {
-      /** @description Member modified */
+      /** @description Add member */
       200: {
         headers: {
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["SuccessEnvelope"] &
-            components["schemas"]["MemberModifiedResponseSchema"];
+            components["schemas"]["AddMemberResponseSchema"];
         };
       };
       /** @description Bad request */
@@ -10252,6 +10328,44 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["UpdateUtubListPreferencesResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_PreferencesErrorCodes"];
+        };
+      };
+    };
+  };
+  updateMemberListPreferences: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["UpdateMemberListPreferencesRequest"];
+      };
+    };
+    responses: {
+      /**
+       * @description Response for ``PATCH /users/preferences/members``.
+       *
+       *         Echoes the resolved member sort (never the request value); ``status`` is
+       *         ``No change`` when nothing differed (no row created).
+       */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["UpdateMemberListPreferencesResponseSchema"];
         };
       };
       /** @description Bad request */

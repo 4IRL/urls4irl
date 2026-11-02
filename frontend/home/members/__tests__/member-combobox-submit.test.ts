@@ -484,7 +484,11 @@ describe("member-combobox-submit — dedupe on switch-away-and-back", () => {
     // is still the batch's UTub 7). That select flow re-fetched `members` fresh —
     // already including Bob (id 1), whose independent POST had completed. This
     // stale batch must NOT append Bob a second time.
-    setState({ members: [{ id: 1, username: "Bob", memberRole: "member" }] });
+    setState({
+      members: [
+        { id: 1, username: "Bob", memberRole: "member", joinedAt: null },
+      ],
+    });
 
     firstDeferred.resolve(
       { utubID: 7, member: { id: 1, username: "Bob" } },

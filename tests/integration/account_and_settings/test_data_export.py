@@ -31,6 +31,7 @@ from backend.metrics.events import EventName
 from backend.models.user_preferences import (
     DateFormat,
     Density,
+    MemberSort,
     SortOrder,
     Theme,
     User_Preferences,
@@ -192,6 +193,44 @@ def test_data_export_core_includes_member_settings(
     assert exported_settings.count(None) == len(payload["utubs"]) - 1
 
 
+def test_data_export_core_exports_own_joined_at_never_others(
+    login_first_user_with_distinct_stats: Tuple[FlaskClient, Users, Flask],
+) -> None:
+    """Each exported UTub carries the exporting user's own ``joinedAt`` (null
+    when dateless); no other member's join date appears anywhere."""
+    _logged_in_client, seeded_user, app = login_first_user_with_distinct_stats
+    own_joined_at = datetime(2021, 3, 4, 5, 6, 7, 123000, tzinfo=utc_now().tzinfo)
+    others_joined_at = datetime(2019, 8, 9, 10, 11, 12, 456000, tzinfo=utc_now().tzinfo)
+
+    with app.app_context():
+        own_memberships = Utub_Members.query.filter(
+            Utub_Members.user_id == seeded_user.id
+        ).all()
+        dateless_utub_id = own_memberships[0].utub_id
+        for membership in Utub_Members.query.all():
+            if membership.user_id != seeded_user.id:
+                membership.joined_at = others_joined_at
+            elif membership.utub_id == dateless_utub_id:
+                membership.joined_at = None
+            else:
+                membership.joined_at = own_joined_at
+        db.session.commit()
+        dateless_utub_name = Utubs.query.get(dateless_utub_id).name
+        export = build_user_data_export_core(
+            user=Users.query.get(seeded_user.id), generated_at=utc_now()
+        )
+
+    payload = export.model_dump(by_alias=True, mode="json")
+    joined_by_name = {
+        utub_payload["name"]: utub_payload["joinedAt"]
+        for utub_payload in payload["utubs"]
+    }
+    assert joined_by_name[dateless_utub_name] is None
+    assert "2021-03-04T05:06:07.123+00:00" in joined_by_name.values()
+    serialized = json.dumps(payload)
+    assert "2019-08-09" not in serialized
+
+
 def test_data_export_core_includes_trashed_utub(
     login_first_user_with_distinct_stats: Tuple[FlaskClient, Users, Flask],
 ) -> None:
@@ -250,6 +289,7 @@ def test_data_export_core_includes_stored_preferences(
                 density=Density.COMPACT,
                 date_format=DateFormat.EU,
                 utub_sort=UtubSort.NAME_AZ,
+                member_sort=MemberSort.RECENTLY_JOINED,
                 show_row_counts=True,
                 show_list_totals=False,
             )
@@ -265,6 +305,7 @@ def test_data_export_core_includes_stored_preferences(
     assert export.preferences.density == Density.COMPACT.value
     assert export.preferences.date_format == DateFormat.EU.value
     assert export.preferences.utub_sort == UtubSort.NAME_AZ.value
+    assert export.preferences.member_sort == MemberSort.RECENTLY_JOINED.value
     assert export.preferences.show_row_counts is True
     assert export.preferences.show_list_totals is False
 
@@ -321,6 +362,7 @@ def test_data_export_core_defaults_preferences_when_no_row(
     assert export.preferences.density == Density.COMFORTABLE.value
     assert export.preferences.date_format == DateFormat.ISO.value
     assert export.preferences.utub_sort == UtubSort.RECENT_ACTIVITY.value
+    assert export.preferences.member_sort == MemberSort.NAME_AZ.value
     assert export.preferences.show_row_counts is False
     assert export.preferences.show_list_totals is True
 

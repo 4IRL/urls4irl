@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from pydantic import Field, SerializeAsAny, field_serializer
 
@@ -18,6 +18,7 @@ from backend.utils.strings.model_strs import MODELS, UTUB_DESCRIPTION
 from backend.utils.strings.utub_strs import UTUB_CREATOR_ID, UTUB_ID, UTUB_NAME
 
 if TYPE_CHECKING:
+    from backend.models.utub_members import Utub_Members
     from backend.models.utub_urls import Utub_Urls
     from backend.models.utubs import Utubs
 
@@ -89,6 +90,11 @@ class UtubDetailSchema(BaseSchema):
         description="The current user's own resolved view settings for this UTub",
     )
 
+    member_sort: Literal["name_az", "role_then_name", "recently_joined"] = Field(
+        alias=MODELS.MEMBER_SORT,
+        description="The viewer's member sort; `members` is already in this order",
+    )
+
     @field_serializer("created_at")
     def serialize_created_at(self, value: datetime) -> str:
         return value.isoformat()
@@ -99,6 +105,8 @@ class UtubDetailSchema(BaseSchema):
         utub: Utubs,
         current_user_id: int,
         ordered_utub_urls: list[Utub_Urls],
+        ordered_members: list[Utub_Members],
+        member_sort: str,
     ) -> UtubDetailSchema:
         # ``Member_Role`` is imported locally to avoid a circular import: this
         # schema module is loaded during ``backend`` package init (via
@@ -156,9 +164,11 @@ class UtubDetailSchema(BaseSchema):
                     id=member.to_user.id,
                     username=member.to_user.username,
                     member_role=member.member_role.value,
+                    joined_at=member.joined_at,
                 )
-                for member in utub.members
+                for member in ordered_members
             ],
+            member_sort=member_sort,
             urls=urls,
             tags=tags,
             is_creator=utub.utub_creator == current_user_id,

@@ -84,7 +84,7 @@ function makeURL(utubUrlID: number, addedByUserID: number): UtubUrlItem {
 }
 
 function member(id: number, username: string): MemberItem {
-  return { id, username, memberRole: "member" };
+  return { id, username, memberRole: "member", joinedAt: null };
 }
 
 function stackedBadge(utubUrlID: number): JQuery {

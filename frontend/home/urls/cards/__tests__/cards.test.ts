@@ -351,7 +351,9 @@ describe("createURLBlock", () => {
       // Even with the adder present as a member, the inline badge stays
       // date-only — the attribution lives on the expanded stacked badge.
       setState({
-        members: [{ id: 7, username: "alice", memberRole: "member" }],
+        members: [
+          { id: 7, username: "alice", memberRole: "member", joinedAt: null },
+        ],
       });
       const el = createURLBlock({
         url: {
@@ -397,7 +399,9 @@ describe("createURLBlock", () => {
 
     it("renders the expanded stacked badge attributing the adder: 'Added by <user> · <date>', last row after the buttons", () => {
       setState({
-        members: [{ id: 7, username: "alice", memberRole: "member" }],
+        members: [
+          { id: 7, username: "alice", memberRole: "member", joinedAt: null },
+        ],
       });
       const el = createURLBlock({
         url: {
@@ -457,7 +461,9 @@ describe("createURLBlock", () => {
       "never shows %s for an adder absent from members (text and aria-label)",
       (_label, departedName) => {
         setState({
-          members: [{ id: 7, username: "alice", memberRole: "member" }],
+          members: [
+            { id: 7, username: "alice", memberRole: "member", joinedAt: null },
+          ],
         });
         // The departed adder's name could only come from stale data; seed it on
         // the item to prove the badge never reads it.
@@ -498,7 +504,12 @@ describe("createURLBlock", () => {
       // Store lacks user 7 (pre-refresh), the payload's members include them.
       setState({ members: [] });
       const payloadMembers = [
-        { id: 7, username: "alice", memberRole: "member" as const },
+        {
+          id: 7,
+          username: "alice",
+          memberRole: "member" as const,
+          joinedAt: null,
+        },
       ];
       const known = createURLBlock({
         url: baseURL,
@@ -512,7 +523,9 @@ describe("createURLBlock", () => {
       // An adder absent from the override's members is still a former member,
       // even if the store lists them.
       setState({
-        members: [{ id: 7, username: "alice", memberRole: "member" }],
+        members: [
+          { id: 7, username: "alice", memberRole: "member", joinedAt: null },
+        ],
       });
       const orphan = createURLBlock({
         url: baseURL,

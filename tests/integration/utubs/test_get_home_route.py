@@ -240,6 +240,7 @@ def test_home_page_utub_list_preferences_default_when_no_row(
     assert match is not None
     payload = json.loads(match.group(1))
     assert payload["display_utub_sort"] == UtubSort.RECENT_ACTIVITY.value
+    assert payload["display_member_sort"] == "name_az"
     assert payload["display_show_row_counts"] is False
     assert payload["display_show_list_totals"] is True
 

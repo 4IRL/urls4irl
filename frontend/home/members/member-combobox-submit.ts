@@ -16,7 +16,7 @@ import {
 } from "./member-combobox.js";
 
 import type { StagedMemberChip } from "./member-combobox.js";
-import type { MemberModifiedResponse } from "../../types/member.js";
+import type { AddMemberResponse } from "../../types/member.js";
 
 // Per-chip batch add (Step 6). This module is a NEW organizational split — there
 // is no `combobox-submit.ts` in the codebase to mirror. The request/success/fail
@@ -37,7 +37,7 @@ type ChipSettleResult = {
   chip: StagedMemberChip;
   outcome: ChipOutcome;
   // Present only for a 200: the added member, appended once after settle.
-  member?: MemberModifiedResponse["member"];
+  member?: AddMemberResponse["member"];
   // Present only for a 400: the failure reason, carried by the chip's title
   // tooltip and reused in the batched aria-live summary.
   errorText?: string;
@@ -122,7 +122,7 @@ function submitOneChip({
       source: chip.source,
     });
 
-    request.done((response: MemberModifiedResponse) => {
+    request.done((response: AddMemberResponse) => {
       // ajaxCall's .done only fires on a 2xx; the backend returns 200 with the
       // added member. Always settle the wrapper (a non-settling branch here
       // would hang Promise.allSettled). The store push + deck badge for this
