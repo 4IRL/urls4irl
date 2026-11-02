@@ -44,6 +44,7 @@ export interface AppRoutes {
   errorPage: string;
   logout: string;
   updateUtubListPreferences: string;
+  updateMemberListPreferences: string;
   contactUs: string;
   crossUtubSearch: string;
   metricsIngest: string;
@@ -197,6 +198,7 @@ export const APP_CONFIG: AppConfig = Object.freeze({
     errorPage: rawConfig.routes.errorPage,
     logout: rawConfig.routes.logout,
     updateUtubListPreferences: rawConfig.routes.updateUtubListPreferences,
+    updateMemberListPreferences: rawConfig.routes.updateMemberListPreferences,
 
     getUTub: (id: number) => rawConfig.routes.getUTub.replace("-1", String(id)),
     refreshUTub: (id: number) =>

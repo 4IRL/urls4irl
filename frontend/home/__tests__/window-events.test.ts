@@ -19,12 +19,14 @@ const mockBuildSelectedUTub = vi.fn();
 const KEEP_NONE = {
   keepSettings: false,
   keepMemberSettings: false,
+  keepMemberSort: false,
   forceShortLinksOff: false,
 };
 const mockShouldKeepSettings = vi.fn((..._args: unknown[]) => KEEP_NONE);
 const mockCaptureSettingsVersions = vi.fn(() => ({
   settingsVersion: 0,
   memberSettingsVersion: 0,
+  memberSortVersion: 0,
   policyLearnedVersion: 0,
 }));
 const mockIsValidUTubID = vi.fn();
@@ -481,6 +483,7 @@ describe("window-events", () => {
           selectedUTub: fakeUTub,
           keepSettings: false,
           keepMemberSettings: false,
+          keepMemberSort: false,
           forceShortLinksOff: false,
         });
       });
@@ -516,6 +519,7 @@ describe("window-events", () => {
       mockShouldKeepSettings.mockReturnValue({
         keepSettings: true,
         keepMemberSettings: true,
+        keepMemberSort: true,
         forceShortLinksOff: true,
       });
       vi.spyOn($.fn, "width").mockReturnValue(1200);
@@ -531,6 +535,7 @@ describe("window-events", () => {
           selectedUTub: fakeUTub,
           keepSettings: true,
           keepMemberSettings: true,
+          keepMemberSort: true,
           forceShortLinksOff: true,
         });
       });
@@ -539,6 +544,7 @@ describe("window-events", () => {
         captured: {
           settingsVersion: 0,
           memberSettingsVersion: 0,
+          memberSortVersion: 0,
           policyLearnedVersion: 0,
         },
       });
@@ -564,6 +570,7 @@ describe("window-events", () => {
           selectedUTub: fakeUTub,
           keepSettings: false,
           keepMemberSettings: false,
+          keepMemberSort: false,
           forceShortLinksOff: false,
         });
       });
@@ -661,6 +668,7 @@ describe("window-events", () => {
           selectedUTub: fakeUTub,
           keepSettings: false,
           keepMemberSettings: false,
+          keepMemberSort: false,
           forceShortLinksOff: false,
         });
       });
@@ -703,6 +711,7 @@ describe("window-events", () => {
             selectedUTub: fakeUTub,
             keepSettings: false,
             keepMemberSettings: false,
+            keepMemberSort: false,
             forceShortLinksOff: false,
           });
         });
@@ -738,6 +747,7 @@ describe("window-events", () => {
             selectedUTub: fakeUTub,
             keepSettings: false,
             keepMemberSettings: false,
+            keepMemberSort: false,
             forceShortLinksOff: false,
           });
         });
@@ -770,6 +780,7 @@ describe("window-events", () => {
             selectedUTub: fakeUTub,
             keepSettings: false,
             keepMemberSettings: false,
+            keepMemberSort: false,
             forceShortLinksOff: false,
           });
         });
@@ -817,6 +828,7 @@ describe("window-events", () => {
             selectedUTub: fakeUTub,
             keepSettings: false,
             keepMemberSettings: false,
+            keepMemberSort: false,
             forceShortLinksOff: false,
           });
         });
@@ -864,6 +876,7 @@ describe("window-events", () => {
             selectedUTub: newerUTub,
             keepSettings: false,
             keepMemberSettings: false,
+            keepMemberSort: false,
             forceShortLinksOff: false,
           });
         });
@@ -900,6 +913,7 @@ describe("window-events", () => {
             selectedUTub: fakeUTub,
             keepSettings: false,
             keepMemberSettings: false,
+            keepMemberSort: false,
             forceShortLinksOff: false,
           });
         });
@@ -933,6 +947,7 @@ describe("window-events", () => {
             selectedUTub: fakeUTub,
             keepSettings: false,
             keepMemberSettings: false,
+            keepMemberSort: false,
             forceShortLinksOff: false,
           });
         });
@@ -1100,6 +1115,7 @@ describe("window-events", () => {
             selectedUTub: newerUTub,
             keepSettings: false,
             keepMemberSettings: false,
+            keepMemberSort: false,
             forceShortLinksOff: false,
           });
         });
@@ -1181,6 +1197,7 @@ describe("window-events", () => {
           selectedUTub: fakeUTub,
           keepSettings: false,
           keepMemberSettings: false,
+          keepMemberSort: false,
           forceShortLinksOff: false,
         });
       });
@@ -1473,6 +1490,7 @@ describe("window-events", () => {
           selectedUTub: fakeUTub,
           keepSettings: false,
           keepMemberSettings: false,
+          keepMemberSort: false,
           forceShortLinksOff: false,
         });
       });
@@ -1506,6 +1524,7 @@ describe("window-events", () => {
           selectedUTub: fakeUTub,
           keepSettings: false,
           keepMemberSettings: false,
+          keepMemberSort: false,
           forceShortLinksOff: false,
         });
       });
@@ -1537,6 +1556,7 @@ describe("window-events", () => {
           selectedUTub: fakeUTub,
           keepSettings: false,
           keepMemberSettings: false,
+          keepMemberSort: false,
           forceShortLinksOff: false,
         });
       });
@@ -1575,6 +1595,7 @@ describe("window-events", () => {
           selectedUTub: fakeUTub,
           keepSettings: false,
           keepMemberSettings: false,
+          keepMemberSort: false,
           forceShortLinksOff: false,
         });
       });
@@ -1612,6 +1633,7 @@ describe("window-events", () => {
           selectedUTub: fakeUTub,
           keepSettings: false,
           keepMemberSettings: false,
+          keepMemberSort: false,
           forceShortLinksOff: false,
         });
       });
@@ -1643,6 +1665,7 @@ describe("window-events", () => {
           selectedUTub: fakeUTub,
           keepSettings: false,
           keepMemberSettings: false,
+          keepMemberSort: false,
           forceShortLinksOff: false,
         });
       });
@@ -1671,6 +1694,7 @@ describe("window-events", () => {
           selectedUTub: fakeUTub,
           keepSettings: false,
           keepMemberSettings: false,
+          keepMemberSort: false,
           forceShortLinksOff: false,
         });
       });
@@ -1699,6 +1723,7 @@ describe("window-events", () => {
           selectedUTub: fakeUTub,
           keepSettings: false,
           keepMemberSettings: false,
+          keepMemberSort: false,
           forceShortLinksOff: false,
         });
       });
