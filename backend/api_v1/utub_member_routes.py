@@ -19,7 +19,11 @@ from backend.api_common.auth_decorators import (
 from backend.api_common.parse_request import api_route
 from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.api_v1.routes import api_v1
-from backend.members.constants import MEMBER_ADD_RATE_LIMIT, UTubMembersErrorCodes
+from backend.members.constants import (
+    MEMBER_ADD_RATE_LIMIT,
+    MemberAddSource,
+    UTubMembersErrorCodes,
+)
 from backend.members.services.co_member_search import get_co_member_candidates
 from backend.members.services.create_members import create_utub_member
 from backend.members.services.delete_members import remove_member_or_self_from_utub
@@ -72,7 +76,7 @@ def api_v1_create_member(
     return create_utub_member(
         username=add_member_request.username,
         current_utub=current_utub,
-        source=add_member_request.source,
+        source=MemberAddSource(add_member_request.source.value),
     )
 
 

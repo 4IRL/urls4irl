@@ -12,7 +12,11 @@ MEMBER_ADD_HAS_RESULTS_VALUES: tuple[str, ...] = ("true", "false")
 # MEMBER_ADD_HAS_RESULTS_VALUES). `search_result` = added by picking a co-member
 # from the typeahead combobox; `exact_username` = added by the exact-username
 # outsider path (also the default when the client omits the field).
-MEMBER_ADD_SOURCE_VALUES: tuple[str, ...] = ("search_result", "exact_username")
+MEMBER_ADD_SOURCE_VALUES: tuple[str, ...] = (
+    "search_result",
+    "exact_username",
+    "invite_link",
+)
 
 # Closed set of values for the `new_role` dimension on the MEMBER_ROLE_CHANGED
 # metric event, and the request-body target role for the grant/revoke endpoint.
@@ -34,6 +38,14 @@ MEMBER_ADD_DAILY_CAP: int = 100
 
 
 class MemberAddSource(StrEnum):
+    SEARCH_RESULT = "search_result"
+    EXACT_USERNAME = "exact_username"
+    INVITE_LINK = "invite_link"
+
+
+class ClientMemberAddSource(StrEnum):
+    """The `source` values a client may send; excludes server-only `invite_link`."""
+
     SEARCH_RESULT = "search_result"
     EXACT_USERNAME = "exact_username"
 

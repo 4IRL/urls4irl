@@ -25,7 +25,7 @@ import type { MemberCandidate } from "../../types/member.js";
 
 // The two closed-set `source` dimension values a staged chip can POST with
 // (Step 6). A co-member pick stages "search_result"; the outsider fallback row
-// stages "exact_username". Mirrors the backend MEMBER_ADD_SOURCE_VALUES.
+// stages "exact_username". Mirrors the backend ClientMemberAddSource.
 export type MemberChipSource = "search_result" | "exact_username";
 
 // A staged chip: the username to POST (canonical for co-members, exact typed

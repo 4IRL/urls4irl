@@ -339,6 +339,45 @@ def test_add_member_to_utub_records_metric_search_result_source(
     assert parse_dims(member_added_keys[0])["source"] == MemberAddSource.SEARCH_RESULT
 
 
+def test_add_member_to_utub_rejects_client_sent_invite_link_source(
+    metrics_enabled_app,
+    provide_metrics_redis,
+    every_user_makes_a_unique_utub,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a creator of a UTub and metrics enabled
+    WHEN the creator POSTs add-member with the server-only source='invite_link'
+    THEN the request returns HTTP 400, no member is added, and no MEMBER_ADDED
+        counter is recorded.
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_id = Utubs.query.filter(Utubs.utub_creator == current_user.id).first().id
+        non_member_username = (
+            Users.query.filter(Users.id != current_user.id).first().username
+        )
+        initial_member_count = Utub_Members.query.filter_by(utub_id=utub_id).count()
+
+    response = client.post(
+        url_for(ROUTES.MEMBERS.CREATE_MEMBER, utub_id=utub_id),
+        json={
+            ADD_USER_FORM.USERNAME: non_member_username,
+            "source": "invite_link",
+        },
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert response.status_code == 400
+    with app.app_context():
+        assert (
+            Utub_Members.query.filter_by(utub_id=utub_id).count()
+            == initial_member_count
+        )
+    assert count_counter_keys(provide_metrics_redis, EventName.MEMBER_ADDED) == 0
+
+
 def test_add_then_remove_then_add_user_who_has_urls_to_utub(
     add_all_urls_and_users_to_each_utub_with_all_tags, login_first_user_without_register
 ):

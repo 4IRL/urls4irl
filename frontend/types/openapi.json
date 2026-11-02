@@ -11662,7 +11662,8 @@
         "required": ["results"],
         "type": "object"
       },
-      "MemberAddSource": {
+      "ClientMemberAddSource": {
+        "description": "The `source` values a client may send; excludes server-only `invite_link`.",
         "enum": ["search_result", "exact_username"],
         "type": "string"
       },
@@ -11675,7 +11676,7 @@
             "type": "string"
           },
           "source": {
-            "$ref": "#/components/schemas/MemberAddSource",
+            "$ref": "#/components/schemas/ClientMemberAddSource",
             "default": "exact_username",
             "description": "Where the add originated: a co-member typeahead pick (search_result) or the exact-username outsider path (exact_username, the default when omitted)"
           }

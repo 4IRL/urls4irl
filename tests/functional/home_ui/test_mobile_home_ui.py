@@ -18,6 +18,7 @@ from tests.functional.playwright_utils import (
     click_on_navbar,
     login_user_to_home_page,
     wait_for_class_to_be_removed,
+    wait_for_modal_hidden,
     wait_for_selector_to_be_removed,
     wait_then_click_element,
     wait_until_visible_css_selector,
@@ -82,6 +83,9 @@ def test_navbar_after_utub_deleted_mobile(
 
     wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_SUBMIT)
     wait_for_selector_to_be_removed(page=page, css_selector=HPL.SELECTOR_SELECTED_UTUB)
+    # The confirm modal fades out after the delete; its header would intercept
+    # the navbar click until it is hidden.
+    wait_for_modal_hidden(page=page, modal_selector=HPL.HOME_MODAL)
 
     # Click on navbar and verify proper menus are shown
     click_on_navbar(page=page)
