@@ -650,6 +650,9 @@ _NO_CLIENT_TIMEOUT_JS = """() => window.jQuery.ajaxPrefilter((options) => {
 _ROUND_TRIP_JS = (
     "() => fetch(window.location.href, { method: 'HEAD' }).then((r) => r.status)"
 )
+_DISABLE_AJAX_TIMEOUT_JS = (
+    "() => window.jQuery.ajaxPrefilter((options) => { options.timeout = 0; })"
+)
 _SETTLE_JS = (
     "() => new Promise((resolve) => setTimeout(() => requestAnimationFrame("
     "() => requestAnimationFrame(resolve)), 100))"
@@ -692,6 +695,12 @@ class TagBatchRoute:
             page.evaluate(_NO_CLIENT_TIMEOUT_JS)
         page.on("request", self._on_request)
         page.route(TAG_BATCH_URL_PATTERN, self._handle)
+        if hold:
+            # `ajaxCall` aborts a POST after its 5s timeout, which fires
+            # `net::ERR_ABORTED` on a parked request when the test's steps
+            # between hold and release run slow under load. Disable the
+            # timeout for the held POST so only the test controls its lifetime.
+            page.evaluate(_DISABLE_AJAX_TIMEOUT_JS)
 
     def _on_request(self, request: Request) -> None:
         if request.method == "GET" and _PREFLIGHT_URL_PATTERN.match(request.url):
@@ -755,7 +764,17 @@ class TagBatchRoute:
         page's queued jQuery callbacks are run, so the caller's next step never
         races a response that is still in flight or half-processed under load.
         """
-        with self._page.expect_response(TAG_BATCH_URL_PATTERN) as response_info:
+        # Readiness: the parked POST is still parked and the page has run the
+        # callbacks queued by whatever the test did while it was held (opening
+        # or typing in a combobox), so the release never races that work.
+        self.wait_until_held(count=len(self._held))
+        settle_page_tasks(page=self._page)
+        with self._page.expect_response(
+            lambda response: (
+                bool(TAG_BATCH_URL_PATTERN.match(response.url))
+                and response.request.method == "POST"
+            )
+        ) as response_info:
             self.release(index=index, status=status, body=body)
         response_info.value.finished()
         settle_page_tasks(page=self._page)

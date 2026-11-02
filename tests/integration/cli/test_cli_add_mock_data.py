@@ -51,6 +51,19 @@ from tests.integration.cli.utils import (
 
 pytestmark = pytest.mark.cli
 
+
+@pytest.fixture(autouse=True)
+def frozen_seed_clock(monkeypatch):
+    """
+    Pin the seeders' clock for the whole test. The metrics/latency seeders
+    bucket rows by the current hour (and rollups by the current day), so a
+    test whose two `addmock` invocations straddle an hour boundary would see
+    a fresh bucket on the second run and wrongly look non-idempotent.
+    """
+    frozen_now = mock_options.utc_now()
+    monkeypatch.setattr(mock_options, "utc_now", lambda: frozen_now)
+
+
 DUPLICATE_COUNT = 2
 EXPECTED_SAMPLE_FLOW_COUNT = 2
 # Three category-anchor events (API_HIT, UI_LOGIN_SUBMIT, UTUB_CREATED) plus

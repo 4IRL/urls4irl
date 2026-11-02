@@ -2567,8 +2567,11 @@ export interface components {
       /** @description Groups ranked best-first; one group per source UTub with ≥1 matching URL */
       results: components["schemas"]["SearchUtubGroupSchema"][];
     };
-    /** @enum {string} */
-    MemberAddSource: "search_result" | "exact_username";
+    /**
+     * @description The `source` values a client may send; excludes server-only `invite_link`.
+     * @enum {string}
+     */
+    ClientMemberAddSource: "search_result" | "exact_username";
     AddMemberRequest: {
       /** @description Username of the member to add */
       username: string;
@@ -2576,7 +2579,7 @@ export interface components {
        * @description Where the add originated: a co-member typeahead pick (search_result) or the exact-username outsider path (exact_username, the default when omitted)
        * @default exact_username
        */
-      source: components["schemas"]["MemberAddSource"];
+      source: components["schemas"]["ClientMemberAddSource"];
     };
     /**
      * @description A member of a UTub, carrying their role and join date.
