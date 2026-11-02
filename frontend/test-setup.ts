@@ -4,6 +4,9 @@ import jquery from "jquery";
 window.jQuery = jquery;
 window.$ = jquery;
 
+// jsdom does not implement scrollIntoView
+Element.prototype.scrollIntoView = function scrollIntoView() {};
+
 // Factory for Bootstrap component mocks — each component shares the same
 // constructor/show/hide/dispose/getInstance/getOrCreateInstance shape.
 function makeBootstrapClass(
@@ -68,6 +71,7 @@ const appConfig = {
     errorPage: "/error",
     logout: "/logout",
     updateUtubListPreferences: "/users/preferences/utubs",
+    updateMemberListPreferences: "/users/preferences/members",
     getTrash: "/utubs/trash",
     emptyTrash: "/utubs/trash/empty",
     getUTub: "/utubs/-1",
@@ -506,6 +510,18 @@ const appConfig = {
     MEMBER_ROLE_CHANGE_GRANT_SUCCESS: "{{ username }} is now a co-owner.",
     MEMBER_ROLE_CHANGE_REVOKE_SUCCESS:
       "{{ username }} is no longer a co-owner.",
+    MEMBER_ROLE_CHANGE_GRANT_POSITION: "Now listed under co-owners.",
+    MEMBER_ROLE_CHANGE_REVOKE_POSITION: "Now listed under members.",
+    MEMBERS_LIST_SETTINGS_SECTION_TITLE: "Your member list",
+    MEMBERS_LIST_SORT_LABEL: "Sort members by",
+    MEMBERS_TRANSFER_SECTION_TITLE: "Ownership",
+    MEMBERS_LIST_SORT_DESC: "In all your UTubs. The owner always stays on top.",
+    MEMBERS_LIST_SORT_OPTION_NAME_AZ: "Name A–Z",
+    MEMBERS_LIST_SORT_OPTION_ROLE: "Role, then name",
+    MEMBERS_LIST_SORT_OPTION_JOINED: "Recently joined",
+    MEMBERS_LIST_SORT_NOTICE_PREFIX: "Sorted by ",
+    MEMBERS_LIST_SORT_JOINED_NOTE:
+      "Members who joined before join dates were recorded are listed by name.",
     TRANSFER_OWNER_ACTION: "Transfer ownership",
     TRANSFER_OWNER_PICKER_TITLE: "Transfer ownership to…",
     TRANSFER_OWNER_FILTER_PLACEHOLDER: "Filter members…",

@@ -98,6 +98,20 @@ describe("memberSettings slice", () => {
     expect(getState().memberSettingsVersion).toBe(0);
   });
 
+  it("member sort starts name_az with version 0, restored by resetStore", () => {
+    expect(getState().preferences.memberSort).toBe("name_az");
+    expect(getState().memberSortVersion).toBe(0);
+
+    setState({
+      preferences: { ...getState().preferences, memberSort: "role_then_name" },
+      memberSortVersion: 2,
+    });
+    resetStore();
+
+    expect(getState().preferences.memberSort).toBe("name_az");
+    expect(getState().memberSortVersion).toBe(0);
+  });
+
   it("is nulled when the active UTub changes without a replacement", () => {
     setState({ activeUTubID: 1, memberSettings: MEMBER });
     const listener = vi.fn();

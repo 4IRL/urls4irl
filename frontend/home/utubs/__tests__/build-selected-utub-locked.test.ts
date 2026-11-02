@@ -229,14 +229,73 @@ describe("buildSelectedUTub — locked-UTub affordances", () => {
       setState({
         settingsVersion: 4,
         memberSettingsVersion: 7,
+        memberSortVersion: 9,
         policyLearnedVersion: 2,
       });
 
       expect(captureSettingsVersions()).toEqual({
         settingsVersion: 4,
         memberSettingsVersion: 7,
+        memberSortVersion: 9,
         policyLearnedVersion: 2,
       });
+    });
+
+    it("shouldKeepSettings keeps a locally edited member sort for the same UTub and another UTub", () => {
+      setState({ activeUTubID: 1, memberSortVersion: 2 });
+      const captured = {
+        settingsVersion: 0,
+        memberSettingsVersion: 0,
+        memberSortVersion: 1,
+        policyLearnedVersion: 0,
+      };
+
+      for (const id of [1, 9]) {
+        expect(
+          shouldKeepSettings({
+            selectedUTub: makeUtubDetail({ id }),
+            captured,
+          }).keepMemberSort,
+        ).toBe(true);
+      }
+      expect(
+        shouldKeepSettings({
+          selectedUTub: makeUtubDetail({ id: 1 }),
+          captured: { ...captured, memberSortVersion: 2 },
+        }).keepMemberSort,
+      ).toBe(false);
+    });
+
+    it("applies the payload's member sort to preferences, keeping other preferences", () => {
+      buildSelectedUTub({
+        selectedUTub: makeUtubDetail({ id: 1, memberSort: "recently_joined" }),
+      });
+
+      expect(getState().preferences.memberSort).toBe("recently_joined");
+      expect(getState().preferences.utubSort).toBe("recent_activity");
+    });
+
+    it("leaves preferences alone for an invalid member sort", () => {
+      buildSelectedUTub({
+        selectedUTub: makeUtubDetail({ id: 1, memberSort: "bogus" as never }),
+      });
+
+      expect(getState().preferences.memberSort).toBe("name_az");
+    });
+
+    it("keepMemberSort preserves the stored member sort", () => {
+      setState({
+        preferences: {
+          ...getState().preferences,
+          memberSort: "role_then_name",
+        },
+      });
+      buildSelectedUTub({
+        selectedUTub: makeUtubDetail({ id: 1, memberSort: "recently_joined" }),
+        keepMemberSort: true,
+      });
+
+      expect(getState().preferences.memberSort).toBe("role_then_name");
     });
 
     it("shouldKeepSettings truth table covers keepSettings, keepMemberSettings and forceShortLinksOff independently", () => {
@@ -259,6 +318,7 @@ describe("buildSelectedUTub — locked-UTub affordances", () => {
           captured: {
             settingsVersion,
             memberSettingsVersion,
+            memberSortVersion: 0,
             policyLearnedVersion,
           },
         });
@@ -266,39 +326,46 @@ describe("buildSelectedUTub — locked-UTub affordances", () => {
       expect(decide(sameID, 2, 5)).toEqual({
         keepSettings: true,
         keepMemberSettings: false,
+        keepMemberSort: false,
         forceShortLinksOff: false,
       });
       expect(decide(sameID, 3, 4)).toEqual({
         keepSettings: false,
         keepMemberSettings: false,
+        keepMemberSort: false,
         forceShortLinksOff: true,
       });
       expect(decide(sameID, 2, 4)).toEqual({
         keepSettings: true,
         keepMemberSettings: false,
+        keepMemberSort: false,
         forceShortLinksOff: true,
       });
       expect(decide(sameID, 3, 5)).toEqual({
         keepSettings: false,
         keepMemberSettings: false,
+        keepMemberSort: false,
         forceShortLinksOff: false,
       });
       // A member-settings bump alone keeps only the member slice.
       expect(decide(sameID, 3, 5, 5)).toEqual({
         keepSettings: false,
         keepMemberSettings: true,
+        keepMemberSort: false,
         forceShortLinksOff: false,
       });
       // Both bumped: each is kept independently.
       expect(decide(sameID, 2, 5, 5)).toEqual({
         keepSettings: true,
         keepMemberSettings: true,
+        keepMemberSort: false,
         forceShortLinksOff: false,
       });
       // A different UTub keeps neither.
       expect(decide(otherID, 2, 4, 5)).toEqual({
         keepSettings: false,
         keepMemberSettings: false,
+        keepMemberSort: false,
         forceShortLinksOff: false,
       });
     });
@@ -364,6 +431,7 @@ describe("buildSelectedUTub — locked-UTub affordances", () => {
           id: 1,
           settings: { urls: { allow_short_links: true } } as never,
         }),
+        keepMemberSort: false,
         forceShortLinksOff: true,
       });
 

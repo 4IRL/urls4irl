@@ -31,6 +31,18 @@ export const UTUB_SORT_VALUES: readonly UtubSortValue[] = [
   "oldest_created",
 ];
 
+export type MemberSortValue = "name_az" | "role_then_name" | "recently_joined";
+
+export const MEMBER_SORT_VALUES: readonly MemberSortValue[] = [
+  "name_az",
+  "role_then_name",
+  "recently_joined",
+];
+
+export function isMemberSortValue(value: unknown): value is MemberSortValue {
+  return MEMBER_SORT_VALUES.some((candidate) => candidate === value);
+}
+
 export function isUtubSortValue(value: unknown): value is UtubSortValue {
   return UTUB_SORT_VALUES.some((candidate) => candidate === value);
 }

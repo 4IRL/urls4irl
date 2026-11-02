@@ -150,6 +150,7 @@ function makeDetail(overrides: Partial<UtubDetail> = {}): UtubDetail {
     isCoCreator: false,
     isLocked: false,
     currentUser: CURRENT_USER_ID,
+    memberSort: "name_az",
     ...overrides,
   } as UtubDetail;
 }
@@ -180,11 +181,12 @@ function seedStore(
       }),
     ],
     selectedTagIDs: [],
-    preferences: { utubSort: "recent_activity" },
+    preferences: { utubSort: "recent_activity", memberSort: "name_az" },
     settings: resolveUtubSettings(detail.settings),
     settingsVersion: 0,
     memberSettings: resolveMemberSettings(detail.memberSettings),
     memberSettingsVersion: 0,
+    memberSortVersion: 0,
     policyLearnedVersion: 0,
     ...overrides,
   };
@@ -499,6 +501,7 @@ describe("updateUTubOnFindingStaleData", () => {
         selectedUTub: fresh,
         keepSettings: true,
         keepMemberSettings: true,
+        keepMemberSort: true,
       });
     });
   });
@@ -569,6 +572,101 @@ describe("updateUTubOnFindingStaleData", () => {
       expect(setState).toHaveBeenCalledWith({
         memberSettings: resolveMemberSettings(populatedMember),
       });
+    });
+  });
+
+  describe("member sort preference", () => {
+    it("writes a sort-only difference to the store and emits nothing", async () => {
+      await refreshWith(ok(makeDetail({ memberSort: "recently_joined" })));
+
+      expect(storeState.value.preferences).toEqual({
+        utubSort: "recent_activity",
+        memberSort: "recently_joined",
+      });
+      expect(emitsOf(AppEvents.STALE_DATA_DETECTED)).toHaveLength(0);
+      expect(emit).not.toHaveBeenCalled();
+    });
+
+    it("writes nothing when the incoming sort equals the store's", async () => {
+      await refreshWith(ok(makeDetail()));
+
+      expect(setState).not.toHaveBeenCalledWith(
+        expect.objectContaining({ preferences: expect.anything() }),
+      );
+    });
+
+    it("ignores an invalid incoming sort", async () => {
+      await refreshWith(ok(makeDetail({ memberSort: "bogus" as never })));
+
+      expect(setState).not.toHaveBeenCalledWith(
+        expect.objectContaining({ preferences: expect.anything() }),
+      );
+    });
+
+    it("keeps a local sort edited mid-flight and emits nothing", async () => {
+      let resolveFetch!: () => void;
+      const fresh = makeDetail({ memberSort: "role_then_name" });
+      vi.mocked(fetchUTubForRefresh).mockReturnValue(
+        new Promise<RefreshResult>((resolve) => {
+          resolveFetch = () => resolve(ok(fresh));
+        }),
+      );
+      const pending = updateUTubOnFindingStaleData({ utubID: UTUB_ID });
+      storeState.value.memberSortVersion = 1;
+
+      resolveFetch();
+      await pending;
+
+      expect(setState).not.toHaveBeenCalledWith(
+        expect.objectContaining({ preferences: expect.anything() }),
+      );
+      expect(emit).not.toHaveBeenCalled();
+    });
+
+    it("keeps the saved sort when the response was captured after the edit but before the save committed", async () => {
+      // Edit bumps the version to 1 before capture; save success bumps it to 2
+      // while the request is in flight.
+      storeState.value.memberSortVersion = 1;
+      storeState.value.preferences = {
+        utubSort: "recent_activity",
+        memberSort: "name_az",
+      };
+      let resolveFetch!: () => void;
+      const stale = makeDetail({ memberSort: "name_az" });
+      vi.mocked(fetchUTubForRefresh).mockReturnValue(
+        new Promise<RefreshResult>((resolve) => {
+          resolveFetch = () => resolve(ok(stale));
+        }),
+      );
+      const pending = updateUTubOnFindingStaleData({ utubID: UTUB_ID });
+      storeState.value.preferences = {
+        utubSort: "recent_activity",
+        memberSort: "role_then_name",
+      };
+      storeState.value.memberSortVersion = 2;
+
+      resolveFetch();
+      await pending;
+
+      expect(storeState.value.preferences).toEqual({
+        utubSort: "recent_activity",
+        memberSort: "role_then_name",
+      });
+    });
+
+    it("detects a member removed and re-added with a new joinedAt as a change", async () => {
+      const readded = makeDetail();
+      readded.members = [
+        {
+          ...readded.members[0],
+          joinedAt: "2026-02-02T00:00:00.000+00:00",
+        },
+      ];
+
+      await refreshWith(ok(readded));
+
+      expect(emitsOf(AppEvents.STALE_DATA_DETECTED)).toHaveLength(1);
+      expect(storeState.value.members).toEqual(readded.members);
     });
   });
 
@@ -1129,6 +1227,7 @@ describe("updateUTubOnFindingStaleData", () => {
           selectedUTub: payload,
           keepSettings: true,
           keepMemberSettings: true,
+          keepMemberSort: true,
         });
         expect(emitsOf(AppEvents.STALE_DATA_DETECTED)).toHaveLength(0);
         expect(storeState.value.utubs).toEqual([
@@ -1147,8 +1246,40 @@ describe("updateUTubOnFindingStaleData", () => {
         selectedUTub: payload,
         keepSettings: true,
         keepMemberSettings: true,
+        keepMemberSort: true,
       });
       expect(emitsOf(AppEvents.STALE_DATA_DETECTED)).toHaveLength(0);
+    });
+
+    it("does not overwrite a kept local sort on a permission-changing refresh", async () => {
+      storeState.value.preferences = {
+        utubSort: "recent_activity",
+        memberSort: "recently_joined",
+      };
+      storeState.value.memberSortVersion = 0;
+      let resolveFetch!: () => void;
+      const fresh = makeDetail({
+        isCoCreator: true,
+        memberSort: "role_then_name",
+      });
+      vi.mocked(fetchUTubForRefresh).mockReturnValue(
+        new Promise<RefreshResult>((resolve) => {
+          resolveFetch = () => resolve(ok(fresh));
+        }),
+      );
+      const pending = updateUTubOnFindingStaleData({ utubID: UTUB_ID });
+      storeState.value.memberSortVersion = 1;
+
+      resolveFetch();
+      await pending;
+
+      expect(storeState.value.preferences).toEqual({
+        utubSort: "recent_activity",
+        memberSort: "recently_joined",
+      });
+      expect(buildSelectedUTub).toHaveBeenCalledWith(
+        expect.objectContaining({ keepMemberSort: true }),
+      );
     });
 
     it("derives the sidebar role from the current user's member entry", async () => {
