@@ -125,6 +125,26 @@ class HomePageLocators(GenericPageLocator):
     URLS_SETTINGS_SHEET_READ_ONLY_NOTE = (
         f"{PANEL_SETTINGS_SHEET} .panelSettingsReadOnlyNote:not([hidden])"
     )
+    # Personal member-list sort select in the Members settings section.
+    MEMBERS_SETTINGS_SORT_SELECT = "#members-list-sort"
+    MEMBERS_SETTINGS_SHEET_SORT_SELECT = (
+        f"{PANEL_SETTINGS_SHEET} {MEMBERS_SETTINGS_SORT_SELECT}"
+    )
+    # The pre-date-members note, shown only under "Recently joined".
+    MEMBERS_SETTINGS_SORT_NOTE = (
+        f"{PANEL_SETTINGS_POPOVER} #members-list-sort-note:not([hidden])"
+    )
+    # Members gear (popover or sheet, whichever is open): the sort select, and
+    # the owner-only "Transfer ownership" row/button. The row is rendered with the
+    # section and hidden unless the viewer owns the UTub and another member exists
+    # (members/list-settings-section.ts); clicking it closes the gear and opens the
+    # dedicated transfer modal (#transferOwnerModal).
+    MEMBER_BTN_TRANSFER_OWNER = "#members-transfer-owner"
+    MEMBERS_SETTINGS_TRANSFER_HEADING = "#members-transfer-heading"
+    # Usernames of the non-owner member rows, in deck order (owner is in #UTubOwner).
+    MEMBERS_DECK_ROW_NAMES = "#listMembers > .member > b"
+    MEMBERS_DECK_OWNER_NAME = "#UTubOwner > .member > b"
+    MEMBER_ROW_ACTION_ANNOUNCEMENT = "#MemberRowActionAnnouncement"
     # Shared (manager-only) short-link policy switch in the "New URLs" section.
     URLS_SETTINGS_ALLOW_SHORT_LINKS_SWITCH = "#urlsSettingsAllowShortLinksSwitch"
     # "Your view of this UTub" (per-member) controls on the URLs gear.

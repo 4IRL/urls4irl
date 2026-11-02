@@ -8,7 +8,7 @@ export function buildRowLabel({
 }: {
   titleId: string;
   title: string;
-  descId: string;
+  descId?: string;
   desc?: string;
 }): HTMLElement {
   const label = document.createElement("div");
@@ -21,7 +21,7 @@ export function buildRowLabel({
   if (desc !== undefined) {
     const descElement = document.createElement("div");
     descElement.className = "panelSettingsRowDesc";
-    descElement.id = descId;
+    if (descId !== undefined) descElement.id = descId;
     descElement.textContent = desc;
     label.append(descElement);
   }

@@ -48,6 +48,7 @@ import { initPanelSettings } from "./home/panel-settings/index.js";
 import { registerUrlsSettingsSection } from "./home/urls/settings-section.js";
 import { registerUrlsPersonalSettingsSection } from "./home/urls/personal-settings-section.js";
 import { registerUtubListSettingsSection } from "./home/utubs/list-settings-section.js";
+import { registerMembersListSettingsSection } from "./home/members/list-settings-section.js";
 import { initUrlDeckPolicyAttrs } from "./home/urls/deck-view-attrs.js";
 import { loadInitialTrashCount, renderTrashCount } from "./home/trash/count.js";
 import { initTrashTabs } from "./home/trash/tabs.js";
@@ -80,6 +81,7 @@ $(document).ready(() => {
   registerUrlsSettingsSection();
   registerUrlsPersonalSettingsSection();
   registerUtubListSettingsSection();
+  registerMembersListSettingsSection();
   initLeftPanelToggle();
   setCreateUTubEventListeners();
   setUTubEventListenersOnInitialPageLoad();
