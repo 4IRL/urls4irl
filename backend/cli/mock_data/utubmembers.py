@@ -1,8 +1,16 @@
+from datetime import timedelta
+
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import null
 
 from backend.models.users import Users
 from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utubs import Utubs
+from backend.utils.datetime_utils import utc_now
+
+# Every Nth mock user joins dateless, so each seeded UTub has dateless members.
+_DATELESS_EVERY = 3
+_JOINED_AT_SPAN_DAYS = 90
 
 
 def generate_mock_utubmembers(db: SQLAlchemy):
@@ -14,8 +22,9 @@ def generate_mock_utubmembers(db: SQLAlchemy):
     """
     all_utubs: list[Utubs] = Utubs.query.all()
     all_users: list[Users] = Users.query.all()
+    base_joined_at = utc_now() - timedelta(days=_JOINED_AT_SPAN_DAYS)
     for utub in all_utubs:
-        for user in all_users:
+        for user_index, user in enumerate(all_users):
             if Utub_Members.query.get((utub.id, user.id)) is not None:
                 print(f"Already added {user.username} to {utub.name} with ID={utub.id}")
                 continue
@@ -24,6 +33,14 @@ def generate_mock_utubmembers(db: SQLAlchemy):
             new_member.user_id = user.id
             new_member.utub_id = utub.id
             new_member.member_role = Member_Role.MEMBER
+            if user_index % _DATELESS_EVERY == 0:
+                # Dateless like members that predate joinedAt. An explicit
+                # None would let the column default fire, so use SQL NULL.
+                new_member.joined_at = null()
+            else:
+                new_member.joined_at = base_joined_at + timedelta(
+                    days=user_index, hours=utub.id
+                )
             db.session.add(new_member)
 
             print(f"Adding {user.username} to {utub.name} with ID={utub.id}")

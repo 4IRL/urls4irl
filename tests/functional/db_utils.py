@@ -3,10 +3,11 @@ from typing import Tuple
 
 from flask import Flask
 from flask.testing import FlaskCliRunner
+from sqlalchemy import null
 
 from backend import db
 from backend.models.urls import Urls
-from backend.models.user_preferences import User_Preferences, UtubSort
+from backend.models.user_preferences import MemberSort, User_Preferences, UtubSort
 from backend.models.users import Users
 from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utub_tags import Utub_Tags
@@ -703,8 +704,9 @@ def set_utub_list_preferences(
     utub_sort: UtubSort | None = None,
     show_row_counts: bool | None = None,
     show_list_totals: bool | None = None,
+    member_sort: MemberSort | None = None,
 ) -> None:
-    """Upsert ``user_id``'s preferences row with the given UTub-list fields (a
+    """Upsert ``user_id``'s preferences row with the given UTub-list and member-sort fields (a
     ``None`` argument leaves that column at its current or default value) and
     commit so the running server resolves it on the next load."""
     with app.app_context():
@@ -720,6 +722,38 @@ def set_utub_list_preferences(
             row.show_row_counts = show_row_counts
         if show_list_totals is not None:
             row.show_list_totals = show_list_totals
+        if member_sort is not None:
+            row.member_sort = member_sort
+        db.session.commit()
+
+
+def get_member_sort_preference(app: Flask, user_id: int) -> MemberSort:
+    """``user_id``'s stored member sort (the default when they have no row)."""
+    with app.app_context():
+        row: User_Preferences | None = User_Preferences.query.filter(
+            User_Preferences.user_id == user_id
+        ).first()
+        return MemberSort.NAME_AZ if row is None else row.member_sort
+
+
+def add_member_with_join_date(
+    app: Flask,
+    utub_id: int,
+    user_id: int,
+    *,
+    joined_at: datetime | None,
+    member_role: Member_Role = Member_Role.MEMBER,
+) -> None:
+    """Add ``user_id`` to ``utub_id`` with an exact join date. ``None`` stores a
+    dateless member (joined before dates were recorded): the ORM would apply the
+    column default to a plain ``None``, so ``sqlalchemy.null()`` is inserted."""
+    with app.app_context():
+        membership = Utub_Members()
+        membership.utub_id = utub_id
+        membership.user_id = user_id
+        membership.member_role = member_role
+        membership.joined_at = null() if joined_at is None else joined_at
+        db.session.add(membership)
         db.session.commit()
 
 
