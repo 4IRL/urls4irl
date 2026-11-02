@@ -112,7 +112,8 @@ jobs:
           # Pull updated images, recreate if needed, run as daemon, and prune old images
           - name: Build Docker Network
             run: |
-              ssh -T -v -o StrictHostKeyChecking=no ${{ secrets.DEV_SSH_HOST }} '
+              # Script goes over stdin so ssh -v's "Sending command" line never contains the inlined secrets
+              ssh -T -v -o StrictHostKeyChecking=no ${{ secrets.DEV_SSH_HOST }} 'bash -s' <<'REMOTE'
               mkdir ./secrets/;
               chmod 700 ./secrets/;
               echo "${{ secrets.MAILJET_API_KEY }}" > ./secrets/MAILJET_API_KEY;
@@ -135,8 +136,8 @@ jobs:
 
               echo "Cleaning up docker login files..."
               rm -f ~/.docker/config.json
-              ';
-              sleep 30;
+              REMOTE
+              sleep 30
 
           # Verify Vite assets were extracted successfully
           - name: Verify Vite Assets Deployed
