@@ -37,6 +37,8 @@ _SANCTIONED_CLOSED_SET_DOMAIN_DIMS: dict[EventName, frozenset[str]] = {
     # Coarse closed-set ranges of live URL count and UTub age, never an id or name.
     EventName.UTUB_OPENED: _BASE_ALLOWED_DOMAIN_DIMS
     | {"url_count_bucket", "age_bucket"},
+    # Coarse closed-set range of live URL count in the UTub, never an id or name.
+    EventName.TAG_APPLIED: _BASE_ALLOWED_DOMAIN_DIMS | {"utub_size_bucket"},
 }
 
 

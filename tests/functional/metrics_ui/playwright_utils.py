@@ -89,10 +89,14 @@ def open_flows_tab(
     config: ConfigTestUI,
     viewport: dict[str, int] | None = None,
     wait_for_settled: bool = True,
+    wait_for_dashboard_idle: bool = False,
 ) -> None:
     """Log in, open the Flows tab and (by default) wait for every card to leave
     the loading state, since cards are rebuilt when their funnel settles.
-    Tests that hold `/flow` responses pass ``wait_for_settled=False``."""
+    Tests that hold `/flow` responses pass ``wait_for_settled=False``.
+    ``wait_for_dashboard_idle=True`` waits for the dashboard root's own load to
+    settle (`aria-busy` false) before the tab click, so a late dashboard fetch
+    cannot clear the shared `#MetricsErrorBanner` set by a Flows-list failure."""
     if viewport is not None:
         page.set_viewport_size(viewport)
     login_admin_and_open_metrics_dashboard(
@@ -103,6 +107,8 @@ def open_flows_tab(
         user_id=DEFAULT_ADMIN_USER_ID,
         config=config,
     )
+    if wait_for_dashboard_idle:
+        expect(page.locator(MDL.DASHBOARD_ROOT)).to_have_attribute("aria-busy", "false")
     wait_then_click_element(page=page, css_selector=MDL.TAB_FLOWS_BUTTON)
     if wait_for_settled:
         expect(page.locator(MDL.FLOWS_COUNT)).not_to_have_text(
