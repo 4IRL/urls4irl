@@ -247,6 +247,18 @@ def test_metrics_enabled_false_outside_app_context():
     assert metrics_enabled() is False
 
 
+def test_metrics_enabled_false_when_writer_extension_absent(
+    metrics_enabled_app: Flask,
+):
+    """GIVEN an app context with no metrics_writer extension THEN metrics_enabled() is False."""
+    with metrics_enabled_app.app_context():
+        writer = metrics_enabled_app.extensions.pop("metrics_writer")
+        try:
+            assert metrics_enabled() is False
+        finally:
+            metrics_enabled_app.extensions["metrics_writer"] = writer
+
+
 _URI_PARAM_CASES = [
     pytest.param("redis://localhost:6379/3", id="standard-host-port-db3"),
     pytest.param(

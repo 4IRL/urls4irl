@@ -44,6 +44,7 @@ UTUB_ID = 1
 TAG_STRINGS_FIELD = "tagStrings"
 UTUB_URL_IDS_FIELD = "utubUrlIds"
 COUNT_PATH = "backend.tags.services.create_url_tag._count_live_urls_in_utub"
+BUCKET_PATH = "backend.tags.services.create_url_tag.bucket_utub_size"
 LOG_MESSAGE = "metrics: tag_applied bucket computation failed"
 
 Fire = Callable[[FlaskClient, str, Flask, int], TestResponse]
@@ -510,6 +511,35 @@ def test_failing_count_keeps_success_response_and_association(
         sum_counter_values(provide_metrics_redis, EventName.TAG_APPLIED)
         == control_events
     )
+
+
+@pytest.mark.parametrize("site", SITE_IDS)
+def test_failing_bucketing_keeps_success_response_and_association(
+    site: str,
+    metrics_enabled_app,
+    provide_metrics_redis,
+    add_mixed_delete_permission_urls_in_first_utub,
+    login_first_user_without_register,
+    caplog: pytest.LogCaptureFixture,
+):
+    """
+    GIVEN bucket_utub_size raises after a successful COUNT
+    WHEN the request applies tags
+    THEN the normal success response is returned, the association is present,
+        no TAG_APPLIED is recorded and the failure is logged
+    """
+    client, csrf, _, app = login_first_user_without_register
+    fire, _, _ = SCENARIOS[site]
+    associations_before = _url_tag_count(app)
+
+    with mock.patch(BUCKET_PATH, side_effect=RuntimeError("boom")):
+        failing = fire(client, csrf, app, 0)
+
+    assert failing.status_code == 200
+    assert SITE_MARKERS[site] in json.dumps(failing.get_json())
+    assert _url_tag_count(app) > associations_before
+    assert count_counter_keys(provide_metrics_redis, EventName.TAG_APPLIED) == 0
+    assert LOG_MESSAGE in caplog.text
 
 
 # ---------------------------------------------------------------------------
