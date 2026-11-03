@@ -12,6 +12,7 @@ from backend.models.utubs import Utubs
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.playwright_utils import (
     clear_then_send_keys,
+    wait_for_css_transitions_to_finish,
     wait_for_modal_ready,
     wait_for_selector_to_be_removed,
     wait_then_click_element,
@@ -396,6 +397,19 @@ def open_member_row_role_action(*, page: Page, member_id: int) -> None:
     role_item.click()
 
 
+def submit_confirm_modal(*, page: Page) -> None:
+    """Gate on the modal fade-in settling before clicking submit.
+
+    Clicking while Bootstrap's show-transition is still running causes the
+    subsequent modal("hide") to be dropped as an overlapping transition, leaving
+    the modal visible and racing wait_until_hidden (mirrors the delete tests).
+    """
+    wait_for_modal_ready(page=page, modal_selector=HPL.HOME_MODAL)
+    # Also wait for every transition on the modal and its dialog to finish.
+    wait_for_css_transitions_to_finish(locator=page.locator(HPL.HOME_MODAL))
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_SUBMIT)
+
+
 def force_role_change_400_response(*, page: Page, message: str) -> None:
     """Intercept the next member-role PATCH and fulfil it with a real 400.
 
@@ -425,21 +439,53 @@ def force_role_change_400_response(*, page: Page, message: str) -> None:
     page.route(_MEMBER_ROLE_PATCH_URL_RE, _handler, times=1)
 
 
-def open_transfer_ownership_picker(*, page: Page) -> None:
-    """Open the dedicated ownership-transfer modal via the members-deck header.
+def open_members_gear(*, page: Page, mobile: bool = False) -> None:
+    """Open the Members gear (popover on desktop, bottom sheet on a phone).
 
-    Clicks the owner-only #memberBtnTransferOwner trigger, waits for
-    #transferOwnerModal to be visible, gates on its fade-in settling (Bootstrap transition done)
-    so a subsequent click can't be dropped mid show-transition (mirrors
-    `_submit_confirm_modal`/`wait_until_css_property`), then waits for the PICK
-    view's listbox to render. Only a literal owner of a UTub with >= 1 other member
-    sees the trigger, so callers must seed that state first.
+    Waits for the always-rendered sort select so the section body is built before
+    the caller looks for the owner-only Transfer ownership row. On mobile the
+    sheet slides in, so its transition is awaited before any tap lands.
 
     Args:
-        page: Playwright Page open to a UTub the current user owns, with the
-            members deck showing at least one other member.
+        page: Playwright Page open to a UTub, on the Members deck when mobile
+        mobile: True to tap the gear and wait out the sheet transition
     """
-    wait_then_click_element(page=page, css_selector=HPL.MEMBER_BTN_TRANSFER_OWNER)
+    gear = page.locator(HPL.BUTTON_MEMBER_SETTINGS_GEAR)
+    if mobile:
+        gear.tap()
+    else:
+        gear.click()
+    wait_until_visible_css_selector(
+        page=page, css_selector=HPL.MEMBERS_SETTINGS_SORT_SELECT
+    )
+    if mobile:
+        wait_for_css_transitions_to_finish(
+            locator=page.locator(HPL.PANEL_SETTINGS_SHEET)
+        )
+
+
+def open_transfer_ownership_picker(*, page: Page, mobile: bool = False) -> None:
+    """Open the dedicated ownership-transfer modal from the Members gear.
+
+    Opens the gear, activates the owner-only Transfer ownership action (which
+    closes the gear first), waits for #transferOwnerModal to be visible, gates on
+    its fade-in settling (Bootstrap transition done) so a subsequent click can't
+    be dropped mid show-transition (mirrors `submit_confirm_modal`/
+    `wait_until_css_property`), then waits for the PICK view's listbox to render.
+    Only a literal owner of a UTub with >= 1 other member sees the action, so
+    callers must seed that state first.
+
+    Args:
+        page: Playwright Page open to a UTub the current user owns, with at least
+            one other member
+        mobile: True to drive the gear and action by touch
+    """
+    open_members_gear(page=page, mobile=mobile)
+    action = page.locator(HPL.MEMBER_BTN_TRANSFER_OWNER)
+    if mobile:
+        action.tap()
+    else:
+        action.click()
     wait_until_visible_css_selector(page=page, css_selector=HPL.TRANSFER_OWNER_MODAL)
     wait_for_modal_ready(page=page, modal_selector=HPL.TRANSFER_OWNER_MODAL)
     wait_until_visible_css_selector(page=page, css_selector=HPL.TRANSFER_PICKER_LISTBOX)

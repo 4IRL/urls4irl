@@ -283,8 +283,7 @@
 @media (any-pointer: coarse) {
 
     #memberNameFilterBtn,
-    #memberNameFilterBtnClose,
-    #memberBtnTransferOwner {
+    #memberNameFilterBtnClose {
         min-height: 2.75rem;
     }
 
@@ -465,8 +464,7 @@
    `.member-search-open` (the filter's own gate) — the two never collide. */
 #MemberDeck.member-add-open .memberOtherBtnDelete,
 #MemberDeck.member-add-open .memberRowKebab,
-#MemberDeck.member-add-open #memberNameFilterBtn,
-#MemberDeck.member-add-open #memberBtnTransferOwner {
+#MemberDeck.member-add-open #memberNameFilterBtn {
     pointer-events: none;
     opacity: 0.5;
 }

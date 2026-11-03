@@ -649,13 +649,6 @@ class HomePageLocators(GenericPageLocator):
     MEMBER_ROW_ROLE_ICON = ".member .memberRole"
     MEMBER_ROW_CO_CREATOR_ICON = ".member svg.bi-diamond-half"
 
-    # Standalone owner-only "Transfer ownership" trigger in the members-deck
-    # header cluster (beside #memberBtnCreate). Starts hidden; shown by JS only
-    # for a literal owner with >= 1 other member. Opens the dedicated transfer
-    # modal (#transferOwnerModal) via the TRANSFER_PICKER_REQUESTED event bus
-    # (wired in members/deck.ts's setMemberDeckTransferOwnerBtn).
-    MEMBER_BTN_TRANSFER_OWNER = "#memberBtnTransferOwner"
-
     # Dedicated Bootstrap ownership-transfer modal (#transferOwnerModal) with an
     # inline pick→confirm transition (transfer.ts + transfer-picker.ts). The PICK
     # view holds the filter input + a role=listbox of member options; the CONFIRM
