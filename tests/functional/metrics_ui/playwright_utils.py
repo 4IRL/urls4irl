@@ -52,6 +52,7 @@ FLOW_LIST_URL_RE: re.Pattern[str] = re.compile(r".*/admin/metrics/flows(\?.*)?$"
 FLOW_DELETE_URL_RE: re.Pattern[str] = re.compile(r".*/admin/metrics/flows/[^/?]+$")
 FLOW_QUERY_URL_RE: re.Pattern[str] = re.compile(r".*/api/metrics/query/flow(\?.*)?$")
 MIN_TOUCH_TARGET_PX: int = 44
+BUILDER_INPUT_FONT_SIZE: str = "16px"
 LONG_FLOW_NAME: str = "x" * FLOW_LIMITS.NAME_MAX_LENGTH
 
 
@@ -121,6 +122,80 @@ def custom_card(page: Page, flow_id: str) -> Locator:
     return page.locator(f'{MDL.FLOWS_CARD}[data-flow-id="{flow_id}"]')
 
 
+OPEN_EVENT: str = EventName.UI_URL_CREATE_OPEN.value
+SUBMIT_EVENT: str = EventName.UI_FORM_SUBMIT.value
+JSON_HEADERS: dict[str, str] = {"X-Requested-With": "XMLHttpRequest"}
+
+
+def open_new_builder(page: Page) -> None:
+    """Click "+ New flow" and wait until the catalog loaded and the form is
+    interactive (the heading keeps focus through the load)."""
+    page.locator(MDL.FLOWS_NEW_BUTTON).click()
+    expect(page.locator(MDL.FLOW_BUILDER_FORM)).to_be_visible()
+    expect(page.locator(MDL.FLOW_BUILDER_HEADING)).to_be_focused()
+
+
+def open_edit_builder(page: Page, flow_id: str) -> None:
+    custom_card(page, flow_id).locator(".flow-edit-btn").click()
+    expect(page.locator(MDL.FLOW_BUILDER_FORM)).to_be_visible()
+    expect(page.locator(MDL.FLOW_BUILDER_HEADING)).to_be_focused()
+
+
+def builder_step(page: Page, position: int) -> Locator:
+    return page.locator(MDL.FLOW_BUILDER_STEP).nth(position - 1)
+
+
+def builder_field(page: Page, position: int, field: str) -> Locator:
+    return builder_step(page, position).locator(f"[data-field={field}]")
+
+
+def builder_action(page: Page, position: int, action: str) -> Locator:
+    return builder_step(page, position).locator(f"button[data-action={action}]")
+
+
+def fill_blank_steps(page: Page) -> None:
+    """Give the two blank steps of a new draft a label and an event each."""
+    for position, event in ((1, OPEN_EVENT), (2, SUBMIT_EVENT)):
+        builder_field(page, position, "label").fill(f"Step {position} label")
+        builder_field(page, position, "event_name").select_option(event)
+        expect(builder_field(page, position, "event_name")).to_have_value(event)
+
+
+def get_json(page: Page, url: str) -> dict[str, Any]:
+    return page.evaluate(
+        """async ({url, headers}) => {
+            const response = await fetch(url, {headers, credentials: "same-origin"});
+            return await response.json();
+        }""",
+        {"url": url, "headers": JSON_HEADERS},
+    )
+
+
+def list_entry(page: Page, flow_id: str) -> dict[str, Any]:
+    flows = get_json(page, "/admin/metrics/flows")["flows"]
+    [entry] = [flow for flow in flows if flow["id"] == flow_id]
+    return entry
+
+
+def reload_flows_tab(page: Page) -> None:
+    page.reload()
+    wait_then_click_element(page=page, css_selector=MDL.TAB_FLOWS_BUTTON)
+    expect(page.locator(MDL.FLOWS_COUNT)).not_to_have_text(
+        UI_TEST_STRINGS.METRICS_FLOWS_COUNT_LOADING
+    )
+    expect(page.locator(MDL.FLOWS_CARD_LOADING)).to_have_count(0)
+
+
+def page_overflow(page: Page) -> float:
+    return page.evaluate(
+        "() => document.documentElement.scrollWidth - window.innerWidth"
+    )
+
+
+def element_overflow(locator: Locator) -> float:
+    return locator.evaluate("el => el.scrollWidth - el.clientWidth")
+
+
 def count_text(*, custom: int) -> str:
     return UI_TEST_STRINGS.METRICS_FLOWS_COUNT.format(
         builtin=EXPECTED_FLOW_CARD_COUNT,
@@ -164,6 +239,81 @@ def two_step_filtered_definition() -> dict[str, Any]:
     """Minimum-length (2 steps) filtered-and-breakdown definition."""
     steps = build_valid_flow_steps()
     return {"steps": [steps[1], steps[3]]}
+
+
+def _two_step_definition(*, second: dict[str, Any]) -> dict[str, Any]:
+    """The add-URL open step followed by `second` (validation is skipped when a
+    test inserts it, so `second` may be deliberately invalid)."""
+    return {"steps": [build_valid_flow_steps()[0], second]}
+
+
+def _submit_step(**overrides: Any) -> dict[str, Any]:
+    step: dict[str, Any] = {
+        "stream": "ui",
+        "label": "Submit",
+        "event_name": EventName.UI_FORM_SUBMIT.value,
+    }
+    step.update(overrides)
+    return step
+
+
+def stale_filter_definition() -> dict[str, Any]:
+    """Filters on a field that does not exist (stale dim) and on a value the
+    field does not offer (stale value)."""
+    return _two_step_definition(
+        second=_submit_step(dim_filter=["bogus_dim:x", "trigger:gone_value"])
+    )
+
+
+def non_groupable_group_by_definition() -> dict[str, Any]:
+    """Breakdown on `ui_form_cancel` grouped by `form`, which is not groupable."""
+    return _two_step_definition(
+        second=_submit_step(
+            drop_breakdown={
+                "event_name": EventName.UI_FORM_CANCEL.value,
+                "group_by": "form",
+            }
+        )
+    )
+
+
+def zero_groupable_breakdown_definition() -> dict[str, Any]:
+    """Breakdown on `ui_form_submit`, an event with zero groupable dims."""
+    return _two_step_definition(
+        second=_submit_step(
+            drop_breakdown={
+                "event_name": EventName.UI_FORM_SUBMIT.value,
+                "group_by": "form",
+            }
+        )
+    )
+
+
+def missing_breakdown_event_definition() -> dict[str, Any]:
+    """Breakdown whose event no longer exists."""
+    return _two_step_definition(
+        second=_submit_step(
+            drop_breakdown={
+                "event_name": REMOVED_EVENT_NAME,
+                "dim_filter": ["form:url_create"],
+                "group_by": "trigger",
+            }
+        )
+    )
+
+
+def damaged_list_definition(*, removed_event: bool) -> dict[str, Any]:
+    """Second step whose `dim_filter` is a string, not a list; optionally on a
+    removed event so Add is `aria-disabled`."""
+    step = _submit_step(dim_filter="form:url_create")
+    if removed_event:
+        step["event_name"] = REMOVED_EVENT_NAME
+    return _two_step_definition(second=step)
+
+
+def malformed_entry_definition() -> dict[str, Any]:
+    """Second step whose `dim_filter` holds an entry with no colon."""
+    return _two_step_definition(second=_submit_step(dim_filter=["nocolon"]))
 
 
 # Counts the add-URL funnel seed writes (see `seed_add_url_funnel_metrics`).
