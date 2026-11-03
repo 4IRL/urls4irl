@@ -82,6 +82,7 @@ class SHORT_LINK_ROUTES:
 class INVITE_LINK_ROUTES:
     _INVITE_LINKS = "invite_links."
     GET_INVITE_LINK = _INVITE_LINKS + "get_invite_link"
+    CREATE_INVITE_LINK = _INVITE_LINKS + "create_invite_link"
 
 
 class USER_ROUTES:
@@ -454,6 +455,7 @@ NO_JS_ENDPOINTS: dict[str, NoJsReason] = {
     # Invite link manager API: no web-JS caller until the manager panel lands.
     # Exact keys, not `invite_links.*`: the public join routes join this blueprint.
     "invite_links.get_invite_link": NoJsReason.PANEL_PENDING,
+    "invite_links.create_invite_link": NoJsReason.PANEL_PENDING,
 }
 
 

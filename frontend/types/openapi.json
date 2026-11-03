@@ -4900,6 +4900,103 @@
             "$ref": "#/components/schemas/InviteLinkErrorCodes"
           }
         }
+      },
+      "post": {
+        "operationId": "createInviteLink",
+        "tags": ["members"],
+        "security": [
+          {
+            "sessionAuth": [],
+            "csrfToken": []
+          }
+        ],
+        "description": "Create the UTub's invite link with an expiry and an optional use limit (owner and co-owner only). A dead unrevoked link is revoked first.",
+        "parameters": [
+          {
+            "name": "utub_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InviteLinkSettingsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Envelope for the invite link routes; ``inviteLink`` is null when none exists.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InviteLinkResponseSchema"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_InviteLinkErrorCodes"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_InviteLinkErrorCodes"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "InviteLinkErrorCodes": {
+            "$ref": "#/components/schemas/InviteLinkErrorCodes"
+          }
+        }
       }
     },
     "/utubs/{utub_id}/members/{user_id}": {
@@ -5557,6 +5654,8 @@
                 "cross_utub_search_performed",
                 "data_exported",
                 "email_verified",
+                "invite_link_created",
+                "invite_link_revoked",
                 "login_failure",
                 "login_success",
                 "member_added",
@@ -5924,6 +6023,8 @@
                 "cross_utub_search_performed",
                 "data_exported",
                 "email_verified",
+                "invite_link_created",
+                "invite_link_revoked",
                 "login_failure",
                 "login_success",
                 "member_added",
@@ -12618,6 +12719,45 @@
           "USES_BELOW_JOINED"
         ],
         "description": "Error codes for InviteLinkErrorCodes"
+      },
+      "InviteLinkSettingsRequest": {
+        "properties": {
+          "expires_in_days": {
+            "default": 7,
+            "description": "Days until the link expires: 1, 7 or 30",
+            "enum": [1, 7, 30],
+            "type": "integer"
+          },
+          "max_uses": {
+            "anyOf": [
+              {
+                "enum": [1, 5, 10, 25],
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "How many people may join with the link: 1, 5, 10 or 25; null means unlimited"
+          }
+        },
+        "type": "object"
+      },
+      "ErrorResponse_InviteLinkErrorCodes": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "errorCode": {
+                "$ref": "#/components/schemas/InviteLinkErrorCodes"
+              }
+            }
+          }
+        ]
       },
       "MetricsIngestEvent": {
         "additionalProperties": false,

@@ -4194,6 +4194,43 @@
       "templates": []
     },
     {
+      "blueprint": "invite_links",
+      "decorators": [
+        "utub_manager_required",
+        "api_route",
+        "limiter.limit(INVITE_LINK_MANAGE_RATE_LIMIT, key_func=invite_link_manage_rate_key, methods=['POST'])"
+      ],
+      "endpoint": "invite_links.create_invite_link",
+      "handler": "backend/invite_links/routes.py:create_invite_link",
+      "js": {
+        "indirect": null,
+        "no_js": "panel-pending",
+        "route_keys": [],
+        "template_url_for": []
+      },
+      "methods": [
+        "POST"
+      ],
+      "rule": "/utubs/<int:utub_id>/invite-link",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.invite_links.InviteLinkSettingsRequest",
+        "response": "backend.schemas.invite_links.InviteLinkResponseSchema",
+        "status_codes": {
+          "201": "backend.schemas.invite_links.InviteLinkResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "403": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse",
+          "409": "backend.schemas.errors.ErrorResponse",
+          "429": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.invite_links.services.manage_invite_link:create_invite_link_for_utub"
+      ],
+      "templates": []
+    },
+    {
       "blueprint": "utubs",
       "decorators": [
         "utub_membership_required",

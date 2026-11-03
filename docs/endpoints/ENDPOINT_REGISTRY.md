@@ -688,6 +688,15 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Template:** —
 - **JS:** no-js: panel-pending
 
+### `POST /utubs/<int:utub_id>/invite-link` — `invite_links.create_invite_link`
+
+- **Handler:** `backend/invite_links/routes.py:create_invite_link`
+- **Decorators:** `utub_manager_required`, `api_route`, `limiter.limit(INVITE_LINK_MANAGE_RATE_LIMIT, key_func=invite_link_manage_rate_key, methods=['POST'])`
+- **Service:** `backend.invite_links.services.manage_invite_link:create_invite_link_for_utub`
+- **Schema:** request: `backend.schemas.requests.invite_links.InviteLinkSettingsRequest`; response: `backend.schemas.invite_links.InviteLinkResponseSchema`; status: 201 `backend.schemas.invite_links.InviteLinkResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`, 409 `backend.schemas.errors.ErrorResponse`, 429 `backend.schemas.errors.ErrorResponse`
+- **Template:** —
+- **JS:** no-js: panel-pending
+
 ## members
 
 ### `GET /utubs/<int:utub_id>/co-members` — `members.get_co_member_candidates_route`

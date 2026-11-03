@@ -888,7 +888,8 @@ export interface paths {
     /** @description Get the UTub's current invite link and its status, or null when there is none (owner and co-owner only) */
     get: operations["getInviteLink"];
     put?: never;
-    post?: never;
+    /** @description Create the UTub's invite link with an expiry and an optional use limit (owner and co-owner only). A dead unrevoked link is revoked first. */
+    post: operations["createInviteLink"];
     delete?: never;
     options?: never;
     head?: never;
@@ -2985,6 +2986,22 @@ export interface components {
      * @enum {integer}
      */
     InviteLinkErrorCodes: 1 | 2 | 3 | 4 | 5 | 6;
+    InviteLinkSettingsRequest: {
+      /**
+       * @description Days until the link expires: 1, 7 or 30
+       * @default 7
+       * @enum {integer}
+       */
+      expires_in_days: 1 | 7 | 30;
+      /**
+       * @description How many people may join with the link: 1, 5, 10 or 25; null means unlimited
+       * @default null
+       */
+      max_uses: (1 | 5 | 10 | 25) | null;
+    };
+    ErrorResponse_InviteLinkErrorCodes: components["schemas"]["ErrorResponse"] & {
+      errorCode?: components["schemas"]["InviteLinkErrorCodes"];
+    };
     /**
      * @description One UI metrics event submitted by the browser.
      *
@@ -7918,6 +7935,77 @@ export interface operations {
       };
     };
   };
+  createInviteLink: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        utub_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["InviteLinkSettingsRequest"];
+      };
+    };
+    responses: {
+      /** @description Envelope for the invite link routes; ``inviteLink`` is null when none exists. */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["InviteLinkResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_InviteLinkErrorCodes"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_InviteLinkErrorCodes"];
+        };
+      };
+      /** @description Too many requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
   removeMember: {
     parameters: {
       query?: never;
@@ -8326,6 +8414,8 @@ export interface operations {
           | "cross_utub_search_performed"
           | "data_exported"
           | "email_verified"
+          | "invite_link_created"
+          | "invite_link_revoked"
           | "login_failure"
           | "login_success"
           | "member_added"
@@ -8577,6 +8667,8 @@ export interface operations {
           | "cross_utub_search_performed"
           | "data_exported"
           | "email_verified"
+          | "invite_link_created"
+          | "invite_link_revoked"
           | "login_failure"
           | "login_success"
           | "member_added"
