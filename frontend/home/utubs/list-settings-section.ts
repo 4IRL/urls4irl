@@ -148,7 +148,6 @@ function buildSortRow({ ctx }: { ctx: SectionContext }): HTMLElement {
     buildRowLabel({
       titleId: SORT_LABEL_ID,
       title: strings().UTUB_LIST_SETTINGS_SORT_LABEL,
-      descId: `${SORT_LABEL_ID}-desc`,
     }),
   );
 
