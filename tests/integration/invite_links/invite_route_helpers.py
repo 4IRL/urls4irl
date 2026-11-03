@@ -9,7 +9,7 @@ from typing import Any
 from flask import Flask, url_for
 from flask.wrappers import Response
 
-from backend import db
+from backend import db, limiter
 from backend.models.utub_invite_links import Utub_Invite_Links
 from backend.utils.datetime_utils import utc_now
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
@@ -81,6 +81,24 @@ def request_as(
             json=body,
             headers=headers,
         )
+
+
+def enable_limiter(app: Flask) -> None:
+    original_first_request = app._got_first_request
+    app._got_first_request = False
+    app.config["RATELIMIT_ENABLED"] = True
+    limiter.enabled = True
+    limiter.init_app(app)
+    app._got_first_request = original_first_request
+
+
+def disable_limiter() -> None:
+    if limiter._storage is not None:
+        limiter._storage.reset()
+    limiter._storage = None
+    limiter._limiter = None
+    limiter.enabled = False
+    limiter.initialized = False
 
 
 @dataclass(frozen=True)

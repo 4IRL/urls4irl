@@ -2,14 +2,19 @@
 
 from __future__ import annotations
 
+import time
 from datetime import datetime, timedelta
 from typing import Any
 
 import pytest
-from flask import Flask
+from flask import Flask, url_for
 from flask.wrappers import Response
 
-from backend.invite_links.constants import InviteLinkErrorCodes, InviteLinkStatus
+from backend.invite_links.constants import (
+    INVITE_LINK_MANAGE_RATE_LIMIT,
+    InviteLinkErrorCodes,
+    InviteLinkStatus,
+)
 from backend.utils.all_routes import ROUTES
 from backend.utils.datetime_utils import utc_now
 from backend.utils.strings.invite_link_strs import INVITE_LINK_SUCCESS
@@ -18,6 +23,8 @@ from backend.utils.strings.model_strs import MODELS
 from tests.integration.invite_links.invite_route_helpers import (
     DEAD_STATE_IDS,
     EXPIRY_TOLERANCE,
+    disable_limiter,
+    enable_limiter,
     error_code_of,
     invite_url,
     link_of,
@@ -28,10 +35,14 @@ from tests.integration.invite_links.invite_route_helpers import (
 from tests.integration.short_links.short_link_helpers import (
     CREATOR_ID,
     FIRST_UTUB_ID,
+    logged_in_as,
 )
 from tests.utils_for_test import add_invite_link
 
 pytestmark = pytest.mark.invite_links
+
+
+PER_SECOND_BATCH: int = 10
 
 
 def _patch(app: Flask, body: Any) -> Response:
@@ -124,6 +135,33 @@ def test_update_shortened_expiry_is_accepted(
     assert _expires_at(response) < utc_now() + timedelta(days=2)
 
 
+def test_update_is_not_rate_limited(every_user_in_every_utub, app: Flask) -> None:
+    """GIVEN the real limiter
+    WHEN more PATCH calls than the manage budget are made
+    THEN none is rate limited (only create/replace are)."""
+    add_invite_link(app, FIRST_UTUB_ID, CREATOR_ID, max_uses=5)
+    attempts = int(INVITE_LINK_MANAGE_RATE_LIMIT.split(" ")[0]) + 5
+
+    enable_limiter(app)
+    try:
+        with logged_in_as(app, CREATOR_ID) as (client, csrf_token):
+            url = url_for(ROUTES.INVITE_LINKS.UPDATE_INVITE_LINK, utub_id=FIRST_UTUB_ID)
+            statuses: list[int] = []
+            for attempt in range(attempts):
+                if attempt and attempt % PER_SECOND_BATCH == 0:
+                    # Stay under the app-wide 20/second default limit.
+                    time.sleep(1.1)
+                statuses.append(
+                    client.patch(
+                        url, json={"max_uses": 10}, headers={"X-CSRFToken": csrf_token}
+                    ).status_code
+                )
+    finally:
+        disable_limiter()
+
+    assert 429 not in statuses
+
+
 def test_update_sets_no_store(every_user_in_every_utub, app: Flask) -> None:
     add_invite_link(app, FIRST_UTUB_ID, CREATOR_ID)
 
@@ -133,9 +171,9 @@ def test_update_sets_no_store(every_user_in_every_utub, app: Flask) -> None:
     assert response.headers["Cache-Control"] == "no-store"
 
 
-@pytest.mark.parametrize("body", [{}, {"expires_in_days": None}, {"max_uses": 2}])
+@pytest.mark.parametrize("body", [None, {}, {"expires_in_days": None}, {"max_uses": 2}])
 def test_update_invalid_body_is_400_and_changes_nothing(
-    every_user_in_every_utub, app: Flask, body: dict[str, Any]
+    every_user_in_every_utub, app: Flask, body: dict[str, Any] | None
 ) -> None:
     add_invite_link(app, FIRST_UTUB_ID, CREATOR_ID, max_uses=5)
     before = rows(app)[0]

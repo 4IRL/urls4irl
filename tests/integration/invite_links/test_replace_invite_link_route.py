@@ -171,6 +171,24 @@ def test_replace_invalid_body_is_400_and_changes_nothing(
     assert [row.id for row in unrevoked(app)] == [old_id]
 
 
+def test_replace_missing_body_is_400_and_changes_nothing(
+    every_user_in_every_utub, app: Flask
+) -> None:
+    old_id = add_invite_link(app, FIRST_UTUB_ID, CREATOR_ID)
+
+    response = request_as(
+        app,
+        CREATOR_ID,
+        "POST",
+        invite_url(ROUTES.INVITE_LINKS.REPLACE_INVITE_LINK),
+        None,
+    )
+
+    assert response.status_code == 400
+    assert error_code_of(response) == InviteLinkErrorCodes.INVALID_FORM_INPUT
+    assert [row.id for row in unrevoked(app)] == [old_id]
+
+
 def test_replace_exhausted_token_retries_roll_back_the_revoke(
     metrics_enabled_app,
     provide_metrics_redis,

@@ -11,7 +11,7 @@ from flask import Flask, url_for
 from flask.testing import FlaskClient
 from flask.wrappers import Response
 
-from backend import db, limiter
+from backend import db
 from backend.invite_links.constants import (
     INVITE_LINK_MANAGE_RATE_LIMIT,
     INVITE_LINK_TOKEN_MAX_ATTEMPTS,
@@ -29,6 +29,10 @@ from backend.utils.strings.html_identifiers import IDENTIFIERS
 from backend.utils.strings.invite_link_strs import INVITE_LINK_SUCCESS
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.model_strs import MODELS
+from tests.integration.invite_links.invite_route_helpers import (
+    disable_limiter,
+    enable_limiter,
+)
 from tests.integration.short_links.short_link_helpers import (
     CREATOR_ID,
     FIRST_UTUB_ID,
@@ -532,24 +536,6 @@ def test_create_forced_rate_limit_returns_429_and_writes_nothing(
     assert _rows(app) == []
 
 
-def _enable_limiter(app: Flask) -> None:
-    original_first_request = app._got_first_request
-    app._got_first_request = False
-    app.config["RATELIMIT_ENABLED"] = True
-    limiter.enabled = True
-    limiter.init_app(app)
-    app._got_first_request = original_first_request
-
-
-def _disable_limiter() -> None:
-    if limiter._storage is not None:
-        limiter._storage.reset()
-    limiter._storage = None
-    limiter._limiter = None
-    limiter.enabled = False
-    limiter.initialized = False
-
-
 def test_create_rate_limit_budgets_are_per_manager(
     every_user_in_every_utub, app: Flask
 ) -> None:
@@ -559,7 +545,7 @@ def test_create_rate_limit_budgets_are_per_manager(
     set_member_role(app, FIRST_UTUB_ID, SECOND_USER_ID, Member_Role.CO_CREATOR)
     allowed = int(INVITE_LINK_MANAGE_RATE_LIMIT.split(" ")[0])
 
-    _enable_limiter(app)
+    enable_limiter(app)
     try:
         # One client at a time: nested test clients share the request context stack.
         with logged_in_as(app, CREATOR_ID) as (owner_client, owner_csrf):
@@ -570,7 +556,7 @@ def test_create_rate_limit_budgets_are_per_manager(
         with logged_in_as(app, SECOND_USER_ID) as (co_owner_client, co_owner_csrf):
             co_owner_response = _post_create(co_owner_client, co_owner_csrf, {})
     finally:
-        _disable_limiter()
+        disable_limiter()
 
     assert owner_limited.status_code == 429
     assert IDENTIFIERS.HTML_429 in owner_limited.get_data(as_text=True)
