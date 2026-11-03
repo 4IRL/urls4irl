@@ -156,7 +156,7 @@ jobs:
       - name: Install Dependencies
         run: |
           python3.11 -m pip install --upgrade pip==26.2.1;
-          pip install -r requirements/requirements-test.txt;
+          python3.11 -m pip install -r requirements/requirements-test.txt;
 
       - name: Run tests
         env:
@@ -286,7 +286,7 @@ jobs:
       - name: Install Dependencies
         run: |
           python3.11 -m pip install --upgrade pip==26.2.1;
-          pip install -r requirements/requirements-test.txt;
+          python3.11 -m pip install -r requirements/requirements-test.txt;
 
       # Every worker in this job is a UI worker, so the chromium binary is
       # provisioned unconditionally (previously bounded to a numeric worker
