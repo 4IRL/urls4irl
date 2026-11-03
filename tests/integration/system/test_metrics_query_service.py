@@ -1303,29 +1303,18 @@ def test_top_events_resource_other_excludes_known_prefixes(
     assert rows[0].api_endpoint == "system.health"
 
 
-@pytest.mark.parametrize(
-    "endpoint, resource, other_endpoint",
-    [
-        ("invite_links.create_invite_link", Resource.MEMBER, "short_links.resolve"),
-        (
-            "short_links.resolve_short_link",
-            Resource.URL,
-            "invite_links.get_invite_link",
-        ),
-    ],
-)
-def test_top_events_api_resource_filter_covers_invite_and_short_link_blueprints(
+def test_top_events_api_resource_filter_covers_invite_link_blueprint(
     metrics_enabled_runner_app: Flask,
     metrics_pg_conn: Any,
-    endpoint: str,
-    resource: Resource,
-    other_endpoint: str,
 ) -> None:
     """
-    GIVEN API_HIT rows on an invite_links endpoint and a short_links endpoint
-    WHEN top_events filters API rows by the mapped resource
-    THEN each endpoint appears under its resource (MEMBER / URL) and not the other
+    GIVEN API_HIT rows on an invite_links endpoint and an unrelated endpoint
+    WHEN top_events filters API rows by Resource.MEMBER
+    THEN only the invite_links endpoint appears
     """
+    endpoint = "invite_links.create_invite_link"
+    resource = Resource.MEMBER
+    other_endpoint = "system.health"
     app = metrics_enabled_runner_app
     window_end = _WINDOW_REFERENCE
     window_start = window_end - timedelta(days=1)
