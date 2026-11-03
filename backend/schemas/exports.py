@@ -52,6 +52,10 @@ class ExportPreferencesSchema(BaseSchema):
             "(recent_activity/last_opened/name_az/newest_created/oldest_created)"
         ),
     )
+    member_sort: str = Field(
+        alias="memberSort",
+        description="The member list sort order (name_az/role_then_name/recently_joined)",
+    )
     show_row_counts: bool = Field(
         alias="showRowCounts",
         description="Whether each UTub row shows its URL and member counts",
@@ -127,6 +131,11 @@ class ExportUtubSchema(BaseSchema):
     created_at: datetime = Field(
         alias="createdAt",
         description="UTub creation timestamp (ISO 8601)",
+    )
+    joined_at: str | None = Field(
+        default=None,
+        alias="joinedAt",
+        description="When the acting user joined this UTub (ISO 8601), or null when not recorded",
     )
     member_settings: dict | None = Field(
         default=None,

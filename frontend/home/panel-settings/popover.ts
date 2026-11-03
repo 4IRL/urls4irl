@@ -1224,9 +1224,11 @@ function openPopover({ gear }: { gear: HTMLElement }): void {
 function closePopover({
   kind,
   restoreFocus = true,
+  announce = true,
 }: {
   kind: CloseKind;
   restoreFocus?: boolean;
+  announce?: boolean;
 }): void {
   const popover = _current;
   const element = surfaceElement();
@@ -1260,7 +1262,7 @@ function closePopover({
   if (restoreFocus && (!forced || focusWasInside)) {
     restoreFocusTo({ gear: popover.gear, panel: popover.panel });
   }
-  if (forced) {
+  if (forced && announce) {
     say({ message: APP_CONFIG.strings.PANEL_SETTINGS_CLOSED });
   }
 
@@ -1273,6 +1275,18 @@ function closePopover({
     setPanelSettingsOpen({ open: false });
     maybeShowNextTip();
   }, 0);
+}
+
+/**
+ * Closes whichever settings surface is open so a section action can open
+ * another dialog. A forced close strips the sheet's history marker in place
+ * (no back(), so no popstate races the next dialog) and returns focus to the
+ * gear when it was inside the surface. Silent: the action that follows (a
+ * dialog opening) is announced by its own focus move.
+ */
+export function closePanelSettings(): void {
+  if (_current === null) return;
+  closePopover({ kind: "forced", announce: false });
 }
 
 function closeIfPanel({

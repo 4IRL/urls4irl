@@ -223,6 +223,11 @@ describe("UTub list settings section", () => {
     ).toBe("Show list totals");
   });
 
+  it("renders the sort select with no aria-describedby and no dangling description id", () => {
+    expect(sortSelect().hasAttribute("aria-describedby")).toBe(false);
+    expect(document.getElementById("utub-list-sort-label-desc")).toBeNull();
+  });
+
   it("unregister removes the section and clears the reseed listener", () => {
     unregister();
     unregister = () => {};

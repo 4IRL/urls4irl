@@ -15,6 +15,7 @@ import { showNewPageOnAJAXHTMLResponse } from "../../lib/page-utils.js";
 import { emit, AppEvents } from "../../lib/event-bus.js";
 import { emit as recordUIEvent } from "../../lib/metrics-client.js";
 import { UI_EVENTS } from "../../types/metrics-events.js";
+import { isMemberSortValue } from "../../types/preferences.js";
 import {
   showUTubLoadingIconAndSetTimeout,
   hideUTubLoadingIconAndClearTimeout,
@@ -138,15 +139,25 @@ export function pushUTubHistoryState(selectedUTubID: number): void {
 export interface CapturedSettingsVersions {
   settingsVersion: number;
   memberSettingsVersion: number;
+  memberSortVersion: number;
   policyLearnedVersion: number;
 }
 
 // Taken before a fetch that may write settings, then handed to
 // shouldKeepSettings (or compared directly) at the write site.
 export function captureSettingsVersions(): CapturedSettingsVersions {
-  const { settingsVersion, memberSettingsVersion, policyLearnedVersion } =
-    getState();
-  return { settingsVersion, memberSettingsVersion, policyLearnedVersion };
+  const {
+    settingsVersion,
+    memberSettingsVersion,
+    memberSortVersion,
+    policyLearnedVersion,
+  } = getState();
+  return {
+    settingsVersion,
+    memberSettingsVersion,
+    memberSortVersion,
+    policyLearnedVersion,
+  };
 }
 
 export interface SettingsWriteDecision {
@@ -155,6 +166,9 @@ export interface SettingsWriteDecision {
   // A personal-settings save landed in flight: keep the store's member slice.
   // Independent of `keepSettings`: each slice is guarded by its own version.
   keepMemberSettings: boolean;
+  // The member sort was edited or saved in flight: keep the store's value. It is
+  // a global preference, so this holds whichever UTub the response belongs to.
+  keepMemberSort: boolean;
   // A short-link policy 403 was learned in flight: an incoming
   // `allow_short_links: true` predates it and must be applied as false.
   forceShortLinksOff: boolean;
@@ -175,6 +189,7 @@ export function shouldKeepSettings({
     keepMemberSettings:
       isSameUTub &&
       state.memberSettingsVersion !== captured.memberSettingsVersion,
+    keepMemberSort: state.memberSortVersion !== captured.memberSortVersion,
     forceShortLinksOff:
       isSameUTub &&
       state.policyLearnedVersion !== captured.policyLearnedVersion,
@@ -199,11 +214,13 @@ export function buildSelectedUTub({
   selectedUTub,
   keepSettings = false,
   keepMemberSettings = false,
+  keepMemberSort = false,
   forceShortLinksOff = false,
 }: {
   selectedUTub: UtubDetail;
   keepSettings?: boolean;
   keepMemberSettings?: boolean;
+  keepMemberSort?: boolean;
   forceShortLinksOff?: boolean;
 }): void {
   log(
@@ -242,6 +259,15 @@ export function buildSelectedUTub({
     ...(keepMemberSettings
       ? {}
       : { memberSettings: resolveMemberSettings(selectedUTub.memberSettings) }),
+    // An invalid or kept sort leaves the store's preferences untouched.
+    ...(!keepMemberSort && isMemberSortValue(selectedUTub.memberSort)
+      ? {
+          preferences: {
+            ...getState().preferences,
+            memberSort: selectedUTub.memberSort,
+          },
+        }
+      : {}),
     selectedTagIDs: [],
     selectedURLCardID: null,
     // Defense-in-depth: the UTUB_SELECTED subscriber in bulk-actions/index.ts

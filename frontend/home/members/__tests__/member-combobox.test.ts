@@ -181,7 +181,9 @@ describe("member-combobox — outsider fallback row", () => {
   it("suppresses the outsider row (and hints) when the query matches a current member", () => {
     seed({
       candidates: [BOB],
-      members: [{ id: 9, username: "Zed", memberRole: "member" }],
+      members: [
+        { id: 9, username: "Zed", memberRole: "member", joinedAt: null },
+      ],
     });
     const wrap = mount();
     typeIn(wrap, "Zed");
@@ -452,7 +454,9 @@ describe("member-combobox — sibling-control suppression (Step 7)", () => {
   it("disables the per-row remove buttons + filter funnel while open, re-enables on close", () => {
     seed({
       candidates: [BOB],
-      members: [{ id: 9, username: "Zed", memberRole: "member" }],
+      members: [
+        { id: 9, username: "Zed", memberRole: "member", joinedAt: null },
+      ],
     });
     document.body.innerHTML = MEMBER_DECK_HTML;
     $("#UTubOwner").append(

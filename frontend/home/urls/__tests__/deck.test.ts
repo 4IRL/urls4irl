@@ -446,7 +446,12 @@ describe("updateURLDeck", () => {
 
   it("forwards the stale-data payload's members to createURLBlock for added cards", () => {
     const payloadMembers = [
-      { id: 1, username: "alice", memberRole: "member" as const },
+      {
+        id: 1,
+        username: "alice",
+        memberRole: "member" as const,
+        joinedAt: null,
+      },
     ];
     updateURLDeck({
       updatedUTubUrls: [SAMPLE_URL_1, SAMPLE_URL_2],

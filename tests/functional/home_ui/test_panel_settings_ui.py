@@ -11,6 +11,7 @@ from tests.functional.db_utils import (
     get_utub_this_user_created,
     get_utub_this_user_did_not_create,
     set_member_role_in_utub,
+    set_utub_locked_state,
 )
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.playwright_login_utils import (
@@ -59,24 +60,26 @@ _TAG_SHEET_PEEK_Z_INDEX = 30
 _LOWEST_BULK_ACTIONS_OVERLAY_Z_INDEX = 1036
 
 
-_GEARS_WITHOUT_SECTION: tuple[str, ...] = (
-    HPL.BUTTON_MEMBER_SETTINGS_GEAR,
-    HPL.BUTTON_TAG_SETTINGS_GEAR,
-)
+_GEARS_WITHOUT_SECTION: tuple[str, ...] = (HPL.BUTTON_TAG_SETTINGS_GEAR,)
 
 
 def _assert_only_utubs_gear_visible(page: Page) -> None:
     """The UTubs gear needs no selected UTub; every other gear does."""
     expect(page.locator(HPL.BUTTON_UTUB_SETTINGS_GEAR)).to_be_visible()
-    for gear_selector in (HPL.BUTTON_URL_SETTINGS_GEAR, *_GEARS_WITHOUT_SECTION):
+    for gear_selector in (
+        HPL.BUTTON_URL_SETTINGS_GEAR,
+        HPL.BUTTON_MEMBER_SETTINGS_GEAR,
+        *_GEARS_WITHOUT_SECTION,
+    ):
         expect(page.locator(gear_selector)).to_be_attached()
         expect(page.locator(gear_selector)).to_be_hidden()
 
 
 def _assert_urls_and_utubs_gears_visible(page: Page) -> None:
-    """The UTubs and URLs panels are the only ones with a registered section."""
+    """The UTubs, URLs and Members panels have a registered section; Tags does not."""
     expect(page.locator(HPL.BUTTON_UTUB_SETTINGS_GEAR)).to_be_visible()
     expect(page.locator(HPL.BUTTON_URL_SETTINGS_GEAR)).to_be_visible()
+    expect(page.locator(HPL.BUTTON_MEMBER_SETTINGS_GEAR)).to_be_visible()
     for gear_selector in _GEARS_WITHOUT_SECTION:
         expect(page.locator(gear_selector)).to_be_attached()
         expect(page.locator(gear_selector)).to_be_hidden()
@@ -186,7 +189,7 @@ def test_urls_and_utubs_gears_visible_with_selected_utub_and_zero_urls(
     """
     GIVEN a UTub with no URLs selected as owner (None), co-owner or member
     WHEN only the UTubs and URLs panels have a registered settings section
-    THEN the UTubs and URLs gears are visible (Members and Tags stay hidden) and
+    THEN the UTubs, URLs and Members gears are visible (Tags stays hidden) and
         the live region is idle
     """
     app = provide_app
@@ -202,6 +205,35 @@ def test_urls_and_utubs_gears_visible_with_selected_utub_and_zero_urls(
 
     _assert_urls_and_utubs_gears_visible(page)
     _assert_live_region_idle(page)
+
+
+@pytest.mark.parametrize(
+    "member_role", [None, Member_Role.CO_CREATOR, Member_Role.MEMBER]
+)
+def test_members_gear_visible_in_locked_utub(
+    page: Page,
+    create_test_utubmembers,
+    provide_app: Flask,
+    member_role: Member_Role | None,
+):
+    """
+    GIVEN a locked UTub selected as owner (None), co-owner or member
+    WHEN the Members panel has a registered settings section
+    THEN the Members gear is visible
+    """
+    app = provide_app
+    if member_role is None:
+        utub_id = get_utub_this_user_created(app, USER_ID_FOR_TEST).id
+    else:
+        utub_id = get_utub_this_user_did_not_create(app, USER_ID_FOR_TEST).id
+        set_member_role_in_utub(app, USER_ID_FOR_TEST, utub_id, member_role)
+    set_utub_locked_state(app, utub_id, True)
+
+    login_user_and_select_utub_by_utubid(
+        app=app, page=page, user_id=USER_ID_FOR_TEST, utub_id=utub_id
+    )
+
+    expect(page.locator(HPL.BUTTON_MEMBER_SETTINGS_GEAR)).to_be_visible()
 
 
 def test_only_utubs_gear_visible_with_no_utub_selected(
@@ -225,8 +257,8 @@ def test_urls_and_utubs_gears_visible_with_urls_and_tags(
 ):
     """
     GIVEN an owned UTub that has URLs and tags
-    WHEN only the UTubs and URLs panels have a registered settings section
-    THEN the UTubs and URLs gears are visible and the live region is idle
+    WHEN the UTubs, URLs and Members panels have a registered settings section
+    THEN their gears are visible (Tags stays hidden) and the live region is idle
     """
     _login_and_select_owned_utub(provide_app, page)
 
@@ -240,8 +272,8 @@ def test_urls_and_utubs_gears_visible_at_narrow_desktop_width(
 ):
     """
     GIVEN a narrow (1000px) desktop viewport with an owned UTub selected
-    WHEN only the UTubs and URLs panels have a registered settings section
-    THEN the UTubs and URLs gears are visible and the live region is idle
+    WHEN the UTubs, URLs and Members panels have a registered settings section
+    THEN their gears are visible (Tags stays hidden) and the live region is idle
     """
     page.set_viewport_size(_NARROW_DESKTOP_VIEWPORT)
     _login_and_select_owned_utub(provide_app, page)
@@ -281,9 +313,9 @@ def test_gear_markup_invariants(
     """
     GIVEN the home page with an owned UTub selected
     WHEN it loads
-    THEN all four gears are in the DOM, the two without a section carry the
-        `hidden` class while the UTubs and URLs gears do not, the popover root is hidden,
-        and the Tags gear lives inside #utubTagStandardBtns
+    THEN all four gears are in the DOM, the one without a section (Tags) carries the
+        `hidden` class while the UTubs, URLs and Members gears do not, the popover
+        root is hidden, and the Tags gear lives inside #utubTagStandardBtns
     """
     _login_and_select_owned_utub(provide_app, page)
 
@@ -293,7 +325,11 @@ def test_gear_markup_invariants(
         expect(gear).to_have_attribute("aria-haspopup", "dialog")
     for gear_selector in _GEARS_WITHOUT_SECTION:
         expect(page.locator(gear_selector)).to_have_class(_HIDDEN_CLASS_RE)
-    for gear_selector in (HPL.BUTTON_UTUB_SETTINGS_GEAR, HPL.BUTTON_URL_SETTINGS_GEAR):
+    for gear_selector in (
+        HPL.BUTTON_UTUB_SETTINGS_GEAR,
+        HPL.BUTTON_URL_SETTINGS_GEAR,
+        HPL.BUTTON_MEMBER_SETTINGS_GEAR,
+    ):
         expect(page.locator(gear_selector)).not_to_have_class(_HIDDEN_CLASS_RE)
     expect(page.locator(HPL.PANEL_SETTINGS_POPOVER)).to_have_class(_HIDDEN_CLASS_RE)
     expect(
@@ -473,7 +509,11 @@ def test_urls_and_utubs_gears_with_section_at_both_widths(
         )
         expect(page.locator(HPL.BUTTON_UTUB_SETTINGS_GEAR)).to_be_hidden()
         expect(page.locator(HPL.BUTTON_URL_SETTINGS_GEAR)).to_be_visible()
-        for gear_selector in _GEARS_WITHOUT_SECTION:
+        # The Members gear is registered, but sits in the hidden left panel.
+        expect(page.locator(HPL.BUTTON_MEMBER_SETTINGS_GEAR)).not_to_have_class(
+            _HIDDEN_CLASS_RE
+        )
+        for gear_selector in (HPL.BUTTON_MEMBER_SETTINGS_GEAR, *_GEARS_WITHOUT_SECTION):
             expect(page.locator(gear_selector)).to_be_hidden()
     else:
         _assert_urls_and_utubs_gears_visible(page)
@@ -542,7 +582,7 @@ def test_revealed_gears_do_not_overflow_or_wrap_headers_at_left_panel_minimum(
     """
     page.set_viewport_size(_LEFT_PANEL_MIN_VIEWPORT)
     _login_and_select_owned_utub(provide_app, page)
-    expect(page.locator(HPL.BUTTON_MEMBER_SETTINGS_GEAR)).to_be_hidden()
+    expect(page.locator(HPL.BUTTON_MEMBER_SETTINGS_GEAR)).to_be_visible()
 
     _reveal_gears(page)
     left_panel_width = page.evaluate(

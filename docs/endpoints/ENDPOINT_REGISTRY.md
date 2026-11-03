@@ -527,7 +527,7 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Handler:** `backend/api_v1/utub_member_routes.py:api_v1_create_member`
 - **Decorators:** `api_utub_manager_required`, `api_route`, `limiter.limit(MEMBER_ADD_RATE_LIMIT, methods=['POST'])`
 - **Service:** `backend.members.services.create_members:create_utub_member`
-- **Schema:** request: `backend.schemas.requests.members.AddMemberRequest`; response: `backend.schemas.users.MemberModifiedResponseSchema`; status: 200 `backend.schemas.users.MemberModifiedResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 401 `backend.schemas.errors.ErrorResponse`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`, 429 `backend.schemas.errors.ErrorResponse`
+- **Schema:** request: `backend.schemas.requests.members.AddMemberRequest`; response: `backend.schemas.users.AddMemberResponseSchema`; status: 200 `backend.schemas.users.AddMemberResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 401 `backend.schemas.errors.ErrorResponse`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`, 429 `backend.schemas.errors.ErrorResponse`
 - **Template:** —
 - **JS:** no-js: mobile-api
 
@@ -740,7 +740,7 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Handler:** `backend/members/routes.py:create_member`
 - **Decorators:** `utub_manager_required`, `api_route`, `limiter.limit(MEMBER_ADD_RATE_LIMIT, methods=['POST'])`
 - **Service:** `backend.members.services.create_members:create_utub_member`
-- **Schema:** request: `backend.schemas.requests.members.AddMemberRequest`; response: `backend.schemas.users.MemberModifiedResponseSchema`; status: 200 `backend.schemas.users.MemberModifiedResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`, 429 `backend.schemas.errors.ErrorResponse`
+- **Schema:** request: `backend.schemas.requests.members.AddMemberRequest`; response: `backend.schemas.users.AddMemberResponseSchema`; status: 200 `backend.schemas.users.AddMemberResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`, 429 `backend.schemas.errors.ErrorResponse`
 - **Template:** —
 - **JS:** keys: `createMember`
 
@@ -1297,6 +1297,15 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Schema:** request: `backend.schemas.requests.users.ChangeUsernameRequest`; response: `backend.schemas.users.ChangeUsernameResponseSchema`; status: 200 `backend.schemas.users.ChangeUsernameResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 403 `backend.schemas.errors.ErrorResponse`, 429 `backend.schemas.errors.ErrorResponse`
 - **Template:** —
 - **JS:** template url_for: `pages/settings.html`
+
+### `PATCH /users/preferences/members` — `users.update_member_list_preferences`
+
+- **Handler:** `backend/users/routes.py:update_member_list_preferences`
+- **Decorators:** `email_validation_required`, `api_route`
+- **Service:** `backend.users.services.preferences_service:apply_member_list_preferences_change`
+- **Schema:** request: `backend.schemas.requests.users.UpdateMemberListPreferencesRequest`; response: `backend.schemas.users.UpdateMemberListPreferencesResponseSchema`; status: 200 `backend.schemas.users.UpdateMemberListPreferencesResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`
+- **Template:** —
+- **JS:** keys: `updateMemberListPreferences`
 
 ### `PATCH /users/preferences/utubs` — `users.update_utub_list_preferences`
 

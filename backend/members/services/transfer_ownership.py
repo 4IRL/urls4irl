@@ -103,11 +103,13 @@ def transfer_ownership(*, new_owner_id: int, current_utub: Utubs) -> FlaskRespon
                 id=new_owner_membership.to_user.id,
                 username=new_owner_membership.to_user.username,
                 member_role=new_owner_membership.member_role.value,
+                joined_at=new_owner_membership.joined_at,
             ),
             previous_owner=UtubMemberSchema(
                 id=outgoing_owner_membership.to_user.id,
                 username=outgoing_owner_membership.to_user.username,
                 member_role=outgoing_owner_membership.member_role.value,
+                joined_at=outgoing_owner_membership.joined_at,
             ),
         ),
     ).to_response()

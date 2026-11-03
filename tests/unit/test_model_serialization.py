@@ -7,7 +7,7 @@ from flask import Flask
 import tests.models_for_test as v_models
 from backend import db
 from backend.models.urls import Urls
-from backend.models.user_preferences import UtubSort
+from backend.models.user_preferences import MemberSort, UtubSort
 from backend.models.users import Users
 from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utub_tags import Utub_Tags
@@ -434,6 +434,22 @@ def test_sort_summary_memberships_rejects_unknown_sort() -> None:
         _sort_summary_memberships([], "bogus")  # type: ignore[arg-type]
 
 
+def _add_member_sort_fields(test_utub: dict, utub: Utubs) -> None:
+    """Append the expected per-member ``joinedAt`` (from the membership rows) and
+    the detail-level ``memberSort`` (the NAME_AZ the callers pass) to a fixture."""
+    joined_by_user_id = {
+        member.user_id: (
+            None if member.joined_at is None else to_iso_milliseconds(member.joined_at)
+        )
+        for member in utub.members
+    }
+    for member_dict in test_utub[MODEL_STRS.MEMBERS]:
+        member_dict[MODEL_STRS.JOINED_AT] = joined_by_user_id[
+            member_dict[MODEL_STRS.ID]
+        ]
+    test_utub[MODEL_STRS.MEMBER_SORT] = MemberSort.NAME_AZ.value
+
+
 def test_utub_serialized_only_creator_no_urls_no_tags(
     app: Flask, every_user_makes_a_unique_utub
 ):
@@ -490,7 +506,7 @@ def test_utub_serialized_only_creator_no_urls_no_tags(
 
             # Match creator elements
             utub_in_data_serialized = UtubDetailSchema.from_utub(
-                utub, 1, utub.utub_urls
+                utub, 1, utub.utub_urls, utub.members, MemberSort.NAME_AZ.value
             ).model_dump(by_alias=True)
             test_utub[MODEL_STRS.IS_CREATOR] = utub_in_data_serialized[
                 MODEL_STRS.IS_CREATOR
@@ -508,6 +524,7 @@ def test_utub_serialized_only_creator_no_urls_no_tags(
                 MODEL_STRS.SETTINGS
             ]
             test_utub[MODEL_STRS.MEMBER_SETTINGS] = DEFAULT_MEMBER_SETTINGS_DICT
+            _add_member_sort_fields(test_utub, utub)
             assert json.dumps(test_utub) == json.dumps(utub_in_data_serialized)
 
 
@@ -566,7 +583,7 @@ def test_utub_serialized_creator_and_members_no_urls_no_tags(
 
             # Array of members needs to be sorted by ID's to match
             utub_in_data_serialized = UtubDetailSchema.from_utub(
-                utub, 1, utub.utub_urls
+                utub, 1, utub.utub_urls, utub.members, MemberSort.NAME_AZ.value
             ).model_dump(by_alias=True)
             utub_in_data_serialized[MODEL_STRS.MEMBERS] = sorted(
                 utub_in_data_serialized[MODEL_STRS.MEMBERS],
@@ -590,6 +607,7 @@ def test_utub_serialized_creator_and_members_no_urls_no_tags(
                 MODEL_STRS.SETTINGS
             ]
             test_utub[MODEL_STRS.MEMBER_SETTINGS] = DEFAULT_MEMBER_SETTINGS_DICT
+            _add_member_sort_fields(test_utub, utub)
 
             assert json.dumps(test_utub) == json.dumps(utub_in_data_serialized)
 
@@ -650,7 +668,7 @@ def test_utub_serialized_creator_and_members_and_url_no_tags(
 
             # Array of members needs to be sorted by ID's to match
             utub_in_data_serialized = UtubDetailSchema.from_utub(
-                utub, 1, utub.utub_urls
+                utub, 1, utub.utub_urls, utub.members, MemberSort.NAME_AZ.value
             ).model_dump(by_alias=True)
             utub_in_data_serialized[MODEL_STRS.MEMBERS] = sorted(
                 utub_in_data_serialized[MODEL_STRS.MEMBERS],
@@ -707,6 +725,7 @@ def test_utub_serialized_creator_and_members_and_url_no_tags(
                 MODEL_STRS.SETTINGS
             ]
             test_utub[MODEL_STRS.MEMBER_SETTINGS] = DEFAULT_MEMBER_SETTINGS_DICT
+            _add_member_sort_fields(test_utub, utub)
 
             assert json.dumps(test_utub) == json.dumps(utub_in_data_serialized)
 
@@ -780,7 +799,7 @@ def test_utub_serialized_creator_and_members_and_urls_and_tags(
 
             # Array of members needs to be sorted by ID's to match
             utub_in_data_serialized = UtubDetailSchema.from_utub(
-                utub, 1, utub.utub_urls
+                utub, 1, utub.utub_urls, utub.members, MemberSort.NAME_AZ.value
             ).model_dump(by_alias=True)
             utub_in_data_serialized[MODEL_STRS.MEMBERS] = sorted(
                 utub_in_data_serialized[MODEL_STRS.MEMBERS],
@@ -851,5 +870,6 @@ def test_utub_serialized_creator_and_members_and_urls_and_tags(
                 MODEL_STRS.SETTINGS
             ]
             test_utub[MODEL_STRS.MEMBER_SETTINGS] = DEFAULT_MEMBER_SETTINGS_DICT
+            _add_member_sort_fields(test_utub, utub)
 
             assert json.dumps(test_utub) == json.dumps(utub_in_data_serialized)

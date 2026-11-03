@@ -3,6 +3,7 @@ import { $ } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 
 import type { UtubDetail } from "../../types/utub.js";
+import { isMemberSortValue } from "../../types/preferences.js";
 import { resolveMemberSettings } from "../../types/settings.js";
 import { getState, setState } from "../../store/app-store.js";
 import type { AppState } from "../../store/app-store.js";
@@ -19,6 +20,7 @@ import {
 import { removeUTubLocally } from "./remove-local.js";
 import { setRowCountsFromStore } from "./row-counts.js";
 import { syncRowNameAndOrder } from "./sort.js";
+import { reorderMemberDeck } from "../members/deck.js";
 import { setBackgroundRefreshActive } from "./background-refresh-flag.js";
 import { showURLDeckBannerError } from "../urls/deck.js";
 import {
@@ -119,11 +121,30 @@ export async function updateUTubOnFindingStaleData({
   // Settings apply before the no-op short-circuit (a settings-only difference
   // must still land), unless a local save landed while the request was in
   // flight: that response predates the save and must not overwrite it.
-  const { keepSettings, keepMemberSettings, forceShortLinksOff } =
-    shouldKeepSettings({
-      selectedUTub: utub,
-      captured,
-    });
+  const {
+    keepSettings,
+    keepMemberSettings,
+    keepMemberSort,
+    forceShortLinksOff,
+  } = shouldKeepSettings({
+    selectedUTub: utub,
+    captured,
+  });
+  // The viewer's member sort is global: write it to the store before the no-op
+  // short-circuit so a sort changed in another tab lands even when the content is
+  // identical. A kept local sort or an invalid value writes nothing.
+  let memberSortChanged = false;
+  if (!keepMemberSort && isMemberSortValue(utub.memberSort)) {
+    memberSortChanged = utub.memberSort !== currentState.preferences.memberSort;
+    if (memberSortChanged) {
+      setState({
+        preferences: {
+          ...currentState.preferences,
+          memberSort: utub.memberSort,
+        },
+      });
+    }
+  }
   // The member slice follows the same rule, guarded by its own version.
   if (!keepMemberSettings) {
     const incomingMemberSettings = resolveMemberSettings(utub.memberSettings);
@@ -151,8 +172,20 @@ export async function updateUTubOnFindingStaleData({
   }
 
   if (isSameUTubData({ store: currentState, data: utub })) {
+    // A sort-only difference is already in the store; it emits no
+    // STALE_DATA_DETECTED so URL and tag subscribers do not re-run. The deck is
+    // reordered here directly from the resolved sort just written above.
+    // Intentionally silent, like every background reorder: no scroll and no
+    // announcement.
+    if (memberSortChanged) {
+      reorderMemberDeck({
+        members: currentState.members,
+        memberSort: getState().preferences.memberSort,
+      });
+    }
     log("updateUTubOnFindingStaleData — payload matches store, no-op", {
       utubID,
+      memberSortChanged,
     });
     return;
   }
@@ -290,6 +323,7 @@ function projectUTubContent({
       id: member.id,
       username: member.username,
       memberRole: member.memberRole,
+      joinedAt: member.joinedAt ?? null,
     })),
     name: name ?? "",
     description: description ?? "",
@@ -430,6 +464,7 @@ function applyPermissionFallback({ data }: { data: UtubDetail }): void {
     selectedUTub: data,
     keepSettings: true,
     keepMemberSettings: true,
+    keepMemberSort: true,
   });
   syncSidebarUTubEntry({ data });
 

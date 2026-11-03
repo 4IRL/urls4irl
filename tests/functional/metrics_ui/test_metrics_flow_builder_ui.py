@@ -6,37 +6,48 @@ from typing import Any
 
 import pytest
 from flask import Flask
-from playwright.sync_api import Locator, Page, Route, expect
+from playwright.sync_api import Page, Route, expect
 
 from backend import db
 from backend.config import ConfigTestUI
-from backend.metrics.events import EventName
 from backend.metrics.flow_limits import FLOW_LIMITS
 from backend.models.metric_flows import Metric_Flows
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS
 from tests.functional.locators import MetricsDashboardLocators as MDL
 from tests.functional.metrics_ui.playwright_utils import (
+    BUILDER_INPUT_FONT_SIZE,
     EXPECTED_FLOW_CARD_COUNT,
     FLOW_LIST_URL_RE,
     FLOW_QUERY_URL_RE,
     LONG_FLOW_NAME,
     MIN_TOUCH_TARGET_PX,
     MOBILE_VIEWPORT,
+    OPEN_EVENT,
     SEEDED_SUBMIT_OTHER_FORM_COUNT,
     SEEDED_SUBMIT_URL_CREATE_COUNT,
+    SUBMIT_EVENT,
     VIEWPORTS,
     HeldFlowQueries,
     SeedCustomFlows,
     build_valid_flow_steps,
+    builder_action,
+    builder_field,
     count_text,
     custom_card,
+    element_overflow,
+    fill_blank_steps,
     filtered_breakdown_definition,
+    get_json,
+    list_entry,
+    open_edit_builder,
     open_flows_tab,
+    open_new_builder,
+    page_overflow,
+    reload_flows_tab,
     removed_event_definition,
     seed_add_url_funnel_metrics,
     two_step_filtered_definition,
 )
-from tests.functional.playwright_utils import wait_then_click_element
 
 pytestmark = pytest.mark.metrics_ui
 
@@ -45,11 +56,7 @@ FLOW_UPDATE_URL_RE: re.Pattern[str] = re.compile(
     r".*/admin/metrics/flows/custom_[1-9][0-9]*$"
 )
 FLOW_QUERY_PATH: str = "/api/metrics/query/flow"
-OPEN_EVENT: str = EventName.UI_URL_CREATE_OPEN.value
-SUBMIT_EVENT: str = EventName.UI_FORM_SUBMIT.value
-BUILDER_INPUT_FONT_SIZE: str = "16px"
 ERR_TARGET_NOT_FOUND: int = 5
-JSON_HEADERS: dict[str, str] = {"X-Requested-With": "XMLHttpRequest"}
 
 
 # ---------------------------------------------------------------------------
@@ -57,84 +64,15 @@ JSON_HEADERS: dict[str, str] = {"X-Requested-With": "XMLHttpRequest"}
 # ---------------------------------------------------------------------------
 
 
-def _open_new_builder(page: Page) -> None:
-    """Click "+ New flow" and wait until the catalog loaded and the form is
-    interactive (the heading keeps focus through the load)."""
-    page.locator(MDL.FLOWS_NEW_BUTTON).click()
-    expect(page.locator(MDL.FLOW_BUILDER_FORM)).to_be_visible()
-    expect(page.locator(MDL.FLOW_BUILDER_HEADING)).to_be_focused()
-
-
-def _open_edit_builder(page: Page, flow_id: str) -> None:
-    custom_card(page, flow_id).locator(".flow-edit-btn").click()
-    expect(page.locator(MDL.FLOW_BUILDER_FORM)).to_be_visible()
-    expect(page.locator(MDL.FLOW_BUILDER_HEADING)).to_be_focused()
-
-
-def _step(page: Page, position: int) -> Locator:
-    return page.locator(MDL.FLOW_BUILDER_STEP).nth(position - 1)
-
-
-def _field(page: Page, position: int, field: str) -> Locator:
-    return _step(page, position).locator(f"[data-field={field}]")
-
-
-def _action(page: Page, position: int, action: str) -> Locator:
-    return _step(page, position).locator(f"button[data-action={action}]")
-
-
-def _fill_blank_steps(page: Page) -> None:
-    """Give the two blank steps of a new draft a label and an event each."""
-    for position, event in ((1, OPEN_EVENT), (2, SUBMIT_EVENT)):
-        _field(page, position, "label").fill(f"Step {position} label")
-        _field(page, position, "event_name").select_option(event)
-        expect(_field(page, position, "event_name")).to_have_value(event)
-
-
 def _make_draft_dirty(page: Page) -> None:
     page.locator(MDL.FLOW_BUILDER_NAME_INPUT).fill("Unsaved work")
-
-
-def _get_json(page: Page, url: str) -> dict[str, Any]:
-    return page.evaluate(
-        """async ({url, headers}) => {
-            const response = await fetch(url, {headers, credentials: "same-origin"});
-            return await response.json();
-        }""",
-        {"url": url, "headers": JSON_HEADERS},
-    )
-
-
-def _list_entry(page: Page, flow_id: str) -> dict[str, Any]:
-    flows = _get_json(page, "/admin/metrics/flows")["flows"]
-    [entry] = [flow for flow in flows if flow["id"] == flow_id]
-    return entry
 
 
 def _funnel_counts(page: Page, flow_id: str) -> list[dict[str, Any]]:
     """Per-step count and breakdown of the `/flow` response (the response is
     only `{"steps": [...]}`; derived fields such as pct_of_top are dropped)."""
-    steps = _get_json(page, f"{FLOW_QUERY_PATH}?flow_id={flow_id}&window=day")["steps"]
+    steps = get_json(page, f"{FLOW_QUERY_PATH}?flow_id={flow_id}&window=day")["steps"]
     return [{"count": step["count"], "breakdown": step["breakdown"]} for step in steps]
-
-
-def _reload_flows_tab(page: Page) -> None:
-    page.reload()
-    wait_then_click_element(page=page, css_selector=MDL.TAB_FLOWS_BUTTON)
-    expect(page.locator(MDL.FLOWS_COUNT)).not_to_have_text(
-        UI_TEST_STRINGS.METRICS_FLOWS_COUNT_LOADING
-    )
-    expect(page.locator(MDL.FLOWS_CARD_LOADING)).to_have_count(0)
-
-
-def _page_overflow(page: Page) -> float:
-    return page.evaluate(
-        "() => document.documentElement.scrollWidth - window.innerWidth"
-    )
-
-
-def _element_overflow(locator: Locator) -> float:
-    return locator.evaluate("el => el.scrollWidth - el.clientWidth")
 
 
 def _delete_row(*, app: Flask, flow_id: str) -> None:
@@ -172,7 +110,7 @@ def test_builder_entry_focus_escape_guard_and_home_end_keys(
         config=provide_config,
         viewport=viewport,
     )
-    _open_new_builder(page)
+    open_new_builder(page)
     expect(page.locator(MDL.FLOW_BUILDER_HEADING)).to_have_text(
         UI_TEST_STRINGS.METRICS_FLOW_BUILDER_TITLE_NEW
     )
@@ -184,7 +122,7 @@ def test_builder_entry_focus_escape_guard_and_home_end_keys(
     name.press("End")
     assert name.evaluate("el => el.selectionStart") == len("Home end")
 
-    event_select = _field(page, 1, "event_name")
+    event_select = builder_field(page, 1, "event_name")
     event_select.select_option(SUBMIT_EVENT)
     expect(event_select).to_have_value(SUBMIT_EVENT)
     event_select.focus()
@@ -248,8 +186,8 @@ def test_builder_rejects_whitespace_name_and_focuses_summary_once(
         config=provide_config,
         viewport=viewport,
     )
-    _open_new_builder(page)
-    _fill_blank_steps(page)
+    open_new_builder(page)
+    fill_blank_steps(page)
     page.locator(MDL.FLOW_BUILDER_NAME_INPUT).fill("   ")
     page.locator(MDL.FLOW_BUILDER_SAVE_BUTTON).click()
 
@@ -300,11 +238,11 @@ def test_builder_remove_and_add_keep_focus_at_the_step_bounds(
         port=provide_port,
         config=provide_config,
     )
-    _open_edit_builder(page, flow_id)
+    open_edit_builder(page, flow_id)
     steps = page.locator(MDL.FLOW_BUILDER_STEP)
     expect(steps).to_have_count(FLOW_LIMITS.MIN_STEPS)
 
-    remove = _action(page, 1, "remove")
+    remove = builder_action(page, 1, "remove")
     expect(remove).to_have_attribute("aria-disabled", "true")
     remove.focus()
     remove.press("Enter")
@@ -315,7 +253,7 @@ def test_builder_remove_and_add_keep_focus_at_the_step_bounds(
     for expected in range(FLOW_LIMITS.MIN_STEPS + 1, FLOW_LIMITS.MAX_STEPS + 1):
         add.click()
         expect(steps).to_have_count(expected)
-        expect(_field(page, expected, "label")).to_be_focused()
+        expect(builder_field(page, expected, "label")).to_be_focused()
     expect(add).to_have_attribute("aria-disabled", "true")
     expect(page.locator(MDL.FLOW_BUILDER_ADD_REASON)).not_to_be_empty()
     add.focus()
@@ -323,9 +261,9 @@ def test_builder_remove_and_add_keep_focus_at_the_step_bounds(
     expect(add).to_be_focused()
     expect(steps).to_have_count(FLOW_LIMITS.MAX_STEPS)
 
-    _action(page, 3, "remove").click()
+    builder_action(page, 3, "remove").click()
     expect(steps).to_have_count(FLOW_LIMITS.MAX_STEPS - 1)
-    expect(_field(page, 3, "label")).to_be_focused()
+    expect(builder_field(page, 3, "label")).to_be_focused()
 
 
 # ---------------------------------------------------------------------------
@@ -362,7 +300,7 @@ def test_edit_save_round_trip_preserves_filters_and_breakdowns(
         config=provide_config,
     )
 
-    before_entry = _list_entry(page, flow_id)
+    before_entry = list_entry(page, flow_id)
     before_funnel_steps = _funnel_counts(page, flow_id)
     # Precondition: the comparison must not be between zeros (DD-61).
     funnel_steps = before_funnel_steps
@@ -375,11 +313,11 @@ def test_edit_save_round_trip_preserves_filters_and_breakdowns(
     ), "the filter must remove the other form's rows"
     before_steps = before_entry["definition"]["steps"]
 
-    _open_edit_builder(page, flow_id)
+    open_edit_builder(page, flow_id)
     if reorder:
-        _action(page, 2, "move-down").click()
+        builder_action(page, 2, "move-down").click()
         # The moved step is now third; focus follows its action button.
-        expect(_action(page, 3, "move-down")).to_be_focused()
+        expect(builder_action(page, 3, "move-down")).to_be_focused()
         new_name = "Round trip"
     else:
         new_name = "Round trip renamed"
@@ -387,8 +325,8 @@ def test_edit_save_round_trip_preserves_filters_and_breakdowns(
     page.locator(MDL.FLOW_BUILDER_SAVE_BUTTON).click()
     expect(page.locator(MDL.FLOW_BUILDER)).to_be_hidden()
 
-    _reload_flows_tab(page)
-    after_entry = _list_entry(page, flow_id)
+    reload_flows_tab(page)
+    after_entry = list_entry(page, flow_id)
     assert after_entry["display_name"] == new_name
     after_steps = after_entry["definition"]["steps"]
     after_funnel_steps = _funnel_counts(page, flow_id)
@@ -430,11 +368,11 @@ def test_create_flow_through_the_ui_persists_and_focuses_new_card(
         config=provide_config,
         viewport=viewport,
     )
-    _open_new_builder(page)
+    open_new_builder(page)
     expect(page.locator(MDL.FLOW_BUILDER_STEP)).to_have_count(FLOW_LIMITS.MIN_STEPS)
     name = "Created in the UI"
     page.locator(MDL.FLOW_BUILDER_NAME_INPUT).fill(name)
-    _fill_blank_steps(page)
+    fill_blank_steps(page)
     page.locator(MDL.FLOW_BUILDER_SAVE_BUTTON).click()
 
     expect(page.locator(MDL.FLOW_BUILDER)).to_be_hidden()
@@ -447,7 +385,7 @@ def test_create_flow_through_the_ui_persists_and_focuses_new_card(
         UI_TEST_STRINGS.METRICS_FLOW_BUILDER_ANNOUNCE_SAVED.format(name=name)
     )
 
-    _reload_flows_tab(page)
+    reload_flows_tab(page)
     expect(page.locator(f"{MDL.FLOWS_CARD}[data-flow-id^=custom_]")).to_have_count(1)
     expect(page.locator(MDL.FLOWS_COUNT)).to_have_text(count_text(custom=1))
 
@@ -474,13 +412,13 @@ def test_cancel_returns_focus_to_the_re_resolved_opener(
         config=provide_config,
     )
 
-    _open_edit_builder(page, flow_id)
+    open_edit_builder(page, flow_id)
     page.locator(MDL.FLOW_BUILDER_CANCEL_BUTTON).click()
     expect(page.locator(MDL.FLOW_BUILDER)).to_be_hidden()
     expect(page.locator(MDL.FLOWS_CARD_LOADING)).to_have_count(0)
     expect(custom_card(page, flow_id).locator(".flow-edit-btn")).to_be_focused()
 
-    _open_new_builder(page)
+    open_new_builder(page)
     page.locator(MDL.FLOW_BUILDER_CANCEL_BUTTON).click()
     expect(page.locator(MDL.FLOW_BUILDER)).to_be_hidden()
     expect(page.locator(MDL.FLOWS_NEW_BUTTON)).to_be_focused()
@@ -525,10 +463,10 @@ def test_save_rate_limited_shows_inline_message_and_keeps_draft(
         config=provide_config,
         viewport=viewport,
     )
-    _open_new_builder(page)
+    open_new_builder(page)
     name = "Rate limited flow"
     page.locator(MDL.FLOW_BUILDER_NAME_INPUT).fill(name)
-    _fill_blank_steps(page)
+    fill_blank_steps(page)
     page.locator(MDL.FLOW_BUILDER_SAVE_BUTTON).click()
 
     expect(page.locator(MDL.FLOW_BUILDER_FORM_ERRORS)).to_have_text(
@@ -536,7 +474,7 @@ def test_save_rate_limited_shows_inline_message_and_keeps_draft(
     )
     expect(page.locator(MDL.FLOW_BUILDER_FORM)).to_be_visible()
     expect(page.locator(MDL.FLOW_BUILDER_NAME_INPUT)).to_have_value(name)
-    expect(_field(page, 1, "event_name")).to_have_value(OPEN_EVENT)
+    expect(builder_field(page, 1, "event_name")).to_have_value(OPEN_EVENT)
     expect(page.locator(MDL.FLOW_BUILDER_SAVE_BUTTON)).not_to_have_attribute(
         "aria-disabled", "true"
     )
@@ -582,7 +520,7 @@ def test_update_404_returns_to_grid_with_notice_and_refreshed_list(
         port=provide_port,
         config=provide_config,
     )
-    _open_edit_builder(page, flow_id)
+    open_edit_builder(page, flow_id)
     page.locator(MDL.FLOW_BUILDER_NAME_INPUT).fill("Vanishing flow edited")
     page.locator(MDL.FLOW_BUILDER_SAVE_BUTTON).click()
 
@@ -683,12 +621,12 @@ def test_delete_in_builder_focus_dirty_warning_and_post_delete_focus(
         config=provide_config,
         viewport=viewport,
     )
-    _open_new_builder(page)
+    open_new_builder(page)
     expect(page.locator(MDL.FLOW_BUILDER_DELETE_BUTTON)).to_have_count(0)
     page.locator(MDL.FLOW_BUILDER_CANCEL_BUTTON).click()
     expect(page.locator(MDL.FLOW_BUILDER)).to_be_hidden()
 
-    _open_edit_builder(page, flow_id)
+    open_edit_builder(page, flow_id)
     delete = page.locator(MDL.FLOW_BUILDER_DELETE_BUTTON)
     delete.click()
     expect(page.locator(MDL.FLOW_BUILDER_CONFIRM_TITLE)).to_have_text(
@@ -774,7 +712,7 @@ def test_form_behind_a_confirm_is_inert(
         port=provide_port,
         config=provide_config,
     )
-    _open_new_builder(page)
+    open_new_builder(page)
     _make_draft_dirty(page)
     name = page.locator(MDL.FLOW_BUILDER_NAME_INPUT)
     # Scroll first (an inert element may refuse it) so the hit-test point is
@@ -842,7 +780,7 @@ def test_arrow_right_with_dirty_draft_and_decline_keeps_the_tab_selected(
         port=provide_port,
         config=provide_config,
     )
-    _open_new_builder(page)
+    open_new_builder(page)
     _make_draft_dirty(page)
 
     flows_tab = page.locator(MDL.TAB_FLOWS_BUTTON)
@@ -880,7 +818,7 @@ def test_tab_click_with_a_confirm_open_focuses_its_safe_button(
         port=provide_port,
         config=provide_config,
     )
-    _open_edit_builder(page, flow_id)
+    open_edit_builder(page, flow_id)
     if kind == "discard":
         _make_draft_dirty(page)
         page.locator(MDL.FLOW_BUILDER_CANCEL_BUTTON).click()
@@ -928,7 +866,7 @@ def test_accept_discard_on_tab_click_then_return_shows_every_card_loaded(
         port=provide_port,
         config=provide_config,
     )
-    _open_new_builder(page)
+    open_new_builder(page)
     _make_draft_dirty(page)
 
     held = HeldFlowQueries()
@@ -993,7 +931,7 @@ def test_paused_refresh_shows_hint_without_spinner_or_overflow(
         config=provide_config,
         viewport=viewport,
     )
-    _open_new_builder(page)
+    open_new_builder(page)
 
     refresh = page.locator(MDL.REFRESH_NOW_BUTTON)
     hint = page.locator(MDL.REFRESH_PAUSED_HINT)
@@ -1024,7 +962,7 @@ def test_paused_refresh_shows_hint_without_spinner_or_overflow(
     hint_box = hint.bounding_box()
     assert hint_box is not None
     assert hint_box["x"] + hint_box["width"] <= viewport["width"] + 1, hint_box
-    assert _page_overflow(page) <= 1
+    assert page_overflow(page) <= 1
 
 
 def test_long_names_and_labels_do_not_overflow_at_420px(
@@ -1058,24 +996,24 @@ def test_long_names_and_labels_do_not_overflow_at_420px(
     card = custom_card(page, flow_id)
     expect(card.locator(".flow-edit-btn")).to_be_visible()
     expect(card.locator(".flow-delete-btn")).to_be_visible()
-    assert _element_overflow(card) <= 1
+    assert element_overflow(card) <= 1
     count_box = page.locator(MDL.FLOWS_COUNT).bounding_box()
     assert count_box is not None
     assert count_box["x"] + count_box["width"] <= MOBILE_VIEWPORT["width"] + 1
-    assert _page_overflow(page) <= 1
+    assert page_overflow(page) <= 1
 
     edit_box = card.locator(".flow-edit-btn").bounding_box()
     assert edit_box is not None
     assert edit_box["width"] >= MIN_TOUCH_TARGET_PX, edit_box
     assert edit_box["height"] >= MIN_TOUCH_TARGET_PX, edit_box
 
-    _open_edit_builder(page, flow_id)
+    open_edit_builder(page, flow_id)
     expect(page.locator(MDL.FLOW_BUILDER_NAME_INPUT)).to_have_value(LONG_FLOW_NAME)
-    assert _element_overflow(page.locator(MDL.FLOW_BUILDER)) <= 1
-    assert _element_overflow(page.locator(MDL.FLOW_BUILDER_FORM)) <= 1
+    assert element_overflow(page.locator(MDL.FLOW_BUILDER)) <= 1
+    assert element_overflow(page.locator(MDL.FLOW_BUILDER_FORM)) <= 1
     for step in page.locator(MDL.FLOW_BUILDER_STEP).all():
-        assert _element_overflow(step) <= 1
-    assert _page_overflow(page) <= 1
+        assert element_overflow(step) <= 1
+    assert page_overflow(page) <= 1
 
 
 def test_builder_controls_meet_touch_targets_and_sixteen_px_text_at_420px(
@@ -1100,7 +1038,7 @@ def test_builder_controls_meet_touch_targets_and_sixteen_px_text_at_420px(
         config=provide_config,
         viewport=MOBILE_VIEWPORT,
     )
-    _open_edit_builder(page, flow_id)
+    open_edit_builder(page, flow_id)
 
     controls = [
         control
@@ -1153,7 +1091,7 @@ def test_edit_of_a_needs_attention_flow_describes_the_problems(
     expect(card.locator(".flow-edit-btn")).to_have_count(1)
     expect(card).to_contain_text(UI_TEST_STRINGS.METRICS_FLOW_NEEDS_ATTENTION_HELP)
 
-    _open_edit_builder(page, flow_id)
+    open_edit_builder(page, flow_id)
     expect(page.locator(MDL.FLOW_BUILDER_HEADING)).to_have_accessible_description(
         UI_TEST_STRINGS.METRICS_FLOW_BUILDER_ERR_PROBLEM_ONE
     )

@@ -151,22 +151,43 @@ class ADMIN_METRICS_STRINGS:
         "Grid refreshes when you leave the builder"
     )
     METRICS_FLOW_BUILDER_NOTE_STALE_VALUE: str = "{value} (no longer exists)"
-    METRICS_FLOW_BUILDER_NOTE_FILTERS_CLEARED: str = (
-        "Filters and breakdown removed because the event changed."
+    METRICS_FLOW_BUILDER_ANNOUNCE_FILTERS_CLEARED: str = (
+        "Filters and breakdown cleared for this step."
     )
-    METRICS_FLOW_BUILDER_NOTE_KEPT_FILTERS_BREAKDOWN: str = (
-        "{count} filters and a breakdown kept. Not editable yet."
+    METRICS_FLOW_BUILDER_FILTER_INCOMPLETE: str = "Choose a field and value."
+    METRICS_FLOW_BUILDER_BREAKDOWN_INCOMPLETE: str = (
+        "Choose an event and a group by field."
     )
-    METRICS_FLOW_BUILDER_NOTE_KEPT_FILTERS_BREAKDOWN_ONE: str = (
-        "1 filter and a breakdown kept. Not editable yet."
+    METRICS_FLOW_BUILDER_DAMAGED_FILTERS: str = (
+        "This step's stored filters could not be read. Add a filter to replace them."
     )
-    METRICS_FLOW_BUILDER_NOTE_KEPT_FILTERS: str = (
-        "{count} filters kept. Not editable yet."
+    METRICS_FLOW_BUILDER_DAMAGED_BREAKDOWN: str = (
+        "This step's stored breakdown could not be read. Add a breakdown to replace it."
     )
-    METRICS_FLOW_BUILDER_NOTE_KEPT_FILTERS_ONE: str = "1 filter kept. Not editable yet."
-    METRICS_FLOW_BUILDER_NOTE_KEPT_BREAKDOWN: str = "Breakdown kept. Not editable yet."
-    METRICS_FLOW_BUILDER_NOTE_FILTERS_UNEDITABLE: str = (
-        "Filters can't be edited here yet: remove the step or delete the flow."
+    METRICS_FLOW_BUILDER_DAMAGED_BREAKDOWN_FILTERS: str = "This breakdown's stored filters could not be read. Add a filter to replace them."
+    METRICS_FLOW_BUILDER_DAMAGED_RECOURSE_STEP: str = (
+        "Or change this step's event or endpoint to clear it."
+    )
+    METRICS_FLOW_BUILDER_DAMAGED_RECOURSE_BREAKDOWN: str = (
+        "Or change the breakdown event to clear it."
+    )
+    METRICS_FLOW_BUILDER_ANNOUNCE_DAMAGED_FILTERS_REPLACED: str = (
+        "Stored filters replaced."
+    )
+    METRICS_FLOW_BUILDER_ANNOUNCE_DAMAGED_BREAKDOWN_REPLACED: str = (
+        "Stored breakdown replaced."
+    )
+    METRICS_FLOW_BUILDER_ANNOUNCE_DAMAGED_BREAKDOWN_FILTERS_REPLACED: str = (
+        "Stored breakdown filters replaced."
+    )
+    METRICS_FLOW_BUILDER_ERR_FILTER_LINE: str = "Step {step}, filter {n}: {message}"
+    METRICS_FLOW_BUILDER_ERR_BREAKDOWN_LINE: str = "Step {step}, breakdown: {message}"
+    METRICS_FLOW_BUILDER_ERR_BREAKDOWN_FILTER_LINE: str = (
+        "Step {step}, breakdown filter {n}: {message}"
+    )
+    METRICS_FLOW_BUILDER_ERR_FILTERS_LINE: str = "Step {step}, filters: {message}"
+    METRICS_FLOW_BUILDER_ERR_BREAKDOWN_FILTERS_LINE: str = (
+        "Step {step}, breakdown filters: {message}"
     )
     METRICS_FLOW_BUILDER_ERR_PROBLEMS: str = "{count} problems to fix"
     METRICS_FLOW_BUILDER_ERR_PROBLEM_ONE: str = "1 problem to fix"
@@ -192,6 +213,62 @@ class ADMIN_METRICS_STRINGS:
     METRICS_FLOW_BUILDER_ANNOUNCE_REMOVED: str = "Step removed."
     METRICS_FLOW_BUILDER_ANNOUNCE_ADDED: str = "Step added."
     METRICS_FLOW_BUILDER_ANNOUNCE_SAVED: str = "Flow “{name}” saved."
+    METRICS_FLOW_BUILDER_ADD_FILTER: str = "+ Add filter ({count} of {max})"
+    METRICS_FLOW_BUILDER_FOR_STEP_SUFFIX: str = " for step {step}"
+    METRICS_FLOW_BUILDER_FILTERS_HEADING: str = "Filters"
+    METRICS_FLOW_BUILDER_FILTER_DIM_PLACEHOLDER: str = "Choose a field"
+    METRICS_FLOW_BUILDER_FILTER_VALUE_PLACEHOLDER: str = "Choose a value"
+    METRICS_FLOW_BUILDER_FILTER_VALUE_NEEDS_DIM: str = "Choose a field first"
+    METRICS_FLOW_BUILDER_FILTER_STATUS_PLACEHOLDER: str = "Status code, like 200"
+    METRICS_FLOW_BUILDER_FILTER_LIMIT_REASON: str = "At most {max} filters are allowed."
+    METRICS_FLOW_BUILDER_FILTER_NEEDS_EVENT_REASON: str = "Choose an event first."
+    METRICS_FLOW_BUILDER_FILTER_NONE_REASON: str = (
+        "This event has no fields to filter on."
+    )
+    METRICS_FLOW_BUILDER_FILTER_ALL_USED_REASON: str = (
+        "Every field already has a filter."
+    )
+    METRICS_FLOW_BUILDER_FILTER_STATUS_HINT: str = "Three digits, 100-599"
+    METRICS_FLOW_BUILDER_FILTER_STALE_DIM: str = (
+        "Field '{dim}' does not exist for this event."
+    )
+    METRICS_FLOW_BUILDER_FILTER_STALE_VALUE: str = "Choose a value from the list."
+    METRICS_FLOW_BUILDER_FILTER_DIM_LABEL: str = "Step {step} filter {n} field"
+    METRICS_FLOW_BUILDER_FILTER_VALUE_LABEL: str = "Step {step} filter {n} value"
+    METRICS_FLOW_BUILDER_FILTER_REMOVE_LABEL: str = "Remove step {step} filter {n}"
+    METRICS_FLOW_BUILDER_ANNOUNCE_FILTER_ADDED: str = "Filter added."
+    METRICS_FLOW_BUILDER_ANNOUNCE_FILTER_REMOVED: str = "Filter removed."
+    METRICS_FLOW_BUILDER_ADD_BREAKDOWN: str = "+ Add drop-off breakdown"
+    METRICS_FLOW_BUILDER_REMOVE_BREAKDOWN: str = "Remove breakdown"
+    METRICS_FLOW_BUILDER_BREAKDOWN_HEADING: str = "Drop-off breakdown"
+    METRICS_FLOW_BUILDER_ADD_BREAKDOWN_FILTER: str = (
+        "+ Add breakdown filter ({count} of {max})"
+    )
+    METRICS_FLOW_BUILDER_BREAKDOWN_EVENT_PLACEHOLDER: str = "Choose an event"
+    METRICS_FLOW_BUILDER_BREAKDOWN_GROUP_BY_PLACEHOLDER: str = "Choose a field"
+    METRICS_FLOW_BUILDER_BREAKDOWN_UNAVAILABLE: str = (
+        "This event cannot be broken down."
+    )
+    METRICS_FLOW_BUILDER_BREAKDOWN_EVENT_MISSING: str = "This event no longer exists."
+    METRICS_FLOW_BUILDER_BREAKDOWN_GROUP_BY_STALE: str = (
+        "Group by field '{group_by}' is not available for this event."
+    )
+    METRICS_FLOW_BUILDER_BREAKDOWN_EVENT_LABEL: str = "Step {step} breakdown event"
+    METRICS_FLOW_BUILDER_BREAKDOWN_GROUP_BY_LABEL: str = (
+        "Step {step} breakdown group by"
+    )
+    METRICS_FLOW_BUILDER_BREAKDOWN_FILTERS_LABEL: str = "Step {step} breakdown filters"
+    METRICS_FLOW_BUILDER_BREAKDOWN_FILTER_DIM_LABEL: str = (
+        "Step {step} breakdown filter {n} field"
+    )
+    METRICS_FLOW_BUILDER_BREAKDOWN_FILTER_VALUE_LABEL: str = (
+        "Step {step} breakdown filter {n} value"
+    )
+    METRICS_FLOW_BUILDER_BREAKDOWN_FILTER_REMOVE_LABEL: str = (
+        "Remove step {step} breakdown filter {n}"
+    )
+    METRICS_FLOW_BUILDER_ANNOUNCE_BREAKDOWN_ADDED: str = "Breakdown added."
+    METRICS_FLOW_BUILDER_ANNOUNCE_BREAKDOWN_REMOVED: str = "Breakdown removed."
     METRICS_FLOW_BUILDER_ERR_EVENT_REQUIRED: str = metric_flow_strs.EVENT_REQUIRED_STR
     METRICS_FLOW_BUILDER_ERR_ENDPOINT_REQUIRED: str = (
         metric_flow_strs.ENDPOINT_REQUIRED_STR

@@ -6,7 +6,7 @@ import { AppEvents, emit as emitAppEvent } from "../../lib/event-bus.js";
 import { getState, setState } from "../../store/app-store.js";
 import { applyRowCountDelta } from "../utubs/row-counts.js";
 import { createMemberBadge } from "./members.js";
-import { setMemberDeckForUTub } from "./deck.js";
+import { reorderMemberDeck, setMemberDeckForUTub } from "./deck.js";
 import { reapplyMemberFilter } from "./search.js";
 import {
   reapplyMemberDeckSiblingControlSuppression,
@@ -16,7 +16,7 @@ import {
 } from "./member-combobox.js";
 
 import type { StagedMemberChip } from "./member-combobox.js";
-import type { MemberModifiedResponse } from "../../types/member.js";
+import type { AddMemberResponse } from "../../types/member.js";
 
 // Per-chip batch add (Step 6). This module is a NEW organizational split — there
 // is no `combobox-submit.ts` in the codebase to mirror. The request/success/fail
@@ -37,7 +37,7 @@ type ChipSettleResult = {
   chip: StagedMemberChip;
   outcome: ChipOutcome;
   // Present only for a 200: the added member, appended once after settle.
-  member?: MemberModifiedResponse["member"];
+  member?: AddMemberResponse["member"];
   // Present only for a 400: the failure reason, carried by the chip's title
   // tooltip and reused in the batched aria-live summary.
   errorText?: string;
@@ -122,7 +122,7 @@ function submitOneChip({
       source: chip.source,
     });
 
-    request.done((response: MemberModifiedResponse) => {
+    request.done((response: AddMemberResponse) => {
       // ajaxCall's .done only fires on a 2xx; the backend returns 200 with the
       // added member. Always settle the wrapper (a non-settling branch here
       // would hang Promise.allSettled). The store push + deck badge for this
@@ -160,8 +160,9 @@ function submitOneChip({
 
 /**
  * Runs the once-after-all-settle side effects from the RESOLVED RESULTS ARRAY.
- * When the creator is still on the batch's UTub, appends a deck badge for every
- * fulfilled chip and syncs the deck ONCE; otherwise skips all deck-DOM mutations
+ * When the creator is still on the batch's UTub, adds a deck badge for every
+ * fulfilled chip (appended, then reordered into the viewer's member sort) and
+ * syncs the deck ONCE; otherwise skips all deck-DOM mutations
  * (the deck may already be torn down) and surfaces completion via a non-deck
  * aria-live path. Then clears only the succeeded chips (stay-open flow), leaving
  * failed chips (red ✗ + reason tooltip) staged for retry, and refocuses the input.
@@ -192,11 +193,7 @@ function applyPostSettleSideEffects({
     const addedMembers = fulfilled
       .map((result) => result.member)
       .filter((member): member is NonNullable<typeof member> => Boolean(member))
-      .filter((member) => !existingMemberIds.has(member.id))
-      .map((member) => ({
-        ...member,
-        memberRole: APP_CONFIG.constants.MEMBER_ROLES.MEMBER,
-      }));
+      .filter((member) => !existingMemberIds.has(member.id));
     if (addedMembers.length > 0) {
       // Store push + deck badge append are unified under this single
       // UTub-relevance check so getState().members and the deck DOM stay in sync
@@ -224,7 +221,15 @@ function applyPostSettleSideEffects({
       // Deck subheader count + filter re-stripe run ONCE total, after the appends.
       setMemberDeckForUTub(true);
       reapplyMemberFilter();
-      // The just-appended member badges carry their own active
+      // The appended badges land at the end; move them into the viewer's sort
+      // order. The filter pass above stripes once; the reorder restripes only
+      // when it moved a row, so the last pass is always the final one. Adds never
+      // scroll or change the announcement.
+      reorderMemberDeck({
+        members: getState().members,
+        memberSort: getState().preferences.memberSort,
+      });
+      // The just-placed member badges carry their own active
       // `.memberOtherBtnDelete` remove buttons; the combobox stays open (stay-open
       // flow), so re-suppress them too — otherwise a creator could open a removal
       // modal for a freshly-added member mid-stage and strand staged state.

@@ -31,6 +31,7 @@ from backend.schemas.requests.users import (
     ChangeUsernameRequest,
     DeleteAccountRequest,
     ProviderLinkRequest,
+    UpdateMemberListPreferencesRequest,
     UpdatePreferencesRequest,
     UpdateUtubListPreferencesRequest,
 )
@@ -40,6 +41,7 @@ from backend.schemas.users import (
     ChangePasswordResponseSchema,
     ChangeUsernameResponseSchema,
     LoginRedirectResponseSchema,
+    UpdateMemberListPreferencesResponseSchema,
     UpdatePreferencesResponseSchema,
     UpdateUtubListPreferencesResponseSchema,
 )
@@ -69,6 +71,7 @@ from backend.users.services.account_service import (
 )
 from backend.users.services.data_export_service import build_user_data_export_core
 from backend.users.services.preferences_service import (
+    apply_member_list_preferences_change,
     apply_preferences_change,
     apply_utub_list_preferences_change,
     build_display_preferences_context,
@@ -284,6 +287,29 @@ def update_utub_list_preferences(
         utub_sort=update_utub_list_preferences_request.utub_sort,
         show_row_counts=update_utub_list_preferences_request.show_row_counts,
         show_list_totals=update_utub_list_preferences_request.show_list_totals,
+    )
+
+
+@users.route("/users/preferences/members", methods=["PATCH"])
+@email_validation_required
+@api_route(
+    request_schema=UpdateMemberListPreferencesRequest,
+    response_schema=UpdateMemberListPreferencesResponseSchema,
+    error_message=USER_FAILURE.INVALID_INPUT,
+    error_code=PreferencesErrorCodes.INVALID_FORM_INPUT,
+    tags=[OPEN_API.AUTH],
+    description="Partially update the authenticated user's member-list preferences (member sort). Acts only on the logged-in user and never touches the display or UTub-list preferences; the preferences row is created on the first real change, and a no-op returns 200 'No change'. An empty body, unknown key, explicit null or unknown sort is a 400. An unauthenticated request is answered by the app-wide login_manager unauthorized_handler with a 302 redirect to the splash page (with next), and an authenticated user with an unvalidated email gets a 302 to the splash page (no next). Metrics: API_HIT only (no DOMAIN event).",
+    status_codes={
+        200: UpdateMemberListPreferencesResponseSchema,
+        400: ErrorResponse,
+    },
+)
+def update_member_list_preferences(
+    update_member_list_preferences_request: UpdateMemberListPreferencesRequest,
+) -> FlaskResponse:
+    """Applies the partial member-list preferences write for ``current_user``."""
+    return apply_member_list_preferences_change(
+        member_sort=update_member_list_preferences_request.member_sort,
     )
 
 

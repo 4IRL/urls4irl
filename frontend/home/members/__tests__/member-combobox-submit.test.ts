@@ -26,6 +26,7 @@ vi.mock("../co-member-fetch.js", () => ({
 
 vi.mock("../deck.js", () => ({
   setMemberDeckForUTub: vi.fn(),
+  reorderMemberDeck: vi.fn(() => []),
 }));
 
 vi.mock("../../utubs/row-counts.js", () => ({
@@ -203,7 +204,15 @@ describe("member-combobox-submit — mixed outcomes", () => {
     const settle = submitStagedMembers({ utubID: 7, wrap });
 
     firstDeferred.resolve(
-      { utubID: 7, member: { id: 1, username: "Bob" } },
+      {
+        utubID: 7,
+        member: {
+          id: 1,
+          username: "Bob",
+          memberRole: "member",
+          joinedAt: "2026-01-02T03:04:05.123Z",
+        },
+      },
       "success",
       okXhr,
     );
@@ -255,19 +264,36 @@ describe("member-combobox-submit — mixed outcomes", () => {
       .mockReturnValueOnce(secondDeferred);
 
     const { createMemberBadge } = await import("../members.js");
-    const { setMemberDeckForUTub } = await import("../deck.js");
+    const { setMemberDeckForUTub, reorderMemberDeck } =
+      await import("../deck.js");
     const { reapplyMemberFilter } = await import("../search.js");
     const { emit, AppEvents } = await import("../../../lib/event-bus.js");
 
     const settle = submitStagedMembers({ utubID: 7, wrap });
 
     firstDeferred.resolve(
-      { utubID: 7, member: { id: 1, username: "Bob" } },
+      {
+        utubID: 7,
+        member: {
+          id: 1,
+          username: "Bob",
+          memberRole: "member",
+          joinedAt: "2026-01-02T03:04:05.123Z",
+        },
+      },
       "success",
       okXhr,
     );
     secondDeferred.resolve(
-      { utubID: 7, member: { id: 2, username: "Ghost" } },
+      {
+        utubID: 7,
+        member: {
+          id: 2,
+          username: "Ghost",
+          memberRole: "cocreator",
+          joinedAt: "2026-01-02T03:04:06.123Z",
+        },
+      },
       "success",
       okXhr,
     );
@@ -288,16 +314,29 @@ describe("member-combobox-submit — mixed outcomes", () => {
       urlDelta: 0,
       memberDelta: 2,
     });
-    // Freshly-added members are pushed with the plain-member role so the widened
-    // MemberItem is satisfied and the correct role icon renders downstream (DD-1).
+    // Freshly-added members carry the server's role and join date verbatim.
     expect(getState().members.map((member) => member.memberRole)).toEqual([
       "member",
-      "member",
+      "cocreator",
+    ]);
+    expect(getState().members.map((member) => member.joinedAt)).toEqual([
+      "2026-01-02T03:04:05.123Z",
+      "2026-01-02T03:04:06.123Z",
     ]);
     // Deck sync runs ONCE total, from the resolved results array.
     expect(vi.mocked(createMemberBadge)).toHaveBeenCalledTimes(2);
     expect(vi.mocked(setMemberDeckForUTub)).toHaveBeenCalledTimes(1);
     expect(vi.mocked(reapplyMemberFilter)).toHaveBeenCalledTimes(1);
+    // The batch is placed in the viewer's sort ONCE, after the filter pass, from
+    // the store's members (which already include the added ones).
+    expect(vi.mocked(reorderMemberDeck)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(reorderMemberDeck)).toHaveBeenCalledWith({
+      members: getState().members,
+      memberSort: getState().preferences.memberSort,
+    });
+    expect(
+      vi.mocked(reapplyMemberFilter).mock.invocationCallOrder[0],
+    ).toBeLessThan(vi.mocked(reorderMemberDeck).mock.invocationCallOrder[0]);
   });
 
   it("200 + non-400 (unrecognized status / 403 HTML): the fatal redirect fires and the batch still settles with that chip excluded", async () => {
@@ -322,7 +361,15 @@ describe("member-combobox-submit — mixed outcomes", () => {
     // and the fatal-redirect path runs (a non-403-HTML status falls through to
     // the hard error-page navigation).
     firstDeferred.resolve(
-      { utubID: 7, member: { id: 1, username: "Bob" } },
+      {
+        utubID: 7,
+        member: {
+          id: 1,
+          username: "Bob",
+          memberRole: "member",
+          joinedAt: "2026-01-02T03:04:05.123Z",
+        },
+      },
       "success",
       okXhr,
     );
@@ -363,7 +410,15 @@ describe("member-combobox-submit — 429 short-circuit", () => {
     const settle = submitStagedMembers({ utubID: 7, wrap });
 
     firstDeferred.resolve(
-      { utubID: 7, member: { id: 1, username: "Bob" } },
+      {
+        utubID: 7,
+        member: {
+          id: 1,
+          username: "Bob",
+          memberRole: "member",
+          joinedAt: "2026-01-02T03:04:05.123Z",
+        },
+      },
       "success",
       okXhr,
     );
@@ -405,7 +460,15 @@ describe("member-combobox-submit — batched aria-live", () => {
     // First chip settles (200) — the aria-live region must remain EMPTY until
     // Promise.allSettled resolves (batched, not per-chip).
     firstDeferred.resolve(
-      { utubID: 7, member: { id: 1, username: "Bob" } },
+      {
+        utubID: 7,
+        member: {
+          id: 1,
+          username: "Bob",
+          memberRole: "member",
+          joinedAt: "2026-01-02T03:04:05.123Z",
+        },
+      },
       "success",
       okXhr,
     );
@@ -444,12 +507,28 @@ describe("member-combobox-submit — cross-UTub relevance", () => {
     setState({ activeUTubID: 99 });
 
     firstDeferred.resolve(
-      { utubID: 7, member: { id: 1, username: "Bob" } },
+      {
+        utubID: 7,
+        member: {
+          id: 1,
+          username: "Bob",
+          memberRole: "member",
+          joinedAt: "2026-01-02T03:04:05.123Z",
+        },
+      },
       "success",
       okXhr,
     );
     secondDeferred.resolve(
-      { utubID: 7, member: { id: 2, username: "Ghost" } },
+      {
+        utubID: 7,
+        member: {
+          id: 2,
+          username: "Ghost",
+          memberRole: "member",
+          joinedAt: "2026-01-02T03:04:06.123Z",
+        },
+      },
       "success",
       okXhr,
     );
@@ -484,15 +563,35 @@ describe("member-combobox-submit — dedupe on switch-away-and-back", () => {
     // is still the batch's UTub 7). That select flow re-fetched `members` fresh —
     // already including Bob (id 1), whose independent POST had completed. This
     // stale batch must NOT append Bob a second time.
-    setState({ members: [{ id: 1, username: "Bob", memberRole: "member" }] });
+    setState({
+      members: [
+        { id: 1, username: "Bob", memberRole: "member", joinedAt: null },
+      ],
+    });
 
     firstDeferred.resolve(
-      { utubID: 7, member: { id: 1, username: "Bob" } },
+      {
+        utubID: 7,
+        member: {
+          id: 1,
+          username: "Bob",
+          memberRole: "member",
+          joinedAt: "2026-01-02T03:04:05.123Z",
+        },
+      },
       "success",
       okXhr,
     );
     secondDeferred.resolve(
-      { utubID: 7, member: { id: 2, username: "Ghost" } },
+      {
+        utubID: 7,
+        member: {
+          id: 2,
+          username: "Ghost",
+          memberRole: "member",
+          joinedAt: "2026-01-02T03:04:06.123Z",
+        },
+      },
       "success",
       okXhr,
     );

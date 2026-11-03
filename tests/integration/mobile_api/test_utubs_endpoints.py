@@ -14,7 +14,7 @@ Conventions:
   - pytestmark = pytest.mark.mobile_api
 """
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from flask import Flask, url_for
@@ -23,7 +23,7 @@ from flask.testing import FlaskClient
 from backend import db
 from backend.api_v1.services.tokens import create_access_token
 from backend.metrics.events import DEVICE_TYPE_DIM_KEY, DeviceType, EventName
-from backend.models.user_preferences import User_Preferences, UtubSort
+from backend.models.user_preferences import MemberSort, User_Preferences, UtubSort
 from backend.models.users import Users
 from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utubs import Utubs
@@ -476,6 +476,82 @@ def test_get_single_utub_records_utub_opened_dims(
     }
 
 
+def test_get_single_utub_includes_member_sort_and_joined_at(
+    app: Flask,
+    api_client: FlaskClient,
+    bearer_headers_first_user: dict[str, str],
+    add_single_utub_as_user_without_logging_in,
+):
+    """
+    GIVEN a validated UTub owner with a saved Recently joined member sort
+    WHEN GET /api/v1/utubs/1
+    THEN the response carries ``memberSort`` and each member's ``joinedAt``,
+        with the owner first
+    """
+    with app.app_context():
+        db.session.add(
+            User_Preferences(user_id=1, member_sort=MemberSort.RECENTLY_JOINED)
+        )
+        db.session.commit()
+
+    response = api_client.get(
+        _get_single_utub_url(app, utub_id=1), headers=bearer_headers_first_user
+    )
+
+    assert response.status_code == 200
+    response_json = response.get_json()
+    assert response_json[MODELS.MEMBER_SORT] == MemberSort.RECENTLY_JOINED.value
+    assert response_json[MODELS.MEMBERS][0][MODELS.ID] == 1
+    assert MODELS.JOINED_AT in response_json[MODELS.MEMBERS][0]
+
+
+def test_members_with_different_sorts_each_see_their_own_order(
+    app: Flask,
+    api_client: FlaskClient,
+    make_bearer_headers,
+    every_user_in_every_utub,
+):
+    """
+    GIVEN two members of UTub 3 (owned by user 3) with different saved member sorts
+    WHEN each GETs /api/v1/utubs/3 in turn
+    THEN each sees their own order, owner first (user 1: name, Century 2 before
+        Fake 1; user 2: newest join, 1 then 2)
+
+    Each request runs in its own app context. The `app` fixture holds one
+    outer app context for the whole test, and Flask-Login caches the resolved
+    user on `g` (`g._login_user`), which that context shares across requests;
+    in production every request gets a fresh `g`, so this only mirrors it.
+    """
+    with app.app_context():
+        for user_id, joined_days in ((1, 2), (2, 1), (3, None)):
+            member = Utub_Members.query.get((3, user_id))
+            member.joined_at = (
+                None
+                if joined_days is None
+                else datetime(2026, 1, 1, tzinfo=timezone.utc)
+                + timedelta(days=joined_days)
+            )
+        db.session.add(User_Preferences(user_id=1, member_sort=MemberSort.NAME_AZ))
+        db.session.add(
+            User_Preferences(user_id=2, member_sort=MemberSort.RECENTLY_JOINED)
+        )
+        db.session.commit()
+
+    orders: dict[int, list[int]] = {}
+    for viewer_id in (1, 2):
+        headers = make_bearer_headers(_token_for_user(app, user_id=viewer_id))
+        with app.app_context():
+            response = api_client.get(
+                _get_single_utub_url(app, utub_id=3), headers=headers
+            )
+        assert response.status_code == 200
+        orders[viewer_id] = [
+            member[MODELS.ID] for member in response.get_json()[MODELS.MEMBERS]
+        ]
+
+    assert orders == {1: [3, 2, 1], 2: [3, 1, 2]}
+
+
 def test_get_single_utub_includes_settings(
     app: Flask,
     api_client: FlaskClient,
@@ -614,7 +690,10 @@ def test_get_single_utub_as_co_creator(
         MODELS.USERNAME: co_creator_username,
         MODELS.MEMBER_ROLE: Member_Role.CO_CREATOR.value,
     }
-    assert co_creator_dict in response_json[MODELS.MEMBERS]
+    assert any(
+        {key: member[key] for key in co_creator_dict} == co_creator_dict
+        for member in response_json[MODELS.MEMBERS]
+    )
 
     creator_entry = next(
         member

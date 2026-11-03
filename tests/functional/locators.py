@@ -125,6 +125,26 @@ class HomePageLocators(GenericPageLocator):
     URLS_SETTINGS_SHEET_READ_ONLY_NOTE = (
         f"{PANEL_SETTINGS_SHEET} .panelSettingsReadOnlyNote:not([hidden])"
     )
+    # Personal member-list sort select in the Members settings section.
+    MEMBERS_SETTINGS_SORT_SELECT = "#members-list-sort"
+    MEMBERS_SETTINGS_SHEET_SORT_SELECT = (
+        f"{PANEL_SETTINGS_SHEET} {MEMBERS_SETTINGS_SORT_SELECT}"
+    )
+    # The pre-date-members note, shown only under "Recently joined".
+    MEMBERS_SETTINGS_SORT_NOTE = (
+        f"{PANEL_SETTINGS_POPOVER} #members-list-sort-note:not([hidden])"
+    )
+    # Members gear (popover or sheet, whichever is open): the sort select, and
+    # the owner-only "Transfer ownership" row/button. The row is rendered with the
+    # section and hidden unless the viewer owns the UTub and another member exists
+    # (members/list-settings-section.ts); clicking it closes the gear and opens the
+    # dedicated transfer modal (#transferOwnerModal).
+    MEMBER_BTN_TRANSFER_OWNER = "#members-transfer-owner"
+    MEMBERS_SETTINGS_TRANSFER_HEADING = "#members-transfer-heading"
+    # Usernames of the non-owner member rows, in deck order (owner is in #UTubOwner).
+    MEMBERS_DECK_ROW_NAMES = "#listMembers > .member > b"
+    MEMBERS_DECK_OWNER_NAME = "#UTubOwner > .member > b"
+    MEMBER_ROW_ACTION_ANNOUNCEMENT = "#MemberRowActionAnnouncement"
     # Shared (manager-only) short-link policy switch in the "New URLs" section.
     URLS_SETTINGS_ALLOW_SHORT_LINKS_SWITCH = "#urlsSettingsAllowShortLinksSwitch"
     # "Your view of this UTub" (per-member) controls on the URLs gear.
@@ -629,13 +649,6 @@ class HomePageLocators(GenericPageLocator):
     MEMBER_ROW_ROLE_ICON = ".member .memberRole"
     MEMBER_ROW_CO_CREATOR_ICON = ".member svg.bi-diamond-half"
 
-    # Standalone owner-only "Transfer ownership" trigger in the members-deck
-    # header cluster (beside #memberBtnCreate). Starts hidden; shown by JS only
-    # for a literal owner with >= 1 other member. Opens the dedicated transfer
-    # modal (#transferOwnerModal) via the TRANSFER_PICKER_REQUESTED event bus
-    # (wired in members/deck.ts's setMemberDeckTransferOwnerBtn).
-    MEMBER_BTN_TRANSFER_OWNER = "#memberBtnTransferOwner"
-
     # Dedicated Bootstrap ownership-transfer modal (#transferOwnerModal) with an
     # inline pick→confirm transition (transfer.ts + transfer-picker.ts). The PICK
     # view holds the filter input + a role=listbox of member options; the CONFIRM
@@ -1043,7 +1056,10 @@ class MetricsDashboardLocators(GenericPageLocator):
     FLOW_BUILDER_NAME_INPUT = "#MetricsFlowBuilderMount input[data-field=display_name]"
     FLOW_BUILDER_STEP = "#MetricsFlowBuilderMount .flow-builder-step"
     FLOW_BUILDER_ADD_BUTTON = "#MetricsFlowBuilderMount button[data-action=add]"
-    FLOW_BUILDER_ADD_REASON = "#MetricsFlowBuilderMount .flow-builder-reason"
+    # The step-level reason only: nested filter rows carry their own `.flow-builder-reason`.
+    FLOW_BUILDER_ADD_REASON = (
+        "#MetricsFlowBuilderMount .flow-builder-add ~ .flow-builder-reason"
+    )
     FLOW_BUILDER_SAVE_BUTTON = (
         "#MetricsFlowBuilderMount .flow-builder-actions button[type=submit]"
     )
@@ -1069,6 +1085,31 @@ class MetricsDashboardLocators(GenericPageLocator):
         "#MetricsFlowBuilderMount .flow-builder-field:has("
         "input[data-field=display_name]) > p.flow-builder-error"
     )
+    # Nested filter and breakdown rows inside a step (scope with the step locator)
+    FLOW_BUILDER_FILTER_ROW = (
+        ".flow-builder-extras > .flow-builder-filters > .flow-builder-filter"
+    )
+    FLOW_BUILDER_BREAKDOWN = ".flow-builder-breakdown"
+    # Relative to a `.flow-builder-breakdown` locator.
+    FLOW_BUILDER_BREAKDOWN_FILTER_ROW = ".flow-builder-filters > .flow-builder-filter"
+    FLOW_BUILDER_ADD_FILTER_BUTTON = "button[data-action=add-filter]"
+    FLOW_BUILDER_ADD_BREAKDOWN_BUTTON = "button[data-action=add-breakdown]"
+    FLOW_BUILDER_REMOVE_BREAKDOWN_BUTTON = "button[data-action=remove-breakdown]"
+    FLOW_BUILDER_ADD_BREAKDOWN_FILTER_BUTTON = (
+        "button[data-action=add-breakdown-filter]"
+    )
+    FLOW_BUILDER_REMOVE_FILTER_BUTTON = "button[data-action=remove-filter]"
+    FLOW_BUILDER_REMOVE_BREAKDOWN_FILTER_BUTTON = (
+        "button[data-action=remove-breakdown-filter]"
+    )
+    FLOW_BUILDER_FILTER_DIM = "[data-field=filter_dim]"
+    FLOW_BUILDER_FILTER_VALUE = "[data-field=filter_value]"
+    FLOW_BUILDER_BREAKDOWN_EVENT = "[data-field=breakdown_event_name]"
+    FLOW_BUILDER_BREAKDOWN_GROUP_BY = "[data-field=breakdown_group_by]"
+    FLOW_BUILDER_BREAKDOWN_FILTER_DIM = "[data-field=breakdown_filter_dim]"
+    FLOW_BUILDER_BREAKDOWN_FILTER_VALUE = "[data-field=breakdown_filter_value]"
+    FLOW_BUILDER_HINT = ".flow-builder-hint"
+    FLOW_BUILDER_ERROR = ".flow-builder-error"
     FLOWS_NEW_REASON = "#MetricsFlowNewReason"
     REFRESH_SPINNER = "#MetricsRefreshNowBtn .spinner"
     REFRESH_ICON = "#MetricsRefreshNowBtn .refresh-icon"

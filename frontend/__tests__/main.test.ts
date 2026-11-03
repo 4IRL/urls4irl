@@ -4,6 +4,7 @@ vi.mock("../store/app-store.js", () => ({
   getState: vi.fn(() => ({
     preferences: {
       utubSort: "recent_activity",
+      memberSort: "name_az",
       showRowCounts: false,
       showListTotals: true,
     },
@@ -55,6 +56,7 @@ describe("loadInitialPreferencesState", () => {
       display_density: "compact",
       display_date_format: "us",
       display_utub_sort: "name_az",
+      display_member_sort: "recently_joined",
       display_show_row_counts: true,
       display_show_list_totals: false,
     };
@@ -76,9 +78,29 @@ describe("loadInitialPreferencesState", () => {
         density: "compact",
         dateFormat: "us",
         utubSort: "name_az",
+        memberSort: "recently_joined",
         showRowCounts: true,
         showListTotals: false,
       },
+    });
+  });
+
+  it("falls back to name_az for an unknown stored member sort", async () => {
+    const script = document.createElement("script");
+    script.id = "user-preferences-data";
+    script.type = "application/json";
+    script.textContent = JSON.stringify({
+      display_theme: "dark",
+      display_member_sort: "bogus",
+    });
+    document.body.appendChild(script);
+
+    const { loadInitialPreferencesState } =
+      await import("../lib/initial-state.js");
+    loadInitialPreferencesState();
+
+    expect(vi.mocked(setState)).toHaveBeenCalledWith({
+      preferences: expect.objectContaining({ memberSort: "name_az" }),
     });
   });
 

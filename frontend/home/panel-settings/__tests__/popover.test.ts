@@ -12,6 +12,7 @@ import {
 import { announceSettingsStatus } from "../announce.js";
 import { resyncSettings } from "../client.js";
 import {
+  closePanelSettings,
   resetPopover,
   initPopover,
   rerenderSectionIfIdle,
@@ -1885,6 +1886,33 @@ describe("panel settings popover", () => {
       el("outside").focus();
       emit(AppEvents.TRASH_OPENED);
       expect(document.activeElement).toBe(el("outside"));
+    });
+
+    it("closePanelSettings closes the open surface silently and returns focus to the gear", () => {
+      el("sort-input").focus();
+      vi.mocked(announceSettingsStatus).mockClear();
+      closePanelSettings();
+      expect(isOpen()).toBe(false);
+      expect(document.activeElement).toBe(gear("urls"));
+      expect(announceSettingsStatus).not.toHaveBeenCalled();
+    });
+
+    it("closePanelSettings on the sheet closes it without a history back()", () => {
+      el("sort-input").focus();
+      breakpoint.cross({ matches: true });
+      openGear("urls");
+      const back = vi.spyOn(history, "back");
+      closePanelSettings();
+      expect(isOpen()).toBe(false);
+      expect(back).not.toHaveBeenCalled();
+      back.mockRestore();
+    });
+
+    it("closePanelSettings called again after the close is harmless", () => {
+      closePanelSettings();
+      expect(isOpen()).toBe(false);
+      closePanelSettings();
+      expect(isOpen()).toBe(false);
     });
 
     it("falls back to the deck header button when the gear is hidden", () => {

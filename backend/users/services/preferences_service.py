@@ -9,6 +9,7 @@ from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.models.user_preferences import (
     DateFormat,
     Density,
+    MemberSort,
     SortOrder,
     Theme,
     User_Preferences,
@@ -18,6 +19,7 @@ from backend.models.user_preferences import (
 )
 from backend.schemas.errors import build_message_error_response
 from backend.schemas.users import (
+    UpdateMemberListPreferencesResponseSchema,
     UpdatePreferencesResponseSchema,
     UpdateUtubListPreferencesResponseSchema,
 )
@@ -50,6 +52,7 @@ def build_display_preferences_context() -> dict[str, Any]:
         "display_density": resolved.density.value,
         "display_date_format": resolved.date_format.value,
         "display_utub_sort": resolved.utub_sort.value,
+        "display_member_sort": resolved.member_sort.value,
         "display_show_row_counts": resolved.show_row_counts,
         "display_show_list_totals": resolved.show_list_totals,
     }
@@ -101,6 +104,43 @@ def apply_utub_list_preferences_change(
             utub_sort=resolved.utub_sort.value,
             show_row_counts=resolved.show_row_counts,
             show_list_totals=resolved.show_list_totals,
+            status=status,
+            message=message,
+        ),
+    ).to_response()
+
+
+def apply_member_list_preferences_change(
+    *,
+    member_sort: MemberSort | None,
+) -> FlaskResponse:
+    """Persist only the provided member-list preferences for ``current_user``.
+
+    ``None`` means "not sent" (the request schema already rejected an explicit
+    null). A no-op returns ``No change`` before any row is created or committed;
+    the response echoes the resolved post-write value.
+    """
+    preferences: User_Preferences | None = current_user.preferences
+    existing = resolve_preferences(preferences)
+
+    if member_sort is None or member_sort == existing.member_sort:
+        resolved_sort = existing.member_sort
+        status = STD_JSON.NO_CHANGE
+        message = PREFERENCES_CHANGE_NO_CHANGE
+    else:
+        if preferences is None:
+            preferences = User_Preferences(user_id=current_user.id)
+            db.session.add(preferences)
+        preferences.member_sort = member_sort
+        db.session.commit()
+        resolved_sort = resolve_preferences(preferences).member_sort
+        status = STD_JSON.SUCCESS
+        message = PREFERENCES_CHANGE_SUCCESS
+
+    return APIResponse(
+        status_code=200,
+        data=UpdateMemberListPreferencesResponseSchema(
+            member_sort=resolved_sort.value,
             status=status,
             message=message,
         ),

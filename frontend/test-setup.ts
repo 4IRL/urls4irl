@@ -4,6 +4,9 @@ import jquery from "jquery";
 window.jQuery = jquery;
 window.$ = jquery;
 
+// jsdom does not implement scrollIntoView
+Element.prototype.scrollIntoView = function scrollIntoView() {};
+
 // Factory for Bootstrap component mocks — each component shares the same
 // constructor/show/hide/dispose/getInstance/getOrCreateInstance shape.
 function makeBootstrapClass(
@@ -68,6 +71,7 @@ const appConfig = {
     errorPage: "/error",
     logout: "/logout",
     updateUtubListPreferences: "/users/preferences/utubs",
+    updateMemberListPreferences: "/users/preferences/members",
     getTrash: "/utubs/trash",
     emptyTrash: "/utubs/trash/empty",
     getUTub: "/utubs/-1",
@@ -506,6 +510,18 @@ const appConfig = {
     MEMBER_ROLE_CHANGE_GRANT_SUCCESS: "{{ username }} is now a co-owner.",
     MEMBER_ROLE_CHANGE_REVOKE_SUCCESS:
       "{{ username }} is no longer a co-owner.",
+    MEMBER_ROLE_CHANGE_GRANT_POSITION: "Now listed under co-owners.",
+    MEMBER_ROLE_CHANGE_REVOKE_POSITION: "Now listed under members.",
+    MEMBERS_LIST_SETTINGS_SECTION_TITLE: "Your member list",
+    MEMBERS_LIST_SORT_LABEL: "Sort members by",
+    MEMBERS_TRANSFER_SECTION_TITLE: "Ownership",
+    MEMBERS_LIST_SORT_DESC: "In all your UTubs. The owner always stays on top.",
+    MEMBERS_LIST_SORT_OPTION_NAME_AZ: "Name A–Z",
+    MEMBERS_LIST_SORT_OPTION_ROLE: "Role, then name",
+    MEMBERS_LIST_SORT_OPTION_JOINED: "Recently joined",
+    MEMBERS_LIST_SORT_NOTICE_PREFIX: "Sorted by ",
+    MEMBERS_LIST_SORT_JOINED_NOTE:
+      "Members who joined before join dates were recorded are listed by name.",
     TRANSFER_OWNER_ACTION: "Transfer ownership",
     TRANSFER_OWNER_PICKER_TITLE: "Transfer ownership to…",
     TRANSFER_OWNER_FILTER_PLACEHOLDER: "Filter members…",
@@ -776,20 +792,35 @@ const appConfig = {
     METRICS_FLOW_BUILDER_HINT_ALREADY_FIRST: "Already the first step.",
     METRICS_FLOW_BUILDER_HINT_ALREADY_LAST: "Already the last step.",
     METRICS_FLOW_BUILDER_NOTE_STALE_VALUE: "{value} (no longer exists)",
-    METRICS_FLOW_BUILDER_NOTE_FILTERS_CLEARED:
-      "Filters and breakdown removed because the event changed.",
-    METRICS_FLOW_BUILDER_NOTE_KEPT_FILTERS_BREAKDOWN:
-      "{count} filters and a breakdown kept. Not editable yet.",
-    METRICS_FLOW_BUILDER_NOTE_KEPT_FILTERS_BREAKDOWN_ONE:
-      "1 filter and a breakdown kept. Not editable yet.",
-    METRICS_FLOW_BUILDER_NOTE_KEPT_FILTERS:
-      "{count} filters kept. Not editable yet.",
-    METRICS_FLOW_BUILDER_NOTE_KEPT_FILTERS_ONE:
-      "1 filter kept. Not editable yet.",
-    METRICS_FLOW_BUILDER_NOTE_KEPT_BREAKDOWN:
-      "Breakdown kept. Not editable yet.",
-    METRICS_FLOW_BUILDER_NOTE_FILTERS_UNEDITABLE:
-      "Filters can't be edited here yet: remove the step or delete the flow.",
+    METRICS_FLOW_BUILDER_ANNOUNCE_FILTERS_CLEARED:
+      "Filters and breakdown cleared for this step.",
+    METRICS_FLOW_BUILDER_FILTER_INCOMPLETE: "Choose a field and value.",
+    METRICS_FLOW_BUILDER_BREAKDOWN_INCOMPLETE:
+      "Choose an event and a group by field.",
+    METRICS_FLOW_BUILDER_DAMAGED_FILTERS:
+      "This step's stored filters could not be read. Add a filter to replace them.",
+    METRICS_FLOW_BUILDER_DAMAGED_BREAKDOWN:
+      "This step's stored breakdown could not be read. Add a breakdown to replace it.",
+    METRICS_FLOW_BUILDER_DAMAGED_BREAKDOWN_FILTERS:
+      "This breakdown's stored filters could not be read. Add a filter to replace them.",
+    METRICS_FLOW_BUILDER_DAMAGED_RECOURSE_STEP:
+      "Or change this step's event or endpoint to clear it.",
+    METRICS_FLOW_BUILDER_DAMAGED_RECOURSE_BREAKDOWN:
+      "Or change the breakdown event to clear it.",
+    METRICS_FLOW_BUILDER_ANNOUNCE_DAMAGED_FILTERS_REPLACED:
+      "Stored filters replaced.",
+    METRICS_FLOW_BUILDER_ANNOUNCE_DAMAGED_BREAKDOWN_REPLACED:
+      "Stored breakdown replaced.",
+    METRICS_FLOW_BUILDER_ANNOUNCE_DAMAGED_BREAKDOWN_FILTERS_REPLACED:
+      "Stored breakdown filters replaced.",
+    METRICS_FLOW_BUILDER_ERR_FILTER_LINE: "Step {step}, filter {n}: {message}",
+    METRICS_FLOW_BUILDER_ERR_BREAKDOWN_LINE:
+      "Step {step}, breakdown: {message}",
+    METRICS_FLOW_BUILDER_ERR_BREAKDOWN_FILTER_LINE:
+      "Step {step}, breakdown filter {n}: {message}",
+    METRICS_FLOW_BUILDER_ERR_FILTERS_LINE: "Step {step}, filters: {message}",
+    METRICS_FLOW_BUILDER_ERR_BREAKDOWN_FILTERS_LINE:
+      "Step {step}, breakdown filters: {message}",
     METRICS_FLOW_BUILDER_ERR_PROBLEMS: "{count} problems to fix",
     METRICS_FLOW_BUILDER_ERR_PROBLEM_ONE: "1 problem to fix",
     METRICS_FLOW_BUILDER_ERR_SAVE_FAILED: "Couldn't save this flow. Try again.",
@@ -811,6 +842,55 @@ const appConfig = {
     METRICS_FLOW_BUILDER_ANNOUNCE_REMOVED: "Step removed.",
     METRICS_FLOW_BUILDER_ANNOUNCE_ADDED: "Step added.",
     METRICS_FLOW_BUILDER_ANNOUNCE_SAVED: "Flow “{name}” saved.",
+    METRICS_FLOW_BUILDER_ADD_FILTER: "+ Add filter ({count} of {max})",
+    METRICS_FLOW_BUILDER_FOR_STEP_SUFFIX: " for step {step}",
+    METRICS_FLOW_BUILDER_FILTERS_HEADING: "Filters",
+    METRICS_FLOW_BUILDER_FILTER_DIM_PLACEHOLDER: "Choose a field",
+    METRICS_FLOW_BUILDER_FILTER_VALUE_PLACEHOLDER: "Choose a value",
+    METRICS_FLOW_BUILDER_FILTER_VALUE_NEEDS_DIM: "Choose a field first",
+    METRICS_FLOW_BUILDER_FILTER_STATUS_PLACEHOLDER: "Status code, like 200",
+    METRICS_FLOW_BUILDER_FILTER_LIMIT_REASON:
+      "At most {max} filters are allowed.",
+    METRICS_FLOW_BUILDER_FILTER_NEEDS_EVENT_REASON: "Choose an event first.",
+    METRICS_FLOW_BUILDER_FILTER_NONE_REASON:
+      "This event has no fields to filter on.",
+    METRICS_FLOW_BUILDER_FILTER_ALL_USED_REASON:
+      "Every field already has a filter.",
+    METRICS_FLOW_BUILDER_FILTER_STATUS_HINT: "Three digits, 100-599",
+    METRICS_FLOW_BUILDER_FILTER_STALE_DIM:
+      "Field '{dim}' does not exist for this event.",
+    METRICS_FLOW_BUILDER_FILTER_STALE_VALUE: "Choose a value from the list.",
+    METRICS_FLOW_BUILDER_FILTER_DIM_LABEL: "Step {step} filter {n} field",
+    METRICS_FLOW_BUILDER_FILTER_VALUE_LABEL: "Step {step} filter {n} value",
+    METRICS_FLOW_BUILDER_FILTER_REMOVE_LABEL: "Remove step {step} filter {n}",
+    METRICS_FLOW_BUILDER_ANNOUNCE_FILTER_ADDED: "Filter added.",
+    METRICS_FLOW_BUILDER_ANNOUNCE_FILTER_REMOVED: "Filter removed.",
+    METRICS_FLOW_BUILDER_ADD_BREAKDOWN: "+ Add drop-off breakdown",
+    METRICS_FLOW_BUILDER_REMOVE_BREAKDOWN: "Remove breakdown",
+    METRICS_FLOW_BUILDER_BREAKDOWN_HEADING: "Drop-off breakdown",
+    METRICS_FLOW_BUILDER_ADD_BREAKDOWN_FILTER:
+      "+ Add breakdown filter ({count} of {max})",
+    METRICS_FLOW_BUILDER_BREAKDOWN_EVENT_PLACEHOLDER: "Choose an event",
+    METRICS_FLOW_BUILDER_BREAKDOWN_GROUP_BY_PLACEHOLDER: "Choose a field",
+    METRICS_FLOW_BUILDER_BREAKDOWN_UNAVAILABLE:
+      "This event cannot be broken down.",
+    METRICS_FLOW_BUILDER_BREAKDOWN_EVENT_MISSING:
+      "This event no longer exists.",
+    METRICS_FLOW_BUILDER_BREAKDOWN_GROUP_BY_STALE:
+      "Group by field '{group_by}' is not available for this event.",
+    METRICS_FLOW_BUILDER_BREAKDOWN_EVENT_LABEL: "Step {step} breakdown event",
+    METRICS_FLOW_BUILDER_BREAKDOWN_GROUP_BY_LABEL:
+      "Step {step} breakdown group by",
+    METRICS_FLOW_BUILDER_BREAKDOWN_FILTERS_LABEL:
+      "Step {step} breakdown filters",
+    METRICS_FLOW_BUILDER_BREAKDOWN_FILTER_DIM_LABEL:
+      "Step {step} breakdown filter {n} field",
+    METRICS_FLOW_BUILDER_BREAKDOWN_FILTER_VALUE_LABEL:
+      "Step {step} breakdown filter {n} value",
+    METRICS_FLOW_BUILDER_BREAKDOWN_FILTER_REMOVE_LABEL:
+      "Remove step {step} breakdown filter {n}",
+    METRICS_FLOW_BUILDER_ANNOUNCE_BREAKDOWN_ADDED: "Breakdown added.",
+    METRICS_FLOW_BUILDER_ANNOUNCE_BREAKDOWN_REMOVED: "Breakdown removed.",
     METRICS_FLOW_BUILDER_ERR_EVENT_REQUIRED: "Choose an event.",
     METRICS_FLOW_BUILDER_ERR_ENDPOINT_REQUIRED: "Choose an endpoint.",
     METRICS_FLOW_BUILDER_ERR_METHOD_REQUIRED: "Choose a method.",

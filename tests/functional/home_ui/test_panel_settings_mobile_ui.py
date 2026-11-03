@@ -170,11 +170,11 @@ def test_urls_and_utubs_gears_rendered_on_phone(
 ):
     """
     GIVEN a phone viewport with an owned UTub selected
-    WHEN only the UTubs and URLs panels have a registered settings section
+    WHEN only the UTubs, URLs and Members panels have a registered settings section
     THEN the URLs gear renders on the URL deck, the UTubs gear (registered, but in
         the #leftPanel that selecting a UTub hides on a phone) renders once the
-        UTubs deck is reopened from the navbar, and the Members and Tags gears
-        (the Tags one on the open Tag sheet) stay hidden
+        UTubs deck is reopened from the navbar, the Members gear renders on the
+        Members deck, and the Tags gear (on the open Tag sheet) stays hidden
     """
     page = page_mobile_portrait
     _select_owned_utub_on_phone(provide_app, page)
@@ -193,6 +193,27 @@ def test_urls_and_utubs_gears_rendered_on_phone(
     # Reopening the UTubs deck from the navbar shows #leftPanel, and its gear.
     _go_to_deck_via_navbar(page, HPL.NAVBAR_UTUB_DECK)
     expect(page.locator(HPL.BUTTON_UTUB_SETTINGS_GEAR)).to_be_visible()
+
+
+def test_members_gear_opens_sheet_with_sort_select_on_phone(
+    page_mobile_portrait: Page, create_test_utubmembers, provide_app: Flask
+):
+    """
+    GIVEN a phone viewport with an owned UTub selected
+    WHEN the Members deck is opened from the navbar and its gear is tapped
+    THEN the gear is visible and the sheet shows the member-list sort select
+    """
+    page = page_mobile_portrait
+    _select_owned_utub_on_phone(provide_app, page)
+    expect(page.locator(HPL.LEFT_PANEL)).to_be_hidden()
+
+    _go_to_deck_via_navbar(page, HPL.NAVBAR_MEMBER_DECK)
+    gear = page.locator(HPL.BUTTON_MEMBER_SETTINGS_GEAR)
+    expect(gear).to_be_visible()
+    gear.tap()
+
+    expect(page.locator(HPL.PANEL_SETTINGS_SHEET)).to_have_class(_SHEET_OPEN_CLASS_RE)
+    expect(page.locator(HPL.MEMBERS_SETTINGS_SHEET_SORT_SELECT)).to_be_visible()
 
 
 def test_only_utubs_gear_rendered_on_phone_without_a_selected_utub(

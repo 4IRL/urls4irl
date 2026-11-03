@@ -44,6 +44,21 @@ export function closeAllMemberRowMenus(): void {
   });
 }
 
+// Close the menu of one row only (the deck reorder closes just the menus of the
+// rows it moves). Returns the row's kebab when a menu was open and is now
+// closed, so the caller can refocus it, or null when no menu was open.
+export function closeMemberRowMenuInRow({
+  row,
+}: {
+  row: HTMLElement;
+}): JQuery<HTMLElement> | null {
+  const menu = $(row).find(`${MENU_SELECTOR}.open`);
+  if (menu.length === 0) return null;
+  const kebab = kebabForMenu(menu);
+  closeRowMenu({ kebab, menu });
+  return kebab;
+}
+
 function openRowMenu({
   kebab,
   menu,

@@ -128,6 +128,11 @@ vi.mock("../home/urls/personal-settings-section.js", () => ({
 vi.mock("../home/utubs/list-settings-section.js", () => ({
   registerUtubListSettingsSection: track("registerUtubListSettingsSection"),
 }));
+vi.mock("../home/members/list-settings-section.js", () => ({
+  registerMembersListSettingsSection: track(
+    "registerMembersListSettingsSection",
+  ),
+}));
 vi.mock("../home/urls/deck-view-attrs.js", () => ({
   initUrlDeckPolicyAttrs: track("initUrlDeckPolicyAttrs"),
 }));
@@ -222,5 +227,19 @@ describe("main.ts init order", () => {
     );
     expect(listIndex).toBeLessThan(callOrder.indexOf("initTooltips"));
     expect(listIndex).toBeLessThan(callOrder.indexOf("initOnboardingNudges"));
+  });
+
+  it("registers the Members section right after the UTub list section, before tooltips and nudges", () => {
+    const membersIndex = callOrder.indexOf(
+      "registerMembersListSettingsSection",
+    );
+
+    expect(membersIndex).toBe(
+      callOrder.indexOf("registerUtubListSettingsSection") + 1,
+    );
+    expect(membersIndex).toBeLessThan(callOrder.indexOf("initTooltips"));
+    expect(membersIndex).toBeLessThan(
+      callOrder.indexOf("initOnboardingNudges"),
+    );
   });
 });

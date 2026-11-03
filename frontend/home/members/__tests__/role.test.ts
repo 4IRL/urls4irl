@@ -60,7 +60,9 @@ function seedMemberRow(
       utubID: 1,
     }),
   );
-  setState({ members: [{ id: memberID, username, memberRole }] });
+  setState({
+    members: [{ id: memberID, username, memberRole, joinedAt: null }],
+  });
 }
 
 function mockAjaxSuccess(): void {
@@ -340,5 +342,290 @@ describe("modifyMemberRole — grant/revoke co-owner", () => {
     } finally {
       assignSpy.mockRestore();
     }
+  });
+});
+
+describe("modifyMemberRole — live reorder, position clause and scroll", () => {
+  type SeedMember = {
+    id: number;
+    username: string;
+    memberRole: string;
+    joinedAt?: string | null;
+  };
+
+  function seedMembers(
+    members: SeedMember[],
+    memberSort: "name_az" | "role_then_name" | "recently_joined",
+  ): void {
+    members.forEach((member) => {
+      $("#listMembers").append(
+        createMemberBadge({
+          memberID: member.id,
+          username: member.username,
+          memberRole: member.memberRole,
+          isCurrentUserOwner: true,
+          utubID: 1,
+        }),
+      );
+    });
+    setState({
+      members: members.map((member) => ({
+        ...member,
+        joinedAt: member.joinedAt ?? null,
+      })),
+      preferences: { ...getState().preferences, memberSort },
+    });
+  }
+
+  function confirmRoleChange({
+    memberID,
+    currentRole,
+  }: {
+    memberID: number;
+    currentRole: string;
+  }): void {
+    mockAjaxSuccess();
+    modifyMemberRoleShowModal({ memberID, currentRole, utubID: 1 });
+    $("#modalSubmit").trigger("click");
+  }
+
+  function listedIDs(): number[] {
+    return $("#listMembers > .member")
+      .toArray()
+      .map((row) => Number(row.getAttribute("memberid")));
+  }
+
+  function mockRowRect({
+    memberID,
+    top,
+    bottom,
+  }: {
+    memberID: number;
+    top: number;
+    bottom: number;
+  }): void {
+    const row = $(`.member[memberid="${memberID}"]`)[0];
+    row.getBoundingClientRect = () =>
+      ({ top, bottom, left: 0, right: 0, width: 0, height: 0 }) as DOMRect;
+  }
+
+  beforeEach(() => {
+    document.body.innerHTML = ROLE_HTML;
+    vi.clearAllMocks();
+    resetStore();
+    installModalStub();
+    vi.mocked(is429Handled).mockReturnValue(false);
+    vi.mocked(isUtubLockedHandled).mockReturnValue(false);
+    // #listMembers is the scroll container the deck measures rows against.
+    $("#listMembers")[0].style.overflowY = "auto";
+    $("#listMembers")[0].getBoundingClientRect = () =>
+      ({
+        top: 0,
+        bottom: 100,
+        left: 0,
+        right: 0,
+        width: 0,
+        height: 100,
+      }) as DOMRect;
+  });
+
+  it("grant under role_then_name moves the row into the co-owner group and announces it", () => {
+    seedMembers(
+      [
+        { id: 1, username: "amy", memberRole: MEMBER },
+        { id: 2, username: "bob", memberRole: MEMBER },
+        { id: 3, username: "cat", memberRole: MEMBER },
+      ],
+      "role_then_name",
+    );
+
+    confirmRoleChange({ memberID: 3, currentRole: MEMBER });
+
+    expect(listedIDs()).toEqual([3, 1, 2]);
+    expect($("#MemberRowActionAnnouncement").text()).toBe(
+      `cat is now a co-owner. ${APP_CONFIG.strings.MEMBER_ROLE_CHANGE_GRANT_POSITION}`,
+    );
+  });
+
+  it("revoke under role_then_name moves the row back and announces the members group", () => {
+    seedMembers(
+      [
+        { id: 1, username: "zed", memberRole: CO_CREATOR },
+        { id: 2, username: "amy", memberRole: MEMBER },
+      ],
+      "role_then_name",
+    );
+
+    confirmRoleChange({ memberID: 1, currentRole: CO_CREATOR });
+
+    expect(listedIDs()).toEqual([2, 1]);
+    expect($("#MemberRowActionAnnouncement").text()).toBe(
+      `zed is no longer a co-owner. ${APP_CONFIG.strings.MEMBER_ROLE_CHANGE_REVOKE_POSITION}`,
+    );
+  });
+
+  it.each(["name_az", "recently_joined"] as const)(
+    "adds no position clause under %s",
+    (memberSort) => {
+      seedMembers(
+        [
+          { id: 1, username: "amy", memberRole: MEMBER },
+          { id: 2, username: "bob", memberRole: MEMBER },
+          { id: 3, username: "cat", memberRole: MEMBER },
+        ],
+        memberSort,
+      );
+
+      confirmRoleChange({ memberID: 3, currentRole: MEMBER });
+
+      expect($("#MemberRowActionAnnouncement").text()).toBe(
+        "cat is now a co-owner.",
+      );
+    },
+  );
+
+  it("adds no clause under role_then_name when the row did not move", () => {
+    seedMembers(
+      [
+        { id: 1, username: "amy", memberRole: CO_CREATOR },
+        { id: 2, username: "bob", memberRole: MEMBER },
+      ],
+      "role_then_name",
+    );
+
+    confirmRoleChange({ memberID: 1, currentRole: CO_CREATOR });
+
+    expect(listedIDs()).toEqual([1, 2]);
+    expect($("#MemberRowActionAnnouncement").text()).toBe(
+      "amy is no longer a co-owner.",
+    );
+  });
+
+  it("still announces the clause for a filter-hidden row and never scrolls to it", () => {
+    seedMembers(
+      [
+        { id: 1, username: "amy", memberRole: MEMBER },
+        { id: 2, username: "bob", memberRole: MEMBER },
+      ],
+      "role_then_name",
+    );
+    const row = $(`.member[memberid="2"]`)[0];
+    row.classList.add("hidden");
+    row.scrollIntoView = vi.fn();
+    mockRowRect({ memberID: 2, top: 500, bottom: 540 });
+
+    confirmRoleChange({ memberID: 2, currentRole: MEMBER });
+
+    expect(row.scrollIntoView).not.toHaveBeenCalled();
+    expect($("#MemberRowActionAnnouncement").text()).toBe(
+      `bob is now a co-owner. ${APP_CONFIG.strings.MEMBER_ROLE_CHANGE_GRANT_POSITION}`,
+    );
+  });
+
+  it("scrolls only the moved role-changed row, and only when it is hidden", () => {
+    seedMembers(
+      [
+        { id: 1, username: "amy", memberRole: MEMBER },
+        { id: 2, username: "bob", memberRole: MEMBER },
+      ],
+      "role_then_name",
+    );
+    const bystander = $(`.member[memberid="1"]`)[0];
+    const changed = $(`.member[memberid="2"]`)[0];
+    bystander.scrollIntoView = vi.fn();
+    changed.scrollIntoView = vi.fn();
+    mockRowRect({ memberID: 1, top: 500, bottom: 540 });
+    mockRowRect({ memberID: 2, top: 500, bottom: 540 });
+
+    confirmRoleChange({ memberID: 2, currentRole: MEMBER });
+
+    expect(changed.scrollIntoView).toHaveBeenCalledTimes(1);
+    expect(bystander.scrollIntoView).not.toHaveBeenCalled();
+  });
+
+  it("does not scroll a moved row that stays visible", () => {
+    seedMembers(
+      [
+        { id: 1, username: "amy", memberRole: MEMBER },
+        { id: 2, username: "bob", memberRole: MEMBER },
+      ],
+      "role_then_name",
+    );
+    const changed = $(`.member[memberid="2"]`)[0];
+    changed.scrollIntoView = vi.fn();
+    mockRowRect({ memberID: 2, top: 10, bottom: 40 });
+
+    confirmRoleChange({ memberID: 2, currentRole: MEMBER });
+
+    expect(changed.scrollIntoView).not.toHaveBeenCalled();
+  });
+
+  it("does not scroll a row that did not move, even when it is out of view", () => {
+    seedMembers(
+      [
+        { id: 1, username: "amy", memberRole: MEMBER },
+        { id: 2, username: "bob", memberRole: MEMBER },
+      ],
+      "name_az",
+    );
+    const changed = $(`.member[memberid="2"]`)[0];
+    changed.scrollIntoView = vi.fn();
+    mockRowRect({ memberID: 2, top: 500, bottom: 540 });
+
+    confirmRoleChange({ memberID: 2, currentRole: MEMBER });
+
+    expect(listedIDs()).toEqual([1, 2]);
+    expect(changed.scrollIntoView).not.toHaveBeenCalled();
+  });
+
+  it("runs setState, the swap and the reorder before the scroll, and the announcement last", () => {
+    seedMembers(
+      [
+        { id: 1, username: "amy", memberRole: MEMBER },
+        { id: 2, username: "bob", memberRole: MEMBER },
+      ],
+      "role_then_name",
+    );
+    const changed = $(`.member[memberid="2"]`)[0];
+    mockRowRect({ memberID: 2, top: 500, bottom: 540 });
+    let orderAtScroll: number[] = [];
+    let storeRoleAtScroll = "";
+    let iconAtScroll = 0;
+    let announcementAtScroll = "unset";
+    changed.scrollIntoView = vi.fn(() => {
+      orderAtScroll = listedIDs();
+      storeRoleAtScroll =
+        getState().members.find((member) => member.id === 2)?.memberRole ?? "";
+      iconAtScroll = $(
+        `.member[memberid="2"] svg.bi-diamond-half.memberRole`,
+      ).length;
+      announcementAtScroll = $("#MemberRowActionAnnouncement").text();
+    });
+
+    confirmRoleChange({ memberID: 2, currentRole: MEMBER });
+
+    expect(orderAtScroll).toEqual([2, 1]);
+    expect(storeRoleAtScroll).toBe(CO_CREATOR);
+    expect(iconAtScroll).toBe(1);
+    expect(announcementAtScroll).toBe("");
+    expect($("#MemberRowActionAnnouncement").text()).not.toBe("");
+  });
+
+  it("leaves focus outside #listMembers alone (the confirm modal owns it)", () => {
+    seedMembers(
+      [
+        { id: 1, username: "amy", memberRole: MEMBER },
+        { id: 2, username: "bob", memberRole: MEMBER },
+      ],
+      "role_then_name",
+    );
+    const submit = $("#modalSubmit")[0];
+    mockAjaxSuccess();
+    modifyMemberRoleShowModal({ memberID: 2, currentRole: MEMBER, utubID: 1 });
+    submit.focus();
+    $("#modalSubmit").trigger("click");
+
+    expect(listedIDs()).toEqual([2, 1]);
+    expect(document.activeElement).toBe(submit);
   });
 });
