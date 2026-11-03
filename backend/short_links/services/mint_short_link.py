@@ -23,7 +23,7 @@ from backend.short_links.constants import (
 from backend.urls.constants import URLErrorCodes
 from backend.urls.permissions import can_revoke_short_link
 from backend.utils.datetime_utils import utc_now
-from backend.utils.db_errors import violated_constraint as _violated_constraint
+from backend.utils.db_errors import violated_constraint
 from backend.utils.strings.short_link_strs import (
     SHORT_LINK_FAILURE,
     SHORT_LINK_SUCCESS,
@@ -171,7 +171,7 @@ def mint_short_link_for_utub_url(
                     )
                     db.session.add(short_link)
         except IntegrityError as integrity_error:
-            constraint: str | None = _violated_constraint(integrity_error)
+            constraint: str | None = violated_constraint(integrity_error)
             if constraint == UNIQUE_SHORT_LINK_CODE:
                 continue
             if constraint != UNIQUE_SHORT_LINK_PER_UTUB_URL:

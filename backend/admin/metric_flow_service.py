@@ -36,7 +36,7 @@ from backend.schemas.errors import (
     build_message_error_response,
 )
 from backend.schemas.metrics import MetricFlowEntrySchema, MetricFlowListResponseSchema
-from backend.utils.db_errors import violated_constraint as _violated_constraint
+from backend.utils.db_errors import violated_constraint
 from backend.utils.strings.admin_portal_strs import (
     ADMIN_ACTION_STRINGS,
     ADMIN_AUDIT_ACTIONS,
@@ -188,7 +188,7 @@ def create_metric_flow(*, actor_id: int, payload: object) -> FlaskResponse:
             db.session.flush()
     except IntegrityError as integrity_error:
         db.session.rollback()
-        if _violated_constraint(integrity_error) != DISPLAY_NAME_LOWER_INDEX:
+        if violated_constraint(integrity_error) != DISPLAY_NAME_LOWER_INDEX:
             raise
         return _display_name_taken_response()
 
@@ -315,7 +315,7 @@ def update_metric_flow(
             db.session.flush()
     except IntegrityError as integrity_error:
         db.session.rollback()
-        if _violated_constraint(integrity_error) != DISPLAY_NAME_LOWER_INDEX:
+        if violated_constraint(integrity_error) != DISPLAY_NAME_LOWER_INDEX:
             raise
         return _display_name_taken_response()
 
