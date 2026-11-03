@@ -36,6 +36,7 @@ from backend.schemas.errors import (
     build_message_error_response,
 )
 from backend.schemas.metrics import MetricFlowEntrySchema, MetricFlowListResponseSchema
+from backend.utils.db_errors import violated_constraint as _violated_constraint
 from backend.utils.strings.admin_portal_strs import (
     ADMIN_ACTION_STRINGS,
     ADMIN_AUDIT_ACTIONS,
@@ -45,12 +46,6 @@ from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 METRIC_FLOW_AUDIT_TARGET_TYPE: str = "MetricFlow"
 _ROOT_KEY: str = "__root__"
 _DISPLAY_NAME_KEY: str = "display_name"
-
-
-def _violated_constraint(error: IntegrityError) -> str | None:
-    """Return the name of the constraint a Postgres ``IntegrityError`` violated, if known."""
-    diagnostics = getattr(error.orig, "diag", None)
-    return getattr(diagnostics, "constraint_name", None)
 
 
 def build_builtin_flow_entry(*, flow_id: FlowId) -> MetricFlowEntrySchema:

@@ -8,8 +8,11 @@ from flask import Flask
 
 from backend import create_app, db, oauth
 from backend.config import ConfigTest
+from backend.invite_links.constants import INVITE_LINK_DEFAULT_TTL
+from backend.invite_links.token_generator import generate_invite_token
 from backend.models.short_links import Short_Links
 from backend.models.urls import Urls
+from backend.models.utub_invite_links import Utub_Invite_Links
 from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utub_tags import Utub_Tags
 from backend.models.utub_url_tags import Utub_Url_Tags
@@ -290,6 +293,50 @@ def add_short_link(
         db.session.add(link)
         db.session.commit()
         return link.id
+
+
+def add_invite_link(
+    app: Flask,
+    utub_id: int,
+    created_by: int | None,
+    expires_at: datetime | None = None,
+    max_uses: int | None = None,
+    use_count: int = 0,
+    revoked: bool = False,
+) -> int:
+    """Seed a ``UtubInviteLinks`` row directly, bypassing the manage routes.
+
+    Args:
+        app (Flask): The Flask client for providing an app context
+        utub_id (int): The ID of the UTub the link belongs to
+        created_by (int | None): The ID of the creating User, or None
+        expires_at (datetime | None): Expiry. Defaults to now plus the default TTL; pass a
+            past value to seed an expired link
+        max_uses (int | None): Use limit, or None for unlimited
+        use_count (int): How many joins the link already has
+        revoked (bool): Whether to stamp ``revoked_at`` so the row is revoked
+
+    Returns:
+        int: The new UtubInviteLinks row ID
+    """
+    with app.app_context():
+        invite = Utub_Invite_Links(
+            utub_id=utub_id,
+            token=generate_invite_token(),
+            created_by=created_by,
+            expires_at=(
+                expires_at
+                if expires_at is not None
+                else utc_now() + INVITE_LINK_DEFAULT_TTL
+            ),
+            max_uses=max_uses,
+        )
+        invite.use_count = use_count
+        if revoked:
+            invite.revoked_at = utc_now()
+        db.session.add(invite)
+        db.session.commit()
+        return invite.id
 
 
 def remove_member(app: Flask, utub_id: int, user_id: int) -> None:
