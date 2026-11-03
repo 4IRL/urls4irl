@@ -83,6 +83,9 @@ class INVITE_LINK_ROUTES:
     _INVITE_LINKS = "invite_links."
     GET_INVITE_LINK = _INVITE_LINKS + "get_invite_link"
     CREATE_INVITE_LINK = _INVITE_LINKS + "create_invite_link"
+    UPDATE_INVITE_LINK = _INVITE_LINKS + "update_invite_link"
+    REPLACE_INVITE_LINK = _INVITE_LINKS + "replace_invite_link"
+    REVOKE_INVITE_LINK = _INVITE_LINKS + "revoke_invite_link"
 
 
 class USER_ROUTES:
@@ -456,6 +459,9 @@ NO_JS_ENDPOINTS: dict[str, NoJsReason] = {
     # Exact keys, not `invite_links.*`: the public join routes join this blueprint.
     "invite_links.get_invite_link": NoJsReason.PANEL_PENDING,
     "invite_links.create_invite_link": NoJsReason.PANEL_PENDING,
+    "invite_links.update_invite_link": NoJsReason.PANEL_PENDING,
+    "invite_links.replace_invite_link": NoJsReason.PANEL_PENDING,
+    "invite_links.revoke_invite_link": NoJsReason.PANEL_PENDING,
 }
 
 

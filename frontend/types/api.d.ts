@@ -890,6 +890,25 @@ export interface paths {
     put?: never;
     /** @description Create the UTub's invite link with an expiry and an optional use limit (owner and co-owner only). A dead unrevoked link is revoked first. */
     post: operations["createInviteLink"];
+    /** @description Revoke the UTub's invite link (owner and co-owner only) */
+    delete: operations["revokeInviteLink"];
+    options?: never;
+    head?: never;
+    /** @description Change the expiry and/or use limit of the UTub's live invite link (owner and co-owner only). An absent field is unchanged; a null max_uses means unlimited. */
+    patch: operations["updateInviteLink"];
+    trace?: never;
+  };
+  "/utubs/{utub_id}/invite-link/replace": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** @description Revoke the UTub's invite link and create a new one with the given settings (owner and co-owner only) */
+    post: operations["replaceInviteLink"];
     delete?: never;
     options?: never;
     head?: never;
@@ -3001,6 +3020,22 @@ export interface components {
     };
     ErrorResponse_InviteLinkErrorCodes: components["schemas"]["ErrorResponse"] & {
       errorCode?: components["schemas"]["InviteLinkErrorCodes"];
+    };
+    /**
+     * @description Partial update: an absent field is left unchanged; an explicit null
+     *     ``max_uses`` sets the link to unlimited.
+     */
+    UpdateInviteLinkRequest: {
+      /**
+       * @description Days until the link expires: 1, 7 or 30
+       * @default null
+       */
+      expires_in_days: (1 | 7 | 30) | null;
+      /**
+       * @description How many people may join with the link: 1, 5, 10 or 25; null means unlimited
+       * @default null
+       */
+      max_uses: (1 | 5 | 10 | 25) | null;
     };
     /**
      * @description One UI metrics event submitted by the browser.
@@ -7993,6 +8028,170 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ErrorResponse_InviteLinkErrorCodes"];
+        };
+      };
+      /** @description Too many requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  revokeInviteLink: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        utub_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Status and message response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["StatusMessageResponseSchema"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  updateInviteLink: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        utub_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["UpdateInviteLinkRequest"];
+      };
+    };
+    responses: {
+      /** @description Envelope for the invite link routes; ``inviteLink`` is null when none exists. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["InviteLinkResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_InviteLinkErrorCodes"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_InviteLinkErrorCodes"];
+        };
+      };
+    };
+  };
+  replaceInviteLink: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        utub_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["InviteLinkSettingsRequest"];
+      };
+    };
+    responses: {
+      /** @description Envelope for the invite link routes; ``inviteLink`` is null when none exists. */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["InviteLinkResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_InviteLinkErrorCodes"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
         };
       };
       /** @description Too many requests */

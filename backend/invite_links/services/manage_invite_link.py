@@ -28,7 +28,10 @@ from backend.models.utub_invite_links import Utub_Invite_Links
 from backend.models.utubs import Utubs
 from backend.schemas.errors import build_message_error_response
 from backend.schemas.invite_links import InviteLinkResponseSchema, InviteLinkSchema
-from backend.schemas.requests.invite_links import InviteLinkSettingsRequest
+from backend.schemas.requests.invite_links import (
+    InviteLinkSettingsRequest,
+    UpdateInviteLinkRequest,
+)
 from backend.utils.datetime_utils import utc_now
 from backend.utils.db_errors import violated_constraint
 from backend.utils.strings.invite_link_strs import (
@@ -225,5 +228,175 @@ def create_invite_link_for_utub(
             f"UTub.id={utub_id}",
             f"Cleared dead link={cleared_dead_row}",
         ]
+    )
+    return response
+
+
+def _no_link_response() -> FlaskResponse:
+    """404 with ``INVITE_LINK_NOT_FOUND`` for a write on a UTub with no unrevoked link."""
+    db.session.rollback()
+    return build_message_error_response(
+        message=INVITE_LINK_FAILURE.INVITE_LINK_NOT_FOUND,
+        error_code=InviteLinkErrorCodes.INVITE_LINK_NOT_FOUND,
+        status_code=404,
+    )
+
+
+def update_invite_link_for_utub(
+    *, current_utub: Utubs, update: UpdateInviteLinkRequest
+) -> FlaskResponse:
+    """Change the expiry and/or use limit of the UTub's live invite link.
+
+    Check order: no row (404), dead-unrevoked row (409 ``DEAD_LINK_UPDATE``), then
+    ``max_uses`` below the joined count (400 ``USES_BELOW_JOINED``). A rejected update
+    changes neither field. An absent field is left unchanged; an explicit null
+    ``max_uses`` sets the link unlimited.
+
+    Args:
+        current_utub (Utubs): The UTub loaded (unlocked) by the route guard.
+        update (UpdateInviteLinkRequest): Validated partial update.
+
+    Returns:
+        FlaskResponse: 200 with the link, or the error response.
+    """
+    auth_error: FlaskResponse | None = lock_manager_and_reauthorize(current_utub)
+    if auth_error is not None:
+        db.session.rollback()
+        return auth_error
+
+    user_id: int = current_user.id
+    utub_id: int = current_utub.id
+
+    invite: Utub_Invite_Links | None = lock_current_invite_for_update(utub_id=utub_id)
+    if invite is None:
+        return _no_link_response()
+    if not is_invite_live(evaluate_invite(invite)):
+        db.session.rollback()
+        return build_message_error_response(
+            message=INVITE_LINK_FAILURE.DEAD_LINK_UPDATE,
+            error_code=InviteLinkErrorCodes.DEAD_LINK_UPDATE,
+            status_code=409,
+        )
+
+    if (
+        "max_uses" in update.model_fields_set
+        and update.max_uses is not None
+        and update.max_uses < invite.use_count
+    ):
+        db.session.rollback()
+        return build_message_error_response(
+            message=INVITE_LINK_FAILURE.USES_BELOW_JOINED,
+            error_code=InviteLinkErrorCodes.USES_BELOW_JOINED,
+            status_code=400,
+        )
+
+    if "max_uses" in update.model_fields_set:
+        invite.max_uses = update.max_uses
+    if update.expires_in_days is not None:
+        invite.expires_at = utc_now() + timedelta(days=update.expires_in_days)
+    db.session.flush()
+
+    response: FlaskResponse = APIResponse(
+        message=INVITE_LINK_SUCCESS.INVITE_LINK_UPDATED,
+        data=InviteLinkResponseSchema(
+            status=STD_JSON.SUCCESS, invite_link=build_invite_link_schema(invite)
+        ),
+        status_code=200,
+    ).to_response()
+    db.session.commit()
+
+    safe_add_many_logs(
+        ["Updated invite link", f"User.id={user_id}", f"UTub.id={utub_id}"]
+    )
+    return response
+
+
+def replace_invite_link_for_utub(
+    *, current_utub: Utubs, settings: InviteLinkSettingsRequest
+) -> FlaskResponse:
+    """Revoke the UTub's unrevoked link (live or dead) and insert a fresh one.
+
+    The revoke and insert share one transaction, so a failed insert rolls the revoke
+    back and the old link stays as it was. Metrics are emitted after the commit.
+
+    Args:
+        current_utub (Utubs): The UTub loaded (unlocked) by the route guard.
+        settings (InviteLinkSettingsRequest): Validated expiry and use limit.
+
+    Returns:
+        FlaskResponse: 201 with the new link, or the error response.
+    """
+    auth_error: FlaskResponse | None = lock_manager_and_reauthorize(current_utub)
+    if auth_error is not None:
+        db.session.rollback()
+        return auth_error
+
+    user_id: int = current_user.id
+    utub_id: int = current_utub.id
+
+    existing: Utub_Invite_Links | None = lock_current_invite_for_update(utub_id=utub_id)
+    if existing is None:
+        return _no_link_response()
+    revoke_invite_row(existing)
+
+    inserted: Utub_Invite_Links | InsertFailure = insert_invite_link(
+        utub_id=utub_id,
+        created_by=user_id,
+        expires_in_days=settings.expires_in_days,
+        max_uses=settings.max_uses,
+    )
+    if isinstance(inserted, InsertFailure):
+        return _insert_failure_response(inserted, utub_id=utub_id)
+
+    has_use_limit: str = "true" if settings.max_uses is not None else "false"
+    response: FlaskResponse = APIResponse(
+        message=INVITE_LINK_SUCCESS.INVITE_LINK_REPLACED,
+        data=InviteLinkResponseSchema(
+            status=STD_JSON.SUCCESS, invite_link=build_invite_link_schema(inserted)
+        ),
+        status_code=201,
+    ).to_response()
+    db.session.commit()
+
+    record_event(
+        EventName.INVITE_LINK_CREATED, dimensions={"has_use_limit": has_use_limit}
+    )
+    record_event(EventName.INVITE_LINK_REVOKED, dimensions={"reason": "replaced"})
+    safe_add_many_logs(
+        ["Replaced invite link", f"User.id={user_id}", f"UTub.id={utub_id}"]
+    )
+    return response
+
+
+def revoke_invite_link_for_utub(*, current_utub: Utubs) -> FlaskResponse:
+    """Revoke the UTub's unrevoked link (live or dead); the row is retained.
+
+    Args:
+        current_utub (Utubs): The UTub loaded (unlocked) by the route guard.
+
+    Returns:
+        FlaskResponse: 200 message, or the error response.
+    """
+    auth_error: FlaskResponse | None = lock_manager_and_reauthorize(current_utub)
+    if auth_error is not None:
+        db.session.rollback()
+        return auth_error
+
+    user_id: int = current_user.id
+    utub_id: int = current_utub.id
+
+    invite: Utub_Invite_Links | None = lock_current_invite_for_update(utub_id=utub_id)
+    if invite is None:
+        return _no_link_response()
+    revoke_invite_row(invite)
+
+    response: FlaskResponse = APIResponse(
+        message=INVITE_LINK_SUCCESS.INVITE_LINK_REVOKED, status_code=200
+    ).to_response()
+    db.session.commit()
+
+    record_event(EventName.INVITE_LINK_REVOKED, dimensions={"reason": "manual"})
+    safe_add_many_logs(
+        ["Revoked invite link", f"User.id={user_id}", f"UTub.id={utub_id}"]
     )
     return response
