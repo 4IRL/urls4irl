@@ -278,11 +278,7 @@ def update_invite_link_for_utub(
             status_code=409,
         )
 
-    if (
-        "max_uses" in update.model_fields_set
-        and update.max_uses is not None
-        and update.max_uses < invite.use_count
-    ):
+    if update.max_uses is not None and update.max_uses < invite.use_count:
         db.session.rollback()
         return build_message_error_response(
             message=INVITE_LINK_FAILURE.USES_BELOW_JOINED,
