@@ -1,4 +1,3 @@
-from backend.invite_links.constants import InviteLinkErrorCodes
 from backend.utils.strings.json_strs import FAILURE_GENERAL
 
 # Server-side messages for the invite link manager API (create / update / replace /
@@ -38,14 +37,3 @@ class INVITE_LINK_FAILURE(FAILURE_GENERAL):
     LIVE_LINK_EXISTS = LIVE_LINK_EXISTS_MESSAGE
     DEAD_LINK_UPDATE = DEAD_LINK_UPDATE_MESSAGE
     USES_BELOW_JOINED = USES_BELOW_JOINED_MESSAGE
-
-
-# One failure message per error code; a code without an entry here is a bug.
-INVITE_LINK_ERROR_MESSAGES: dict[InviteLinkErrorCodes, str] = {
-    InviteLinkErrorCodes.INVITE_LINK_NOT_FOUND: INVITE_LINK_NOT_FOUND_MESSAGE,
-    InviteLinkErrorCodes.INVALID_FORM_INPUT: INVALID_INVITE_LINK_INPUT,
-    InviteLinkErrorCodes.UTUB_IS_LOCKED: UTUB_IS_LOCKED_MESSAGE,
-    InviteLinkErrorCodes.LIVE_LINK_EXISTS: LIVE_LINK_EXISTS_MESSAGE,
-    InviteLinkErrorCodes.DEAD_LINK_UPDATE: DEAD_LINK_UPDATE_MESSAGE,
-    InviteLinkErrorCodes.USES_BELOW_JOINED: USES_BELOW_JOINED_MESSAGE,
-}

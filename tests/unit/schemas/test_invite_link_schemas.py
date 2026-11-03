@@ -21,7 +21,7 @@ from backend.schemas.requests.invite_links import (
     InviteLinkSettingsRequest,
     UpdateInviteLinkRequest,
 )
-from backend.utils.strings.invite_link_strs import INVITE_LINK_ERROR_MESSAGES
+from backend.utils.strings.invite_link_strs import INVITE_LINK_FAILURE
 
 pytestmark = pytest.mark.unit
 
@@ -50,10 +50,11 @@ def test_literals_match_constants() -> None:
 def test_error_messages_cover_every_error_code() -> None:
     """
     GIVEN the InviteLinkErrorCodes enum
-    WHEN compared with INVITE_LINK_ERROR_MESSAGES
-    THEN every code has exactly one message
+    WHEN compared with INVITE_LINK_FAILURE
+    THEN every code has a non-empty message of the same name
     """
-    assert set(INVITE_LINK_ERROR_MESSAGES) == set(InviteLinkErrorCodes)
+    for code in InviteLinkErrorCodes:
+        assert getattr(INVITE_LINK_FAILURE, code.name, "")
 
 
 @pytest.mark.parametrize(
