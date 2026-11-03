@@ -4,9 +4,16 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-# The Literals mirror INVITE_LINK_EXPIRY_DAYS_VALUES / INVITE_LINK_MAX_USES_VALUES
-# (a unit test pins them together). Strict mode rejects "7", but pydantic still
-# lets true and 7.0 match an int Literal, so the base class rejects them first.
+from backend.invite_links.constants import (
+    INVITE_LINK_EXPIRY_DAYS_VALUES,
+    INVITE_LINK_MAX_USES_VALUES,
+)
+
+# The Literals are built from INVITE_LINK_EXPIRY_DAYS_VALUES / INVITE_LINK_MAX_USES_VALUES.
+# Strict mode rejects "7", but pydantic still lets true and 7.0 match an int
+# Literal, so the base class rejects them first.
+ExpiryDaysLiteral = Literal[*INVITE_LINK_EXPIRY_DAYS_VALUES]  # type: ignore[valid-type]
+MaxUsesLiteral = Literal[*INVITE_LINK_MAX_USES_VALUES]  # type: ignore[valid-type]
 _EXPIRES_DESCRIPTION = "Days until the link expires: 1, 7 or 30"
 _MAX_USES_DESCRIPTION = (
     "How many people may join with the link: 1, 5, 10 or 25; null means unlimited"
@@ -25,10 +32,10 @@ class _ExactIntChoicesRequest(BaseModel):
 
 
 class InviteLinkSettingsRequest(_ExactIntChoicesRequest):
-    expires_in_days: Literal[1, 7, 30] = Field(
+    expires_in_days: ExpiryDaysLiteral = Field(
         default=7, description=_EXPIRES_DESCRIPTION
     )
-    max_uses: Literal[1, 5, 10, 25] | None = Field(
+    max_uses: MaxUsesLiteral | None = Field(
         default=None, description=_MAX_USES_DESCRIPTION
     )
 
@@ -37,10 +44,10 @@ class UpdateInviteLinkRequest(_ExactIntChoicesRequest):
     """Partial update: an absent field is left unchanged; an explicit null
     ``max_uses`` sets the link to unlimited."""
 
-    expires_in_days: Literal[1, 7, 30] | None = Field(
+    expires_in_days: ExpiryDaysLiteral | None = Field(
         default=None, description=_EXPIRES_DESCRIPTION
     )
-    max_uses: Literal[1, 5, 10, 25] | None = Field(
+    max_uses: MaxUsesLiteral | None = Field(
         default=None, description=_MAX_USES_DESCRIPTION
     )
 
