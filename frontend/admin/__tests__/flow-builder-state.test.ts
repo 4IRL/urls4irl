@@ -3,12 +3,15 @@ import { describe, expect, it } from "vitest";
 import type { Schema } from "../../types/api-helpers.d.ts";
 
 import {
+  addFilter,
   addStep,
   applyServerErrors,
   applyValidationErrors,
+  captureSubmitted,
   clearDraftError,
   createBlankDraft,
   draftFromEntry,
+  hasNestedContent,
   isDraftDirty,
   isStaleEndpoint,
   isStaleEvent,
@@ -17,18 +20,19 @@ import {
   listEventOptions,
   listFormErrors,
   listMethods,
+  listNestedMessages,
   listProblems,
   moveStep,
   normalizeDraft,
   removeStep,
   setDisplayName,
+  setFilterDim,
   setFormErrors,
   setStepEndpoint,
   setStepEvent,
   setStepLabel,
   setStepMethod,
   setStepStream,
-  summarizeHidden,
   toRequestBody,
   validateDraft,
 } from "../flow-builder-state.js";
@@ -330,7 +334,7 @@ describe("stale hidden fields", () => {
       key: first.key,
       eventName: "other",
     });
-    expect(draft.steps[0].hiddenCleared).toBe(true);
+    expect(hasNestedContent({ step: draft.steps[0] })).toBe(false);
     expect(toRequestBody({ draft }).steps[0]).toMatchObject({
       dim_filter: null,
       drop_breakdown: null,
@@ -340,14 +344,14 @@ describe("stale hidden fields", () => {
     expect(isDraftDirty({ draft, snapshot })).toBe(true);
   });
 
-  it("does not flag hiddenCleared when nothing was cleared", () => {
+  it("reports no nested content when nothing was cleared", () => {
     const clean = seededDraft();
     const changed = setStepEvent({
       draft: clean,
       key: clean.steps[2].key,
       eventName: "other",
     });
-    expect(changed.steps[2].hiddenCleared).toBe(false);
+    expect(hasNestedContent({ step: changed.steps[2] })).toBe(false);
   });
 
   it("clears on stream and endpoint change but not on method change", () => {
@@ -357,7 +361,7 @@ describe("stale hidden fields", () => {
       key: base.steps[0].key,
       stream: "domain",
     });
-    expect(viaStream.steps[0].hiddenCleared).toBe(true);
+    expect(hasNestedContent({ step: viaStream.steps[0] })).toBe(false);
 
     const apiEntry = entryFor({
       definition: {
@@ -376,7 +380,7 @@ describe("stale hidden fields", () => {
     const apiDraft = draftFromEntry({ entry: apiEntry });
     const key = apiDraft.steps[0].key;
     const viaMethod = setStepMethod({ draft: apiDraft, key, apiMethod: "PUT" });
-    expect(viaMethod.steps[0].hiddenCleared).toBe(false);
+    expect(hasNestedContent({ step: viaMethod.steps[0] })).toBe(true);
     expect(toRequestBody({ draft: viaMethod }).steps[0].dim_filter).toEqual([
       "200",
     ]);
@@ -386,7 +390,7 @@ describe("stale hidden fields", () => {
       apiEndpoint: "urls.create_url",
       catalog: CATALOG,
     });
-    expect(viaEndpoint.steps[0].hiddenCleared).toBe(true);
+    expect(hasNestedContent({ step: viaEndpoint.steps[0] })).toBe(false);
   });
 });
 
@@ -409,10 +413,10 @@ describe("stream-specific edits and empty hidden values", () => {
       catalog: CATALOG,
     });
     expect(viaEndpoint).toEqual(base);
-    expect(viaEndpoint.steps[0].hiddenCleared).toBe(false);
+    expect(hasNestedContent({ step: viaEndpoint.steps[0] })).toBe(true);
   });
 
-  it("does not flag hiddenCleared for empty-array hidden values", () => {
+  it("reports no nested content for empty-array hidden values", () => {
     const draft = draftFromEntry({
       entry: entryFor({
         definition: {
@@ -434,7 +438,6 @@ describe("stream-specific edits and empty hidden values", () => {
       eventName: "other",
     });
     expect(changed.steps[0].eventName).toBe("other");
-    expect(changed.steps[0].hiddenCleared).toBe(false);
   });
 });
 
@@ -560,11 +563,10 @@ describe("moveStep and removeStep edge cases", () => {
 describe("applyServerErrors", () => {
   it("sends out-of-range and suffix-less step paths to form level", () => {
     const base = seededDraft();
-    const submittedKeys = base.steps.map((step) => step.key);
     const draft = applyServerErrors({
       draft: base,
       errors: { "steps.99.label": ["far"], "steps.0": ["whole"] },
-      submittedKeys,
+      submitted: captureSubmitted({ draft: base }),
     });
     expect(draft.serverErrors.map((error) => error.field)).toEqual([
       "form",
@@ -590,7 +592,7 @@ describe("applyServerErrors", () => {
     const draft = applyServerErrors({
       draft: moved,
       errors: { "steps.2.event_name": ["bad"], "steps.0.label": ["short"] },
-      submittedKeys,
+      submitted: captureSubmitted({ draft: base }),
     });
     const byKey = new Map(draft.steps.map((step) => [step.key, step]));
     expect(byKey.get(submittedKeys[2])?.errors.event_name).toEqual(["bad"]);
@@ -604,7 +606,7 @@ describe("applyServerErrors", () => {
     const draft = applyServerErrors({
       draft: removed,
       errors: { "steps.2.event_name": ["bad"] },
-      submittedKeys,
+      submitted: captureSubmitted({ draft: base }),
     });
     expect(
       draft.steps.every((step) => Object.keys(step.errors).length === 0),
@@ -617,9 +619,8 @@ describe("applyServerErrors", () => {
     expect(draft.serverErrors[0].message).toContain("bad");
   });
 
-  it("maps hidden-field paths, step count and unknown paths", () => {
+  it("maps filter and breakdown paths to their rows, plus step count and unknown paths", () => {
     const base = seededDraft();
-    const submittedKeys = base.steps.map((step) => step.key);
     const draft = applyServerErrors({
       draft: base,
       errors: {
@@ -630,9 +631,12 @@ describe("applyServerErrors", () => {
         mystery: ["??"],
         __root__: ["root"],
       },
-      submittedKeys,
+      submitted: captureSubmitted({ draft: base }),
     });
-    expect(draft.steps[0].errors.hidden).toEqual(["bad filter", "bad group"]);
+    const [step] = draft.steps;
+    expect(step.filters[1].serverErrors).toEqual(["bad filter"]);
+    expect(step.filters[0].serverErrors).toEqual([]);
+    expect(step.breakdown?.serverErrors.group_by).toEqual(["bad group"]);
     const fields = draft.serverErrors.map((error) => error.field);
     expect(fields).toEqual(["steps", "form", "form", "form"]);
     expect(draft.serverErrors.map((error) => error.message)).toEqual(
@@ -642,16 +646,15 @@ describe("applyServerErrors", () => {
 
   it("replaces errors from an earlier submit", () => {
     const base = seededDraft();
-    const keys = base.steps.map((step) => step.key);
     const first = applyServerErrors({
       draft: base,
       errors: { "steps.0.label": ["x"] },
-      submittedKeys: keys,
+      submitted: captureSubmitted({ draft: base }),
     });
     const second = applyServerErrors({
       draft: first,
       errors: {},
-      submittedKeys: keys,
+      submitted: captureSubmitted({ draft: base }),
     });
     expect(second.steps[0].errors).toEqual({});
     expect(second.serverErrors).toEqual([]);
@@ -660,14 +663,14 @@ describe("applyServerErrors", () => {
 
 describe("validateDraft", () => {
   it("accepts a filled draft", () => {
-    expect(validateDraft({ draft: filledDraft() })).toEqual([]);
+    expect(validateDraft({ draft: filledDraft(), catalog: null })).toEqual([]);
   });
 
   it("rejects whitespace-only name and label", () => {
     let draft = filledDraft();
     draft = setDisplayName({ draft, value: "   " });
     draft = setStepLabel({ draft, key: draft.steps[0].key, value: "  " });
-    const errors = validateDraft({ draft });
+    const errors = validateDraft({ draft, catalog: null });
     expect(errors.map((error) => error.field)).toEqual([
       "display_name",
       "label",
@@ -678,22 +681,24 @@ describe("validateDraft", () => {
   it("rejects 1 and 9 steps", () => {
     let draft = filledDraft();
     draft = removeStep({ draft, key: draft.steps[0].key });
-    expect(validateDraft({ draft }).map((error) => error.field)).toEqual([
-      "steps",
-    ]);
+    expect(
+      validateDraft({ draft, catalog: null }).map((error) => error.field),
+    ).toEqual(["steps"]);
     draft = filledDraft();
     for (let count = 0; count < 7; count += 1) {
       draft = addStep({ draft });
     }
     expect(draft.steps).toHaveLength(9);
-    const fields = validateDraft({ draft }).map((error) => error.field);
+    const fields = validateDraft({ draft, catalog: null }).map(
+      (error) => error.field,
+    );
     expect(fields).toContain("steps");
   });
 
   it("accepts 2 and 8 steps", () => {
     let draft = filledDraft();
     expect(draft.steps).toHaveLength(2);
-    expect(validateDraft({ draft })).toEqual([]);
+    expect(validateDraft({ draft, catalog: null })).toEqual([]);
     for (let count = 0; count < 6; count += 1) {
       draft = addStep({ draft });
       const added = draft.steps[draft.steps.length - 1];
@@ -705,7 +710,7 @@ describe("validateDraft", () => {
       });
     }
     expect(draft.steps).toHaveLength(8);
-    expect(validateDraft({ draft })).toEqual([]);
+    expect(validateDraft({ draft, catalog: null })).toEqual([]);
   });
 
   it("gives the label length message for a 65-character label", () => {
@@ -716,6 +721,7 @@ describe("validateDraft", () => {
         key: draft.steps[0].key,
         value: "l".repeat(65),
       }),
+      catalog: null,
     });
     expect(errors).toHaveLength(1);
     expect(errors[0].message).toBe("Enter a label of 1 to 64 characters.");
@@ -726,10 +732,12 @@ describe("validateDraft", () => {
     expect(
       validateDraft({
         draft: setDisplayName({ draft, value: "n".repeat(64) }),
+        catalog: null,
       }),
     ).toEqual([]);
     const errors = validateDraft({
       draft: setDisplayName({ draft, value: "n".repeat(65) }),
+      catalog: null,
     });
     expect(errors.map((error) => error.field)).toEqual(["display_name"]);
   });
@@ -739,7 +747,7 @@ describe("validateDraft", () => {
     const [first, second] = draft.steps;
     draft = setStepEvent({ draft, key: first.key, eventName: null });
     draft = setStepStream({ draft, key: second.key, stream: "api" });
-    const errors = validateDraft({ draft });
+    const errors = validateDraft({ draft, catalog: null });
     expect(errors.map((error) => error.field)).toEqual([
       "event_name",
       "api_endpoint",
@@ -751,7 +759,7 @@ describe("validateDraft", () => {
 describe("error surfaces", () => {
   it("applyValidationErrors puts name errors on the draft and step errors on steps", () => {
     const draft = createBlankDraft();
-    const errors = validateDraft({ draft });
+    const errors = validateDraft({ draft, catalog: null });
     const next = applyValidationErrors({ draft, errors });
     expect(next.serverErrors.map((error) => error.field)).toEqual([
       "display_name",
@@ -760,31 +768,19 @@ describe("error surfaces", () => {
     expect(next.steps[1].errors.event_name).toHaveLength(1);
   });
 
-  it("applyValidationErrors keeps a rejected hidden-field error until it is cleared", () => {
-    const base = draftFromEntry({
-      entry: entryFor({ definition: seededDefinition() }),
-    });
-    const withHidden = applyServerErrors({
+  it("applyValidationErrors keeps a server filter message and skips the client one under it", () => {
+    const base = seededDraft();
+    const withServer = applyServerErrors({
       draft: base,
       errors: { "steps.0.dim_filter.0": ["Bad filter."] },
-      submittedKeys: base.steps.map((step) => step.key),
+      submitted: captureSubmitted({ draft: base }),
     });
     const kept = applyValidationErrors({
-      draft: withHidden,
-      errors: validateDraft({ draft: withHidden }),
+      draft: withServer,
+      errors: validateDraft({ draft: withServer, catalog: null }),
     });
-    expect(kept.steps[0].errors.hidden).toEqual(["Bad filter."]);
-    const cleared = {
-      ...withHidden,
-      steps: withHidden.steps.map((step, index) =>
-        index === 0 ? { ...step, hiddenCleared: true } : step,
-      ),
-    };
-    const dropped = applyValidationErrors({
-      draft: cleared,
-      errors: validateDraft({ draft: cleared }),
-    });
-    expect(dropped.steps[0].errors.hidden).toBeUndefined();
+    expect(kept.steps[0].filters[0].serverErrors).toEqual(["Bad filter."]);
+    expect(kept.steps[0].filters[0].clientErrors).toEqual([]);
   });
 
   it("listProblems orders name, steps count, then each step's fields; skips form errors", () => {
@@ -799,15 +795,16 @@ describe("error surfaces", () => {
         "steps.0.dim_filter.0": ["Bad filter."],
         stray: ["Odd."],
       },
-      submittedKeys: base.steps.map((step) => step.key),
+      submitted: captureSubmitted({ draft: base }),
     });
     draft = setFormErrors({ draft, messages: ["Form-level."] });
-    const problems = listProblems({ draft });
+    const problems = listProblems({ draft, catalog: null });
     expect(
       problems.map((problem) => [problem.stepNumber, problem.field]),
     ).toEqual([
       [null, "display_name"],
-      [1, "hidden"],
+      [1, "nested"],
+      [1, "nested"],
       [2, "label"],
     ]);
     expect(listFormErrors({ draft })).toEqual(["Form-level."]);
@@ -817,27 +814,49 @@ describe("error surfaces", () => {
     let draft = applyServerErrors({
       draft: createBlankDraft(),
       errors: { display_name: ["Taken."], __root__: ["Full."] },
-      submittedKeys: [],
+      submitted: [],
     });
     draft = clearDraftError({ draft, field: "display_name" });
-    expect(listProblems({ draft })).toEqual([]);
+    expect(listProblems({ draft, catalog: null })).toEqual([]);
     expect(listFormErrors({ draft })).toEqual(["Full."]);
     draft = setFormErrors({ draft, messages: ["Again."] });
     expect(listFormErrors({ draft })).toEqual(["Again."]);
   });
 
-  it("summarizeHidden counts filters and detects a breakdown", () => {
-    const draft = draftFromEntry({
-      entry: entryFor({ definition: seededDefinition() }),
+  it("hasNestedContent detects filters, a breakdown or a damaged value", () => {
+    const draft = seededDraft();
+    expect(hasNestedContent({ step: draft.steps[0] })).toBe(true);
+    expect(hasNestedContent({ step: draft.steps[1] })).toBe(false);
+    expect(hasNestedContent({ step: createBlankDraft().steps[0] })).toBe(false);
+  });
+});
+
+describe("listNestedMessages", () => {
+  it("keeps a blank-row message until the row is edited, and lists one per address", () => {
+    const base = createBlankDraft();
+    const key = base.steps[0].key;
+    const withRow = addFilter({ draft: base, key });
+    const validated = applyValidationErrors({
+      draft: withRow,
+      errors: validateDraft({ draft: withRow, catalog: null }),
     });
-    expect(summarizeHidden({ step: draft.steps[0] })).toEqual({
-      filterCount: 2,
-      hasBreakdown: true,
+    const before = listNestedMessages({
+      step: validated.steps[0],
+      catalog: null,
+    }).filter((error) => error.address?.kind === "filter");
+    expect(before).toHaveLength(1);
+    const filterKey = validated.steps[0].filters[0].key;
+    const edited = setFilterDim({
+      draft: validated,
+      key,
+      filterKey,
+      dim: "device_type",
     });
-    expect(summarizeHidden({ step: createBlankDraft().steps[0] })).toEqual({
-      filterCount: 0,
-      hasBreakdown: false,
-    });
+    const after = listNestedMessages({
+      step: edited.steps[0],
+      catalog: null,
+    }).filter((error) => error.stored === true);
+    expect(after).toHaveLength(0);
   });
 });
 

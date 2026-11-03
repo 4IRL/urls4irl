@@ -15,33 +15,99 @@ import { fillTemplate } from "../lib/string-template.js";
 type FlowEntry = Schema<"MetricFlowEntrySchema">;
 type FlowCatalog = Schema<"FlowCatalogResponseSchema">;
 type CatalogEvent = Schema<"FlowCatalogEventSchema">;
+type CatalogDim = Schema<"FlowCatalogDimSchema">;
 type CatalogEndpoint = Schema<"FlowCatalogApiEndpointSchema">;
 
 export type StepStream = "ui" | "api" | "domain";
-export type StepField =
-  | "label"
-  | "event_name"
-  | "api_endpoint"
-  | "api_method"
-  | "hidden";
-export type DraftErrorField = StepField | "display_name" | "steps" | "form";
+export type StepField = "label" | "event_name" | "api_endpoint" | "api_method";
+export type DraftErrorField =
+  | StepField
+  | "display_name"
+  | "steps"
+  | "form"
+  | "nested";
+
+/**
+ * Where a filter or breakdown message lives. Problems carry the focus target
+ * (`breakdown` + `group_by`/`list` resolve to `event`, or `add` when no block exists).
+ */
+export type DraftAddress =
+  | { kind: "filters" }
+  | { kind: "filter"; filterKey: number; part: "dim" | "value" }
+  | { kind: "breakdown"; part: "event" | "group_by" | "list" | "add" }
+  | { kind: "breakdown_filters" }
+  | { kind: "breakdown_filter"; filterKey: number; part: "dim" | "value" };
 
 export interface DraftError {
   field: DraftErrorField;
   /** Step the error belongs to; null for name, step-count and form-level errors. */
   stepKey: number | null;
   message: string;
+  /** Set for `nested` errors (filters and breakdown). */
+  address?: DraftAddress;
+  /** `nested` only: kept in `clientErrors` until edited (a blank row), not derived on read. */
+  stored?: boolean;
+  /** `nested` only: came from the server (`serverErrors`). */
+  server?: boolean;
+  /**
+   * `nested` only: a second message on a control that already has a summary entry
+   * (redirected onto the breakdown event select). Shown in its paragraph, not listed.
+   */
+  extra?: boolean;
+}
+
+export interface DraftFilter {
+  key: number;
+  dim: string | null;
+  value: string | null;
+  /** A malformed stored entry, serialized unchanged until the row is edited. */
+  raw: string | null;
+  serverErrors: string[];
+  clientErrors: string[];
+}
+
+export interface DraftBreakdown {
+  eventName: string | null;
+  groupBy: string | null;
+  filters: DraftFilter[];
+  /** The raw non-list (or non-string-entry) stored breakdown `dim_filter`. */
+  damaged: { dim_filter: unknown } | null;
+  /** Unknown stored keys, serialized back unchanged. */
+  extra: Record<string, unknown>;
+  serverErrors: { event_name: string[]; group_by: string[] };
+  clientErrors: { event_name: string[]; group_by: string[] };
+}
+
+export interface DraftListErrors {
+  serverErrors: string[];
+  clientErrors: string[];
+}
+
+export interface DraftListErrorMap {
+  dim_filter: DraftListErrors;
+  drop_breakdown: DraftListErrors;
+  drop_breakdown_filters: DraftListErrors;
+}
+
+/** The raw non-list / non-object stored values; test with `in`, never truthiness. */
+export interface DraftStepDamaged {
+  dim_filter?: unknown;
+  drop_breakdown?: unknown;
 }
 
 export interface DraftStep {
   key: number;
+  /** Unknown step keys only; filters and breakdown live in their own fields. */
   original: Record<string, unknown>;
   stream: StepStream;
   label: string;
   eventName: string | null;
   apiEndpoint: string | null;
   apiMethod: string | null;
-  hiddenCleared: boolean;
+  filters: DraftFilter[];
+  breakdown: DraftBreakdown | null;
+  damaged: DraftStepDamaged | null;
+  listErrors: DraftListErrorMap;
   errors: Record<string, string[]>;
 }
 
@@ -54,7 +120,6 @@ export interface FlowDraft {
 
 export const STREAMS: readonly StepStream[] = ["ui", "api", "domain"];
 const BLANK_STEP_COUNT = 2;
-const HIDDEN_KEYS = ["dim_filter", "drop_breakdown"] as const;
 const STEP_PATH = /^steps\.(\d+)\.(.+)$/;
 
 // Module-wide so a key is never reused: server errors resolve against keys captured
@@ -79,6 +144,112 @@ export function isStream(value: unknown): value is StepStream {
   return STREAMS.some((stream) => stream === value);
 }
 
+let nextFilterKey = 1;
+
+function emptyListErrors(): DraftListErrors {
+  return { serverErrors: [], clientErrors: [] };
+}
+
+function emptyListErrorMap(): DraftListErrorMap {
+  return {
+    dim_filter: emptyListErrors(),
+    drop_breakdown: emptyListErrors(),
+    drop_breakdown_filters: emptyListErrors(),
+  };
+}
+
+function createFilter({
+  dim = null,
+  value = null,
+  raw = null,
+}: {
+  dim?: string | null;
+  value?: string | null;
+  raw?: string | null;
+}): DraftFilter {
+  const key = nextFilterKey;
+  nextFilterKey += 1;
+  return { key, dim, value, raw, serverErrors: [], clientErrors: [] };
+}
+
+/** Splits on the FIRST colon; no colon, an empty dim or an empty value stays raw. */
+function filterFromEntry({ entry }: { entry: string }): DraftFilter {
+  const colon = entry.indexOf(":");
+  if (colon <= 0 || colon === entry.length - 1) {
+    return createFilter({ dim: entry, value: null, raw: entry });
+  }
+  return createFilter({
+    dim: entry.slice(0, colon),
+    value: entry.slice(colon + 1),
+  });
+}
+
+function filterToEntry({ filter }: { filter: DraftFilter }): string {
+  return filter.raw ?? `${filter.dim ?? ""}:${filter.value ?? ""}`;
+}
+
+type HydratedFilters =
+  | { filters: DraftFilter[]; damaged: false }
+  | { filters: DraftFilter[]; damaged: true; rawValue: unknown };
+
+/** A missing or null list is empty; a non-list or a list with a non-string is damaged. */
+function filtersFromRaw({ value }: { value: unknown }): HydratedFilters {
+  if (value === null || value === undefined) {
+    return { filters: [], damaged: false };
+  }
+  if (
+    !Array.isArray(value) ||
+    !value.every((entry) => typeof entry === "string")
+  ) {
+    return { filters: [], damaged: true, rawValue: value };
+  }
+  return {
+    filters: value.map((entry: string) => filterFromEntry({ entry })),
+    damaged: false,
+  };
+}
+
+function breakdownFromRaw({
+  raw,
+}: {
+  raw: Record<string, unknown>;
+}): DraftBreakdown {
+  const { event_name, group_by, dim_filter, ...rest } = raw;
+  const hydrated = filtersFromRaw({ value: dim_filter });
+  const eventName = stringOrNull(event_name);
+  const groupBy = stringOrNull(group_by);
+  // A stored value the draft cannot hold (non-string, null, blank) stays in `extra`
+  // so it saves back unchanged until that field is edited.
+  const extra: Record<string, unknown> = { ...rest };
+  if (eventName === null && "event_name" in raw) {
+    extra.event_name = event_name;
+  }
+  if (groupBy === null && "group_by" in raw) {
+    extra.group_by = group_by;
+  }
+  return {
+    eventName,
+    groupBy,
+    filters: hydrated.filters,
+    damaged: hydrated.damaged ? { dim_filter: hydrated.rawValue } : null,
+    extra,
+    serverErrors: { event_name: [], group_by: [] },
+    clientErrors: { event_name: [], group_by: [] },
+  };
+}
+
+function createBlankBreakdown(): DraftBreakdown {
+  return {
+    eventName: null,
+    groupBy: null,
+    filters: [],
+    damaged: null,
+    extra: {},
+    serverErrors: { event_name: [], group_by: [] },
+    clientErrors: { event_name: [], group_by: [] },
+  };
+}
+
 function createBlankStep(): DraftStep {
   return {
     key: allocateStepKey(),
@@ -88,7 +259,10 @@ function createBlankStep(): DraftStep {
     eventName: null,
     apiEndpoint: null,
     apiMethod: null,
-    hiddenCleared: false,
+    filters: [],
+    breakdown: null,
+    damaged: null,
+    listErrors: emptyListErrorMap(),
     errors: {},
   };
 }
@@ -97,15 +271,30 @@ function stepFromRaw({ raw }: { raw: unknown }): DraftStep {
   if (!isRecord(raw)) {
     return createBlankStep();
   }
+  const { dim_filter, drop_breakdown, ...unknownKeys } = raw;
+  const damaged: DraftStepDamaged = {};
+  const hydrated = filtersFromRaw({ value: dim_filter });
+  if (hydrated.damaged) {
+    damaged.dim_filter = hydrated.rawValue;
+  }
+  let breakdown: DraftBreakdown | null = null;
+  if (isRecord(drop_breakdown)) {
+    breakdown = breakdownFromRaw({ raw: drop_breakdown });
+  } else if (drop_breakdown !== null && drop_breakdown !== undefined) {
+    damaged.drop_breakdown = drop_breakdown;
+  }
   return {
     key: allocateStepKey(),
-    original: { ...raw },
+    original: unknownKeys,
     stream: isStream(raw.stream) ? raw.stream : "ui",
     label: typeof raw.label === "string" ? raw.label : "",
     eventName: stringOrNull(raw.event_name),
     apiEndpoint: stringOrNull(raw.api_endpoint),
     apiMethod: stringOrNull(raw.api_method),
-    hiddenCleared: false,
+    filters: hydrated.filters,
+    breakdown,
+    damaged: Object.keys(damaged).length > 0 ? damaged : null,
+    listErrors: emptyListErrorMap(),
     errors: {},
   };
 }
@@ -138,7 +327,7 @@ export function draftFromEntry({ entry }: { entry: FlowEntry }): FlowDraft {
   return applyServerErrors({
     draft,
     errors: entry.errors ?? {},
-    submittedKeys: steps.map((step) => step.key),
+    submitted: captureSubmitted({ draft }),
   });
 }
 
@@ -159,11 +348,54 @@ function stepToRequest({
     event_name: isApi ? null : step.eventName,
     api_endpoint: isApi ? step.apiEndpoint : null,
     api_method: isApi ? step.apiMethod : null,
-    dim_filter: (step.original.dim_filter ??
-      null) as Schema<"LenientFlowStep">["dim_filter"],
-    drop_breakdown: (step.original.drop_breakdown ??
-      null) as Schema<"LenientFlowStep">["drop_breakdown"],
+    dim_filter: serializeFilters({
+      filters: step.filters,
+      damaged: step.damaged,
+    }) as Schema<"LenientFlowStep">["dim_filter"],
+    drop_breakdown: serializeBreakdown({
+      step,
+    }) as Schema<"LenientFlowStep">["drop_breakdown"],
   };
+}
+
+/** Empty gives null; a damaged raw value is sent unchanged. */
+function serializeFilters({
+  filters,
+  damaged,
+}: {
+  filters: DraftFilter[];
+  damaged: { dim_filter?: unknown } | null;
+}): unknown {
+  if (damaged !== null && "dim_filter" in damaged) {
+    return damaged.dim_filter;
+  }
+  return filters.length === 0
+    ? null
+    : filters.map((filter) => filterToEntry({ filter }));
+}
+
+function serializeBreakdown({ step }: { step: DraftStep }): unknown {
+  if (step.damaged !== null && "drop_breakdown" in step.damaged) {
+    return step.damaged.drop_breakdown;
+  }
+  const breakdown = step.breakdown;
+  if (breakdown === null) {
+    return null;
+  }
+  const body: Record<string, unknown> = {
+    ...breakdown.extra,
+    dim_filter: serializeFilters({
+      filters: breakdown.filters,
+      damaged: breakdown.damaged,
+    }),
+  };
+  if (breakdown.eventName !== null) {
+    body.event_name = breakdown.eventName;
+  }
+  if (breakdown.groupBy !== null) {
+    body.group_by = breakdown.groupBy;
+  }
+  return body;
 }
 
 /**
@@ -204,7 +436,7 @@ function canonicalize(value: unknown): unknown {
 /**
  * Stable string form of what a save would send: keys sorted, strings trimmed,
  * `null` and missing treated alike. `key`, `errors`, `serverErrors` and
- * `hiddenCleared` never enter it.
+ * message lists never enter it.
  */
 export function normalizeDraft({ draft }: { draft: FlowDraft }): string {
   return JSON.stringify(canonicalize(toRequestBody({ draft })));
@@ -242,27 +474,418 @@ function mapStep({
   };
 }
 
-/** Drops `dim_filter` and `drop_breakdown`, flagging the step only when something went. */
-function clearHidden({ step }: { step: DraftStep }): DraftStep {
-  const hadHidden = HIDDEN_KEYS.some((field) => {
-    const value = step.original[field];
-    return (
-      value !== null &&
-      value !== undefined &&
-      !(Array.isArray(value) && value.length === 0)
-    );
-  });
-  if (!hadHidden) {
+/** True while the step carries a filter, a breakdown or a damaged stored value. */
+export function hasNestedContent({ step }: { step: DraftStep }): boolean {
+  return (
+    step.filters.length > 0 || step.breakdown !== null || step.damaged !== null
+  );
+}
+
+/** Drops filters, breakdown, any damaged value and their list messages. */
+function resetNested({ step }: { step: DraftStep }): DraftStep {
+  if (!hasNestedContent({ step })) {
     return step;
   }
   return {
     ...step,
-    original: {
-      ...step.original,
-      ...Object.fromEntries(HIDDEN_KEYS.map((field) => [field, null])),
-    },
-    hiddenCleared: true,
+    filters: [],
+    breakdown: null,
+    damaged: null,
+    listErrors: emptyListErrorMap(),
   };
+}
+
+// ---------------------------------------------------------------------------
+// Filter and breakdown edits
+// ---------------------------------------------------------------------------
+
+function withoutDamagedKey({
+  damaged,
+  field,
+}: {
+  damaged: DraftStepDamaged | null;
+  field: keyof DraftStepDamaged;
+}): DraftStepDamaged | null {
+  if (damaged === null || !(field in damaged)) {
+    return damaged;
+  }
+  const rest: DraftStepDamaged = { ...damaged };
+  delete rest[field];
+  return Object.keys(rest).length > 0 ? rest : null;
+}
+
+function withoutKey({
+  record,
+  field,
+}: {
+  record: Record<string, unknown>;
+  field: string;
+}): Record<string, unknown> {
+  const rest = { ...record };
+  delete rest[field];
+  return rest;
+}
+
+function mapFilter({
+  filters,
+  filterKey,
+  update,
+}: {
+  filters: DraftFilter[];
+  filterKey: number;
+  update: (filter: DraftFilter) => DraftFilter;
+}): DraftFilter[] {
+  return filters.map((filter) =>
+    filter.key === filterKey ? update(filter) : filter,
+  );
+}
+
+function editedDim({
+  filter,
+  dim,
+}: {
+  filter: DraftFilter;
+  dim: string | null;
+}): DraftFilter {
+  return {
+    ...filter,
+    dim: dim === "" ? null : dim,
+    value: null,
+    raw: null,
+    serverErrors: [],
+    clientErrors: [],
+  };
+}
+
+function editedValue({
+  filter,
+  value,
+}: {
+  filter: DraftFilter;
+  value: string | null;
+}): DraftFilter {
+  return {
+    ...filter,
+    value: value === "" ? null : value,
+    raw: null,
+    serverErrors: [],
+    clientErrors: [],
+  };
+}
+
+export function addFilter({
+  draft,
+  key,
+}: {
+  draft: FlowDraft;
+  key: number;
+}): FlowDraft {
+  return mapStep({
+    draft,
+    key,
+    update: (step) => ({
+      ...step,
+      filters: [...step.filters, createFilter({})],
+      damaged: withoutDamagedKey({
+        damaged: step.damaged,
+        field: "dim_filter",
+      }),
+      listErrors: { ...step.listErrors, dim_filter: emptyListErrors() },
+    }),
+  });
+}
+
+export function removeFilter({
+  draft,
+  key,
+  filterKey,
+}: {
+  draft: FlowDraft;
+  key: number;
+  filterKey: number;
+}): FlowDraft {
+  return mapStep({
+    draft,
+    key,
+    update: (step) => ({
+      ...step,
+      filters: step.filters.filter((filter) => filter.key !== filterKey),
+      listErrors: { ...step.listErrors, dim_filter: emptyListErrors() },
+    }),
+  });
+}
+
+export function setFilterDim({
+  draft,
+  key,
+  filterKey,
+  dim,
+}: {
+  draft: FlowDraft;
+  key: number;
+  filterKey: number;
+  dim: string | null;
+}): FlowDraft {
+  return mapStep({
+    draft,
+    key,
+    update: (step) => ({
+      ...step,
+      filters: mapFilter({
+        filters: step.filters,
+        filterKey,
+        update: (filter) => editedDim({ filter, dim }),
+      }),
+      listErrors: { ...step.listErrors, dim_filter: emptyListErrors() },
+    }),
+  });
+}
+
+export function setFilterValue({
+  draft,
+  key,
+  filterKey,
+  value,
+}: {
+  draft: FlowDraft;
+  key: number;
+  filterKey: number;
+  value: string | null;
+}): FlowDraft {
+  return mapStep({
+    draft,
+    key,
+    update: (step) => ({
+      ...step,
+      filters: mapFilter({
+        filters: step.filters,
+        filterKey,
+        update: (filter) => editedValue({ filter, value }),
+      }),
+      listErrors: { ...step.listErrors, dim_filter: emptyListErrors() },
+    }),
+  });
+}
+
+/** Adds a blank breakdown; a no-op when one is already present. */
+export function addBreakdown({
+  draft,
+  key,
+}: {
+  draft: FlowDraft;
+  key: number;
+}): FlowDraft {
+  return mapStep({
+    draft,
+    key,
+    update: (step) =>
+      step.breakdown !== null
+        ? step
+        : {
+            ...step,
+            breakdown: createBlankBreakdown(),
+            damaged: withoutDamagedKey({
+              damaged: step.damaged,
+              field: "drop_breakdown",
+            }),
+            listErrors: {
+              ...step.listErrors,
+              drop_breakdown: emptyListErrors(),
+              drop_breakdown_filters: emptyListErrors(),
+            },
+          },
+  });
+}
+
+/** Drops the whole breakdown (its `extra` and `damaged` included) and any damaged value. */
+export function removeBreakdown({
+  draft,
+  key,
+}: {
+  draft: FlowDraft;
+  key: number;
+}): FlowDraft {
+  return mapStep({
+    draft,
+    key,
+    update: (step) => ({
+      ...step,
+      breakdown: null,
+      damaged: withoutDamagedKey({
+        damaged: step.damaged,
+        field: "drop_breakdown",
+      }),
+      listErrors: {
+        ...step.listErrors,
+        drop_breakdown: emptyListErrors(),
+        drop_breakdown_filters: emptyListErrors(),
+      },
+    }),
+  });
+}
+
+function mapBreakdown({
+  draft,
+  key,
+  update,
+  clearList,
+}: {
+  draft: FlowDraft;
+  key: number;
+  update: (breakdown: DraftBreakdown) => DraftBreakdown;
+  clearList: readonly (keyof DraftListErrorMap)[];
+}): FlowDraft {
+  return mapStep({
+    draft,
+    key,
+    update: (step) => {
+      if (step.breakdown === null) {
+        return step;
+      }
+      const listErrors = { ...step.listErrors };
+      for (const list of clearList) {
+        listErrors[list] = emptyListErrors();
+      }
+      return { ...step, breakdown: update(step.breakdown), listErrors };
+    },
+  });
+}
+
+/** An edited event is a new breakdown: group_by, filters, `damaged` and `extra` reset. */
+export function setBreakdownEvent({
+  draft,
+  key,
+  eventName,
+}: {
+  draft: FlowDraft;
+  key: number;
+  eventName: string | null;
+}): FlowDraft {
+  const next = eventName === "" ? null : eventName;
+  return mapBreakdown({
+    draft,
+    key,
+    clearList: ["drop_breakdown", "drop_breakdown_filters"],
+    update: (breakdown) =>
+      breakdown.eventName === next
+        ? breakdown
+        : { ...createBlankBreakdown(), eventName: next },
+  });
+}
+
+export function setBreakdownGroupBy({
+  draft,
+  key,
+  groupBy,
+}: {
+  draft: FlowDraft;
+  key: number;
+  groupBy: string | null;
+}): FlowDraft {
+  return mapBreakdown({
+    draft,
+    key,
+    clearList: ["drop_breakdown"],
+    update: (breakdown) => ({
+      ...breakdown,
+      extra: withoutKey({ record: breakdown.extra, field: "group_by" }),
+      groupBy: groupBy === "" ? null : groupBy,
+      serverErrors: { ...breakdown.serverErrors, group_by: [] },
+      // The only stored event message is "choose an event and group by".
+      clientErrors: { event_name: [], group_by: [] },
+    }),
+  });
+}
+
+export function addBreakdownFilter({
+  draft,
+  key,
+}: {
+  draft: FlowDraft;
+  key: number;
+}): FlowDraft {
+  return mapBreakdown({
+    draft,
+    key,
+    clearList: ["drop_breakdown_filters"],
+    update: (breakdown) => ({
+      ...breakdown,
+      filters: [...breakdown.filters, createFilter({})],
+      damaged: null,
+    }),
+  });
+}
+
+export function removeBreakdownFilter({
+  draft,
+  key,
+  filterKey,
+}: {
+  draft: FlowDraft;
+  key: number;
+  filterKey: number;
+}): FlowDraft {
+  return mapBreakdown({
+    draft,
+    key,
+    clearList: ["drop_breakdown_filters"],
+    update: (breakdown) => ({
+      ...breakdown,
+      filters: breakdown.filters.filter((filter) => filter.key !== filterKey),
+    }),
+  });
+}
+
+export function setBreakdownFilterDim({
+  draft,
+  key,
+  filterKey,
+  dim,
+}: {
+  draft: FlowDraft;
+  key: number;
+  filterKey: number;
+  dim: string | null;
+}): FlowDraft {
+  return mapBreakdown({
+    draft,
+    key,
+    clearList: ["drop_breakdown_filters"],
+    update: (breakdown) => ({
+      ...breakdown,
+      filters: mapFilter({
+        filters: breakdown.filters,
+        filterKey,
+        update: (filter) => editedDim({ filter, dim }),
+      }),
+    }),
+  });
+}
+
+export function setBreakdownFilterValue({
+  draft,
+  key,
+  filterKey,
+  value,
+}: {
+  draft: FlowDraft;
+  key: number;
+  filterKey: number;
+  value: string | null;
+}): FlowDraft {
+  return mapBreakdown({
+    draft,
+    key,
+    clearList: ["drop_breakdown_filters"],
+    update: (breakdown) => ({
+      ...breakdown,
+      filters: mapFilter({
+        filters: breakdown.filters,
+        filterKey,
+        update: (filter) => editedValue({ filter, value }),
+      }),
+    }),
+  });
 }
 
 export function setDisplayName({
@@ -291,7 +914,7 @@ export function setStepLabel({
   });
 }
 
-/** A stream change resets event, endpoint and method and clears hidden fields. */
+/** A stream change resets event, endpoint and method and clears filters and breakdown. */
 export function setStepStream({
   draft,
   key,
@@ -307,7 +930,7 @@ export function setStepStream({
     update: (step) =>
       step.stream === stream
         ? step
-        : clearHidden({
+        : resetNested({
             step: {
               ...step,
               stream,
@@ -335,12 +958,12 @@ export function setStepEvent({
     update: (step) =>
       step.stream === "api" || step.eventName === next
         ? step
-        : clearHidden({ step: { ...step, eventName: next } }),
+        : resetNested({ step: { ...step, eventName: next } }),
   });
 }
 
 /**
- * Changing the endpoint is the API step's "event": hidden fields clear. The
+ * Changing the endpoint is the API step's "event": filters and breakdown clear. The
  * method clears unless the catalog allows exactly one, which is then selected.
  */
 export function setStepEndpoint({
@@ -366,7 +989,7 @@ export function setStepEndpoint({
         catalog === null || next === null
           ? []
           : listMethods({ catalog, endpoint: next });
-      return clearHidden({
+      return resetNested({
         step: {
           ...step,
           apiEndpoint: next,
@@ -377,7 +1000,7 @@ export function setStepEndpoint({
   });
 }
 
-/** A method change keeps hidden fields. */
+/** A method change keeps filters and breakdown. */
 export function setStepMethod({
   draft,
   key,
@@ -450,10 +1073,18 @@ function lengthMessage({
 }
 
 /**
- * Mirrors only the shared limits; semantics, control characters, uniqueness and the
- * custom-flow cap stay server-side.
+ * Mirrors only the shared limits plus completeness and staleness of filters and
+ * breakdown; semantics, control characters, uniqueness and the custom-flow cap stay
+ * server-side. `catalog` is null while the catalog loads or failed: staleness is then
+ * not judged (server errors still block).
  */
-export function validateDraft({ draft }: { draft: FlowDraft }): DraftError[] {
+export function validateDraft({
+  draft,
+  catalog,
+}: {
+  draft: FlowDraft;
+  catalog: FlowCatalog | null;
+}): DraftError[] {
   const constants = APP_CONFIG.constants;
   const strings = APP_CONFIG.strings;
   const errors: DraftError[] = [];
@@ -533,6 +1164,15 @@ export function validateDraft({ draft }: { draft: FlowDraft }): DraftError[] {
         message: strings.METRICS_FLOW_BUILDER_ERR_EVENT_REQUIRED,
       });
     }
+    for (const issue of deriveNestedIssues({ step, catalog })) {
+      errors.push({
+        field: "nested",
+        stepKey: step.key,
+        message: issue.message,
+        address: issue.address,
+        stored: issue.stored,
+      });
+    }
   }
   return errors;
 }
@@ -540,6 +1180,11 @@ export function validateDraft({ draft }: { draft: FlowDraft }): DraftError[] {
 /**
  * Puts client validation results where server errors live (name and step-count
  * errors in `serverErrors`, step errors on their step), replacing earlier errors.
+ * Filter and breakdown rows are different: only the `clientErrors` lists are
+ * replaced, every `serverErrors` list is kept, and a client message is skipped
+ * where a server message already exists. Only blank-row messages are stored;
+ * stale, damaged and unavailable messages are derived on read, so an edit retires
+ * them without bookkeeping.
  */
 export function applyValidationErrors({
   draft,
@@ -552,22 +1197,105 @@ export function applyValidationErrors({
     ...draft,
     serverErrors: errors.filter((error) => error.stepKey === null),
     steps: draft.steps.map((step) => {
-      // A rejected filter/breakdown stays until an edit removes it.
-      const forStep: Record<string, string[]> =
-        step.errors.hidden && !step.hiddenCleared
-          ? { hidden: step.errors.hidden }
-          : {};
+      const forStep: Record<string, string[]> = {};
+      const stored: DraftError[] = [];
       for (const error of errors) {
-        if (error.stepKey === step.key) {
+        if (error.stepKey !== step.key) {
+          continue;
+        }
+        if (error.field !== "nested") {
           forStep[error.field] = [
             ...(forStep[error.field] ?? []),
             error.message,
           ];
+        } else if (error.stored === true) {
+          stored.push(error);
         }
       }
-      return { ...step, errors: forStep };
+      return storeClientErrors({
+        step: { ...step, errors: forStep },
+        issues: stored,
+      });
     }),
   };
+}
+
+/** Replaces a step's stored client messages with `issues`, never over a server message. */
+function storeClientErrors({
+  step,
+  issues,
+}: {
+  step: DraftStep;
+  issues: readonly DraftError[];
+}): DraftStep {
+  const cleared = (filters: DraftFilter[]): DraftFilter[] =>
+    filters.map((filter) => ({ ...filter, clientErrors: [] }));
+  let filters = cleared(step.filters);
+  let breakdown: DraftBreakdown | null =
+    step.breakdown === null
+      ? null
+      : {
+          ...step.breakdown,
+          filters: cleared(step.breakdown.filters),
+          clientErrors: { event_name: [], group_by: [] },
+        };
+  const withMessage = ({
+    list,
+    filterKey,
+    message,
+  }: {
+    list: DraftFilter[];
+    filterKey: number;
+    message: string;
+  }): DraftFilter[] =>
+    list.map((filter) =>
+      filter.key === filterKey && filter.serverErrors.length === 0
+        ? { ...filter, clientErrors: [message] }
+        : filter,
+    );
+  for (const issue of issues) {
+    const address = issue.address;
+    if (address === undefined) {
+      continue;
+    }
+    if (address.kind === "filter") {
+      filters = withMessage({
+        list: filters,
+        filterKey: address.filterKey,
+        message: issue.message,
+      });
+    } else if (address.kind === "breakdown_filter" && breakdown !== null) {
+      breakdown = {
+        ...breakdown,
+        filters: withMessage({
+          list: breakdown.filters,
+          filterKey: address.filterKey,
+          message: issue.message,
+        }),
+      };
+    } else if (
+      address.kind === "breakdown" &&
+      (address.part === "event" || address.part === "group_by") &&
+      breakdown !== null
+    ) {
+      const part = address.part === "event" ? "event_name" : "group_by";
+      if (breakdown.serverErrors[part].length === 0) {
+        breakdown = {
+          ...breakdown,
+          clientErrors: { ...breakdown.clientErrors, [part]: [issue.message] },
+        };
+      }
+    }
+  }
+  const listErrors: DraftListErrorMap = {
+    dim_filter: { ...step.listErrors.dim_filter, clientErrors: [] },
+    drop_breakdown: { ...step.listErrors.drop_breakdown, clientErrors: [] },
+    drop_breakdown_filters: {
+      ...step.listErrors.drop_breakdown_filters,
+      clientErrors: [],
+    },
+  };
+  return { ...step, filters, breakdown, listErrors };
 }
 
 /** Drops draft-level errors (`display_name`, `steps` or `form`) of one field. */
@@ -618,14 +1346,20 @@ const PROBLEM_FIELD_ORDER: readonly StepField[] = [
   "event_name",
   "api_endpoint",
   "api_method",
-  "hidden",
 ];
 
 /**
  * Every field-level problem in reading order: name, step count, then each step's
- * fields. Form-level errors are excluded; they render once in their own region.
+ * fields, then its filters and breakdown. Form-level errors are excluded; they
+ * render once in their own region. `catalog` is null until the catalog loads.
  */
-export function listProblems({ draft }: { draft: FlowDraft }): DraftProblem[] {
+export function listProblems({
+  draft,
+  catalog,
+}: {
+  draft: FlowDraft;
+  catalog: FlowCatalog | null;
+}): DraftProblem[] {
   const problems: DraftProblem[] = [];
   for (const field of ["display_name", "steps"] as const) {
     for (const error of draft.serverErrors) {
@@ -645,6 +1379,11 @@ export function listProblems({ draft }: { draft: FlowDraft }): DraftProblem[] {
         });
       }
     }
+    for (const error of listNestedMessages({ step, catalog })) {
+      if (error.extra !== true) {
+        problems.push({ ...error, stepNumber: index + 1 });
+      }
+    }
   });
   return problems;
 }
@@ -655,33 +1394,37 @@ export function listFormErrors({ draft }: { draft: FlowDraft }): string[] {
     .map((error) => error.message);
 }
 
-function isPresent(value: unknown): boolean {
-  return (
-    value !== null &&
-    value !== undefined &&
-    !(Array.isArray(value) && value.length === 0)
-  );
-}
-
-/** What a step still carries in `dim_filter` and `drop_breakdown`. */
-export function summarizeHidden({ step }: { step: DraftStep }): {
-  filterCount: number;
-  hasBreakdown: boolean;
-} {
-  const filters = step.original.dim_filter;
-  return {
-    filterCount: Array.isArray(filters)
-      ? filters.length
-      : isPresent(filters)
-        ? 1
-        : 0,
-    hasBreakdown: isPresent(step.original.drop_breakdown),
-  };
-}
-
 // ---------------------------------------------------------------------------
 // Server errors
 // ---------------------------------------------------------------------------
+
+/** What one step looked like in the body that was sent, by key and position. */
+export interface SubmittedStep {
+  key: number;
+  /** Keys of the step's `dim_filter` entries, in sent order. */
+  filterKeys: number[];
+  /** Keys of the breakdown's `dim_filter` entries, in sent order. */
+  breakdownFilterKeys: number[];
+}
+
+/** Captures the per-step shape `toRequestBody` is about to send. */
+export function captureSubmitted({
+  draft,
+}: {
+  draft: FlowDraft;
+}): SubmittedStep[] {
+  return draft.steps.map((step) => ({
+    key: step.key,
+    filterKeys:
+      step.damaged !== null && "dim_filter" in step.damaged
+        ? []
+        : step.filters.map((filter) => filter.key),
+    breakdownFilterKeys:
+      step.damaged !== null && "drop_breakdown" in step.damaged
+        ? []
+        : (step.breakdown?.filters.map((filter) => filter.key) ?? []),
+  }));
+}
 
 const SERVER_STEP_FIELDS = [
   "label",
@@ -696,35 +1439,63 @@ function isServerStepField(
   return SERVER_STEP_FIELDS.some((field) => field === value);
 }
 
-function stepFieldForSuffix({ suffix }: { suffix: string }): StepField | null {
-  if (isServerStepField(suffix)) {
-    return suffix;
-  }
-  if (
-    HIDDEN_KEYS.some((key) => suffix === key || suffix.startsWith(`${key}.`))
-  ) {
-    return "hidden";
-  }
-  return null;
+const ENTRY_SUFFIX = /^(dim_filter|drop_breakdown\.dim_filter)\.(\d+)$/;
+
+/** Server error suffixes that address a whole nested list, by list key. */
+const LIST_SUFFIX_KEYS: Partial<Record<string, keyof DraftListErrorMap>> = {
+  dim_filter: "dim_filter",
+  drop_breakdown: "drop_breakdown",
+  "drop_breakdown.dim_filter": "drop_breakdown_filters",
+};
+
+/** An empty, immutable-by-convention message bag for one step's nested server messages. */
+function clearServerNested({ step }: { step: DraftStep }): DraftStep {
+  const cleared = (filters: DraftFilter[]): DraftFilter[] =>
+    filters.map((filter) => ({ ...filter, serverErrors: [] }));
+  const list = (lists: DraftListErrors): DraftListErrors => ({
+    ...lists,
+    serverErrors: [],
+  });
+  return {
+    ...step,
+    errors: {},
+    filters: cleared(step.filters),
+    breakdown:
+      step.breakdown === null
+        ? null
+        : {
+            ...step.breakdown,
+            filters: cleared(step.breakdown.filters),
+            serverErrors: { event_name: [], group_by: [] },
+          },
+    listErrors: {
+      dim_filter: list(step.listErrors.dim_filter),
+      drop_breakdown: list(step.listErrors.drop_breakdown),
+      drop_breakdown_filters: list(step.listErrors.drop_breakdown_filters),
+    },
+  };
 }
 
 /**
  * Maps dotted, 0-based server paths onto the current draft. `steps.N` resolves
- * through `submittedKeys[N]` (the key order of the body that was sent) and then by
- * key, so errors stay with their step after a reorder; a step removed since the
- * submit surfaces at form level. Nothing is dropped. Replaces earlier errors.
+ * through `submitted[N].key` (the order of the body that was sent) and then by key,
+ * so errors stay with their step after a reorder. `dim_filter.M` and
+ * `drop_breakdown.dim_filter.M` resolve through the captured filter keys the same
+ * way. Anything whose target is gone since the submit (a removed step, filter or
+ * breakdown) surfaces at form level; nothing is dropped. Replaces earlier server
+ * errors and leaves client messages alone.
  */
 export function applyServerErrors({
   draft,
   errors,
-  submittedKeys,
+  submitted,
 }: {
   draft: FlowDraft;
   errors: Record<string, string[]>;
-  submittedKeys: readonly number[];
+  submitted: readonly SubmittedStep[];
 }): FlowDraft {
   const serverErrors: DraftError[] = [];
-  const stepErrors = new Map<number, Record<string, string[]>>();
+  let steps = draft.steps.map((step) => clearServerNested({ step }));
 
   const addFormError = ({ path, message }: { path: string; message: string }) =>
     serverErrors.push({
@@ -732,6 +1503,147 @@ export function applyServerErrors({
       stepKey: null,
       message: path === "__root__" ? message : `${path}: ${message}`,
     });
+
+  const updateStep = ({
+    key,
+    update,
+  }: {
+    key: number;
+    update: (step: DraftStep) => DraftStep | null;
+  }): boolean => {
+    const target = steps.find((step) => step.key === key);
+    if (target === undefined) {
+      return false;
+    }
+    const next = update(target);
+    if (next === null) {
+      return false;
+    }
+    steps = steps.map((step) => (step.key === key ? next : step));
+    return true;
+  };
+
+  const withFilterMessage = ({
+    filters,
+    filterKey,
+    message,
+  }: {
+    filters: DraftFilter[];
+    filterKey: number | undefined;
+    message: string;
+  }): DraftFilter[] | null => {
+    if (!filters.some((filter) => filter.key === filterKey)) {
+      return null;
+    }
+    return filters.map((filter) =>
+      filter.key === filterKey
+        ? { ...filter, serverErrors: [...filter.serverErrors, message] }
+        : filter,
+    );
+  };
+
+  const withListMessage = ({
+    step,
+    list,
+    message,
+  }: {
+    step: DraftStep;
+    list: keyof DraftListErrorMap;
+    message: string;
+  }): DraftStep => ({
+    ...step,
+    listErrors: {
+      ...step.listErrors,
+      [list]: {
+        ...step.listErrors[list],
+        serverErrors: [...step.listErrors[list].serverErrors, message],
+      },
+    },
+  });
+
+  const applyStepSuffix = ({
+    sent,
+    suffix,
+    message,
+  }: {
+    sent: SubmittedStep;
+    suffix: string;
+    message: string;
+  }): boolean => {
+    const entry = ENTRY_SUFFIX.exec(suffix);
+    if (isServerStepField(suffix)) {
+      return updateStep({
+        key: sent.key,
+        update: (step) => ({
+          ...step,
+          errors: {
+            ...step.errors,
+            [suffix]: [...(step.errors[suffix] ?? []), message],
+          },
+        }),
+      });
+    }
+    const list = LIST_SUFFIX_KEYS[suffix];
+    if (list !== undefined) {
+      return updateStep({
+        key: sent.key,
+        update: (step) => withListMessage({ step, list, message }),
+      });
+    }
+    if (
+      suffix === "drop_breakdown.event_name" ||
+      suffix === "drop_breakdown.group_by"
+    ) {
+      const part =
+        suffix === "drop_breakdown.group_by" ? "group_by" : "event_name";
+      return updateStep({
+        key: sent.key,
+        update: (step) =>
+          step.breakdown === null
+            ? null
+            : {
+                ...step,
+                breakdown: {
+                  ...step.breakdown,
+                  serverErrors: {
+                    ...step.breakdown.serverErrors,
+                    [part]: [...step.breakdown.serverErrors[part], message],
+                  },
+                },
+              },
+      });
+    }
+    if (entry !== null) {
+      const inBreakdown = entry[1] !== "dim_filter";
+      const sentKeys = inBreakdown ? sent.breakdownFilterKeys : sent.filterKeys;
+      const filterKey: number | undefined = sentKeys[Number(entry[2])];
+      return updateStep({
+        key: sent.key,
+        update: (step) => {
+          if (inBreakdown) {
+            if (step.breakdown === null) {
+              return null;
+            }
+            const filters = withFilterMessage({
+              filters: step.breakdown.filters,
+              filterKey,
+              message,
+            });
+            return filters === null
+              ? null
+              : { ...step, breakdown: { ...step.breakdown, filters } };
+          }
+          const filters = withFilterMessage({
+            filters: step.filters,
+            filterKey,
+            message,
+          });
+          return filters === null ? null : { ...step, filters };
+        },
+      });
+    }
+    return false;
+  };
 
   for (const [path, messages] of Object.entries(errors)) {
     const match = STEP_PATH.exec(path);
@@ -743,36 +1655,576 @@ export function applyServerErrors({
       } else if (match === null) {
         addFormError({ path, message });
       } else {
-        const key: number | undefined = submittedKeys[Number(match[1])];
-        const field = stepFieldForSuffix({ suffix: match[2] });
+        const sent: SubmittedStep | undefined = submitted[Number(match[1])];
         if (
-          key === undefined ||
-          field === null ||
-          !draft.steps.some((step) => step.key === key)
+          sent === undefined ||
+          !applyStepSuffix({ sent, suffix: match[2], message })
         ) {
           addFormError({ path, message });
-        } else {
-          const forStep = stepErrors.get(key) ?? {};
-          forStep[field] = [...(forStep[field] ?? []), message];
-          stepErrors.set(key, forStep);
         }
       }
     }
   }
 
-  return {
-    ...draft,
-    serverErrors,
-    steps: draft.steps.map((step) => ({
-      ...step,
-      errors: stepErrors.get(step.key) ?? {},
-    })),
+  return { ...draft, serverErrors, steps };
+}
+
+// ---------------------------------------------------------------------------
+// Filter and breakdown messages
+// ---------------------------------------------------------------------------
+
+interface NestedIssue {
+  address: DraftAddress;
+  message: string;
+  /** Kept in `clientErrors` until edited rather than derived on every read. */
+  stored: boolean;
+}
+
+function addressKey({ address }: { address: DraftAddress }): string {
+  switch (address.kind) {
+    case "filters":
+    case "breakdown_filters":
+      return address.kind;
+    case "filter":
+    case "breakdown_filter":
+      return `${address.kind}:${address.filterKey}`;
+    case "breakdown":
+      return address.part === "list" || address.part === "add"
+        ? `breakdown:${address.part}`
+        : "breakdown:field";
+  }
+}
+
+/** The event a step's filters are judged against; null when none is chosen. */
+function filterEventName({ step }: { step: DraftStep }): string | null {
+  return step.stream === "api" ? API_EVENT_NAME : step.eventName;
+}
+
+function filterIssues({
+  filters,
+  eventName,
+  catalog,
+  kind,
+}: {
+  filters: DraftFilter[];
+  eventName: string | null;
+  catalog: FlowCatalog | null;
+  kind: "filter" | "breakdown_filter";
+}): NestedIssue[] {
+  const strings = APP_CONFIG.strings;
+  const event =
+    catalog === null ? null : findCatalogEvent({ catalog, eventName });
+  const issues: NestedIssue[] = [];
+  for (const filter of filters) {
+    const dimAddress: DraftAddress = {
+      kind,
+      filterKey: filter.key,
+      part: "dim",
+    };
+    if (filter.raw !== null) {
+      issues.push({
+        address: dimAddress,
+        message: strings.METRICS_FLOW_BUILDER_FILTER_INCOMPLETE,
+        stored: false,
+      });
+      continue;
+    }
+    if (filter.dim === null || filter.value === null) {
+      issues.push({
+        address: dimAddress,
+        message: strings.METRICS_FLOW_BUILDER_FILTER_INCOMPLETE,
+        stored: true,
+      });
+      continue;
+    }
+    if (event === null) {
+      continue;
+    }
+    const dim = listFilterDimsOf({ event }).find(
+      (item) => item.key === filter.dim,
+    );
+    if (dim === undefined) {
+      issues.push({
+        address: dimAddress,
+        message: fillTemplate({
+          template: strings.METRICS_FLOW_BUILDER_FILTER_STALE_DIM,
+          values: { dim: filter.dim },
+        }),
+        stored: false,
+      });
+    } else if (
+      dim.filter_kind === "values" &&
+      !dim.values.includes(filter.value)
+    ) {
+      issues.push({
+        address: { kind, filterKey: filter.key, part: "value" },
+        message: strings.METRICS_FLOW_BUILDER_FILTER_STALE_VALUE,
+        stored: false,
+      });
+    }
+  }
+  return issues;
+}
+
+function listFilterDimsOf({ event }: { event: CatalogEvent }): CatalogDim[] {
+  return event.dims.filter((dim) => dim.filter_kind !== "group_by_only");
+}
+
+/**
+ * Everything wrong with a step's filters and breakdown that does not come from the
+ * server: blank rows (stored on Save), and damaged stored values and stale catalog
+ * references (derived, so an edit that fixes them retires them). `catalog` null
+ * skips the catalog judgements.
+ */
+function deriveNestedIssues({
+  step,
+  catalog,
+}: {
+  step: DraftStep;
+  catalog: FlowCatalog | null;
+}): NestedIssue[] {
+  const strings = APP_CONFIG.strings;
+  const issues: NestedIssue[] = [];
+  const judged = judgedCatalog({ step, catalog });
+  const damaged = step.damaged;
+  if (damaged !== null && "dim_filter" in damaged) {
+    issues.push({
+      address: { kind: "filters" },
+      message: strings.METRICS_FLOW_BUILDER_DAMAGED_FILTERS,
+      stored: false,
+    });
+  }
+  if (damaged !== null && "drop_breakdown" in damaged) {
+    issues.push({
+      address: { kind: "breakdown", part: "add" },
+      message: strings.METRICS_FLOW_BUILDER_DAMAGED_BREAKDOWN,
+      stored: false,
+    });
+  }
+  issues.push(
+    ...filterIssues({
+      filters: step.filters,
+      eventName: filterEventName({ step }),
+      catalog: judged,
+      kind: "filter",
+    }),
+  );
+  const breakdown = step.breakdown;
+  if (breakdown === null) {
+    return issues;
+  }
+  if (breakdown.damaged !== null) {
+    issues.push({
+      address: { kind: "breakdown_filters" },
+      message: strings.METRICS_FLOW_BUILDER_DAMAGED_BREAKDOWN_FILTERS,
+      stored: false,
+    });
+  }
+  const breakdownEvent =
+    judged === null
+      ? null
+      : findCatalogEvent({ catalog: judged, eventName: breakdown.eventName });
+  if (breakdown.eventName === null) {
+    issues.push({
+      address: { kind: "breakdown", part: "event" },
+      message: strings.METRICS_FLOW_BUILDER_BREAKDOWN_INCOMPLETE,
+      stored: true,
+    });
+  } else if (judged !== null && breakdownEvent === null) {
+    issues.push({
+      address: { kind: "breakdown", part: "event" },
+      message: strings.METRICS_FLOW_BUILDER_BREAKDOWN_EVENT_MISSING,
+      stored: false,
+    });
+  } else if (
+    breakdownEvent !== null &&
+    !breakdownEvent.dims.some((dim) => dim.groupable)
+  ) {
+    issues.push({
+      address: { kind: "breakdown", part: "event" },
+      message: strings.METRICS_FLOW_BUILDER_BREAKDOWN_UNAVAILABLE,
+      stored: false,
+    });
+  } else if (breakdown.groupBy === null) {
+    issues.push({
+      address: { kind: "breakdown", part: "group_by" },
+      message: strings.METRICS_FLOW_BUILDER_BREAKDOWN_INCOMPLETE,
+      stored: true,
+    });
+  } else if (
+    breakdownEvent !== null &&
+    !breakdownEvent.dims.some(
+      (dim) => dim.groupable && dim.key === breakdown.groupBy,
+    )
+  ) {
+    issues.push({
+      address: { kind: "breakdown", part: "group_by" },
+      message: fillTemplate({
+        template: strings.METRICS_FLOW_BUILDER_BREAKDOWN_GROUP_BY_STALE,
+        values: { group_by: breakdown.groupBy },
+      }),
+      stored: false,
+    });
+  }
+  // Read-only rows (missing or ungroupable event) are judged only for completeness.
+  const frozen = storedEventState({ breakdown, catalog }) !== null;
+  issues.push(
+    ...filterIssues({
+      filters: breakdown.filters,
+      eventName: breakdown.eventName,
+      catalog: frozen ? null : judged,
+      kind: "breakdown_filter",
+    }),
+  );
+  return issues;
+}
+
+/** The catalog to judge a step's nested rows against; null when the step event is stale or unset. */
+function judgedCatalog({
+  step,
+  catalog,
+}: {
+  step: DraftStep;
+  catalog: FlowCatalog | null;
+}): FlowCatalog | null {
+  if (catalog === null) {
+    return null;
+  }
+  if (step.stream === "api") {
+    const endpoint = step.apiEndpoint;
+    return endpoint === null ||
+      endpoint === "" ||
+      isStaleEndpoint({ catalog, apiEndpoint: endpoint })
+      ? null
+      : catalog;
+  }
+  return step.eventName === null ||
+    step.eventName === "" ||
+    isStaleEvent({
+      catalog,
+      stream: step.stream,
+      eventName: step.eventName,
+    })
+    ? null
+    : catalog;
+}
+
+export type StoredEventState = "zero" | "missing" | null;
+
+/** A stored breakdown event that is ungroupable ("zero") or gone ("missing"); needs a catalog. */
+export function storedEventState({
+  breakdown,
+  catalog,
+}: {
+  breakdown: DraftBreakdown;
+  catalog: FlowCatalog | null;
+}): StoredEventState {
+  if (catalog === null || breakdown.eventName === null) {
+    return null;
+  }
+  const event = findCatalogEvent({ catalog, eventName: breakdown.eventName });
+  if (event === null) {
+    return "missing";
+  }
+  return event.dims.some((dim) => dim.groupable) ? null : "zero";
+}
+
+/**
+ * The message for each filter or breakdown spot of a step, one per address, in
+ * reading order. A server message wins over a client one at the same spot, and a
+ * server `group_by` message on a stored zero-groupable breakdown moves to the event
+ * select (nothing to choose from there).
+ */
+export function listNestedMessages({
+  step,
+  catalog,
+}: {
+  step: DraftStep;
+  catalog: FlowCatalog | null;
+}): DraftError[] {
+  const breakdown = step.breakdown;
+  const state =
+    breakdown === null ? null : storedEventState({ breakdown, catalog });
+  const zero = state === "zero";
+  const frozen = state !== null;
+  const eventAddress: DraftAddress = { kind: "breakdown", part: "event" };
+  interface NestedEntry {
+    error: DraftError;
+    address: DraftAddress;
+    redirected: boolean;
+  }
+  const entries: NestedEntry[] = [];
+  const taken = new Set<string>();
+  const push = ({
+    address,
+    message,
+    stored,
+    server,
+    redirect = false,
+  }: {
+    address: DraftAddress;
+    message: string;
+    stored?: boolean;
+    server?: boolean;
+    redirect?: boolean;
+  }) => {
+    if (
+      redirect &&
+      entries.some(
+        (entry) => entry.redirected && entry.error.message === message,
+      )
+    ) {
+      return;
+    }
+    if (stored === true || server === true) {
+      taken.add(addressKey({ address }));
+    }
+    const target = redirect ? eventAddress : address;
+    entries.push({
+      error: {
+        field: "nested",
+        stepKey: step.key,
+        message,
+        address: target,
+        stored,
+        server,
+      },
+      address: target,
+      redirected: redirect,
+    });
   };
+
+  const lists = step.listErrors;
+  for (const message of lists.dim_filter.serverErrors) {
+    push({ address: { kind: "filters" }, message, server: true });
+  }
+  for (const filter of step.filters) {
+    const address: DraftAddress = {
+      kind: "filter",
+      filterKey: filter.key,
+      part: "dim",
+    };
+    for (const message of filter.serverErrors) {
+      push({ address, message, server: true });
+    }
+    for (const message of filter.clientErrors) {
+      push({ address, message, stored: true });
+    }
+  }
+  for (const message of lists.drop_breakdown.serverErrors) {
+    push({
+      address: {
+        kind: "breakdown",
+        part: breakdown === null ? "add" : "list",
+      },
+      message,
+      server: true,
+    });
+  }
+  if (breakdown !== null) {
+    for (const message of breakdown.serverErrors.event_name) {
+      push({ address: eventAddress, message, server: true });
+    }
+    // A stored zero-groupable event leaves nothing to choose in group_by or the
+    // breakdown filters, so their server messages land on the event select.
+    for (const message of breakdown.serverErrors.group_by) {
+      push({
+        address: { kind: "breakdown", part: "group_by" },
+        message,
+        server: true,
+        redirect: zero,
+      });
+    }
+    for (const message of breakdown.clientErrors.event_name) {
+      push({ address: eventAddress, message, stored: true });
+    }
+    for (const message of breakdown.clientErrors.group_by) {
+      push({
+        address: { kind: "breakdown", part: "group_by" },
+        message,
+        stored: true,
+        redirect: frozen,
+      });
+    }
+    for (const message of lists.drop_breakdown_filters.serverErrors) {
+      push({
+        address: { kind: "breakdown_filters" },
+        message,
+        server: true,
+        redirect: zero,
+      });
+    }
+    for (const filter of breakdown.filters) {
+      const address: DraftAddress = {
+        kind: "breakdown_filter",
+        filterKey: filter.key,
+        part: "dim",
+      };
+      for (const message of filter.serverErrors) {
+        push({ address, message, server: true, redirect: zero });
+      }
+      for (const message of filter.clientErrors) {
+        push({ address, message, stored: true, redirect: frozen });
+      }
+    }
+  }
+  if (
+    entries.some((entry) => entry.redirected && entry.error.server === true)
+  ) {
+    // A redirected server message replaces the derived event message.
+    taken.add(addressKey({ address: eventAddress }));
+  }
+
+  for (const issue of deriveNestedIssues({ step, catalog })) {
+    if (issue.stored || taken.has(addressKey({ address: issue.address }))) {
+      continue;
+    }
+    push({
+      ...issue,
+      redirect: frozen && issue.address.kind === "breakdown_filter",
+    });
+  }
+
+  const position = ({ address }: NestedEntry): number => {
+    const rows =
+      address.kind === "filter"
+        ? step.filters
+        : address.kind === "breakdown_filter"
+          ? (breakdown?.filters ?? [])
+          : [];
+    const row =
+      "filterKey" in address
+        ? rows.findIndex((filter) => filter.key === address.filterKey)
+        : 0;
+    return nestedSection({ address }) * 1000 + Math.max(row, 0);
+  };
+  const rank = (entry: NestedEntry): number =>
+    position(entry) * 2 + (entry.redirected ? 1 : 0);
+  const sorted = [...entries].sort((left, right) => rank(left) - rank(right));
+  // Redirected messages share the event select with at most one summary entry.
+  let listed = sorted.some(
+    (entry) =>
+      !entry.redirected &&
+      addressKey({ address: entry.address }) ===
+        addressKey({ address: eventAddress }) &&
+      nestedSection({ address: entry.address }) === 3,
+  );
+  return sorted.map(({ error, redirected }) => {
+    if (!redirected) {
+      return error;
+    }
+    const extra = listed;
+    listed = true;
+    return extra ? { ...error, extra: true } : error;
+  });
+}
+
+/** Reading-order bucket of an address (the `listProblems` order per step). */
+function nestedSection({ address }: { address: DraftAddress }): number {
+  switch (address.kind) {
+    case "filters":
+      return 0;
+    case "filter":
+      return 1;
+    case "breakdown":
+      if (address.part === "list" || address.part === "add") {
+        return 2;
+      }
+      return address.part === "event" ? 3 : 4;
+    case "breakdown_filters":
+      return 5;
+    case "breakdown_filter":
+      return 6;
+  }
 }
 
 // ---------------------------------------------------------------------------
 // Catalog helpers
 // ---------------------------------------------------------------------------
+
+const API_EVENT_NAME = "api_hit";
+
+/** Searches every group (any category, `step_allowed` or not); null when absent. */
+export function findCatalogEvent({
+  catalog,
+  eventName,
+}: {
+  catalog: FlowCatalog;
+  eventName: string | null;
+}): CatalogEvent | null {
+  if (eventName === null) {
+    return null;
+  }
+  for (const group of catalog.event_groups) {
+    const found = group.events.find((event) => event.event_name === eventName);
+    if (found !== undefined) {
+      return found;
+    }
+  }
+  return null;
+}
+
+function dimsFor({
+  catalog,
+  eventName,
+  stream,
+}: {
+  catalog: FlowCatalog;
+  eventName: string | null;
+  stream?: StepStream;
+}): CatalogDim[] {
+  const resolved = stream === "api" ? API_EVENT_NAME : eventName;
+  return findCatalogEvent({ catalog, eventName: resolved })?.dims ?? [];
+}
+
+/** Dims a filter may use: everything but `group_by_only`. API steps use `api_hit`. */
+export function listFilterDims({
+  catalog,
+  eventName,
+  stream,
+}: {
+  catalog: FlowCatalog;
+  eventName: string | null;
+  stream?: StepStream;
+}): CatalogDim[] {
+  const resolved = stream === "api" ? API_EVENT_NAME : eventName;
+  const event = findCatalogEvent({ catalog, eventName: resolved });
+  return event === null ? [] : listFilterDimsOf({ event });
+}
+
+/** Groupable dims only. API steps use `api_hit`. */
+export function listGroupByDims({
+  catalog,
+  eventName,
+  stream,
+}: {
+  catalog: FlowCatalog;
+  eventName: string | null;
+  stream?: StepStream;
+}): CatalogDim[] {
+  return dimsFor({ catalog, eventName, stream }).filter((dim) => dim.groupable);
+}
+
+export interface BreakdownEventGroup {
+  category: CatalogEvent["category"];
+  events: CatalogEvent[];
+}
+
+/** Events with at least one groupable dim, by category, `step_allowed: false` included. */
+export function listBreakdownEventGroups({
+  catalog,
+}: {
+  catalog: FlowCatalog;
+}): BreakdownEventGroup[] {
+  return catalog.event_groups
+    .map((group) => ({
+      category: group.category,
+      events: group.events.filter((event) =>
+        event.dims.some((dim) => dim.groupable),
+      ),
+    }))
+    .filter((group) => group.events.length > 0);
+}
 
 /** Events a step of this stream may pick: `step_allowed` and in the stream's category. */
 export function listEventOptions({

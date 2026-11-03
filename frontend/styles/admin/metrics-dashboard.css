@@ -1695,13 +1695,6 @@
     display: none;
 }
 
-.flow-builder-note {
-    margin: 0.5rem 0 0;
-    color: var(--cardURLTextColor);
-    font-size: 0.85rem;
-    overflow-wrap: anywhere;
-}
-
 /* Always rendered so the live region exists before any message arrives. */
 .flow-builder-form-errors:not(:empty) {
     margin: 0 0 0.75rem;
@@ -1886,13 +1879,93 @@
     content: "\2193";
 }
 
-.flow-builder-icon-btn[data-action="remove"]::before {
+.flow-builder-icon-btn[data-action="remove"]::before,
+.flow-builder-icon-btn[data-action="remove-filter"]::before,
+.flow-builder-icon-btn[data-action="remove-breakdown-filter"]::before {
     content: "\2715";
 }
 
+.flow-builder-extras {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.flow-builder-filters {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    min-width: 0;
+}
+
+.flow-builder-group-title {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--cardURLTextColor);
+}
+
+.flow-builder-filter {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+    gap: 0.5rem;
+    align-items: start;
+}
+
+.flow-builder-filter .flow-builder-select,
+.flow-builder-filter .flow-builder-input {
+    min-width: 0;
+}
+
+/* A row-level message spans the whole row, under both cells and Remove. */
+.flow-builder-filter > .flow-builder-error {
+    grid-column: 1 / -1;
+    margin-top: 0;
+}
+
+.flow-builder-extras .flow-builder-add-row {
+    margin-bottom: 0;
+}
+
+.flow-builder-breakdown {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    border: 1px solid var(--borderColor);
+    border-radius: 8px;
+    background: var(--panelBackgroundColor);
+    min-width: 0;
+}
+
+.flow-builder-breakdown-head {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.flow-builder-breakdown-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+    gap: 0.5rem;
+}
+
+.flow-builder-breakdown .flow-builder-hint {
+    margin: 0;
+}
+
 @media (max-width: 575.98px) {
-    .flow-builder-step-grid {
+    .flow-builder-step-grid,
+    .flow-builder-breakdown-grid {
         grid-template-columns: 1fr;
+    }
+    .flow-builder-filter {
+        grid-template-columns: minmax(0, 1fr) auto;
+    }
+    .flow-builder-filter > :nth-child(1) {
+        grid-column: 1 / -1;
     }
     .flow-builder-btn,
     .flow-builder-icon-btn {
