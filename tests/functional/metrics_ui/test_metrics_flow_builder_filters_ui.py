@@ -71,9 +71,13 @@ def _expect_disabled_with_reason(button: Locator, reason: str) -> None:
 def _press_disabled(button: Locator, *, other: Locator) -> None:
     """Move focus to a different control, force-click the aria-disabled `button`
     (Playwright treats aria-disabled as not enabled) and expect the click to
-    leave focus on it, i.e. the button stays focusable and does nothing."""
+    leave focus on it, i.e. the button stays focusable and does nothing.
+
+    `force=True` skips the stable check, so `hover()` first waits for a settled
+    position (it has no enabled check to fail on aria-disabled)."""
     other.focus()
     expect(other).to_be_focused()
+    button.hover()
     button.click(force=True)
     expect(button).to_be_focused()
 
