@@ -1056,7 +1056,10 @@ class MetricsDashboardLocators(GenericPageLocator):
     FLOW_BUILDER_NAME_INPUT = "#MetricsFlowBuilderMount input[data-field=display_name]"
     FLOW_BUILDER_STEP = "#MetricsFlowBuilderMount .flow-builder-step"
     FLOW_BUILDER_ADD_BUTTON = "#MetricsFlowBuilderMount button[data-action=add]"
-    FLOW_BUILDER_ADD_REASON = "#MetricsFlowBuilderMount .flow-builder-reason"
+    # The step-level reason only: nested filter rows carry their own `.flow-builder-reason`.
+    FLOW_BUILDER_ADD_REASON = (
+        "#MetricsFlowBuilderMount .flow-builder-add ~ .flow-builder-reason"
+    )
     FLOW_BUILDER_SAVE_BUTTON = (
         "#MetricsFlowBuilderMount .flow-builder-actions button[type=submit]"
     )
@@ -1082,6 +1085,31 @@ class MetricsDashboardLocators(GenericPageLocator):
         "#MetricsFlowBuilderMount .flow-builder-field:has("
         "input[data-field=display_name]) > p.flow-builder-error"
     )
+    # Nested filter and breakdown rows inside a step (scope with the step locator)
+    FLOW_BUILDER_FILTER_ROW = (
+        ".flow-builder-extras > .flow-builder-filters > .flow-builder-filter"
+    )
+    FLOW_BUILDER_BREAKDOWN = ".flow-builder-breakdown"
+    # Relative to a `.flow-builder-breakdown` locator.
+    FLOW_BUILDER_BREAKDOWN_FILTER_ROW = ".flow-builder-filters > .flow-builder-filter"
+    FLOW_BUILDER_ADD_FILTER_BUTTON = "button[data-action=add-filter]"
+    FLOW_BUILDER_ADD_BREAKDOWN_BUTTON = "button[data-action=add-breakdown]"
+    FLOW_BUILDER_REMOVE_BREAKDOWN_BUTTON = "button[data-action=remove-breakdown]"
+    FLOW_BUILDER_ADD_BREAKDOWN_FILTER_BUTTON = (
+        "button[data-action=add-breakdown-filter]"
+    )
+    FLOW_BUILDER_REMOVE_FILTER_BUTTON = "button[data-action=remove-filter]"
+    FLOW_BUILDER_REMOVE_BREAKDOWN_FILTER_BUTTON = (
+        "button[data-action=remove-breakdown-filter]"
+    )
+    FLOW_BUILDER_FILTER_DIM = "[data-field=filter_dim]"
+    FLOW_BUILDER_FILTER_VALUE = "[data-field=filter_value]"
+    FLOW_BUILDER_BREAKDOWN_EVENT = "[data-field=breakdown_event_name]"
+    FLOW_BUILDER_BREAKDOWN_GROUP_BY = "[data-field=breakdown_group_by]"
+    FLOW_BUILDER_BREAKDOWN_FILTER_DIM = "[data-field=breakdown_filter_dim]"
+    FLOW_BUILDER_BREAKDOWN_FILTER_VALUE = "[data-field=breakdown_filter_value]"
+    FLOW_BUILDER_HINT = ".flow-builder-hint"
+    FLOW_BUILDER_ERROR = ".flow-builder-error"
     FLOWS_NEW_REASON = "#MetricsFlowNewReason"
     REFRESH_SPINNER = "#MetricsRefreshNowBtn .spinner"
     REFRESH_ICON = "#MetricsRefreshNowBtn .refresh-icon"
