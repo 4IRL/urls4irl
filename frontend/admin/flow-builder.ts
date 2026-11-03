@@ -13,12 +13,49 @@ import { APP_CONFIG } from "../lib/config.js";
 import { fillTemplate } from "../lib/string-template.js";
 
 import {
+  appendStaleOption,
+  isDisabled,
+  makeCell as makeCellElement,
+  makeElement,
+  makeOption,
+  makeSelect,
+  setDisabled,
+} from "./flow-builder-dom.js";
+import {
+  ADD_BREAKDOWN_ACTION,
+  ADD_BREAKDOWN_FILTER_ACTION,
+  ADD_FILTER_ACTION,
+  BREAKDOWN_EVENT_FIELD,
+  BREAKDOWN_FILTER_DIM_FIELD,
+  BREAKDOWN_FILTER_VALUE_FIELD,
+  BREAKDOWN_GROUP_BY_FIELD,
+  breakdownAddReason,
+  breakdownFilterAddReason,
+  breakdownState,
+  FILTER_DIM_FIELD,
+  FILTER_VALUE_FIELD,
+  filterAddReason,
+  findBreakdownControl,
+  findExtrasButton,
+  findFilterControl,
+  findFilterRemoveButton,
+  REMOVE_BREAKDOWN_ACTION,
+  REMOVE_BREAKDOWN_FILTER_ACTION,
+  REMOVE_FILTER_ACTION,
+  renderExtras,
+} from "./flow-builder-rows.js";
+import {
+  addBreakdown,
+  addBreakdownFilter,
+  addFilter,
   addStep,
   applyServerErrors,
   applyValidationErrors,
+  captureSubmitted,
   clearDraftError,
   createBlankDraft,
   draftFromEntry,
+  hasNestedContent,
   isDraftDirty,
   isStaleEndpoint,
   isStaleEvent,
@@ -31,8 +68,17 @@ import {
   listProblems,
   moveStep,
   normalizeDraft,
+  removeBreakdown,
+  removeBreakdownFilter,
+  removeFilter,
   removeStep,
+  setBreakdownEvent,
+  setBreakdownFilterDim,
+  setBreakdownFilterValue,
+  setBreakdownGroupBy,
   setDisplayName,
+  setFilterDim,
+  setFilterValue,
   setFormErrors,
   setStepEndpoint,
   setStepEvent,
@@ -40,15 +86,16 @@ import {
   setStepMethod,
   setStepStream,
   STREAMS,
-  summarizeHidden,
   toRequestBody,
   validateDraft,
 } from "./flow-builder-state.js";
 import type {
+  DraftAddress,
   DraftProblem,
   DraftStep,
   FlowDraft,
   StepStream,
+  SubmittedStep,
 } from "./flow-builder-state.js";
 import {
   createMetricFlow,
@@ -117,66 +164,6 @@ function entryFromResponse({ data }: { data: SaveResponse }): FlowEntry {
     errors: data.errors,
     first_invalid: data.first_invalid,
   };
-}
-
-function makeElement<Tag extends keyof HTMLElementTagNameMap>({
-  tag,
-  className,
-  text,
-  attrs,
-}: {
-  tag: Tag;
-  className?: string;
-  text?: string;
-  attrs?: Record<string, string>;
-}): HTMLElementTagNameMap[Tag] {
-  const element = document.createElement(tag);
-  if (className) {
-    element.className = className;
-  }
-  if (text !== undefined) {
-    element.textContent = text;
-  }
-  for (const [name, value] of Object.entries(attrs ?? {})) {
-    element.setAttribute(name, value);
-  }
-  return element;
-}
-
-function makeOption({
-  value,
-  text,
-  selected = false,
-}: {
-  value: string;
-  text: string;
-  selected?: boolean;
-}): HTMLOptionElement {
-  const option = makeElement({ tag: "option", text, attrs: { value } });
-  option.selected = selected;
-  return option;
-}
-
-function isDisabled({ element }: { element: Element }): boolean {
-  return element.getAttribute("aria-disabled") === "true";
-}
-
-function setDisabled({
-  element,
-  disabled,
-  reasonId,
-}: {
-  element: HTMLElement;
-  disabled: boolean;
-  reasonId: string;
-}): void {
-  if (disabled) {
-    element.setAttribute("aria-disabled", "true");
-    element.setAttribute("aria-describedby", reasonId);
-  } else {
-    element.removeAttribute("aria-disabled");
-    element.removeAttribute("aria-describedby");
-  }
 }
 
 /**
@@ -439,32 +426,100 @@ export function createFlowBuilder({
   // Error surfaces
   // ---------------------------------------------------------------------
 
+  /** 1-based position of a filter within its list, for "filter N" lines. */
+  function filterPosition({
+    stepKey,
+    address,
+  }: {
+    stepKey: number;
+    address: DraftAddress;
+  }): string {
+    const step = draft.steps.find((item) => item.key === stepKey);
+    if (
+      step === undefined ||
+      (address.kind !== "filter" && address.kind !== "breakdown_filter")
+    ) {
+      return "";
+    }
+    const list =
+      address.kind === "filter"
+        ? step.filters
+        : (step.breakdown?.filters ?? []);
+    return String(
+      list.findIndex((filter) => filter.key === address.filterKey) + 1,
+    );
+  }
+
+  function nestedLineTemplate({ address }: { address: DraftAddress }): string {
+    switch (address.kind) {
+      case "filters":
+        return strings().METRICS_FLOW_BUILDER_ERR_FILTERS_LINE;
+      case "filter":
+        return strings().METRICS_FLOW_BUILDER_ERR_FILTER_LINE;
+      case "breakdown":
+        return strings().METRICS_FLOW_BUILDER_ERR_BREAKDOWN_LINE;
+      case "breakdown_filters":
+        return strings().METRICS_FLOW_BUILDER_ERR_BREAKDOWN_FILTERS_LINE;
+      case "breakdown_filter":
+        return strings().METRICS_FLOW_BUILDER_ERR_BREAKDOWN_FILTER_LINE;
+    }
+  }
+
   function problemText({ problem }: { problem: DraftProblem }): string {
-    const base =
-      problem.stepNumber === null
-        ? problem.message
-        : fillTemplate({
-            template: strings().METRICS_FLOW_BUILDER_ERR_STEP_LINE,
-            values: {
-              step: String(problem.stepNumber),
-              message: problem.message,
-            },
-          });
-    return problem.field === "hidden"
-      ? `${base} ${strings().METRICS_FLOW_BUILDER_NOTE_FILTERS_UNEDITABLE}`
-      : base;
+    if (problem.stepNumber === null) {
+      return problem.message;
+    }
+    const step = String(problem.stepNumber);
+    if (
+      problem.field === "nested" &&
+      problem.address !== undefined &&
+      problem.stepKey !== null
+    ) {
+      return fillTemplate({
+        template: nestedLineTemplate({ address: problem.address }),
+        values: {
+          step,
+          n: filterPosition({
+            stepKey: problem.stepKey,
+            address: problem.address,
+          }),
+          message: problem.message,
+        },
+      });
+    }
+    return fillTemplate({
+      template: strings().METRICS_FLOW_BUILDER_ERR_STEP_LINE,
+      values: { step, message: problem.message },
+    });
+  }
+
+  /** Writes the address onto a summary link so a click can find its control. */
+  function addressAttrs({
+    address,
+  }: {
+    address: DraftAddress;
+  }): Record<string, string> {
+    const attrs: Record<string, string> = {
+      "data-problem-kind": address.kind,
+    };
+    if ("part" in address) {
+      attrs["data-problem-part"] = address.part;
+    }
+    if ("filterKey" in address) {
+      attrs["data-problem-filter"] = String(address.filterKey);
+    }
+    return attrs;
   }
 
   /**
    * Redraws the summary from the draft's errors in place. Lines are plain text until
-   * the catalog has loaded (no field exists to focus yet); hidden-field lines never
-   * get a button because the form cannot edit them.
+   * the catalog has loaded (no field exists to focus yet).
    */
   function renderSummary(): void {
     if (summary === null || heading === null) {
       return;
     }
-    const problems = listProblems({ draft });
+    const problems = listProblems({ draft, catalog });
     if (problems.length === 0) {
       summary.hidden = true;
       summary.replaceChildren();
@@ -491,14 +546,20 @@ export function createFlowBuilder({
     for (const problem of problems) {
       const item = makeElement({ tag: "li" });
       const text = problemText({ problem });
-      if (catalog === null || problem.field === "hidden") {
+      if (catalog === null) {
         item.textContent = text;
       } else {
         const link = makeElement({
           tag: "button",
           className: "flow-builder-link",
           text,
-          attrs: { type: "button", "data-problem-field": problem.field },
+          attrs: {
+            type: "button",
+            "data-problem-field": problem.field,
+            ...(problem.address === undefined
+              ? {}
+              : addressAttrs({ address: problem.address })),
+          },
         });
         if (problem.stepKey !== null) {
           link.setAttribute("data-problem-key", String(problem.stepKey));
@@ -542,6 +603,8 @@ export function createFlowBuilder({
       nameInput?.focus();
     } else if (field === "steps") {
       addButton?.focus();
+    } else if (rawKey !== undefined && field === "nested") {
+      focusNested({ key: Number(rawKey), dataset: link.dataset });
     } else if (rawKey !== undefined && field !== undefined) {
       focusField({ key: Number(rawKey), field });
       if (document.activeElement === link) {
@@ -550,6 +613,93 @@ export function createFlowBuilder({
           ?.querySelector<HTMLElement>("[data-field]")
           ?.focus();
       }
+    }
+  }
+
+  /**
+   * The fixed focus-target table for filter and breakdown summary links: Add
+   * buttons for list-level and damaged messages, the named select for a row, the
+   * event select for a breakdown-level message, and the row's Remove button when
+   * its controls are read-only. The first focusable candidate wins.
+   */
+  function focusNested({
+    key,
+    dataset,
+  }: {
+    key: number;
+    dataset: DOMStringMap;
+  }): void {
+    const row = findRow({ key });
+    if (row === null) {
+      return;
+    }
+    const kind = dataset.problemKind;
+    const part = dataset.problemPart;
+    const filterKey = Number(dataset.problemFilter);
+    const focusFirst = (candidates: (HTMLElement | null)[]): void => {
+      for (const candidate of candidates) {
+        if (
+          candidate !== null &&
+          !(candidate instanceof HTMLSelectElement && candidate.disabled)
+        ) {
+          candidate.focus();
+          return;
+        }
+      }
+    };
+    if (kind === "filters") {
+      focusFirst([findExtrasButton({ row, action: ADD_FILTER_ACTION })]);
+    } else if (kind === "filter") {
+      focusFirst([
+        findFilterControl({
+          row,
+          filterKey,
+          field: part === "value" ? FILTER_VALUE_FIELD : FILTER_DIM_FIELD,
+        }),
+        findFilterControl({ row, filterKey, field: FILTER_DIM_FIELD }),
+        findFilterRemoveButton({
+          row,
+          action: REMOVE_FILTER_ACTION,
+          filterKey,
+        }),
+      ]);
+    } else if (kind === "breakdown") {
+      const event = findBreakdownControl({ row, field: BREAKDOWN_EVENT_FIELD });
+      if (part === "add") {
+        focusFirst([findExtrasButton({ row, action: ADD_BREAKDOWN_ACTION })]);
+      } else if (part === "group_by") {
+        focusFirst([
+          findBreakdownControl({ row, field: BREAKDOWN_GROUP_BY_FIELD }),
+          event,
+        ]);
+      } else {
+        focusFirst([event]);
+      }
+    } else if (kind === "breakdown_filters") {
+      focusFirst([
+        findExtrasButton({ row, action: ADD_BREAKDOWN_FILTER_ACTION }),
+      ]);
+    } else if (kind === "breakdown_filter") {
+      focusFirst([
+        findFilterControl({
+          row,
+          filterKey,
+          field:
+            part === "value"
+              ? BREAKDOWN_FILTER_VALUE_FIELD
+              : BREAKDOWN_FILTER_DIM_FIELD,
+        }),
+        findFilterControl({
+          row,
+          filterKey,
+          field: BREAKDOWN_FILTER_DIM_FIELD,
+        }),
+        findFilterRemoveButton({
+          row,
+          action: REMOVE_BREAKDOWN_FILTER_ACTION,
+          filterKey,
+        }),
+      ]);
     }
   }
 
@@ -682,8 +832,8 @@ export function createFlowBuilder({
 
   function save(): void {
     stopDescribingHeading();
-    const hadProblems = listProblems({ draft }).length > 0;
-    const errors = validateDraft({ draft });
+    const hadProblems = listProblems({ draft, catalog }).length > 0;
+    const errors = validateDraft({ draft, catalog });
     draft = applyValidationErrors({ draft, errors });
     // Rows are rebuilt only when something shown changes, so a valid Save keeps focus.
     if (errors.length > 0 || hadProblems) {
@@ -693,7 +843,7 @@ export function createFlowBuilder({
       summary?.focus();
       return;
     }
-    const submittedKeys = draft.steps.map((step) => step.key);
+    const submitted = captureSubmitted({ draft });
     const definition = toRequestBody({ draft });
     const flowId = draft.flowId;
     const request =
@@ -719,16 +869,16 @@ export function createFlowBuilder({
       }
       saveXhr = null;
       setSaving({ value: false });
-      handleSaveFailure({ request, submittedKeys });
+      handleSaveFailure({ request, submitted });
     });
   }
 
   function handleSaveFailure({
     request,
-    submittedKeys,
+    submitted,
   }: {
     request: JQuery.jqXHR;
-    submittedKeys: readonly number[];
+    submitted: readonly SubmittedStep[];
   }): void {
     if (is429Handled(request)) {
       return;
@@ -752,7 +902,7 @@ export function createFlowBuilder({
       request.status === BAD_REQUEST_STATUS &&
       (Object.keys(errors).length > 0 || body.errorCode === ERR_FLOW_LIMIT)
     ) {
-      draft = applyServerErrors({ draft, errors, submittedKeys });
+      draft = applyServerErrors({ draft, errors, submitted });
       if (body.errorCode === ERR_FLOW_LIMIT && !(ROOT_ERROR_PATH in errors)) {
         draft = setFormErrors({
           draft,
@@ -763,7 +913,7 @@ export function createFlowBuilder({
         });
       }
       renderAllErrors();
-      if (listProblems({ draft }).length > 0) {
+      if (listProblems({ draft, catalog }).length > 0) {
         summary?.focus();
       }
     } else {
@@ -1063,76 +1213,339 @@ export function createFlowBuilder({
     } else {
       grid.append(renderEventCell({ step, position }));
     }
-    row.append(head, grid, ...renderNotes({ step }));
+    row.append(head, grid, renderExtras({ uid, catalog, step, position }));
     return row;
   }
 
-  function keptNoteText({ step }: { step: DraftStep }): string | null {
-    const { filterCount, hasBreakdown } = summarizeHidden({ step });
-    const count = String(filterCount);
-    if (filterCount > 0 && hasBreakdown) {
-      return filterCount === 1
-        ? strings().METRICS_FLOW_BUILDER_NOTE_KEPT_FILTERS_BREAKDOWN_ONE
-        : fillTemplate({
-            template:
-              strings().METRICS_FLOW_BUILDER_NOTE_KEPT_FILTERS_BREAKDOWN,
-            values: { count },
-          });
+  /** Re-renders only a step's filter group and Add row; the rest of the row stays. */
+  function replaceExtras({ key }: { key: number }): void {
+    const index = draft.steps.findIndex((step) => step.key === key);
+    const existing = findRow({ key })?.querySelector(".flow-builder-extras");
+    if (index === -1 || existing === null || existing === undefined) {
+      return;
     }
-    if (filterCount > 0) {
-      return filterCount === 1
-        ? strings().METRICS_FLOW_BUILDER_NOTE_KEPT_FILTERS_ONE
-        : fillTemplate({
-            template: strings().METRICS_FLOW_BUILDER_NOTE_KEPT_FILTERS,
-            values: { count },
-          });
-    }
-    return hasBreakdown
-      ? strings().METRICS_FLOW_BUILDER_NOTE_KEPT_BREAKDOWN
-      : null;
+    existing.replaceWith(
+      renderExtras({
+        uid,
+        catalog,
+        step: draft.steps[index],
+        position: String(index + 1),
+      }),
+    );
   }
 
-  /**
-   * Row notes for fields the form cannot edit: the "removed" note after a clear, the
-   * kept note while filters or a breakdown ride along, and the server's reason for
-   * a rejected one.
-   */
-  function renderNotes({ step }: { step: DraftStep }): HTMLElement[] {
-    const notes: HTMLElement[] = [];
-    const reasons = step.errors.hidden ?? [];
-    const reasonId = `${uid}-${step.key}-hidden-error`;
-    if (step.hiddenCleared) {
-      notes.push(
-        makeElement({
-          tag: "p",
-          className: "flow-builder-note",
-          text: strings().METRICS_FLOW_BUILDER_NOTE_FILTERS_CLEARED,
-        }),
-      );
+  function focusFilterControl({
+    key,
+    filterKey,
+    field,
+  }: {
+    key: number;
+    filterKey: number;
+    field: string;
+  }): void {
+    const row = findRow({ key });
+    if (row !== null) {
+      findFilterControl({ row, filterKey, field })?.focus();
     }
-    const kept = keptNoteText({ step });
-    if (kept !== null) {
-      const note = makeElement({
-        tag: "p",
-        className: "flow-builder-note",
-        text: kept,
+  }
+
+  function filterKeyOf({ target }: { target: HTMLElement }): number | null {
+    const raw = target.dataset.filterKey;
+    const filterKey = raw === undefined ? NaN : Number(raw);
+    return Number.isInteger(filterKey) ? filterKey : null;
+  }
+
+  function handleAddFilter({ key }: { key: number }): void {
+    stopDescribingHeading();
+    const before = draft.steps.find((step) => step.key === key);
+    if (before === undefined) {
+      return;
+    }
+    if (filterAddReason({ catalog, step: before }) !== null) {
+      return;
+    }
+    const replacedDamaged =
+      before.damaged !== null && "dim_filter" in before.damaged;
+    draft = addFilter({ draft, key });
+    const after = draft.steps.find((step) => step.key === key);
+    const added = after?.filters[after.filters.length - 1];
+    replaceExtras({ key });
+    renderSummary();
+    if (added !== undefined) {
+      focusFilterControl({
+        key,
+        filterKey: added.key,
+        field: FILTER_DIM_FIELD,
       });
-      if (reasons.length > 0) {
-        note.setAttribute("aria-describedby", reasonId);
+    }
+    callbacks.announce({
+      message: replacedDamaged
+        ? strings().METRICS_FLOW_BUILDER_ANNOUNCE_DAMAGED_FILTERS_REPLACED
+        : strings().METRICS_FLOW_BUILDER_ANNOUNCE_FILTER_ADDED,
+    });
+  }
+
+  function handleRemoveFilter({
+    key,
+    filterKey,
+  }: {
+    key: number;
+    filterKey: number;
+  }): void {
+    stopDescribingHeading();
+    const before = draft.steps.find((step) => step.key === key);
+    const index = before?.filters.findIndex((item) => item.key === filterKey);
+    if (before === undefined || index === undefined || index === -1) {
+      return;
+    }
+    draft = removeFilter({ draft, key, filterKey });
+    const remaining =
+      draft.steps.find((step) => step.key === key)?.filters ?? [];
+    replaceExtras({ key });
+    renderSummary();
+    const neighbour = remaining[index] ?? remaining[index - 1];
+    if (neighbour !== undefined) {
+      focusFilterControl({
+        key,
+        filterKey: neighbour.key,
+        field: FILTER_DIM_FIELD,
+      });
+    } else {
+      const row = findRow({ key });
+      if (row !== null) {
+        findExtrasButton({ row, action: ADD_FILTER_ACTION })?.focus();
       }
-      notes.push(note);
     }
-    if (reasons.length > 0) {
-      notes.push(
-        makeElement({
-          tag: "p",
-          className: "flow-builder-error",
-          text: reasons.join(" "),
-          attrs: { id: reasonId },
-        }),
-      );
+    callbacks.announce({
+      message: strings().METRICS_FLOW_BUILDER_ANNOUNCE_FILTER_REMOVED,
+    });
+  }
+
+  /** A filter select changed: update the draft, re-render the group, keep focus. */
+  function handleFilterSelect({
+    key,
+    filterKey,
+    field,
+    value,
+  }: {
+    key: number;
+    filterKey: number;
+    field: string;
+    value: string;
+  }): void {
+    stopDescribingHeading();
+    draft =
+      field === FILTER_DIM_FIELD
+        ? setFilterDim({
+            draft,
+            key,
+            filterKey,
+            dim: value === "" ? null : value,
+          })
+        : setFilterValue({ draft, key, filterKey, value });
+    replaceExtras({ key });
+    renderSummary();
+    focusFilterControl({ key, filterKey, field });
+  }
+
+  function focusExtrasButton({
+    key,
+    action,
+  }: {
+    key: number;
+    action: string;
+  }): void {
+    const row = findRow({ key });
+    if (row !== null) {
+      findExtrasButton({ row, action })?.focus();
     }
-    return notes;
+  }
+
+  function handleAddBreakdown({ key }: { key: number }): void {
+    stopDescribingHeading();
+    const before = draft.steps.find((step) => step.key === key);
+    if (
+      before === undefined ||
+      before.breakdown !== null ||
+      breakdownAddReason({ catalog, step: before }) !== null
+    ) {
+      return;
+    }
+    const replacedDamaged =
+      before.damaged !== null && "drop_breakdown" in before.damaged;
+    draft = addBreakdown({ draft, key });
+    replaceExtras({ key });
+    renderSummary();
+    const row = findRow({ key });
+    if (row !== null) {
+      findBreakdownControl({ row, field: BREAKDOWN_EVENT_FIELD })?.focus();
+    }
+    callbacks.announce({
+      message: replacedDamaged
+        ? strings().METRICS_FLOW_BUILDER_ANNOUNCE_DAMAGED_BREAKDOWN_REPLACED
+        : strings().METRICS_FLOW_BUILDER_ANNOUNCE_BREAKDOWN_ADDED,
+    });
+  }
+
+  function handleRemoveBreakdown({ key }: { key: number }): void {
+    stopDescribingHeading();
+    const before = draft.steps.find((step) => step.key === key);
+    if (before === undefined || before.breakdown === null) {
+      return;
+    }
+    draft = removeBreakdown({ draft, key });
+    replaceExtras({ key });
+    renderSummary();
+    focusExtrasButton({ key, action: ADD_BREAKDOWN_ACTION });
+    callbacks.announce({
+      message: strings().METRICS_FLOW_BUILDER_ANNOUNCE_BREAKDOWN_REMOVED,
+    });
+  }
+
+  function handleAddBreakdownFilter({ key }: { key: number }): void {
+    stopDescribingHeading();
+    const breakdown = draft.steps.find((step) => step.key === key)?.breakdown;
+    if (
+      breakdown === null ||
+      breakdown === undefined ||
+      breakdownFilterAddReason({ catalog, breakdown }) !== null
+    ) {
+      return;
+    }
+    const replacedDamaged = breakdown.damaged !== null;
+    draft = addBreakdownFilter({ draft, key });
+    const filters =
+      draft.steps.find((step) => step.key === key)?.breakdown?.filters ?? [];
+    const added = filters[filters.length - 1];
+    replaceExtras({ key });
+    renderSummary();
+    if (added !== undefined) {
+      focusFilterControl({
+        key,
+        filterKey: added.key,
+        field: BREAKDOWN_FILTER_DIM_FIELD,
+      });
+    }
+    callbacks.announce({
+      message: replacedDamaged
+        ? strings()
+            .METRICS_FLOW_BUILDER_ANNOUNCE_DAMAGED_BREAKDOWN_FILTERS_REPLACED
+        : strings().METRICS_FLOW_BUILDER_ANNOUNCE_FILTER_ADDED,
+    });
+  }
+
+  function handleRemoveBreakdownFilter({
+    key,
+    filterKey,
+  }: {
+    key: number;
+    filterKey: number;
+  }): void {
+    stopDescribingHeading();
+    const before = draft.steps.find((step) => step.key === key)?.breakdown;
+    const index = before?.filters.findIndex((item) => item.key === filterKey);
+    if (
+      before === null ||
+      before === undefined ||
+      index === undefined ||
+      index === -1
+    ) {
+      return;
+    }
+    draft = removeBreakdownFilter({ draft, key, filterKey });
+    const after = draft.steps.find((step) => step.key === key)?.breakdown;
+    const remaining = after?.filters ?? [];
+    replaceExtras({ key });
+    renderSummary();
+    const neighbour = remaining[index] ?? remaining[index - 1];
+    const row = findRow({ key });
+    if (neighbour === undefined || row === null) {
+      focusExtrasButton({ key, action: ADD_BREAKDOWN_FILTER_ACTION });
+    } else if (
+      after !== null &&
+      after !== undefined &&
+      breakdownState({ catalog, breakdown: after }) !== "normal"
+    ) {
+      // A read-only row has no focusable dim: land on its Remove instead.
+      findFilterRemoveButton({
+        row,
+        action: REMOVE_BREAKDOWN_FILTER_ACTION,
+        filterKey: neighbour.key,
+      })?.focus();
+    } else {
+      focusFilterControl({
+        key,
+        filterKey: neighbour.key,
+        field: BREAKDOWN_FILTER_DIM_FIELD,
+      });
+    }
+    callbacks.announce({
+      message: strings().METRICS_FLOW_BUILDER_ANNOUNCE_FILTER_REMOVED,
+    });
+  }
+
+  /** A breakdown select changed: update the draft, re-render the block, keep focus. */
+  function handleBreakdownSelect({
+    key,
+    field,
+    filterKey,
+    value,
+  }: {
+    key: number;
+    field: string;
+    filterKey: number | null;
+    value: string;
+  }): void {
+    stopDescribingHeading();
+    const breakdownBefore = draft.steps.find(
+      (step) => step.key === key,
+    )?.breakdown;
+    const hadDamaged =
+      breakdownBefore !== null &&
+      breakdownBefore !== undefined &&
+      breakdownBefore.damaged !== null;
+    if (field === BREAKDOWN_EVENT_FIELD) {
+      draft = setBreakdownEvent({ draft, key, eventName: value });
+    } else if (field === BREAKDOWN_GROUP_BY_FIELD) {
+      draft = setBreakdownGroupBy({ draft, key, groupBy: value });
+    } else if (filterKey !== null && field === BREAKDOWN_FILTER_DIM_FIELD) {
+      draft = setBreakdownFilterDim({
+        draft,
+        key,
+        filterKey,
+        dim: value === "" ? null : value,
+      });
+    } else if (filterKey !== null && field === BREAKDOWN_FILTER_VALUE_FIELD) {
+      draft = setBreakdownFilterValue({ draft, key, filterKey, value });
+    } else {
+      return;
+    }
+    replaceExtras({ key });
+    renderSummary();
+    if (filterKey !== null) {
+      focusFilterControl({ key, filterKey, field });
+      return;
+    }
+    const row = findRow({ key });
+    if (row !== null) {
+      findBreakdownControl({ row, field })?.focus();
+    }
+    const breakdownAfter = draft.steps.find(
+      (step) => step.key === key,
+    )?.breakdown;
+    if (
+      field === BREAKDOWN_EVENT_FIELD &&
+      hadDamaged &&
+      breakdownAfter !== null &&
+      breakdownAfter !== undefined &&
+      breakdownAfter.damaged === null
+    ) {
+      callbacks.announce({
+        message:
+          strings()
+            .METRICS_FLOW_BUILDER_ANNOUNCE_DAMAGED_BREAKDOWN_FILTERS_REPLACED,
+      });
+    }
   }
 
   function makeIconButton({
@@ -1165,46 +1578,11 @@ export function createFlowBuilder({
     step: DraftStep;
     field: string;
   }): HTMLElement {
-    const cell = makeElement({
-      tag: "div",
-      className: "flow-builder-cell",
-      attrs: { "data-cell": field },
-    });
-    cell.append(control);
-    const messages = step.errors[field] ?? [];
-    if (messages.length > 0) {
-      const errorId = `${uid}-${step.key}-${field}-error`;
-      control.setAttribute("aria-invalid", "true");
-      control.setAttribute("aria-describedby", errorId);
-      cell.append(
-        makeElement({
-          tag: "p",
-          className: "flow-builder-error",
-          text: messages.join(" "),
-          attrs: { id: errorId },
-        }),
-      );
-    }
-    return cell;
-  }
-
-  function makeSelect({
-    field,
-    key,
-    label,
-  }: {
-    field: string;
-    key: number;
-    label: string;
-  }): HTMLSelectElement {
-    return makeElement({
-      tag: "select",
-      className: "flow-builder-select",
-      attrs: {
-        "data-field": field,
-        "data-step-key": String(key),
-        "aria-label": label,
-      },
+    return makeCellElement({
+      control,
+      field,
+      messages: step.errors[field] ?? [],
+      errorId: `${uid}-${step.key}-${field}-error`,
     });
   }
 
@@ -1274,27 +1652,6 @@ export function createFlowBuilder({
       );
     }
     return makeCell({ control: select, step, field: "stream" });
-  }
-
-  /** Keeps a no-longer-valid stored value selected and flags the select. */
-  function appendStaleOption({
-    select,
-    value,
-  }: {
-    select: HTMLSelectElement;
-    value: string;
-  }): void {
-    select.append(
-      makeOption({
-        value,
-        text: fillTemplate({
-          template: strings().METRICS_FLOW_BUILDER_NOTE_STALE_VALUE,
-          values: { value },
-        }),
-        selected: true,
-      }),
-    );
-    select.setAttribute("aria-invalid", "true");
   }
 
   function renderEventCell({
@@ -1504,29 +1861,59 @@ export function createFlowBuilder({
     renderSummary();
   }
 
-  /** Announces politely when this edit just removed a step's hidden filters. */
-  function announceIfCleared({
-    key,
-    wasCleared,
-  }: {
-    key: number;
-    wasCleared: boolean;
-  }): void {
+  function stepHasNested({ key }: { key: number }): boolean {
     const step = draft.steps.find((item) => item.key === key);
-    if (step !== undefined && step.hiddenCleared && !wasCleared) {
-      callbacks.announce({
-        message: strings().METRICS_FLOW_BUILDER_NOTE_FILTERS_CLEARED,
-      });
-    }
+    return step !== undefined && hasNestedContent({ step });
   }
 
-  function wasHiddenCleared({ key }: { key: number }): boolean {
-    return draft.steps.find((item) => item.key === key)?.hiddenCleared ?? false;
+  /** Announces politely when this edit just dropped a step's filters and breakdown. */
+  function announceIfCleared({
+    key,
+    hadNested,
+  }: {
+    key: number;
+    hadNested: boolean;
+  }): void {
+    if (hadNested && !stepHasNested({ key })) {
+      callbacks.announce({
+        message: strings().METRICS_FLOW_BUILDER_ANNOUNCE_FILTERS_CLEARED,
+      });
+    }
   }
 
   // ---------------------------------------------------------------------
   // Event handlers
   // ---------------------------------------------------------------------
+
+  /** Typing in a row's value input retires that row's error and its aria links. */
+  function clearRowError({ target }: { target: HTMLElement }): void {
+    const row = target.closest<HTMLElement>(".flow-builder-filter");
+    const messages = row?.querySelectorAll<HTMLElement>(".flow-builder-error");
+    if (
+      row === null ||
+      row === undefined ||
+      !messages ||
+      messages.length === 0
+    ) {
+      return;
+    }
+    const messageIds = new Set<string>();
+    for (const message of messages) {
+      messageIds.add(message.id);
+      message.remove();
+    }
+    for (const control of row.querySelectorAll<HTMLElement>("[data-field]")) {
+      control.removeAttribute("aria-invalid");
+      const rest = (control.getAttribute("aria-describedby") ?? "")
+        .split(" ")
+        .filter((id) => id !== "" && !messageIds.has(id));
+      if (rest.length > 0) {
+        control.setAttribute("aria-describedby", rest.join(" "));
+      } else {
+        control.removeAttribute("aria-describedby");
+      }
+    }
+  }
 
   function handleInput(event: Event): void {
     const target = event.target;
@@ -1545,11 +1932,50 @@ export function createFlowBuilder({
     if (target.dataset.field === "label" && key !== null) {
       draft = setStepLabel({ draft, key, value: target.value });
       clearFieldError({ key, field: "label" });
+      return;
+    }
+    const filterKey = filterKeyOf({ target });
+    if (
+      target.dataset.field === FILTER_VALUE_FIELD &&
+      key !== null &&
+      filterKey !== null
+    ) {
+      // Typing writes straight into the draft; the input keeps focus.
+      draft = setFilterValue({
+        draft,
+        key,
+        filterKey,
+        value: target.value,
+      });
+      clearRowError({ target });
+      renderSummary();
+    }
+    if (
+      target.dataset.field === BREAKDOWN_FILTER_VALUE_FIELD &&
+      key !== null &&
+      filterKey !== null
+    ) {
+      draft = setBreakdownFilterValue({
+        draft,
+        key,
+        filterKey,
+        value: target.value,
+      });
+      clearRowError({ target });
+      renderSummary();
     }
   }
 
   function handleChange(event: Event): void {
     const target = event.target;
+    if (
+      target instanceof HTMLInputElement &&
+      (target.dataset.field === FILTER_VALUE_FIELD ||
+        target.dataset.field === BREAKDOWN_FILTER_VALUE_FIELD)
+    ) {
+      // handleInput already wrote the draft; a re-render would swallow the next click.
+      return;
+    }
     if (!(target instanceof HTMLSelectElement)) {
       return;
     }
@@ -1558,8 +1984,26 @@ export function createFlowBuilder({
     if (key === null || field === undefined) {
       return;
     }
+    const filterKey = filterKeyOf({ target });
+    if (
+      filterKey !== null &&
+      (field === FILTER_DIM_FIELD || field === FILTER_VALUE_FIELD)
+    ) {
+      handleFilterSelect({ key, filterKey, field, value: target.value });
+      return;
+    }
+    if (
+      field === BREAKDOWN_EVENT_FIELD ||
+      field === BREAKDOWN_GROUP_BY_FIELD ||
+      (filterKey !== null &&
+        (field === BREAKDOWN_FILTER_DIM_FIELD ||
+          field === BREAKDOWN_FILTER_VALUE_FIELD))
+    ) {
+      handleBreakdownSelect({ key, field, filterKey, value: target.value });
+      return;
+    }
     stopDescribingHeading();
-    const wasCleared = wasHiddenCleared({ key });
+    const hadNested = stepHasNested({ key });
     if (field === "stream" && isStream(target.value)) {
       draft = setStepStream({ draft, key, stream: target.value });
       for (const name of [
@@ -1567,7 +2011,6 @@ export function createFlowBuilder({
         "event_name",
         "api_endpoint",
         "api_method",
-        "hidden",
       ]) {
         clearFieldError({ key, field: name });
       }
@@ -1576,7 +2019,6 @@ export function createFlowBuilder({
     } else if (field === "event_name") {
       draft = setStepEvent({ draft, key, eventName: target.value });
       clearFieldError({ key, field });
-      clearHiddenErrorIfCleared({ key });
       replaceRow({ key });
       focusField({ key, field });
     } else if (field === "api_endpoint") {
@@ -1588,7 +2030,6 @@ export function createFlowBuilder({
       });
       clearFieldError({ key, field });
       clearFieldError({ key, field: "api_method" });
-      clearHiddenErrorIfCleared({ key });
       replaceRow({ key });
       focusField({ key, field });
     } else if (field === "api_method") {
@@ -1597,14 +2038,7 @@ export function createFlowBuilder({
       replaceRow({ key });
       focusField({ key, field });
     }
-    announceIfCleared({ key, wasCleared });
-  }
-
-  /** A rejected filter or breakdown is gone once the edit removed it. */
-  function clearHiddenErrorIfCleared({ key }: { key: number }): void {
-    if (wasHiddenCleared({ key })) {
-      clearFieldError({ key, field: "hidden" });
-    }
+    announceIfCleared({ key, hadNested });
   }
 
   /**
@@ -1615,6 +2049,17 @@ export function createFlowBuilder({
   function handleKeydown(event: KeyboardEvent): void {
     if (event.key === "Tab" && opened && pendingConfirm !== null) {
       trapConfirmFocus({ event, confirm: pendingConfirm });
+      return;
+    }
+    if (
+      event.key === "Enter" &&
+      opened &&
+      event.target instanceof HTMLInputElement &&
+      (event.target.dataset.field === FILTER_VALUE_FIELD ||
+        event.target.dataset.field === BREAKDOWN_FILTER_VALUE_FIELD)
+    ) {
+      // Same path as the form's submit; Enter on selects stays native.
+      handleSubmit(event);
       return;
     }
     if (event.key !== "Escape" || event.defaultPrevented || !opened) {
@@ -1685,6 +2130,35 @@ export function createFlowBuilder({
     }
     const action = button.dataset.action;
     const key = stepKeyOf({ target: button });
+    if (key !== null && action === ADD_FILTER_ACTION) {
+      handleAddFilter({ key });
+      return;
+    }
+    const filterKey = filterKeyOf({ target: button });
+    if (key !== null && filterKey !== null && action === REMOVE_FILTER_ACTION) {
+      handleRemoveFilter({ key, filterKey });
+      return;
+    }
+    if (key !== null && action === ADD_BREAKDOWN_ACTION) {
+      handleAddBreakdown({ key });
+      return;
+    }
+    if (key !== null && action === REMOVE_BREAKDOWN_ACTION) {
+      handleRemoveBreakdown({ key });
+      return;
+    }
+    if (key !== null && action === ADD_BREAKDOWN_FILTER_ACTION) {
+      handleAddBreakdownFilter({ key });
+      return;
+    }
+    if (
+      key !== null &&
+      filterKey !== null &&
+      action === REMOVE_BREAKDOWN_FILTER_ACTION
+    ) {
+      handleRemoveBreakdownFilter({ key, filterKey });
+      return;
+    }
     if (action === "add") {
       handleAdd();
     } else if (action === "cancel") {

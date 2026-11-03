@@ -33,6 +33,13 @@ type SaveXhr = CatalogXhr & {
   responseJSON?: Record<string, unknown>;
 };
 
+const DEVICE_TYPE = {
+  key: "device_type",
+  groupable: false,
+  filter_kind: "values" as const,
+  values: ["desktop", "mobile"],
+};
+
 const CATALOG: Catalog = {
   event_groups: [
     {
@@ -43,7 +50,22 @@ const CATALOG: Catalog = {
           description: "",
           category: "ui",
           step_allowed: true,
-          dims: [],
+          dims: [DEVICE_TYPE],
+        },
+        {
+          event_name: "ui_form_cancel",
+          description: "",
+          category: "ui",
+          step_allowed: false,
+          dims: [
+            DEVICE_TYPE,
+            {
+              key: "trigger",
+              groupable: true,
+              filter_kind: "values",
+              values: ["button", "escape"],
+            },
+          ],
         },
         {
           event_name: "ui_hidden",
@@ -718,9 +740,10 @@ describe("step editing", () => {
       add.click();
     }
     expect(add.getAttribute("aria-disabled")).toBe("true");
-    expect(container.querySelector(".flow-builder-reason")?.textContent).toBe(
-      "At most 8 steps are allowed.",
-    );
+    expect(
+      container.querySelector(".flow-builder-add ~ .flow-builder-reason")
+        ?.textContent,
+    ).toBe("At most 8 steps are allowed.");
     add.focus();
     add.click();
     expect(rows()).toHaveLength(8);
@@ -738,9 +761,10 @@ describe("step editing", () => {
     remove.click();
     expect(rows()).toHaveLength(2);
     expect(document.activeElement).toBe(remove);
-    expect(container.querySelector(".flow-builder-reason")?.textContent).toBe(
-      "At least 2 steps are required.",
-    );
+    expect(
+      container.querySelector(".flow-builder-add ~ .flow-builder-reason")
+        ?.textContent,
+    ).toBe("At least 2 steps are required.");
   });
 
   it("removes a step and focuses the next row, else the previous", () => {
@@ -1291,8 +1315,12 @@ describe("delete", () => {
 // Step 4: validation, save and error surfaces
 // ---------------------------------------------------------------------------
 
-const HIDDEN_FILTERS = [{ dim: "a" }, { dim: "b" }];
-const HIDDEN_BREAKDOWN = { dim: "c" };
+const HIDDEN_FILTERS = ["device_type:mobile", "device_type:desktop"];
+const HIDDEN_BREAKDOWN = {
+  event_name: "ui_form_cancel",
+  dim_filter: ["device_type:mobile"],
+  group_by: "trigger",
+};
 
 function nameInput(): HTMLInputElement {
   return control({
@@ -1509,9 +1537,9 @@ describe("save", () => {
     expect(createMock).toHaveBeenCalledTimes(1);
   });
 
-  it("keeps hidden-field errors when client validation also fails", () => {
+  it("keeps filter server errors when client validation also fails", () => {
     const entry = hiddenEntry();
-    entry.errors = { "steps.0.dim_filter.0.dim": ["Unknown dimension."] };
+    entry.errors = { "steps.0.dim_filter.0": ["Unknown dimension."] };
     openAndLoad({ mode: "edit", entry });
     type({ input: nameInput(), value: "" });
     submit();
@@ -1895,47 +1923,48 @@ describe("open-time errors", () => {
     expect(document.activeElement).toBe(summary());
   });
 
-  it("shows a filter error with step number, reason and guidance, no button", () => {
+  it("shows a server filter error on its row, with a numbered summary line and a link", () => {
     const entry = hiddenEntry();
-    entry.errors = { "steps.0.dim_filter.0.dim": ["Unknown dimension."] };
+    entry.errors = { "steps.0.dim_filter.0": ["Unknown dimension."] };
     openAndLoad({ mode: "edit", entry });
-    expect(summaryLines()).toEqual([
-      "Step 1: Unknown dimension. Filters can't be edited here yet: remove the step or delete the flow.",
-    ]);
-    expect(summary().querySelectorAll("button")).toHaveLength(0);
-    const note = rows()[0].querySelector(".flow-builder-note");
-    const reason = document.getElementById(
-      note?.getAttribute("aria-describedby") ?? "",
-    );
-    expect(reason?.textContent).toBe("Unknown dimension.");
-    expect(note?.textContent).toBe(
-      "2 filters and a breakdown kept. Not editable yet.",
-    );
+    expect(summaryLines()).toEqual(["Step 1, filter 1: Unknown dimension."]);
+    expect(summary().querySelectorAll("button")).toHaveLength(1);
+    const [first, second] = rows()[0].querySelectorAll(".flow-builder-filter");
+    const error = first.querySelector(".flow-builder-error");
+    expect(error?.textContent).toBe("Unknown dimension.");
+    const dim = first.querySelector('[data-field="filter_dim"]');
+    expect(dim?.getAttribute("aria-describedby")).toContain(error?.id ?? "");
+    expect(second.querySelector(".flow-builder-error")).toBeNull();
+    summary().querySelector("button")?.click();
+    expect(document.activeElement).toBe(dim);
   });
 });
 
-describe("row notes", () => {
-  it("shows a kept note with the count for hidden filters", () => {
+describe("filters and breakdown stay editable", () => {
+  it("renders no kept or removed notes for stored filters", () => {
     openAndLoad({ mode: "edit", entry: hiddenEntry() });
-    expect(rows()[0].querySelector(".flow-builder-note")?.textContent).toBe(
-      "2 filters and a breakdown kept. Not editable yet.",
-    );
-    expect(rows()[1].querySelector(".flow-builder-note")).toBeNull();
+    // Two step filters plus the breakdown's one.
+    expect(rows()[0].querySelectorAll(".flow-builder-filter")).toHaveLength(3);
   });
 
-  it("removes the kept note, shows the removed note and announces once when the event changes", () => {
+  it("announces once, without a note, when an event change clears filters and breakdown", () => {
     openAndLoad({ mode: "edit", entry: hiddenEntry() });
     pick({
       select: control({ row: rows()[0], selector: '[data-field="stream"]' }),
       value: "domain",
     });
-    const note = rows()[0].querySelector(".flow-builder-note");
-    expect(note?.textContent).toBe(
-      "Filters and breakdown removed because the event changed.",
-    );
     expect(callbacks.announce).toHaveBeenCalledTimes(1);
     expect(callbacks.announce).toHaveBeenCalledWith({
-      message: "Filters and breakdown removed because the event changed.",
+      message: "Filters and breakdown cleared for this step.",
     });
+  });
+
+  it("does not announce a clear for a step with nothing to clear", () => {
+    openAndLoad({ mode: "edit", entry: hiddenEntry() });
+    pick({
+      select: control({ row: rows()[1], selector: '[data-field="stream"]' }),
+      value: "domain",
+    });
+    expect(callbacks.announce).not.toHaveBeenCalled();
   });
 });
