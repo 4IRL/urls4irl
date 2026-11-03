@@ -73,12 +73,8 @@ def _press_disabled(button: Locator, *, other: Locator) -> None:
     (Playwright treats aria-disabled as not enabled) and expect the click to
     leave focus on it, i.e. the button stays focusable and does nothing.
 
-    `force=True` skips Playwright's actionability checks, including the wait for
-    the element to stop moving, so a click fired while the builder is still
-    settling (the 420px layout) can land on stale coordinates and never focus the
-    button. `hover()` runs the visible / stable / receives-events checks without
-    the enabled check that an aria-disabled button would fail, so it gates the
-    forced click on a settled position."""
+    `force=True` skips the stable check, so `hover()` first waits for a settled
+    position (it has no enabled check to fail on aria-disabled)."""
     other.focus()
     expect(other).to_be_focused()
     button.hover()
