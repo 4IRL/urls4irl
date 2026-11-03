@@ -131,6 +131,27 @@ describe("createFlowPreview", () => {
     sends[sends.length - 1].deferred.resolve(resp(name));
   }
 
+  it("a synchronous throw from send settles as failed, not a stuck skeleton", async () => {
+    const thrown: FlowPreviewState[] = [];
+    let attempts = 0;
+    const throwing = createFlowPreview({
+      send: () => {
+        attempts += 1;
+        throw new Error("boom");
+      },
+      onState: (state) => thrown.push(state),
+    });
+    throwing.update(req("a"));
+    await vi.advanceTimersByTimeAsync(PREVIEW_DEBOUNCE_MS);
+    expect(attempts).toBe(1);
+    expect(thrown.map((state) => state.kind)).toEqual(["updating", "failed"]);
+    throwing.update(req("b"));
+    await vi.advanceTimersByTimeAsync(
+      PREVIEW_DEBOUNCE_MS + PREVIEW_MIN_INTERVAL_MS,
+    );
+    expect(attempts).toBe(2);
+  });
+
   it("collapses three updates inside the debounce into one send", async () => {
     preview.update(req("a"));
     await vi.advanceTimersByTimeAsync(100);

@@ -111,7 +111,15 @@ export function createFlowPreview({
     pending = null;
     abortInFlight();
     lastSendStart = Date.now();
-    const xhr = send({ body: request.body, window: request.window });
+    let xhr: ReturnType<typeof send>;
+    try {
+      xhr = send({ body: request.body, window: request.window });
+    } catch {
+      // A synchronous throw must not leave the skeleton stuck on screen.
+      settled = null;
+      emit({ kind: "failed" });
+      return;
+    }
     inFlight = { key: request.key, xhr, submitted: request.submitted };
     xhr
       .done((response) => handleDone({ xhr, response }))

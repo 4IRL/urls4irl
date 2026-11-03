@@ -97,10 +97,15 @@ import type {
   StepStream,
   SubmittedStep,
 } from "./flow-builder-state.js";
+import { PREVIEW_FLOW_ID, renderFlowGrid } from "./flow-card.js";
+import type { FlowCardState } from "./flow-card.js";
+import { createFlowPreview } from "./flow-preview.js";
+import type { FlowPreviewState } from "./flow-preview.js";
 import {
   createMetricFlow,
   deleteMetricFlow,
   fetchMetricFlowCatalog,
+  previewMetricFlow,
   updateMetricFlow,
 } from "./metrics-query-client.js";
 import {
@@ -129,9 +134,13 @@ export interface FlowBuilderCallbacks {
   onFlowMissing({ id }: { id: string }): void;
   onDeleted({ id, name }: { id: string; name: string }): void;
   onListStale(): void;
+  /** The dashboard's current time window key (e.g. "7d"), read at each preview send. */
+  getWindow(): string;
 }
 
 export interface FlowBuilder {
+  /** Re-previews the draft for the dashboard's current window (no-op unless idle). */
+  refreshPreview(): void;
   open({ mode, entry }: { mode: BuilderMode; entry?: FlowEntry }): void;
   close(): void;
   isOpen(): boolean;
@@ -220,6 +229,27 @@ export function createFlowBuilder({
   let stepList: HTMLElement | null = null;
   let addButton: HTMLButtonElement | null = null;
   let reasonLine: HTMLElement | null = null;
+  // Live preview column (mounted by renderForm, so absent while the catalog loads).
+  let previewTitle: HTMLElement | null = null;
+  let previewStatus: HTMLElement | null = null;
+  let previewBody: HTMLElement | null = null;
+  let previewGrid: HTMLElement | null = null;
+  let previewPlaceholder: HTMLElement | null = null;
+  let previewErrorBlock: HTMLElement | null = null;
+  let previewErrorText: HTMLElement | null = null;
+  let previewRetryButton: HTMLButtonElement | null = null;
+  // What the body shows now; drives the frozen render and in-place title updates.
+  let previewShown: "placeholder" | "skeleton" | "card" | "error" | "fields" =
+    "placeholder";
+  let previewResponse: Schema<"FlowResponseSchema"> | null = null;
+  // True from an accepted Retry click until the first non-updating render.
+  let retryDriven = false;
+
+  const preview = createFlowPreview({
+    send: ({ body: definition, window: windowKey }) =>
+      previewMetricFlow({ definition, window: windowKey }),
+    onState: (state) => renderPreviewState({ state }),
+  });
 
   const strings = () => APP_CONFIG.strings;
   const constants = () => APP_CONFIG.constants;
@@ -229,6 +259,7 @@ export function createFlowBuilder({
   // ---------------------------------------------------------------------
 
   function teardown(): void {
+    preview.cancel();
     if (catalogXhr !== null) {
       const pending = catalogXhr;
       catalogXhr = null;
@@ -268,6 +299,17 @@ export function createFlowBuilder({
     stepList = null;
     addButton = null;
     reasonLine = null;
+    previewTitle = null;
+    previewStatus = null;
+    previewBody = null;
+    previewGrid = null;
+    previewPlaceholder = null;
+    previewErrorBlock = null;
+    previewErrorText = null;
+    previewRetryButton = null;
+    previewShown = "placeholder";
+    previewResponse = null;
+    retryDriven = false;
     container.replaceChildren();
     container.hidden = true;
   }
@@ -373,6 +415,7 @@ export function createFlowBuilder({
       retryButton = null;
       renderForm();
       heading?.focus();
+      schedulePreview();
     });
     request.fail(() => {
       if (catalogXhr !== request) {
@@ -852,6 +895,7 @@ export function createFlowBuilder({
         : createMetricFlow({ definition });
     saveXhr = request;
     setSaving({ value: true });
+    freezePreview();
     request.done((data) => {
       if (saveXhr !== request) {
         return;
@@ -870,6 +914,9 @@ export function createFlowBuilder({
       saveXhr = null;
       setSaving({ value: false });
       handleSaveFailure({ request, submitted });
+      // The failure may have closed the builder; both calls guard themselves.
+      syncRetryDisabled();
+      schedulePreview();
     });
   }
 
@@ -921,6 +968,344 @@ export function createFlowBuilder({
         messages: [strings().METRICS_FLOW_BUILDER_ERR_SAVE_FAILED],
       });
     }
+  }
+
+  // ---------------------------------------------------------------------
+  // Live preview
+  // ---------------------------------------------------------------------
+
+  /** Step 4 marks preview field errors in place; until then there is nothing to clear. */
+  function clearPreviewMarks(): void {
+    // Intentionally empty until the field-error marks exist.
+  }
+
+  function previewCardTitle(): string {
+    return draft.displayName.trim() || strings().METRICS_FLOW_PREVIEW_HEADING;
+  }
+
+  function buildPreviewSection(): HTMLElement {
+    const titleId = `${uid}-preview-title`;
+    const section = makeElement({
+      tag: "section",
+      className: "flow-builder-preview",
+      attrs: { "aria-labelledby": titleId },
+    });
+    previewTitle = makeElement({
+      tag: "h4",
+      className: "flow-builder-preview-title",
+      text: strings().METRICS_FLOW_PREVIEW_HEADING,
+      attrs: { id: titleId, tabindex: "-1" },
+    });
+    previewStatus = makeElement({
+      tag: "p",
+      className: "flow-builder-preview-status",
+    });
+    previewStatus.append(
+      makeElement({
+        tag: "span",
+        className: "flow-builder-preview-spinner",
+        attrs: { "aria-hidden": "true" },
+      }),
+      document.createTextNode(strings().METRICS_FLOW_PREVIEW_UPDATING),
+    );
+    previewStatus.hidden = true;
+    previewBody = makeElement({
+      tag: "div",
+      className: "flow-builder-preview-body",
+    });
+    previewGrid = makeElement({
+      tag: "div",
+      className: "flow-builder-preview-grid",
+    });
+    previewBody.append(previewGrid);
+    previewPlaceholder = null;
+    previewErrorBlock = null;
+    previewErrorText = null;
+    previewRetryButton = null;
+    previewResponse = null;
+    retryDriven = false;
+    showPreviewText({ text: strings().METRICS_FLOW_PREVIEW_PLACEHOLDER });
+    previewShown = "placeholder";
+    section.append(
+      previewTitle,
+      previewStatus,
+      previewBody,
+      makeElement({
+        tag: "p",
+        className: "flow-builder-hint",
+        text: strings().METRICS_FLOW_PREVIEW_HINT,
+      }),
+      // Outside the busy body, and separate from the builder status region.
+      makeElement({
+        tag: "span",
+        className: "visually-hidden flow-builder-preview-live",
+        attrs: { "aria-live": "polite", "aria-atomic": "true" },
+      }),
+    );
+    return section;
+  }
+
+  function clearPreviewBlocks({
+    placeholder,
+    error,
+    grid,
+  }: {
+    placeholder: boolean;
+    error: boolean;
+    grid: boolean;
+  }): void {
+    if (placeholder) {
+      previewPlaceholder?.remove();
+      previewPlaceholder = null;
+    }
+    if (error) {
+      previewErrorBlock?.remove();
+      previewErrorBlock = null;
+      previewErrorText = null;
+      previewRetryButton = null;
+    }
+    if (grid && previewGrid !== null) {
+      // An empty render also resets the grid's reconcile cache.
+      renderFlowGrid({ container: previewGrid, entries: [] });
+    }
+  }
+
+  function showPreviewText({ text }: { text: string }): void {
+    if (previewBody === null) {
+      return;
+    }
+    clearPreviewBlocks({ placeholder: false, error: true, grid: true });
+    if (previewPlaceholder === null) {
+      previewPlaceholder = makeElement({
+        tag: "p",
+        className: "flow-builder-preview-placeholder",
+        attrs: { tabindex: "0" },
+      });
+      previewBody.append(previewPlaceholder);
+    }
+    previewPlaceholder.textContent = text;
+  }
+
+  function showPreviewCard({ state }: { state: FlowCardState }): void {
+    if (previewGrid === null) {
+      return;
+    }
+    clearPreviewBlocks({ placeholder: true, error: true, grid: false });
+    renderFlowGrid({
+      container: previewGrid,
+      entries: [
+        {
+          id: PREVIEW_FLOW_ID,
+          title: previewCardTitle(),
+          preview: true,
+          state,
+        },
+      ],
+    });
+  }
+
+  function showPreviewError({ message }: { message: string }): void {
+    if (previewBody === null) {
+      return;
+    }
+    clearPreviewBlocks({ placeholder: true, error: false, grid: true });
+    if (previewErrorBlock === null) {
+      previewErrorBlock = makeElement({
+        tag: "div",
+        className: "flow-builder-preview-error",
+      });
+      previewErrorText = makeElement({ tag: "p" });
+      previewRetryButton = makeElement({
+        tag: "button",
+        className: "flow-builder-btn",
+        text: strings().METRICS_FLOW_RETRY,
+        attrs: { type: "button" },
+      });
+      previewRetryButton.addEventListener("click", handlePreviewRetry);
+      previewErrorBlock.append(previewErrorText, previewRetryButton);
+      previewBody.append(previewErrorBlock);
+    }
+    if (previewErrorText !== null) {
+      previewErrorText.textContent = message;
+    }
+  }
+
+  /**
+   * Retry is inert (aria-disabled, so it keeps focus) while a Retry flight runs and
+   * while a Save, a Delete or a confirm owns the builder.
+   */
+  function syncRetryDisabled(): void {
+    if (previewRetryButton === null) {
+      return;
+    }
+    if (retryDriven || saving || deleting || pendingConfirm !== null) {
+      previewRetryButton.setAttribute("aria-disabled", "true");
+    } else {
+      previewRetryButton.removeAttribute("aria-disabled");
+    }
+  }
+
+  function handlePreviewRetry(): void {
+    if (
+      previewRetryButton === null ||
+      retryDriven ||
+      saving ||
+      deleting ||
+      pendingConfirm !== null
+    ) {
+      return;
+    }
+    retryDriven = true;
+    syncRetryDisabled();
+    schedulePreview();
+  }
+
+  /**
+   * Runs a preview render; when it removed the element that held focus inside the
+   * preview body, focus moves to the preview title. Nothing else here moves focus.
+   */
+  function withPreviewFocusGuard({ render }: { render: () => void }): void {
+    const active = document.activeElement;
+    const held =
+      previewBody !== null &&
+      active instanceof HTMLElement &&
+      previewBody.contains(active);
+    render();
+    if (held && active instanceof HTMLElement && !active.isConnected) {
+      previewTitle?.focus();
+    }
+  }
+
+  function renderPreviewState({ state }: { state: FlowPreviewState }): void {
+    if (previewBody === null || previewStatus === null) {
+      return;
+    }
+    const bodyElement = previewBody;
+    const statusElement = previewStatus;
+    withPreviewFocusGuard({
+      render: () => {
+        if (state.kind !== "updating") {
+          retryDriven = false;
+        }
+        bodyElement.classList.remove("flow-builder-preview-body--stale");
+        if (state.kind !== "field-errors") {
+          clearPreviewMarks();
+        }
+        statusElement.hidden = state.kind !== "updating";
+        if (state.kind === "updating") {
+          if (retryDriven && previewErrorBlock !== null) {
+            // A busy region would hide the focused Retry from assistive tech.
+            bodyElement.removeAttribute("aria-busy");
+            syncRetryDisabled();
+            return;
+          }
+          bodyElement.setAttribute("aria-busy", "true");
+          if (state.previous !== null) {
+            previewResponse = state.previous;
+            showPreviewCard({
+              state: { kind: "response", response: state.previous },
+            });
+            previewShown = "card";
+          } else {
+            previewResponse = null;
+            showPreviewCard({ state: { kind: "loading" } });
+            previewShown = "skeleton";
+          }
+          return;
+        }
+        bodyElement.removeAttribute("aria-busy");
+        previewResponse = null;
+        if (state.kind === "placeholder") {
+          showPreviewText({ text: strings().METRICS_FLOW_PREVIEW_PLACEHOLDER });
+          previewShown = "placeholder";
+        } else if (state.kind === "result") {
+          previewResponse = state.response;
+          showPreviewCard({
+            state: { kind: "response", response: state.response },
+          });
+          previewShown = "card";
+        } else if (state.kind === "field-errors") {
+          showPreviewText({ text: strings().METRICS_FLOW_PREVIEW_FIX_FIELDS });
+          previewShown = "fields";
+        } else {
+          showPreviewError({
+            message:
+              state.kind === "rate-limited"
+                ? strings().METRICS_FLOW_RATE_LIMITED
+                : strings().METRICS_FLOW_PREVIEW_FAILED,
+          });
+          previewShown = "error";
+          syncRetryDisabled();
+        }
+      },
+    });
+  }
+
+  /** Save/Delete start: the controller is silent after `cancel()`, so freeze by hand. */
+  function freezePreview(): void {
+    preview.cancel();
+    retryDriven = false;
+    clearPreviewMarks();
+    if (previewBody === null || previewStatus === null) {
+      return;
+    }
+    const bodyElement = previewBody;
+    const statusElement = previewStatus;
+    withPreviewFocusGuard({
+      render: () => {
+        statusElement.hidden = true;
+        bodyElement.removeAttribute("aria-busy");
+        if (previewShown === "card" || previewShown === "skeleton") {
+          bodyElement.classList.add("flow-builder-preview-body--stale");
+        } else if (previewShown === "fields") {
+          // The marks are gone, so "Fix the marked fields" would no longer be true.
+          showPreviewText({ text: strings().METRICS_FLOW_PREVIEW_PLACEHOLDER });
+          previewShown = "placeholder";
+        }
+        syncRetryDisabled();
+      },
+    });
+  }
+
+  /** Only the card title follows a name edit; the request body never contains it. */
+  function refreshPreviewTitle(): void {
+    if (previewShown === "card" && previewResponse !== null) {
+      showPreviewCard({
+        state: { kind: "response", response: previewResponse },
+      });
+    }
+  }
+
+  /**
+   * Feeds the preview controller from the current draft. Called after every edit
+   * except a rename; a draft that is not client-valid (ignoring the name) shows
+   * the placeholder instead of sending.
+   */
+  function schedulePreview(): void {
+    if (
+      !opened ||
+      catalog === null ||
+      previewBody === null ||
+      saving ||
+      deleting
+    ) {
+      return;
+    }
+    const blocking = validateDraft({ draft, catalog }).filter(
+      (error) => error.field !== "display_name",
+    );
+    if (blocking.length > 0) {
+      preview.invalidate();
+      return;
+    }
+    preview.update({
+      body: {
+        ...toRequestBody({ draft }),
+        display_name: strings().METRICS_FLOW_PREVIEW_HEADING,
+      },
+      window: callbacks.getWindow(),
+      submitted: captureSubmitted({ draft }),
+    });
   }
 
   // ---------------------------------------------------------------------
@@ -1055,7 +1440,12 @@ export function createFlowBuilder({
       formErrorRegion,
       actions,
     );
-    body.replaceChildren(form);
+    const layout = makeElement({
+      tag: "div",
+      className: "flow-builder-layout",
+    });
+    layout.append(form, buildPreviewSection());
+    body.replaceChildren(layout);
     renderSteps();
     renderNameError();
     renderStepsError();
@@ -1926,12 +2316,14 @@ export function createFlowBuilder({
       draft = clearDraftError({ draft, field: "display_name" });
       renderNameError();
       renderSummary();
+      refreshPreviewTitle();
       return;
     }
     const key = stepKeyOf({ target });
     if (target.dataset.field === "label" && key !== null) {
       draft = setStepLabel({ draft, key, value: target.value });
       clearFieldError({ key, field: "label" });
+      schedulePreview();
       return;
     }
     const filterKey = filterKeyOf({ target });
@@ -1949,6 +2341,7 @@ export function createFlowBuilder({
       });
       clearRowError({ target });
       renderSummary();
+      schedulePreview();
     }
     if (
       target.dataset.field === BREAKDOWN_FILTER_VALUE_FIELD &&
@@ -1963,10 +2356,20 @@ export function createFlowBuilder({
       });
       clearRowError({ target });
       renderSummary();
+      schedulePreview();
     }
   }
 
+  /** Every select change is structural, so it ends in a preview refresh. */
   function handleChange(event: Event): void {
+    const before = draft;
+    applyChange(event);
+    if (draft !== before && event.target instanceof HTMLSelectElement) {
+      schedulePreview();
+    }
+  }
+
+  function applyChange(event: Event): void {
     const target = event.target;
     if (
       target instanceof HTMLInputElement &&
@@ -2115,7 +2518,16 @@ export function createFlowBuilder({
     });
   }
 
+  /** Step, filter and breakdown buttons change the draft; Cancel and Delete do not. */
   function handleClick(event: MouseEvent): void {
+    const before = draft;
+    applyClick(event);
+    if (draft !== before) {
+      schedulePreview();
+    }
+  }
+
+  function applyClick(event: MouseEvent): void {
     const target = event.target;
     if (!(target instanceof Element)) {
       return;
@@ -2271,6 +2683,7 @@ export function createFlowBuilder({
     pendingConfirm = null;
     closing?.element.remove();
     formElement?.removeAttribute("inert");
+    syncRetryDisabled();
   }
 
   function openConfirm({
@@ -2355,6 +2768,7 @@ export function createFlowBuilder({
     };
     formElement?.setAttribute("inert", "");
     body.append(element);
+    syncRetryDisabled();
     safeButton.focus();
   }
 
@@ -2447,6 +2861,7 @@ export function createFlowBuilder({
     }
     deleting = true;
     refreshBusy();
+    freezePreview();
     confirm.confirmButton.textContent = strings().METRICS_FLOW_DELETING;
     confirm.confirmButton.setAttribute("aria-disabled", "true");
     confirm.safeButton.setAttribute("aria-disabled", "true");
@@ -2472,6 +2887,8 @@ export function createFlowBuilder({
       refreshBusy();
       deleteButton?.focus();
       handleDeleteFailure({ request });
+      syncRetryDisabled();
+      schedulePreview();
     });
   }
 
@@ -2510,6 +2927,7 @@ export function createFlowBuilder({
     open,
     close: teardown,
     isOpen: () => opened,
+    refreshPreview: schedulePreview,
     isDirty,
     confirmDiscard,
     focusPendingConfirm,

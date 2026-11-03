@@ -256,6 +256,7 @@ beforeEach(() => {
     onFlowMissing: vi.fn(),
     onDeleted: vi.fn(),
     onListStale: vi.fn(),
+    getWindow: () => "day",
   };
   builder = createFlowBuilder({ container, callbacks });
 });
