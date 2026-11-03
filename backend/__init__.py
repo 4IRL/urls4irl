@@ -297,6 +297,7 @@ def create_app(
     from backend.admin.routes import admin as admin_blueprint
     from backend.api_v1.routes import api_v1
     from backend.contact.routes import contact
+    from backend.invite_links.routes import invite_links
     from backend.members.routes import members
     from backend.metrics.routes import metrics
     from backend.search.routes import search
@@ -322,6 +323,7 @@ def create_app(
     app.register_blueprint(api_v1)
     csrf.exempt(api_v1)
     app.register_blueprint(contact)
+    app.register_blueprint(invite_links)
     app.register_blueprint(members)
     app.register_blueprint(metrics)
     app.register_blueprint(search)

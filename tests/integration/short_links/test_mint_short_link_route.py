@@ -300,7 +300,7 @@ def test_mint_unrelated_integrity_error_propagates_and_writes_no_row(
         mint_module, "generate_short_link_code", return_value=OTHER_URL_CODE
     ) as generator:
         with mock.patch.object(
-            mint_module, "_violated_constraint", return_value="unrelated_constraint"
+            mint_module, "violated_constraint", return_value="unrelated_constraint"
         ):
             with pytest.raises(IntegrityError):
                 post_mint(client, csrf_token)

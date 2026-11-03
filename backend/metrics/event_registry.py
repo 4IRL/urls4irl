@@ -26,6 +26,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from backend.invite_links.constants import (
+    INVITE_LINK_METRIC_HAS_USE_LIMIT_VALUES,
+    INVITE_LINK_METRIC_REVOKE_REASONS,
+)
 from backend.members.constants import (
     MEMBER_ADD_HAS_RESULTS_VALUES,
     MEMBER_ADD_SOURCE_VALUES,
@@ -146,6 +150,16 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
     EventName.URL_ACCESSED: EventRegistryEntry(
         description="URL click-through (distinct from list)",
         category=EventCategory.DOMAIN,
+    ),
+    EventName.INVITE_LINK_CREATED: EventRegistryEntry(
+        description="UTub invite link created by a manager (create or replace)",
+        category=EventCategory.DOMAIN,
+        dimensions={"has_use_limit": INVITE_LINK_METRIC_HAS_USE_LIMIT_VALUES},
+    ),
+    EventName.INVITE_LINK_REVOKED: EventRegistryEntry(
+        description="UTub invite link revoked (manually, replaced, or a dead link cleared on create)",
+        category=EventCategory.DOMAIN,
+        dimensions={"reason": INVITE_LINK_METRIC_REVOKE_REASONS},
     ),
     EventName.SHORT_LINK_MINTED: EventRegistryEntry(
         description="Share short link created for a UTub URL (not a reuse of an active link)",

@@ -24,3 +24,28 @@ def lock_invite_for_update(*, invite_id: int) -> Utub_Invite_Links | None:
         .filter(Utub_Invite_Links.id == invite_id)
         .one_or_none()
     )
+
+
+def lock_current_invite_for_update(*, utub_id: int) -> Utub_Invite_Links | None:
+    """Take the row lock on a UTub's unrevoked invite link and refresh it.
+
+    Same lock strength, ``populate_existing`` and caller-holds-``Utubs`` rule as
+    ``lock_invite_for_update``. The partial unique index allows at most one
+    unrevoked row per UTub, so ``one_or_none`` is safe. Revoked rows and rows of
+    other UTubs are never returned.
+
+    Args:
+        utub_id (int): ID of the UTub.
+
+    Returns:
+        The refreshed unrevoked invite, or None if the UTub has none.
+    """
+    return (
+        Utub_Invite_Links.query.populate_existing()
+        .with_for_update(key_share=True)
+        .filter(
+            Utub_Invite_Links.utub_id == utub_id,
+            Utub_Invite_Links.revoked_at.is_(None),
+        )
+        .one_or_none()
+    )

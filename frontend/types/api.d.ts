@@ -878,6 +878,43 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/utubs/{utub_id}/invite-link": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** @description Get the UTub's current invite link and its status, or null when there is none (owner and co-owner only) */
+    get: operations["getInviteLink"];
+    put?: never;
+    /** @description Create the UTub's invite link with an expiry and an optional use limit (owner and co-owner only). A dead unrevoked link is revoked first. */
+    post: operations["createInviteLink"];
+    /** @description Revoke the UTub's invite link (owner and co-owner only) */
+    delete: operations["revokeInviteLink"];
+    options?: never;
+    head?: never;
+    /** @description Change the expiry and/or use limit of the UTub's live invite link (owner and co-owner only). An absent field is unchanged; a null max_uses means unlimited. */
+    patch: operations["updateInviteLink"];
+    trace?: never;
+  };
+  "/utubs/{utub_id}/invite-link/replace": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** @description Revoke the UTub's invite link and create a new one with the given settings (owner and co-owner only) */
+    post: operations["replaceInviteLink"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/utubs/{utub_id}/members/{user_id}": {
     parameters: {
       query?: never;
@@ -2963,6 +3000,78 @@ export interface components {
      * @enum {integer}
      */
     ContactErrorCodes: 1;
+    /** @description One UTub's current invite link as shown to its managers. */
+    InviteLinkSchema: {
+      /** @description The 22-character invite token */
+      token: string;
+      /** @description live, expired, used_up or creator_demoted */
+      status: components["schemas"]["InviteLinkStatus"];
+      /**
+       * Format: date-time
+       * @description UTC ISO-8601 timestamp after which the link stops working
+       */
+      expiresAt: string;
+      /** @description Use limit; null means unlimited */
+      maxUses: number | null;
+      /** @description How many people joined with this link */
+      useCount: number;
+      /**
+       * Format: date-time
+       * @description UTC ISO-8601 creation timestamp
+       */
+      createdAt: string;
+      /** @description Username of the link's creator; null when that account was erased */
+      creatorUsername: string | null;
+    };
+    /** @enum {string} */
+    InviteLinkStatus: "live" | "expired" | "used_up" | "creator_demoted";
+    /** @description Envelope for the invite link routes; ``inviteLink`` is null when none exists. */
+    InviteLinkResponseSchema: {
+      /**
+       * @description Response status
+       * @constant
+       */
+      status: "Success";
+      /** @description The current invite link, or null when the UTub has none */
+      inviteLink: components["schemas"]["InviteLinkSchema"] | null;
+    };
+    /**
+     * @description Error codes for InviteLinkErrorCodes
+     * @enum {integer}
+     */
+    InviteLinkErrorCodes: 1 | 2 | 3 | 4 | 5 | 6;
+    InviteLinkSettingsRequest: {
+      /**
+       * @description Days until the link expires: 1, 7 or 30
+       * @default 7
+       * @enum {integer}
+       */
+      expires_in_days: 1 | 7 | 30;
+      /**
+       * @description How many people may join with the link: 1, 5, 10 or 25; null means unlimited
+       * @default null
+       */
+      max_uses: (1 | 5 | 10 | 25) | null;
+    };
+    ErrorResponse_InviteLinkErrorCodes: components["schemas"]["ErrorResponse"] & {
+      errorCode?: components["schemas"]["InviteLinkErrorCodes"];
+    };
+    /**
+     * @description Partial update: an absent field is left unchanged; an explicit null
+     *     ``max_uses`` sets the link to unlimited.
+     */
+    UpdateInviteLinkRequest: {
+      /**
+       * @description Days until the link expires: 1, 7 or 30
+       * @default null
+       */
+      expires_in_days: (1 | 7 | 30) | null;
+      /**
+       * @description How many people may join with the link: 1, 5, 10 or 25; null means unlimited
+       * @default null
+       */
+      max_uses: (1 | 5 | 10 | 25) | null;
+    };
     /**
      * @description One UI metrics event submitted by the browser.
      *
@@ -7897,6 +8006,281 @@ export interface operations {
       };
     };
   };
+  getInviteLink: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        utub_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Envelope for the invite link routes; ``inviteLink`` is null when none exists. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["InviteLinkResponseSchema"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  createInviteLink: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        utub_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["InviteLinkSettingsRequest"];
+      };
+    };
+    responses: {
+      /** @description Envelope for the invite link routes; ``inviteLink`` is null when none exists. */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["InviteLinkResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_InviteLinkErrorCodes"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_InviteLinkErrorCodes"];
+        };
+      };
+      /** @description Too many requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  revokeInviteLink: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        utub_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Status and message response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["StatusMessageResponseSchema"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  updateInviteLink: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        utub_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["UpdateInviteLinkRequest"];
+      };
+    };
+    responses: {
+      /** @description Envelope for the invite link routes; ``inviteLink`` is null when none exists. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["InviteLinkResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_InviteLinkErrorCodes"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_InviteLinkErrorCodes"];
+        };
+      };
+    };
+  };
+  replaceInviteLink: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        utub_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["InviteLinkSettingsRequest"];
+      };
+    };
+    responses: {
+      /** @description Envelope for the invite link routes; ``inviteLink`` is null when none exists. */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["InviteLinkResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_InviteLinkErrorCodes"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Too many requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
   removeMember: {
     parameters: {
       query?: never;
@@ -8305,6 +8689,8 @@ export interface operations {
           | "cross_utub_search_performed"
           | "data_exported"
           | "email_verified"
+          | "invite_link_created"
+          | "invite_link_revoked"
           | "login_failure"
           | "login_success"
           | "member_added"
@@ -8556,6 +8942,8 @@ export interface operations {
           | "cross_utub_search_performed"
           | "data_exported"
           | "email_verified"
+          | "invite_link_created"
+          | "invite_link_revoked"
           | "login_failure"
           | "login_success"
           | "member_added"

@@ -431,7 +431,7 @@ def test_create_metric_flow_other_integrity_error_not_mapped_to_display_name(
         metric_flow_service, "_is_display_name_taken", lambda **_kwargs: False
     )
     monkeypatch.setattr(
-        metric_flow_service, "_violated_constraint", lambda _error: "some_other_check"
+        metric_flow_service, "violated_constraint", lambda _error: "some_other_check"
     )
     monkeypatch.setitem(app.config, "PROPAGATE_EXCEPTIONS", False)
 

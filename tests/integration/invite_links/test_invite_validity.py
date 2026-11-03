@@ -11,19 +11,24 @@ from flask import Flask
 
 from backend import db
 from backend.invite_links.constants import INVITE_LINK_DEFAULT_TTL, InviteState
-from backend.invite_links.guards import lock_invite_for_update
+from backend.invite_links.guards import (
+    lock_current_invite_for_update,
+    lock_invite_for_update,
+)
 from backend.invite_links.validity import evaluate_invite, is_invite_live
 from backend.models.utub_invite_links import Utub_Invite_Links
 from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utubs import Utubs
 from backend.utils.datetime_utils import utc_now
-from tests.utils_for_test import lock_utub, trash_utub
+from tests.utils_for_test import add_invite_link, lock_utub, trash_utub
 
 pytestmark = pytest.mark.invite_links
 
 TOKEN: str = "T" * 22
 CREATOR_ID: int = 1
 UTUB_ID: int = 1
+OTHER_UTUB_ID: int = 2
+OTHER_CREATOR_ID: int = 2
 
 
 def _make_invite(
@@ -253,6 +258,48 @@ def test_evaluate_writes_nothing(app: Flask, every_user_makes_a_unique_utub) -> 
         assert not db.session.new
         assert not db.session.deleted
         assert db.session.get(Utubs, UTUB_ID) is not None
+
+
+def test_lock_current_invite_ignores_revoked_and_other_utubs(
+    app: Flask, every_user_makes_a_unique_utub
+) -> None:
+    """
+    GIVEN a revoked and an unrevoked link in UTub 1 and an unrevoked link in UTub 2
+    WHEN lock_current_invite_for_update runs for each UTub, and for one with no links
+    THEN UTub 1 gets only its unrevoked row, UTub 2 gets its own, and None otherwise
+    """
+    revoked_id = add_invite_link(app, UTUB_ID, CREATOR_ID, revoked=True)
+    live_id = add_invite_link(app, UTUB_ID, CREATOR_ID)
+    other_id = add_invite_link(app, OTHER_UTUB_ID, OTHER_CREATOR_ID)
+
+    with app.app_context():
+        locked = lock_current_invite_for_update(utub_id=UTUB_ID)
+        assert locked is not None
+        assert locked.id == live_id
+        assert locked.id != revoked_id
+        db.session.rollback()
+
+        other = lock_current_invite_for_update(utub_id=OTHER_UTUB_ID)
+        assert other is not None
+        assert other.id == other_id
+        db.session.rollback()
+
+        assert lock_current_invite_for_update(utub_id=OTHER_UTUB_ID + 100) is None
+        db.session.rollback()
+
+
+def test_lock_current_invite_none_when_only_revoked(
+    app: Flask, every_user_makes_a_unique_utub
+) -> None:
+    """
+    GIVEN a UTub whose only link is revoked
+    WHEN lock_current_invite_for_update runs
+    THEN it returns None
+    """
+    add_invite_link(app, UTUB_ID, CREATOR_ID, revoked=True)
+    with app.app_context():
+        assert lock_current_invite_for_update(utub_id=UTUB_ID) is None
+        db.session.rollback()
 
 
 def test_lock_invite_returns_row_and_none_for_missing(

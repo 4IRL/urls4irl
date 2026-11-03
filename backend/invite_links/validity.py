@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from backend.invite_links.constants import InviteState
+from backend.invite_links.constants import InviteLinkStatus, InviteState
 from backend.models.utub_invite_links import Utub_Invite_Links
 from backend.models.utub_members import Member_Role
 from backend.utils.datetime_utils import utc_now
@@ -36,6 +36,29 @@ def evaluate_invite(invite: Utub_Invite_Links) -> InviteState:
     if invite.utub.is_locked:
         return InviteState.UTUB_LOCKED
     return InviteState.LIVE
+
+
+_STATE_TO_LINK_STATUS: dict[InviteState, InviteLinkStatus] = {
+    InviteState.LIVE: InviteLinkStatus.LIVE,
+    InviteState.UTUB_LOCKED: InviteLinkStatus.LIVE,
+    InviteState.EXPIRED: InviteLinkStatus.EXPIRED,
+    InviteState.USED_UP: InviteLinkStatus.USED_UP,
+    InviteState.CREATOR_NOT_MANAGER: InviteLinkStatus.CREATOR_DEMOTED,
+}
+
+
+def invite_state_to_link_status(state: InviteState) -> InviteLinkStatus:
+    """Map an evaluated state to the manager-facing status; fails closed.
+
+    ``REVOKED`` and ``UTUB_TRASHED`` (and any future state) raise rather than
+    ever mapping to ``live``.
+    """
+    try:
+        return _STATE_TO_LINK_STATUS[state]
+    except KeyError:
+        raise ValueError(
+            f"InviteState {state!r} has no manager-facing link status"
+        ) from None
 
 
 def is_invite_live(state: InviteState) -> bool:
