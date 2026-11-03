@@ -11,6 +11,7 @@ vi.mock("../../lib/ajax.js", () => ({
 
 import {
   createMetricFlow,
+  previewMetricFlow,
   deleteMetricFlow,
   fetchMetricFlowCatalog,
   updateMetricFlow,
@@ -353,6 +354,20 @@ describe("metrics-query-client", () => {
       expect(ajaxCallSpy.mock.calls[0]).toEqual([
         "POST",
         "/admin/metrics/flows",
+        definition,
+        5000,
+      ]);
+    });
+  });
+
+  describe("previewMetricFlow", () => {
+    it("POSTs the definition with the window query and a 5000 ms timeout", () => {
+      const definition = { display_name: "Preview", steps: [] };
+      previewMetricFlow({ definition, window: "7d" });
+      expect(ajaxCallSpy).toHaveBeenCalledOnce();
+      expect(ajaxCallSpy.mock.calls[0]).toEqual([
+        "POST",
+        "/admin/metrics/flows/preview?window=7d",
         definition,
         5000,
       ]);

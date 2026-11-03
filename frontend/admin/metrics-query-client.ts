@@ -269,6 +269,27 @@ export function createMetricFlow({
 }
 
 /**
+ * Preview one draft flow's real numbers for a time window.
+ *
+ * Example: `previewMetricFlow({ definition, window: "7d" })` issues
+ * `POST /admin/metrics/flows/preview?window=7d` with the definition as the body.
+ */
+export function previewMetricFlow({
+  definition,
+  window,
+}: {
+  definition: Schema<"LenientFlowDefinition">;
+  window: string;
+}): JQuery.jqXHR<SuccessResponse<"previewMetricFlow">> {
+  return ajaxCall(
+    "POST",
+    `${requireAdminRoute("adminMetricFlowPreview")}?${new URLSearchParams({ window })}`,
+    definition,
+    QUERY_TIMEOUT_MS,
+  ) as JQuery.jqXHR<SuccessResponse<"previewMetricFlow">>;
+}
+
+/**
  * Replace one custom metric flow's definition.
  *
  * Example: `updateMetricFlow({ flowId: "custom_12", definition })`

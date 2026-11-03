@@ -5,7 +5,12 @@ import type {
   FlowCardState,
   FlowGridEntry,
 } from "../flow-card.js";
-import { renderFlowCard, renderFlowGrid } from "../flow-card.js";
+import {
+  isAllZero,
+  PREVIEW_FLOW_ID,
+  renderFlowCard,
+  renderFlowGrid,
+} from "../flow-card.js";
 
 type FlowResponseSchema = Schema<"FlowResponseSchema">;
 type FlowStepSchema = Schema<"FlowStepSchema">;
@@ -913,6 +918,147 @@ describe("renderFlowGrid", () => {
     renderFlowGrid({ container, entries });
     expect(container.firstElementChild).toBe(node);
     expect(container.children.length).toBe(1);
+  });
+});
+
+describe("preview entries", () => {
+  const CUSTOM: FlowCardCustom = {
+    confirm: "closed",
+    message: null,
+    deleteLocked: false,
+  };
+
+  function render({ entry }: { entry: FlowGridEntry }): HTMLElement {
+    const container = document.createElement("div");
+    renderFlowGrid({ container, entries: [entry] });
+    return container.querySelector(".flow-card") as HTMLElement;
+  }
+
+  function entryOf({
+    state,
+    preview,
+  }: {
+    state: FlowCardState;
+    preview?: true;
+  }): FlowGridEntry {
+    return {
+      id: PREVIEW_FLOW_ID,
+      title: "Preview",
+      state,
+      custom: CUSTOM,
+      preview,
+    };
+  }
+
+  const response: FlowCardState = {
+    kind: "response",
+    response: buildAddUrlResponse(),
+  };
+
+  it("exports the reserved preview id", () => {
+    expect(PREVIEW_FLOW_ID).toBe("preview");
+  });
+
+  it("renders a response preview with no badge, no actions and an h4 title", () => {
+    const card = render({ entry: entryOf({ state: response, preview: true }) });
+    expect(card.querySelector(".flow-badge")).toBeNull();
+    expect(card.querySelector(".flow-actions")).toBeNull();
+    expect(card.querySelector(".flow-confirm")).toBeNull();
+    expect(card.querySelector(".flow-title")?.tagName).toBe("H4");
+    expect(card.querySelector(".flow-title")?.textContent).toBe("Preview");
+    expect(card.getAttribute("aria-label")).toMatch(/^Preview: /);
+  });
+
+  it("renders a loading preview with no badge, no actions and an h4 title", () => {
+    const card = render({
+      entry: entryOf({ state: { kind: "loading" }, preview: true }),
+    });
+    expect(card.querySelector(".flow-badge")).toBeNull();
+    expect(card.querySelector(".flow-actions")).toBeNull();
+    expect(card.querySelector(".flow-title")?.tagName).toBe("H4");
+    expect(card.getAttribute("aria-label")).toBe("Preview: loading");
+  });
+
+  it("keeps h3, the badge and actions on a normal custom entry", () => {
+    for (const state of [response, { kind: "loading" } as FlowCardState]) {
+      const card = render({ entry: entryOf({ state }) });
+      expect(card.querySelector(".flow-title")?.tagName).toBe("H3");
+      expect(card.querySelector(".flow-badge")).not.toBeNull();
+      expect(card.querySelector(".flow-actions")).not.toBeNull();
+    }
+  });
+
+  it("renders error and invalid previews with no badge or actions", () => {
+    const states: FlowCardState[] = [
+      { kind: "error" },
+      {
+        kind: "invalid",
+        invalid: { step_index: 0, field: "event_name", reason: "gone" },
+      },
+    ];
+    for (const state of states) {
+      const card = render({ entry: entryOf({ state, preview: true }) });
+      expect(card.querySelector(".flow-badge")).toBeNull();
+      expect(card.querySelector(".flow-actions")).toBeNull();
+      expect(card.querySelector(".flow-title")?.tagName).toBe("H4");
+    }
+  });
+
+  it("keeps the badge and no actions on a built-in (non-custom) entry", () => {
+    const container = document.createElement("div");
+    renderFlowGrid({
+      container,
+      entries: [{ id: "create_utub", title: "Create UTub", state: response }],
+    });
+    const card = container.querySelector(".flow-card") as HTMLElement;
+    expect(card.querySelector(".flow-badge")).not.toBeNull();
+    expect(card.querySelector(".flow-actions")).toBeNull();
+    expect(card.querySelector(".flow-title")?.tagName).toBe("H3");
+  });
+
+  it("renders the focusable empty state for an all-zero preview", () => {
+    const card = render({
+      entry: entryOf({
+        state: { kind: "response", response: buildEmptyResponse() },
+        preview: true,
+      }),
+    });
+    const empty = card.querySelector(".flow-card-empty") as HTMLElement;
+    expect(empty.textContent).toBe(
+      "No funnel activity recorded in the selected window.",
+    );
+    expect(empty.tabIndex).toBe(0);
+  });
+
+  it("re-renders when the preview flag toggles", () => {
+    const container = document.createElement("div");
+    renderFlowGrid({ container, entries: [entryOf({ state: response })] });
+    const before = container.querySelector(".flow-card");
+    renderFlowGrid({
+      container,
+      entries: [entryOf({ state: response, preview: true })],
+    });
+    const after = container.querySelector(".flow-card");
+    expect(after).not.toBe(before);
+    expect(after?.querySelector(".flow-badge")).toBeNull();
+  });
+});
+
+describe("isAllZero", () => {
+  it("is true for all-zero steps", () => {
+    expect(isAllZero({ steps: buildEmptyResponse().steps })).toBe(true);
+  });
+
+  it("is false when a zero-count step is suppressed", () => {
+    expect(
+      isAllZero({
+        steps: [buildStep({ count: 0 }), buildSuppressedStep()],
+      }),
+    ).toBe(false);
+  });
+
+  it("is false when any step has a count", () => {
+    expect(isAllZero({ steps: buildAddUrlResponse().steps })).toBe(false);
   });
 });
 

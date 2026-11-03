@@ -9,12 +9,14 @@ import {
   createMetricFlow,
   deleteMetricFlow,
   fetchMetricFlowCatalog,
+  previewMetricFlow,
   updateMetricFlow,
 } from "../metrics-query-client.js";
 
 vi.mock("../metrics-query-client.js", () => ({
   fetchMetricFlowCatalog: vi.fn(),
   createMetricFlow: vi.fn(),
+  previewMetricFlow: vi.fn(),
   updateMetricFlow: vi.fn(),
   deleteMetricFlow: vi.fn(),
 }));
@@ -232,6 +234,15 @@ beforeEach(() => {
   fetchMock.mockImplementation(() => makeXhr());
   createMock.mockReset();
   createMock.mockImplementation(() => makeSaveXhr() as never);
+  vi.mocked(previewMetricFlow).mockReset();
+  vi.mocked(previewMetricFlow).mockImplementation(
+    () =>
+      Object.assign(createMockJqXHR(), {
+        abort: vi.fn(),
+        status: 0,
+        readyState: 1,
+      }) as never,
+  );
   updateMock.mockReset();
   updateMock.mockImplementation(() => makeSaveXhr() as never);
   deleteMock.mockReset();

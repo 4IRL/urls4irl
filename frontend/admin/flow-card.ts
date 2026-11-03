@@ -47,7 +47,11 @@ export interface FlowGridEntry {
   state: FlowCardState;
   // Absent for built-in flows (no Delete); present for custom flows.
   custom?: FlowCardCustom;
+  // Builder preview card: no Built-in/Custom badge, no actions, `h4` title.
+  preview?: true;
 }
+
+export const PREVIEW_FLOW_ID = "preview";
 
 const NULL_PCT_PLACEHOLDER = "–";
 // Reject-causes carry the "reject" pill tint; everything else (cancels) the
@@ -66,7 +70,11 @@ function streamLabel({ stream }: { stream: FlowStream }): string {
   return APP_CONFIG.strings.METRICS_FLOW_CATEGORY_DOMAIN;
 }
 
-function formatPercent({ fraction }: { fraction: number | null }): string {
+export function formatPercent({
+  fraction,
+}: {
+  fraction: number | null;
+}): string {
   if (fraction === null) {
     return NULL_PCT_PLACEHOLDER;
   }
@@ -95,10 +103,20 @@ function buildSummaryCount({ step }: { step: FlowStepSchema }): Node {
   return dash;
 }
 
-function ariaCount({ step }: { step: FlowStepSchema }): string {
+export function ariaCount({ step }: { step: FlowStepSchema }): string {
   return step.count_suppressed
     ? APP_CONFIG.strings.METRICS_FLOW_COUNT_SUPPRESSED_ARIA
     : step.count.toLocaleString();
+}
+
+// True when every step has a zero, unsuppressed count: the card shows the
+// empty state instead of the funnel.
+export function isAllZero({
+  steps,
+}: {
+  steps: readonly FlowStepSchema[];
+}): boolean {
+  return steps.every((step) => step.count === 0 && !step.count_suppressed);
 }
 
 function buildEmptyState(): HTMLParagraphElement {
@@ -247,10 +265,12 @@ export function renderFlowCard({
   id,
   title,
   response,
+  preview,
 }: {
   id: string;
   title: string;
   response: FlowResponseSchema;
+  preview?: true;
 }): HTMLElement {
   const card = document.createElement("section");
   card.className = "flow-card";
@@ -260,9 +280,7 @@ export function renderFlowCard({
   card.dataset.flowId = id;
 
   const steps = response.steps;
-  const allZero = steps.every(
-    (step) => step.count === 0 && !step.count_suppressed,
-  );
+  const allZero = isAllZero({ steps });
 
   const topStep = steps[0];
   const lastStep = steps[steps.length - 1];
@@ -270,7 +288,7 @@ export function renderFlowCard({
 
   const header = document.createElement("div");
   header.className = "flow-header";
-  const titleElement = document.createElement("h3");
+  const titleElement = document.createElement(preview ? "h4" : "h3");
   titleElement.className = "flow-title";
   titleElement.textContent = title;
   const summary = document.createElement("span");
@@ -488,16 +506,20 @@ function buildCardShell({
 function buildCardHeader({
   title,
   custom,
+  preview,
 }: {
   title: string;
   custom?: FlowCardCustom;
+  preview?: true;
 }): HTMLDivElement {
   const header = document.createElement("div");
   header.className = "flow-header";
-  const titleElement = document.createElement("h3");
+  const titleElement = document.createElement(preview ? "h4" : "h3");
   titleElement.className = "flow-title";
-  titleElement.appendChild(buildBadge({ isCustom: custom !== undefined }));
-  titleElement.appendChild(document.createTextNode(" "));
+  if (!preview) {
+    titleElement.appendChild(buildBadge({ isCustom: custom !== undefined }));
+    titleElement.appendChild(document.createTextNode(" "));
+  }
   titleElement.appendChild(document.createTextNode(title));
   header.appendChild(titleElement);
   return header;
@@ -526,8 +548,12 @@ function appendCardTop({
   card: HTMLElement;
   entry: FlowGridEntry;
 }): void {
-  const header = buildCardHeader({ title: entry.title, custom: entry.custom });
-  if (entry.custom !== undefined) {
+  const header = buildCardHeader({
+    title: entry.title,
+    custom: entry.custom,
+    preview: entry.preview,
+  });
+  if (entry.custom !== undefined && !entry.preview) {
     header.appendChild(
       buildActions({ id: entry.id, title: entry.title, custom: entry.custom }),
     );
@@ -640,9 +666,14 @@ function buildResponseCard({
     id: entry.id,
     title: entry.title,
     response,
+    preview: entry.preview,
   });
   card.dataset.flowState = "response";
   card.tabIndex = -1;
+
+  if (entry.preview) {
+    return card;
+  }
 
   const titleElement = card.querySelector(".flow-title");
   titleElement?.prepend(
@@ -702,6 +733,7 @@ function isSameEntry({
 }): boolean {
   return (
     previous.title === next.title &&
+    previous.preview === next.preview &&
     isSameCustom({ previous: previous.custom, next: next.custom }) &&
     isSameState({ previous: previous.state, next: next.state })
   );

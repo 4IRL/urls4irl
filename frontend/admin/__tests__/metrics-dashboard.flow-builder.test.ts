@@ -39,6 +39,7 @@ vi.mock("../metrics-query-client.js", () => ({
   fetchMetricFlows: fetchMetricFlowsSpy,
   deleteMetricFlow: deleteMetricFlowSpy,
   createMetricFlow: vi.fn(),
+  previewMetricFlow: vi.fn(),
   updateMetricFlow: vi.fn(),
   fetchMetricFlowCatalog: fetchMetricFlowCatalogSpy,
 }));
@@ -53,7 +54,11 @@ import {
   _resetMetricsDashboardForTests,
   initMetricsDashboard,
 } from "../metrics-dashboard.js";
-import { createMetricFlow, updateMetricFlow } from "../metrics-query-client.js";
+import {
+  createMetricFlow,
+  previewMetricFlow,
+  updateMetricFlow,
+} from "../metrics-query-client.js";
 import { makeListEntry } from "./helpers/flow-list-mock.js";
 
 const DASHBOARD_HTML = `
@@ -248,6 +253,10 @@ describe("metrics-dashboard flow builder: pause, Refresh and close tails", () =>
       flowDeferreds.push(deferred);
       return deferred.xhr;
     });
+    vi.mocked(previewMetricFlow).mockReset();
+    vi.mocked(previewMetricFlow).mockImplementation(
+      () => makeDeferred({ key: "preview" }).xhr as never,
+    );
     fetchMetricFlowsSpy.mockReset();
     fetchMetricFlowsSpy.mockImplementation(() => {
       const deferred = makeDeferred({ key: "list" });
