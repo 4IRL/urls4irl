@@ -18,6 +18,7 @@ from tests.functional.members_ui.playwright_utils import (
     force_role_change_400_response,
     open_member_row_role_action,
     seed_co_creator_in_utub,
+    submit_confirm_modal,
 )
 from tests.functional.playwright_assert_utils import (
     assert_on_429_page,
@@ -28,8 +29,6 @@ from tests.functional.playwright_utils import (
     add_forced_rate_limit_header,
     force_next_patch_ajax_failure_no_navigate,
     invalidate_csrf_token_on_page,
-    wait_for_css_transitions_to_finish,
-    wait_for_modal_ready,
     wait_then_click_element,
     wait_until_css_property,
     wait_until_hidden,
@@ -49,19 +48,6 @@ _OWNER_GUARD_MESSAGE = "You cannot change the owner's role."
 def _username_for_user_id(*, app: Flask, user_id: int) -> str:
     with app.app_context():
         return Users.query.get(user_id).username
-
-
-def _submit_confirm_modal(*, page: Page) -> None:
-    """Gate on the modal fade-in settling before clicking submit.
-
-    Clicking while Bootstrap's show-transition is still running causes the
-    subsequent modal("hide") to be dropped as an overlapping transition, leaving
-    the modal visible and racing wait_until_hidden (mirrors the delete tests).
-    """
-    wait_for_modal_ready(page=page, modal_selector=HPL.HOME_MODAL)
-    # Also wait for every transition on the modal and its dialog to finish.
-    wait_for_css_transitions_to_finish(locator=page.locator(HPL.HOME_MODAL))
-    wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_SUBMIT)
 
 
 # --------------------------------------------------------------------------- #
@@ -189,7 +175,7 @@ def test_grant_co_owner_happy_path(
     # The plain member's item offers "Make co-owner" before the grant.
     expect(role_item).to_have_text(MAKE_CO_OWNER_ACTION)
 
-    _submit_confirm_modal(page=page)
+    submit_confirm_modal(page=page)
 
     # DD-11: submit is disabled immediately after click to prevent double-submit.
     expect(page.locator(HPL.BUTTON_MODAL_SUBMIT)).to_be_disabled()
@@ -237,7 +223,7 @@ def test_revoke_co_owner_happy_path(
     # The co-owner's item offers "Revoke co-owner".
     expect(role_item).to_have_text(REVOKE_CO_OWNER_ACTION)
 
-    _submit_confirm_modal(page=page)
+    submit_confirm_modal(page=page)
     wait_until_hidden(page=page, css_selector=HPL.HOME_MODAL)
 
     member_icon = page.locator(

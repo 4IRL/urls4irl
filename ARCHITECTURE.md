@@ -195,7 +195,7 @@ All app-owned `localStorage` keys are prefixed `u4i:` to avoid collisions with t
 - **update-all.ts** — Bulk tag update operations
 
 **frontend/home/members/ — Member Deck:**
-- **deck.ts** — `setMemberDeckOnUTubSelected()`, `resetMemberDeck()`, `updateMemberDeck()` (diff-based)
+- **deck.ts** — `setMemberDeckOnUTubSelected()`, `resetMemberDeck()`, `updateMemberDeck()` (diff-based), `reorderMemberDeck()` (moves existing rows into the viewer's member sort without rebuilding them; `sort.ts` holds the comparator)
 - **members.ts** — `createOwnerBadge()`, `createMemberBadge()` badge factories
 - **create.ts** — Add member form and AJAX with error handling
 - **delete.ts** — Remove member / leave UTub with modals
@@ -213,7 +213,7 @@ All inter-module communication uses typed events:
 |---|---|---|---|
 | `UTUB_SELECTED` | `{utubID, utubName, urls[], tags[], members[], utubOwnerID, isCurrentUserOwner, currentUserID}` | utubs/selectors | All decks, mobile, search, onboarding |
 | `UTUB_DELETED` | `{utubID}` | utubs/delete | URL/tag/member decks, onboarding |
-| `TRANSFER_PICKER_REQUESTED` | `{opener: HTMLElement \| string}` | utubs/delete, members/deck | members/transfer-picker |
+| `TRANSFER_PICKER_REQUESTED` | `{opener: HTMLElement \| string}` | utubs/delete, members/list-settings-section | members/transfer-picker |
 | `TAG_FILTER_CHANGED` | `{selectedTagIDs[]}` | tags/tags | urls/cards/filtering |
 | `TAG_DELETED` | `{utubTagID}` | tags/delete | urls/cards/filtering |
 | `STALE_DATA_DETECTED` | `{utubID, urls[], tags[], members[]}` | utubs/stale-data | All decks |

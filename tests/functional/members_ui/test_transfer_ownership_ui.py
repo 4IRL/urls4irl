@@ -6,6 +6,8 @@ from playwright.sync_api import Page, expect
 
 from backend.models.users import Users
 from backend.utils.strings.user_strs import (
+    MEMBERS_TRANSFER_SECTION_TITLE,
+    TRANSFER_OWNER_ACTION,
     TRANSFER_OWNER_CONFIRM_SUBMIT,
     TRANSFER_OWNER_CONFIRM_TITLE,
     TRANSFER_OWNER_CONFIRM_WARNING,
@@ -19,6 +21,7 @@ from tests.functional.db_utils import (
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.members_ui.playwright_utils import (
     force_transfer_400_response,
+    open_members_gear,
     open_transfer_ownership_picker,
     seed_co_creator_in_utub,
     stage_transfer_confirm_view,
@@ -66,7 +69,7 @@ def test_owner_with_members_sees_transfer_button(
     """
     GIVEN a user owns a UTub that has at least one other member
     WHEN they view the members panel
-    THEN the standalone "Transfer ownership" trigger is shown
+    THEN the Members gear offers the "Transfer ownership" action
     """
     app = provide_app
 
@@ -76,7 +79,14 @@ def test_owner_with_members_sees_transfer_button(
         app=app, page=page, user_id=user_id, utub_name=utub_user_created.name
     )
 
+    open_members_gear(page=page)
     expect(page.locator(HPL.MEMBER_BTN_TRANSFER_OWNER)).to_be_visible()
+    expect(page.locator(HPL.MEMBER_BTN_TRANSFER_OWNER)).to_have_text(
+        TRANSFER_OWNER_ACTION
+    )
+    heading = page.locator(HPL.MEMBERS_SETTINGS_TRANSFER_HEADING)
+    expect(heading).to_be_visible()
+    expect(heading).to_have_text(MEMBERS_TRANSFER_SECTION_TITLE)
 
 
 def test_co_owner_viewer_sees_no_transfer_button(
@@ -102,7 +112,9 @@ def test_co_owner_viewer_sees_no_transfer_button(
     )
 
     wait_until_visible_css_selector(page=page, css_selector=HPL.MEMBER_ROW_ROLE_ICON)
+    open_members_gear(page=page)
     expect(page.locator(HPL.MEMBER_BTN_TRANSFER_OWNER)).to_be_hidden()
+    expect(page.locator(HPL.MEMBERS_SETTINGS_TRANSFER_HEADING)).to_be_hidden()
 
 
 def test_plain_member_viewer_sees_no_transfer_button(
@@ -124,6 +136,7 @@ def test_plain_member_viewer_sees_no_transfer_button(
     )
 
     wait_until_visible_css_selector(page=page, css_selector=HPL.MEMBER_ROW_ROLE_ICON)
+    open_members_gear(page=page)
     expect(page.locator(HPL.MEMBER_BTN_TRANSFER_OWNER)).to_be_hidden()
 
 
@@ -148,6 +161,7 @@ def test_sole_owner_utub_sees_no_transfer_button(
     # The owner badge renders even with no other members — wait on it so the
     # members deck is fully built before asserting the trigger stays hidden.
     expect(page.locator(HPL.BADGE_OWNER)).to_be_visible()
+    open_members_gear(page=page)
     expect(page.locator(HPL.MEMBER_BTN_TRANSFER_OWNER)).to_be_hidden()
 
 
@@ -232,7 +246,10 @@ def test_transfer_ownership_happy_path(
     expect(utub_selector).to_have_class(re.compile(r"\bactive\b"))
 
     # Owner-only affordances are gone; the Leave button appears for the co-owner.
+    open_members_gear(page=page)
     expect(page.locator(HPL.MEMBER_BTN_TRANSFER_OWNER)).to_be_hidden()
+    page.keyboard.press("Escape")
+    expect(page.locator(HPL.PANEL_SETTINGS_POPOVER)).to_be_hidden()
     expect(page.locator(HPL.BUTTON_UTUB_DELETE)).to_be_hidden()
     expect(page.locator(HPL.BUTTON_UTUB_LEAVE)).to_be_visible()
 
@@ -254,10 +271,10 @@ def test_transfer_picker_keyboard_open_navigate_escape(
 ):
     """
     GIVEN a user owns a UTub with at least one other member
-    WHEN they focus the Transfer trigger, press Enter, ArrowDown, Enter, then Escape
-    THEN Enter opens the modal, ArrowDown/Enter stages a member (Submit enabled),
-        and Escape closes the modal (Bootstrap data-bs-keyboard) and returns focus
-        to the trigger
+    WHEN they open the Members gear with Enter, Tab to Transfer ownership and
+        press Enter, then ArrowDown, Enter, then Escape
+    THEN the gear closes and the modal opens, ArrowDown/Enter stages a member
+        (Submit enabled), and Escape closes the modal and returns focus to the gear
     """
     app = provide_app
 
@@ -267,10 +284,21 @@ def test_transfer_picker_keyboard_open_navigate_escape(
         app=app, page=page, user_id=user_id, utub_name=utub_user_created.name
     )
 
+    gear = page.locator(HPL.BUTTON_MEMBER_SETTINGS_GEAR)
+    gear.focus()
+    expect(gear).to_be_focused()
+    page.keyboard.press("Enter")
+    wait_until_visible_css_selector(
+        page=page, css_selector=HPL.MEMBERS_SETTINGS_SORT_SELECT
+    )
+
+    # The gear moves focus to the first control (the sort select); the action is
+    # the next stop in the tab order and carries its own accessible name.
+    expect(page.locator(HPL.MEMBERS_SETTINGS_SORT_SELECT)).to_be_focused()
+    page.keyboard.press("Tab")
     trigger = page.locator(HPL.MEMBER_BTN_TRANSFER_OWNER)
-    expect(trigger).to_be_visible()
-    trigger.focus()
     expect(trigger).to_be_focused()
+    expect(trigger).to_have_text(TRANSFER_OWNER_ACTION)
 
     # Enter fires the trigger's click handler, opening the modal. Gate on the
     # fade-in settling (Bootstrap transition done) so the shown-focus handler has moved focus onto
@@ -290,10 +318,11 @@ def test_transfer_picker_keyboard_open_navigate_escape(
     page.keyboard.press("Enter")
     expect(page.locator(HPL.TRANSFER_OWNER_SUBMIT)).to_be_enabled()
 
-    # Escape closes the modal and returns focus to the trigger.
+    # Escape closes the modal and returns focus to the gear (the modal's opener).
     page.keyboard.press("Escape")
     wait_until_hidden(page=page, css_selector=HPL.TRANSFER_OWNER_MODAL)
-    expect(trigger).to_be_focused()
+    expect(page.locator(HPL.PANEL_SETTINGS_POPOVER)).to_be_hidden()
+    expect(gear).to_be_focused()
 
 
 # --------------------------------------------------------------------------- #
@@ -466,7 +495,7 @@ def test_transfer_modal_cancel_closes_and_restores_focus(
     """
     GIVEN a user owns a UTub with at least one other member and opens the modal
     WHEN they click the footer Cancel button
-    THEN the transfer modal hides AND focus returns to the trigger
+    THEN the transfer modal hides AND focus returns to the Members gear
     """
     app = provide_app
 
@@ -484,5 +513,5 @@ def test_transfer_modal_cancel_closes_and_restores_focus(
 
     wait_until_hidden(page=page, css_selector=HPL.TRANSFER_OWNER_MODAL)
 
-    # Focus returns to the owner-only trigger that opened the modal.
-    expect(page.locator(HPL.MEMBER_BTN_TRANSFER_OWNER)).to_be_focused()
+    # Focus returns to the Members gear that opened the modal.
+    expect(page.locator(HPL.BUTTON_MEMBER_SETTINGS_GEAR)).to_be_focused()
