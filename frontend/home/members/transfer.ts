@@ -84,7 +84,7 @@ function isFocusable(element: Element | null): boolean {
 /**
  * The deck-header disclosure button to fall back to when the opener itself is
  * not focusable. Derived from the opener's ancestor deck rather than hardcoded:
- * the transfer flow is opened from BOTH #memberBtnTransferOwner (Member deck)
+ * the transfer flow is opened from BOTH the Members gear #memberBtnSettings (Member deck)
  * and #utubBtnDelete (UTubs deck, the "transfer instead" redirect), so a fixed
  * #MemberDeckHeaderAndCaret would strand focus in the wrong deck for the second
  * opener. Falls back to the Member deck header only when the opener has no
@@ -126,7 +126,7 @@ export function beginTransferFlow(opener: HTMLElement | string): void {
       // to the opener. A union of string | HTMLElement matches no single jQuery
       // `$()` overload, so narrow with a safe cast (behavior identical — jQuery
       // accepts either a selector string or an element).
-      // The opener can itself be unfocusable: both #memberBtnTransferOwner and
+      // The opener can itself be unfocusable: both #memberBtnSettings and
       // #utubBtnDelete sit in a deck's `.button-container`, which is
       // visibility:hidden while that deck is collapsed — focusing it there is a
       // silent no-op that drops focus to <body>. Fall back to that deck's own

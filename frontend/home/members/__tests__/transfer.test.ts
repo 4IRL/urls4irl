@@ -111,7 +111,7 @@ const TRANSFER_HTML = `
   <div class="deck" id="MemberDeck">
     <button type="button" id="MemberDeckHeaderAndCaret"><span id="MemberDeckHeader">Members</span></button>
     <h2 id="MemberDeckHeaderA11y" class="visually-hidden">Members</h2>
-    <button id="memberBtnTransferOwner"></button>
+    <button id="memberBtnSettings"></button>
   </div>
   <button id="sentinelFocus"></button>
   <span id="MemberRowActionAnnouncement" class="visually-hidden" aria-live="polite"></span>
@@ -141,7 +141,7 @@ function installModalStub(): void {
 // here we drive transfer.ts directly) then advance it to the confirm view for
 // user id 5.
 function openConfirm(
-  opener: HTMLElement | string = "#memberBtnTransferOwner",
+  opener: HTMLElement | string = "#memberBtnSettings",
 ): void {
   beginTransferFlow(opener);
   showTransferConfirmView({
@@ -234,7 +234,7 @@ describe("transferOwnership — confirm view + PATCH + reconciliation", () => {
   });
 
   it("showTransferConfirmView swaps the pick view for the warning confirm view + retitles + wires submit", () => {
-    beginTransferFlow("#memberBtnTransferOwner");
+    beginTransferFlow("#memberBtnSettings");
     showTransferConfirmView({
       newOwnerId: 5,
       newOwnerUsername: "newowner",
@@ -269,7 +269,7 @@ describe("transferOwnership — confirm view + PATCH + reconciliation", () => {
     ($.fn as unknown as Record<string, unknown>).modal = modalSpy;
 
     // Pick view: Cancel dismisses.
-    beginTransferFlow("#memberBtnTransferOwner");
+    beginTransferFlow("#memberBtnSettings");
     $("#transferOwnerCancel").trigger("click");
     expect(modalSpy).toHaveBeenCalledWith("hide");
 
@@ -306,7 +306,7 @@ describe("transferOwnership — confirm view + PATCH + reconciliation", () => {
     // is false — no confirm-click happened).
     $("#transferOwnerModal").trigger("hidden.bs.modal");
     expect(document.activeElement).toBe(
-      document.getElementById("memberBtnTransferOwner"),
+      document.getElementById("memberBtnSettings"),
     );
     expect(emit).toHaveBeenCalledWith({
       event: UI_EVENTS.UI_UTUB_TRANSFER_OWNER_CANCEL,
@@ -317,9 +317,7 @@ describe("transferOwnership — confirm view + PATCH + reconciliation", () => {
   // opener inside a collapsed deck's `.button-container` is visibility:hidden,
   // so focusing it is a silent no-op that drops focus to <body>.
   it("falls back to the opener's own deck header when the opener is not focusable", () => {
-    const opener = document.getElementById(
-      "memberBtnTransferOwner",
-    ) as HTMLElement;
+    const opener = document.getElementById("memberBtnSettings") as HTMLElement;
     // decks.css never loads into happy-dom — stand the collapsed deck's
     // inherited visibility:hidden up directly on the opener.
     opener.style.visibility = "hidden";
@@ -352,9 +350,7 @@ describe("transferOwnership — confirm view + PATCH + reconciliation", () => {
   // The opener type is `HTMLElement | string`; the element shape must get the
   // same focusable-check as the selector shape.
   it("applies the same fallback to an HTMLElement opener, not only a selector string", () => {
-    const opener = document.getElementById(
-      "memberBtnTransferOwner",
-    ) as HTMLElement;
+    const opener = document.getElementById("memberBtnSettings") as HTMLElement;
     opener.style.visibility = "hidden";
 
     openConfirm(opener);
@@ -536,7 +532,7 @@ describe("transferOwnership — confirm view + PATCH + reconciliation", () => {
     const { emit } = await import("../../../lib/metrics-client.js");
     mockAjaxSuccess(SUCCESS_RESPONSE);
 
-    beginTransferFlow("#memberBtnTransferOwner");
+    beginTransferFlow("#memberBtnSettings");
     expect(emit).toHaveBeenCalledWith({
       event: UI_EVENTS.UI_UTUB_TRANSFER_OWNER_SHOWN,
     });
@@ -555,7 +551,7 @@ describe("transferOwnership — confirm view + PATCH + reconciliation", () => {
   it("on a plain dismiss (no submit): emits CANCEL and restores focus to an HTMLElement opener", async () => {
     const { emit } = await import("../../../lib/metrics-client.js");
     const openerEl = document.getElementById(
-      "memberBtnTransferOwner",
+      "memberBtnSettings",
     ) as HTMLElement;
 
     beginTransferFlow(openerEl);
@@ -568,11 +564,11 @@ describe("transferOwnership — confirm view + PATCH + reconciliation", () => {
   });
 
   it("on a plain dismiss: restores focus to a selector-string opener", () => {
-    beginTransferFlow("#memberBtnTransferOwner");
+    beginTransferFlow("#memberBtnSettings");
     $("#transferOwnerModal").trigger("hidden.bs.modal");
 
     expect(document.activeElement).toBe(
-      document.getElementById("memberBtnTransferOwner"),
+      document.getElementById("memberBtnSettings"),
     );
   });
 

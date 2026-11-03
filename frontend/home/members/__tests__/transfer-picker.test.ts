@@ -58,7 +58,7 @@ const $ = window.jQuery;
 // The dedicated transfer modal skeleton (mirrors modals/transferOwnerModal.html).
 const BASE_HTML = `
   <div id="MemberDeck">
-    <button id="memberBtnTransferOwner" type="button">Transfer</button>
+    <button id="memberBtnSettings" type="button">Transfer</button>
     <button id="utubBtnDelete" type="button">Delete</button>
     <div id="displayMemberWrap"></div>
   </div>
@@ -161,7 +161,7 @@ afterEach(() => {
 
 describe("openTransferPicker — rendering", () => {
   it("renders one option per non-owner member (owner excluded)", () => {
-    openTransferPicker("#memberBtnTransferOwner");
+    openTransferPicker("#memberBtnSettings");
 
     expect(optionRows().length).toBe(2);
     expect(optionFor(1).length).toBe(0); // owner excluded
@@ -171,7 +171,7 @@ describe("openTransferPicker — rendering", () => {
   });
 
   it("puts role=listbox on the INNER listbox (not the pick view), role=option/id/aria-selected on rows", () => {
-    openTransferPicker("#memberBtnTransferOwner");
+    openTransferPicker("#memberBtnSettings");
 
     expect(pickView().attr("role")).toBeUndefined();
     expect(pickView().find(".transferPickerListbox").attr("role")).toBe(
@@ -190,18 +190,18 @@ describe("openTransferPicker — rendering", () => {
   });
 
   it("sets the modal title to the picker title and hands off to beginTransferFlow", () => {
-    openTransferPicker("#memberBtnTransferOwner");
+    openTransferPicker("#memberBtnSettings");
 
     expect($("#transferOwnerModalTitle").text()).toBe(
       APP_CONFIG.strings.TRANSFER_OWNER_PICKER_TITLE,
     );
     expect(vi.mocked(beginTransferFlow)).toHaveBeenCalledWith(
-      "#memberBtnTransferOwner",
+      "#memberBtnSettings",
     );
   });
 
   it("sets roving entry (tabindex 0 first, -1 rest) and focuses the first row on shown; confirm starts disabled with an empty footer (no redundant hint)", () => {
-    openTransferPicker("#memberBtnTransferOwner");
+    openTransferPicker("#memberBtnSettings");
 
     // Roving entry tabindex is set synchronously during render.
     expect(optionFor(2).attr("tabindex")).toBe("0");
@@ -220,7 +220,7 @@ describe("openTransferPicker — rendering", () => {
     storeState.members = [
       { id: 1, username: "owner_u", memberRole: "creator" },
     ];
-    openTransferPicker("#memberBtnTransferOwner");
+    openTransferPicker("#memberBtnSettings");
 
     const empty = pickView().find(".transferPickerAllLocked");
     expect(empty.length).toBe(1);
@@ -232,7 +232,7 @@ describe("openTransferPicker — rendering", () => {
   });
 
   it("is a no-op when already open (re-entrancy guard)", () => {
-    openTransferPicker("#memberBtnTransferOwner");
+    openTransferPicker("#memberBtnSettings");
     // A second open must not re-run teardown collaborators.
     vi.mocked(closeAllMemberRowMenus).mockClear();
     openTransferPicker("#utubBtnDelete");
@@ -242,7 +242,7 @@ describe("openTransferPicker — rendering", () => {
 
 describe("filtering", () => {
   it("hides non-matching rows and shows the no-matches message, then clears on empty query", () => {
-    openTransferPicker("#memberBtnTransferOwner");
+    openTransferPicker("#memberBtnSettings");
 
     filterInput().val("ali").trigger("input");
     expect(optionFor(2).hasClass("hidden")).toBe(false); // alice matches
@@ -264,7 +264,7 @@ describe("filtering", () => {
 
 describe("single-select", () => {
   it("selecting a row marks exactly one selected and enables confirm, footer stays empty", () => {
-    openTransferPicker("#memberBtnTransferOwner");
+    openTransferPicker("#memberBtnSettings");
 
     optionFor(2).trigger("click");
     expect(optionFor(2).attr("aria-selected")).toBe("true");
@@ -275,7 +275,7 @@ describe("single-select", () => {
   });
 
   it("selecting a second row deselects the first (single-select)", () => {
-    openTransferPicker("#memberBtnTransferOwner");
+    openTransferPicker("#memberBtnSettings");
 
     optionFor(2).trigger("click");
     optionFor(3).trigger("click");
@@ -288,7 +288,7 @@ describe("single-select", () => {
 
 describe("keyboard", () => {
   it("ArrowDown roves focus and Enter selects the focused row", () => {
-    openTransferPicker("#memberBtnTransferOwner");
+    openTransferPicker("#memberBtnSettings");
     fireShown(); // focus the first row (id 2)
 
     keydown(optionFor(2)[0], "ArrowDown");
@@ -300,7 +300,7 @@ describe("keyboard", () => {
   });
 
   it("ArrowUp from the first row wraps to the last row", () => {
-    openTransferPicker("#memberBtnTransferOwner");
+    openTransferPicker("#memberBtnSettings");
     fireShown(); // focus the first row (id 2)
 
     keydown(optionFor(2)[0], "ArrowUp");
@@ -316,7 +316,7 @@ describe("keyboard", () => {
       { id: 3, username: "bob", memberRole: "cocreator" },
       { id: 4, username: "alan", memberRole: "member" },
     ];
-    openTransferPicker("#memberBtnTransferOwner");
+    openTransferPicker("#memberBtnSettings");
 
     // Filter to the "al*" subset — alice (id 2) + alan (id 4) match; bob (id 3),
     // between them in DOM order, is hidden.
@@ -347,7 +347,7 @@ describe("keyboard", () => {
   });
 
   it("Space (keydown+keyup) selects the focused row identically to Enter", () => {
-    openTransferPicker("#memberBtnTransferOwner");
+    openTransferPicker("#memberBtnSettings");
     fireShown(); // focus the first row (id 2)
 
     // Space's keydown is prevent-defaulted on an option row (page-scroll guard);
@@ -365,7 +365,7 @@ describe("keyboard", () => {
 
 describe("cancel / close", () => {
   it("the modal's hidden event tears down picker state (open flag + pick view cleared)", () => {
-    openTransferPicker("#memberBtnTransferOwner");
+    openTransferPicker("#memberBtnSettings");
 
     // The Cancel button is now wired once in transfer.ts's beginTransferFlow
     // (mocked out in this suite), so the Cancel-dismisses-modal behavior is
@@ -378,7 +378,7 @@ describe("cancel / close", () => {
   });
 
   it("closeTransferPicker hides the modal; the hidden handler drops the open flag", () => {
-    openTransferPicker("#memberBtnTransferOwner");
+    openTransferPicker("#memberBtnSettings");
     closeTransferPicker();
     expect(modalSpy).toHaveBeenCalledWith("hide");
 
@@ -389,7 +389,7 @@ describe("cancel / close", () => {
 
 describe("continue hand-off (inline pick→confirm)", () => {
   it("Continue hands the chosen member to showTransferConfirmView WITHOUT closing the modal", () => {
-    openTransferPicker("#memberBtnTransferOwner");
+    openTransferPicker("#memberBtnSettings");
     optionFor(2).trigger("click");
     submitBtn().trigger("click");
 
@@ -404,7 +404,7 @@ describe("continue hand-off (inline pick→confirm)", () => {
   });
 
   it("defensive guard: Continue when the staged member vanished resets to the empty-selection state instead of advancing", () => {
-    openTransferPicker("#memberBtnTransferOwner");
+    openTransferPicker("#memberBtnSettings");
     optionFor(2).trigger("click");
 
     // The staged member (id 2) is removed from the store mid-pick.
@@ -421,7 +421,7 @@ describe("continue hand-off (inline pick→confirm)", () => {
 
 describe("event-bus wiring", () => {
   it("UTUB_SELECTED tears down an open modal", () => {
-    openTransferPicker("#memberBtnTransferOwner");
+    openTransferPicker("#memberBtnSettings");
     expect(isTransferPickerOpen()).toBe(true);
 
     emit(AppEvents.UTUB_SELECTED, {
@@ -440,7 +440,7 @@ describe("event-bus wiring", () => {
   });
 
   it("UTUB_DELETED tears down an open modal (symmetric to UTUB_SELECTED)", () => {
-    openTransferPicker("#memberBtnTransferOwner");
+    openTransferPicker("#memberBtnSettings");
     expect(isTransferPickerOpen()).toBe(true);
 
     // A UTub deletion tears the picker down even if the user never closed it —
@@ -453,7 +453,7 @@ describe("event-bus wiring", () => {
   });
 
   it("TRASH_OPENED tears down an open modal", () => {
-    openTransferPicker("#memberBtnTransferOwner");
+    openTransferPicker("#memberBtnSettings");
     expect(isTransferPickerOpen()).toBe(true);
 
     emit(AppEvents.TRASH_OPENED);
