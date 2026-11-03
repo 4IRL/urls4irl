@@ -459,6 +459,47 @@ def test_member_added_accepts_invite_link_source_and_rejects_unknown():
         model_class.model_validate({"source": "not_a_source"})
 
 
+@pytest.mark.parametrize("value", ["true", "false"])
+def test_invite_link_created_accepts_each_has_use_limit_value(value: str):
+    model_class = DIMENSION_MODELS[EventName.INVITE_LINK_CREATED]
+    assert model_class is not None
+    assert model_class.model_validate({"has_use_limit": value}).has_use_limit == value
+
+
+@pytest.mark.parametrize(
+    "bad_dims",
+    [
+        {},
+        {"has_use_limit": "maybe"},
+        {"has_use_limit": True},
+        {"has_use_limit": "true", "token": "x"},
+    ],
+)
+def test_invite_link_created_rejects_invalid_dims(bad_dims: dict):
+    model_class = DIMENSION_MODELS[EventName.INVITE_LINK_CREATED]
+    assert model_class is not None
+    with pytest.raises(ValidationError):
+        model_class.model_validate(bad_dims)
+
+
+@pytest.mark.parametrize("reason", ["manual", "replaced", "dead_on_create"])
+def test_invite_link_revoked_accepts_each_reason(reason: str):
+    model_class = DIMENSION_MODELS[EventName.INVITE_LINK_REVOKED]
+    assert model_class is not None
+    assert model_class.model_validate({"reason": reason}).reason == reason
+
+
+@pytest.mark.parametrize(
+    "bad_dims",
+    [{}, {"reason": "expired"}, {"reason": "manual", "username": "x"}],
+)
+def test_invite_link_revoked_rejects_invalid_dims(bad_dims: dict):
+    model_class = DIMENSION_MODELS[EventName.INVITE_LINK_REVOKED]
+    assert model_class is not None
+    with pytest.raises(ValidationError):
+        model_class.model_validate(bad_dims)
+
+
 def test_per_event_models_reject_missing_required_keys():
     """Omitting a required field raises ValidationError."""
     with pytest.raises(ValidationError):

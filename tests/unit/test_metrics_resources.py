@@ -117,6 +117,14 @@ def test_resource_filter_clause_api_tag_covers_both_utub_and_url_tags_prefixes()
     assert "endpoint LIKE 'utub_url_tags.%'" in rendered
 
 
+def test_resource_filter_clause_api_covers_invite_link_blueprint():
+    clause = resource_filter_clause(
+        category=EventCategory.API, resource=Resource.MEMBER
+    )
+    rendered = str(clause.compile(compile_kwargs={"literal_binds": True}))
+    assert "endpoint LIKE 'invite_links.%'" in rendered
+
+
 def test_resource_filter_clause_api_other_is_negation_of_known_prefixes():
     clause = resource_filter_clause(category=EventCategory.API, resource=Resource.OTHER)
     rendered = str(clause.compile(compile_kwargs={"literal_binds": True}))

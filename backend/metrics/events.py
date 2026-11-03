@@ -35,6 +35,8 @@ class EventName(StrEnum):
     CROSS_UTUB_SEARCH_PERFORMED = "cross_utub_search_performed"
     DATA_EXPORTED = "data_exported"
     EMAIL_VERIFIED = "email_verified"
+    INVITE_LINK_CREATED = "invite_link_created"
+    INVITE_LINK_REVOKED = "invite_link_revoked"
     LOGIN_FAILURE = "login_failure"
     LOGIN_SUCCESS = "login_success"
     MEMBER_ADDED = "member_added"

@@ -23,6 +23,7 @@ from backend.short_links.constants import (
 from backend.urls.constants import URLErrorCodes
 from backend.urls.permissions import can_revoke_short_link
 from backend.utils.datetime_utils import utc_now
+from backend.utils.db_errors import violated_constraint
 from backend.utils.strings.short_link_strs import (
     SHORT_LINK_FAILURE,
     SHORT_LINK_SUCCESS,
@@ -43,12 +44,6 @@ def _lock_existing_short_link(*, utub_url_id: int) -> Short_Links | None:
         .filter(Short_Links.utub_url_id == utub_url_id)
         .one_or_none()
     )
-
-
-def _violated_constraint(error: IntegrityError) -> str | None:
-    """Return the name of the constraint a Postgres ``IntegrityError`` violated, if known."""
-    diagnostics = getattr(error.orig, "diag", None)
-    return getattr(diagnostics, "constraint_name", None)
 
 
 def _build_short_link_response(
@@ -176,7 +171,7 @@ def mint_short_link_for_utub_url(
                     )
                     db.session.add(short_link)
         except IntegrityError as integrity_error:
-            constraint: str | None = _violated_constraint(integrity_error)
+            constraint: str | None = violated_constraint(integrity_error)
             if constraint == UNIQUE_SHORT_LINK_CODE:
                 continue
             if constraint != UNIQUE_SHORT_LINK_PER_UTUB_URL:

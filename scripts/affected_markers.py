@@ -133,6 +133,7 @@ BLUEPRINT_MARKERS: dict[str, tuple[str, ...]] = {
     "system": _SYSTEM,
     "api_v1": _API_V1,
     "short_links": _SHORT_LINKS,
+    "invite_links": _INVITE_LINKS,
 }
 
 # Added on top of the row's blueprint markers. The admin metrics page's own
@@ -391,6 +392,7 @@ PATH_MARKERS: tuple[MarkerRow, ...] = (
         "backend/utils/strings/onboarding_strs.py",
         _union(("unit",), _UTUBS_UI_DIR, _MEMBERS_UI_DIR, _TAGS_UI_DIR),
     ),
+    ("backend/utils/strings/invite_link_strs.py", _union(("unit",), _INVITE_LINKS)),
     ("backend/utils/strings/openapi_strs.py", ("unit", "cli")),
     ("backend/utils/strings/search_strs.py", _union(("unit",), _SEARCH)),
     ("backend/utils/strings/tag_strs.py", _union(("unit",), _TAGS)),
@@ -407,6 +409,8 @@ PATH_MARKERS: tuple[MarkerRow, ...] = (
     ("backend/schemas/contact.py", ("unit", "account_and_support")),
     ("backend/schemas/requests/contact.py", ("unit", "account_and_support")),
     ("backend/schemas/exports.py", ("unit", "account_and_support")),
+    ("backend/schemas/invite_links.py", _union(("unit",), _INVITE_LINKS)),
+    ("backend/schemas/requests/invite_links.py", _union(("unit",), _INVITE_LINKS)),
     ("backend/schemas/metrics.py", ("unit", "cli")),
     ("backend/schemas/requests/metrics.py", ("unit", "cli")),
     ("backend/schemas/search.py", ("unit", "urls")),

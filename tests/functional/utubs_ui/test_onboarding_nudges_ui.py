@@ -277,14 +277,15 @@ def test_add_url_nudge_shows_after_creating_first_utub(
     wait_until_hidden(page=page, css_selector=HPL.INPUT_UTUB_NAME_CREATE)
     assert_active_utub(page=page, utub_name=utub_name)
 
-    # The next tip in the curated sequence is the Add-URL nudge.
-    assert_visible_css_selector(page=page, css_selector=HPL.ONBOARDING_NUDGE_TOOLTIP)
-    expect(page.locator(HPL.ONBOARDING_NUDGE_TITLE)).to_have_text(
-        UTS.ONBOARDING_ADD_URL_TIP_TITLE
+    # The next tip in the curated sequence is the Add-URL nudge. The dismissed
+    # Create-UTub tip stays in the DOM through its fade-out and deferred dispose,
+    # so under load both tooltips briefly coexist; scope to the Add-URL tooltip
+    # instead of asserting on every `.onboarding-nudge-tooltip`.
+    add_url_tip = page.locator(HPL.ONBOARDING_NUDGE_TOOLTIP).filter(
+        has_text=UTS.ONBOARDING_ADD_URL_TIP_TITLE
     )
-    expect(page.locator(HPL.ONBOARDING_NUDGE_BODY)).to_have_text(
-        UTS.ONBOARDING_ADD_URL_TIP_BODY
-    )
+    expect(add_url_tip).to_be_visible()
+    expect(add_url_tip).to_contain_text(UTS.ONBOARDING_ADD_URL_TIP_BODY)
 
     # Same exclusion as the Create-UTub anchor above — aria-label only.
     assert (
