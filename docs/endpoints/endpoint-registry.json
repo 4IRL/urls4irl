@@ -4161,6 +4161,39 @@
       "templates": []
     },
     {
+      "blueprint": "invite_links",
+      "decorators": [
+        "utub_manager_required",
+        "api_route"
+      ],
+      "endpoint": "invite_links.get_invite_link",
+      "handler": "backend/invite_links/routes.py:get_invite_link",
+      "js": {
+        "indirect": null,
+        "no_js": "panel-pending",
+        "route_keys": [],
+        "template_url_for": []
+      },
+      "methods": [
+        "GET"
+      ],
+      "rule": "/utubs/<int:utub_id>/invite-link",
+      "schemas": {
+        "query": null,
+        "request": null,
+        "response": "backend.schemas.invite_links.InviteLinkResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.invite_links.InviteLinkResponseSchema",
+          "403": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.invite_links.services.manage_invite_link:read_invite_link"
+      ],
+      "templates": []
+    },
+    {
       "blueprint": "utubs",
       "decorators": [
         "utub_membership_required",

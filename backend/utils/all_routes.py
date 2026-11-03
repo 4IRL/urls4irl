@@ -79,6 +79,11 @@ class SHORT_LINK_ROUTES:
     RESOLVE_SHORT_LINK = _SHORT_LINKS + "resolve_short_link"
 
 
+class INVITE_LINK_ROUTES:
+    _INVITE_LINKS = "invite_links."
+    GET_INVITE_LINK = _INVITE_LINKS + "get_invite_link"
+
+
 class USER_ROUTES:
     _USERS = "users."
     LOGOUT = _USERS + "logout"
@@ -236,6 +241,7 @@ class ROUTES:
     UTUB_TAGS = UTUB_TAG_ROUTES
     URLS = URL_ROUTES
     SHORT_LINKS = SHORT_LINK_ROUTES
+    INVITE_LINKS = INVITE_LINK_ROUTES
     USERS = USER_ROUTES
     ACCOUNT_AND_SETTINGS = ACCOUNT_AND_SETTING_ROUTES
     ADMIN = ADMIN_ROUTES
@@ -425,6 +431,7 @@ class NoJsReason(StrEnum):
     BROWSER_REDIRECT = "browser-redirect"
     INFRA_PROBE = "infra-probe"
     PUBLIC_SHARE_LINK = "public-share-link"
+    PANEL_PENDING = "panel-pending"
 
 
 # Keys are exact endpoints, or `<blueprint>.*` for a whole blueprint. A
@@ -444,6 +451,9 @@ NO_JS_ENDPOINTS: dict[str, NoJsReason] = {
     "splash.oauth_link": NoJsReason.BROWSER_REDIRECT,
     # Public share-link page opened from outside the app (confirmation page).
     "short_links.resolve_short_link": NoJsReason.PUBLIC_SHARE_LINK,
+    # Invite link manager API: no web-JS caller until the manager panel lands.
+    # Exact keys, not `invite_links.*`: the public join routes join this blueprint.
+    "invite_links.get_invite_link": NoJsReason.PANEL_PENDING,
 }
 
 

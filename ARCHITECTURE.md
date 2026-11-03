@@ -354,7 +354,7 @@ Organized by domain with per-feature conftest files:
 - `system/` (marker: `cli`, shared with `cli/`) — Metrics/latency pipeline, health checks, gauges, admin-route gating (ops/observability)
 - `trash/` (marker: `trash`) — Trash API: list, restore, purge (delete forever) and empty-trash routes for soft-deleted URLs and UTubs
 - `short_links/` (marker: `short_links`) — Short links: `Short_Links` model constraints, DB/ORM cascades from `Utub_Urls` and `Utubs`, and link minting/expiry
-- `invite_links/` (marker: `invite_links`) — UTub invite links: `Utub_Invite_Links` model constraints, token format and DB cascades
+- `invite_links/` (marker: `invite_links`) — UTub invite links: `Utub_Invite_Links` model constraints, token format, DB cascades and the manager route `GET /utubs/<id>/invite-link` (`invite_links` blueprint)
 
 CI's `Tests-Integration` matrix (`.github/workflows/test.yml`) runs 13 parallel jobs, one per unique marker above (`search/` and `system/` ride the `urls` and `cli` jobs respectively rather than getting their own).
 

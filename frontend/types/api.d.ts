@@ -878,6 +878,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/utubs/{utub_id}/invite-link": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** @description Get the UTub's current invite link and its status, or null when there is none (owner and co-owner only) */
+    get: operations["getInviteLink"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/utubs/{utub_id}/members/{user_id}": {
     parameters: {
       query?: never;
@@ -2928,6 +2945,46 @@ export interface components {
      * @enum {integer}
      */
     ContactErrorCodes: 1;
+    /** @description One UTub's current invite link as shown to its managers. */
+    InviteLinkSchema: {
+      /** @description The 22-character invite token */
+      token: string;
+      /** @description live, expired, used_up or creator_demoted */
+      status: components["schemas"]["InviteLinkStatus"];
+      /**
+       * Format: date-time
+       * @description UTC ISO-8601 timestamp after which the link stops working
+       */
+      expiresAt: string;
+      /** @description Use limit; null means unlimited */
+      maxUses: number | null;
+      /** @description How many people joined with this link */
+      useCount: number;
+      /**
+       * Format: date-time
+       * @description UTC ISO-8601 creation timestamp
+       */
+      createdAt: string;
+      /** @description Username of the link's creator; null when that account was erased */
+      creatorUsername: string | null;
+    };
+    /** @enum {string} */
+    InviteLinkStatus: "live" | "expired" | "used_up" | "creator_demoted";
+    /** @description Envelope for the invite link routes; ``inviteLink`` is null when none exists. */
+    InviteLinkResponseSchema: {
+      /**
+       * @description Response status
+       * @constant
+       */
+      status: "Success";
+      /** @description The current invite link, or null when the UTub has none */
+      inviteLink: components["schemas"]["InviteLinkSchema"] | null;
+    };
+    /**
+     * @description Error codes for InviteLinkErrorCodes
+     * @enum {integer}
+     */
+    InviteLinkErrorCodes: 1 | 2 | 3 | 4 | 5 | 6;
     /**
      * @description One UI metrics event submitted by the browser.
      *
@@ -7817,6 +7874,46 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ErrorResponse_ContactErrorCodes"];
+        };
+      };
+    };
+  };
+  getInviteLink: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        utub_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Envelope for the invite link routes; ``inviteLink`` is null when none exists. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["InviteLinkResponseSchema"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
         };
       };
     };

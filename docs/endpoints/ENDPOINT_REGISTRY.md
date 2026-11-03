@@ -677,6 +677,17 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Template:** —
 - **JS:** keys: `contactUs`
 
+## invite_links
+
+### `GET /utubs/<int:utub_id>/invite-link` — `invite_links.get_invite_link`
+
+- **Handler:** `backend/invite_links/routes.py:get_invite_link`
+- **Decorators:** `utub_manager_required`, `api_route`
+- **Service:** `backend.invite_links.services.manage_invite_link:read_invite_link`
+- **Schema:** response: `backend.schemas.invite_links.InviteLinkResponseSchema`; status: 200 `backend.schemas.invite_links.InviteLinkResponseSchema`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`
+- **Template:** —
+- **JS:** no-js: panel-pending
+
 ## members
 
 ### `GET /utubs/<int:utub_id>/co-members` — `members.get_co_member_candidates_route`
