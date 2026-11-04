@@ -1715,8 +1715,10 @@ export function applyServerErrors({
             });
             return filters === null ? null : { ...step, filters };
           }
-          default:
-            return null;
+          default: {
+            const exhaustiveCheck: never = resolved;
+            return exhaustiveCheck;
+          }
         }
       },
     });
