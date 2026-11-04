@@ -4300,7 +4300,7 @@
       "decorators": [
         "utub_manager_required",
         "api_route",
-        "limiter.limit(INVITE_LINK_MANAGE_RATE_LIMIT, key_func=invite_link_manage_rate_key, methods=['POST'])"
+        "limiter.shared_limit(INVITE_LINK_MANAGE_RATE_LIMIT, scope=INVITE_LINK_MANAGE_RATE_SCOPE, key_func=invite_link_manage_rate_key, methods=['POST'])"
       ],
       "endpoint": "invite_links.create_invite_link",
       "handler": "backend/invite_links/routes.py:create_invite_link",
@@ -4337,7 +4337,7 @@
       "decorators": [
         "utub_manager_required",
         "api_route",
-        "limiter.limit(INVITE_LINK_MANAGE_RATE_LIMIT, key_func=invite_link_manage_rate_key, methods=['POST'])"
+        "limiter.shared_limit(INVITE_LINK_MANAGE_RATE_LIMIT, scope=INVITE_LINK_MANAGE_RATE_SCOPE, key_func=invite_link_manage_rate_key, methods=['POST'])"
       ],
       "endpoint": "invite_links.replace_invite_link",
       "handler": "backend/invite_links/routes.py:replace_invite_link",

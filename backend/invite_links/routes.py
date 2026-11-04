@@ -6,9 +6,11 @@ from backend.api_common.parse_request import api_route
 from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.invite_links.constants import (
     INVITE_LINK_MANAGE_RATE_LIMIT,
+    INVITE_LINK_MANAGE_RATE_SCOPE,
     InviteLinkErrorCodes,
 )
 from backend.invite_links.rate_limit import invite_link_manage_rate_key
+from backend.invite_links.responses import no_store
 from backend.invite_links.services.manage_invite_link import (
     create_invite_link_for_utub,
     read_invite_link,
@@ -28,13 +30,6 @@ from backend.utils.strings.invite_link_strs import INVITE_LINK_FAILURE
 from backend.utils.strings.openapi_strs import OPEN_API
 
 invite_links = Blueprint("invite_links", __name__)
-
-
-def _no_store(response: FlaskResponse) -> FlaskResponse:
-    """Stamp ``Cache-Control: no-store`` on a response that carries a token."""
-    flask_response, status_code = response
-    flask_response.headers["Cache-Control"] = "no-store"
-    return flask_response, status_code
 
 
 @invite_links.route("/utubs/<int:utub_id>/invite-link", methods=["GET"])
@@ -61,7 +56,7 @@ def get_invite_link(utub_id: int, current_utub: Utubs) -> FlaskResponse:
     Args:
         utub_id (int): The UTub whose invite link is read
     """
-    return _no_store(
+    return no_store(
         APIResponse(data=read_invite_link(current_utub), status_code=200).to_response()
     )
 
@@ -88,8 +83,9 @@ def get_invite_link(utub_id: int, current_utub: Utubs) -> FlaskResponse:
         429: ErrorResponse,
     },
 )
-@limiter.limit(
+@limiter.shared_limit(
     INVITE_LINK_MANAGE_RATE_LIMIT,
+    scope=INVITE_LINK_MANAGE_RATE_SCOPE,
     key_func=invite_link_manage_rate_key,
     methods=["POST"],
 )
@@ -104,7 +100,7 @@ def create_invite_link(
     Args:
         utub_id (int): The UTub the invite link is created for
     """
-    return _no_store(
+    return no_store(
         create_invite_link_for_utub(
             current_utub=current_utub, settings=invite_link_settings_request
         )
@@ -144,7 +140,7 @@ def update_invite_link(
     Args:
         utub_id (int): The UTub whose invite link is updated
     """
-    return _no_store(
+    return no_store(
         update_invite_link_for_utub(
             current_utub=current_utub, update=update_invite_link_request
         )
@@ -172,8 +168,9 @@ def update_invite_link(
         429: ErrorResponse,
     },
 )
-@limiter.limit(
+@limiter.shared_limit(
     INVITE_LINK_MANAGE_RATE_LIMIT,
+    scope=INVITE_LINK_MANAGE_RATE_SCOPE,
     key_func=invite_link_manage_rate_key,
     methods=["POST"],
 )
@@ -188,7 +185,7 @@ def replace_invite_link(
     Args:
         utub_id (int): The UTub whose invite link is replaced
     """
-    return _no_store(
+    return no_store(
         replace_invite_link_for_utub(
             current_utub=current_utub, settings=invite_link_settings_request
         )

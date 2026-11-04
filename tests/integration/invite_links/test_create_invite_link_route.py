@@ -563,6 +563,39 @@ def test_create_rate_limit_budgets_are_per_manager(
     assert co_owner_response.status_code != 429
 
 
+def test_create_and_replace_share_one_manage_budget_per_manager(
+    every_user_in_every_utub, app: Flask
+) -> None:
+    """GIVEN the real limiter and two managers
+    WHEN the owner spends the whole budget on creates
+    THEN the owner's replace is 429 while the co-owner's replace is not."""
+    set_member_role(app, FIRST_UTUB_ID, SECOND_USER_ID, Member_Role.CO_CREATOR)
+    allowed = int(INVITE_LINK_MANAGE_RATE_LIMIT.split(" ")[0])
+
+    enable_limiter(app)
+    try:
+        with logged_in_as(app, CREATOR_ID) as (owner_client, owner_csrf):
+            for _ in range(allowed):
+                assert _post_create(owner_client, owner_csrf, {}).status_code != 429
+
+            owner_replace = owner_client.post(
+                url_for(ROUTES.INVITE_LINKS.REPLACE_INVITE_LINK, utub_id=FIRST_UTUB_ID),
+                json={},
+                headers={"X-CSRFToken": owner_csrf},
+            )
+        with logged_in_as(app, SECOND_USER_ID) as (co_owner_client, co_owner_csrf):
+            co_owner_replace = co_owner_client.post(
+                url_for(ROUTES.INVITE_LINKS.REPLACE_INVITE_LINK, utub_id=FIRST_UTUB_ID),
+                json={},
+                headers={"X-CSRFToken": co_owner_csrf},
+            )
+    finally:
+        disable_limiter()
+
+    assert owner_replace.status_code == 429
+    assert co_owner_replace.status_code != 429
+
+
 # ---------------------------------------------------------------------------
 # Metrics
 # ---------------------------------------------------------------------------
