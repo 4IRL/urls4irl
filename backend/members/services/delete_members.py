@@ -8,6 +8,7 @@ from backend.api_common.request_utils import (
 from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.app_logger import critical_log, safe_add_many_logs, warning_log
 from backend.extensions.metrics.writer import record_event
+from backend.invite_links.services.lifecycle import revoke_invite_link_created_by
 from backend.members.constants import UTubMembersErrorCodes
 from backend.metrics.events import EventName
 from backend.models.utub_members import Utub_Members
@@ -220,6 +221,10 @@ def _remove_member_from_utub(
     user_id_to_remove = user_to_remove.user_id
     removed_user_username: str = user_to_remove.to_user.username
 
+    # The Utubs lock is held (lock_and_reauthorize); invite lock before the delete.
+    revoked_invite: bool = revoke_invite_link_created_by(
+        utub_id=current_utub.id, creator_id=user_id_to_remove
+    )
     db.session.delete(user_to_remove)
     current_utub.set_last_updated()
     db.session.commit()
@@ -232,6 +237,10 @@ def _remove_member_from_utub(
         ]
     )
     record_event(EventName.MEMBER_REMOVED)
+    if revoked_invite:
+        record_event(
+            EventName.INVITE_LINK_REVOKED, dimensions={"reason": "role_change"}
+        )
 
     return APIResponse(
         message=MEMBER_SUCCESS.MEMBER_REMOVED,
