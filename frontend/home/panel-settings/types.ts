@@ -15,8 +15,8 @@ export type SectionPatch = Record<string, unknown>;
 
 export type SaveResult =
   | { outcome: "ok"; settings?: UtubSettings; notice?: string }
-  | { outcome: "stale"; failed: boolean }
-  | { outcome: "error"; resync?: boolean }
+  | { outcome: "stale"; failed: boolean; notice?: string }
+  | { outcome: "error"; resync?: boolean; notice?: string }
   | { outcome: "locked" | "forbidden" | "gone" | "invalid" };
 
 export interface SectionContext {
