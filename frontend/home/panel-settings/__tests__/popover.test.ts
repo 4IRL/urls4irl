@@ -493,11 +493,13 @@ describe("panel settings popover", () => {
       expect(popover().style.top).toBe("106px");
     });
 
-    it("clamps into the viewport on every side", () => {
+    it("clamps left into the viewport and flips above a low gear", () => {
       placeGear({ right: 100, bottom: 790 });
       openGear("urls");
       expect(popover().style.left).toBe("8px");
-      expect(popover().style.top).toBe("592px");
+      // gear top 760 - gap 6 - height 200: above the gear, never over it.
+      expect(popover().style.top).toBe("554px");
+      expect(popover().style.maxHeight).toBe("");
     });
 
     it("repositions on window resize", () => {
@@ -695,6 +697,7 @@ describe("panel settings popover", () => {
 
       setState({
         memberSettings: {
+          ...EMPTY_MEMBER_SETTINGS,
           urls: { ...EMPTY_MEMBER_SETTINGS.urls, sort: "oldest" },
         },
       });
@@ -1194,6 +1197,7 @@ describe("panel settings popover", () => {
 
       setState({
         memberSettings: {
+          ...EMPTY_MEMBER_SETTINGS,
           urls: { ...EMPTY_MEMBER_SETTINGS.urls, sort: "oldest" },
         },
       });
@@ -1219,6 +1223,7 @@ describe("panel settings popover", () => {
 
       setState({
         memberSettings: {
+          ...EMPTY_MEMBER_SETTINGS,
           urls: { ...EMPTY_MEMBER_SETTINGS.urls, sort: "oldest" },
         },
       });
@@ -1243,6 +1248,7 @@ describe("panel settings popover", () => {
       el("sort-input").focus();
       setState({
         memberSettings: {
+          ...EMPTY_MEMBER_SETTINGS,
           urls: { ...EMPTY_MEMBER_SETTINGS.urls, sort: "oldest" },
         },
       });
@@ -1387,6 +1393,7 @@ describe("panel settings popover", () => {
 
       setState({
         memberSettings: {
+          ...EMPTY_MEMBER_SETTINGS,
           urls: { ...EMPTY_MEMBER_SETTINGS.urls, sort: "oldest" },
         },
       });
@@ -2128,6 +2135,31 @@ describe("panel settings popover", () => {
       expect(document.activeElement).toBe(el("sort-input"));
       expect(announced()).toBe("Sort: Couldn't save");
       expect(wrapper().hasAttribute("aria-busy")).toBe(false);
+    });
+
+    it("appends an error result's notice after Couldn't save", async () => {
+      edit();
+      await settle();
+      harness.pending[0].resolve({
+        outcome: "error",
+        resync: false,
+        notice: "2 URLs shown, matching any selected tags",
+      });
+      await settle();
+
+      expect(status().textContent).toBe("Couldn't save — reverted");
+      expect(announced()).toBe(
+        "Sort: Couldn't save. 2 URLs shown, matching any selected tags",
+      );
+    });
+
+    it("leaves an error without a notice unchanged", async () => {
+      edit();
+      await settle();
+      harness.pending[0].resolve({ outcome: "error", resync: false });
+      await settle();
+
+      expect(announced()).toBe("Sort: Couldn't save");
     });
 
     it("clears the error on the section's next edit", async () => {

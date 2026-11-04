@@ -12,6 +12,7 @@ import { dismissActiveTip, maybeShowNextTip } from "../onboarding/nudges.js";
 import { fitUTubHeaderAndSubheader } from "../utubs/header-fit.js";
 import { announceSettingsStatus } from "./announce.js";
 import { canWriteSection } from "./permissions.js";
+import { computePopoverPlacement } from "./placement.js";
 import { createSaveQueue } from "./queue.js";
 import type { SaveQueue } from "./queue.js";
 import { getSections, isKnownPanel } from "./registry.js";
@@ -974,6 +975,7 @@ function buildSink(): QueueSink {
         sayStatus({
           sectionId,
           status: APP_CONFIG.strings.PANEL_SETTINGS_SAVE_FAILED,
+          notice,
         });
         if (!entry) return;
         stopSaving({ entry });
@@ -1072,28 +1074,24 @@ function buildSink(): QueueSink {
 function positionPopover({ gear }: { gear: HTMLElement }): void {
   const element = popoverElement();
   if (!element) return;
+  // Reset the inline cap so the natural height is measured on every call
+  // (resize, section toggles); the synchronous re-measure paints once.
+  element.style.maxHeight = "";
   const rect = gear.getBoundingClientRect();
-  const width = element.offsetWidth;
-  const height = element.offsetHeight;
-  const maxLeft = Math.max(
-    VIEWPORT_MARGIN_PX,
-    window.innerWidth - width - VIEWPORT_MARGIN_PX,
-  );
-  const maxTop = Math.max(
-    VIEWPORT_MARGIN_PX,
-    window.innerHeight - height - VIEWPORT_MARGIN_PX,
-  );
-  // Below the gear, right edges aligned, clamped into the viewport.
-  const left = Math.min(
-    Math.max(rect.right - width, VIEWPORT_MARGIN_PX),
-    maxLeft,
-  );
-  const top = Math.min(
-    Math.max(rect.bottom + GEAR_GAP_PX, VIEWPORT_MARGIN_PX),
-    maxTop,
-  );
-  element.style.left = `${left}px`;
-  element.style.top = `${top}px`;
+  const placement = computePopoverPlacement({
+    gearRect: rect,
+    width: element.offsetWidth,
+    naturalHeight: element.offsetHeight,
+    viewportWidth: window.innerWidth,
+    viewportHeight: window.innerHeight,
+    margin: VIEWPORT_MARGIN_PX,
+    gap: GEAR_GAP_PX,
+  });
+  if (placement.maxHeight !== null) {
+    element.style.maxHeight = `${placement.maxHeight}px`;
+  }
+  element.style.left = `${placement.left}px`;
+  element.style.top = `${placement.top}px`;
 }
 
 // ------------------------------------------------------------ open/close
