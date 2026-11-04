@@ -20,6 +20,7 @@ const KEEP_NONE = {
   keepSettings: false,
   keepMemberSettings: false,
   keepMemberSort: false,
+  keepTagDisplay: false,
   forceShortLinksOff: false,
 };
 const mockShouldKeepSettings = vi.fn((..._args: unknown[]) => KEEP_NONE);
@@ -27,6 +28,7 @@ const mockCaptureSettingsVersions = vi.fn(() => ({
   settingsVersion: 0,
   memberSettingsVersion: 0,
   memberSortVersion: 0,
+  tagDisplayVersion: 0,
   policyLearnedVersion: 0,
 }));
 const mockIsValidUTubID = vi.fn();
@@ -484,6 +486,7 @@ describe("window-events", () => {
           keepSettings: false,
           keepMemberSettings: false,
           keepMemberSort: false,
+          keepTagDisplay: false,
           forceShortLinksOff: false,
         });
       });
@@ -520,6 +523,7 @@ describe("window-events", () => {
         keepSettings: true,
         keepMemberSettings: true,
         keepMemberSort: true,
+        keepTagDisplay: true,
         forceShortLinksOff: true,
       });
       vi.spyOn($.fn, "width").mockReturnValue(1200);
@@ -536,6 +540,7 @@ describe("window-events", () => {
           keepSettings: true,
           keepMemberSettings: true,
           keepMemberSort: true,
+          keepTagDisplay: true,
           forceShortLinksOff: true,
         });
       });
@@ -545,6 +550,7 @@ describe("window-events", () => {
           settingsVersion: 0,
           memberSettingsVersion: 0,
           memberSortVersion: 0,
+          tagDisplayVersion: 0,
           policyLearnedVersion: 0,
         },
       });
@@ -571,6 +577,7 @@ describe("window-events", () => {
           keepSettings: false,
           keepMemberSettings: false,
           keepMemberSort: false,
+          keepTagDisplay: false,
           forceShortLinksOff: false,
         });
       });
@@ -669,6 +676,7 @@ describe("window-events", () => {
           keepSettings: false,
           keepMemberSettings: false,
           keepMemberSort: false,
+          keepTagDisplay: false,
           forceShortLinksOff: false,
         });
       });
@@ -712,6 +720,7 @@ describe("window-events", () => {
             keepSettings: false,
             keepMemberSettings: false,
             keepMemberSort: false,
+            keepTagDisplay: false,
             forceShortLinksOff: false,
           });
         });
@@ -748,6 +757,7 @@ describe("window-events", () => {
             keepSettings: false,
             keepMemberSettings: false,
             keepMemberSort: false,
+            keepTagDisplay: false,
             forceShortLinksOff: false,
           });
         });
@@ -781,6 +791,7 @@ describe("window-events", () => {
             keepSettings: false,
             keepMemberSettings: false,
             keepMemberSort: false,
+            keepTagDisplay: false,
             forceShortLinksOff: false,
           });
         });
@@ -829,6 +840,7 @@ describe("window-events", () => {
             keepSettings: false,
             keepMemberSettings: false,
             keepMemberSort: false,
+            keepTagDisplay: false,
             forceShortLinksOff: false,
           });
         });
@@ -877,6 +889,7 @@ describe("window-events", () => {
             keepSettings: false,
             keepMemberSettings: false,
             keepMemberSort: false,
+            keepTagDisplay: false,
             forceShortLinksOff: false,
           });
         });
@@ -914,6 +927,7 @@ describe("window-events", () => {
             keepSettings: false,
             keepMemberSettings: false,
             keepMemberSort: false,
+            keepTagDisplay: false,
             forceShortLinksOff: false,
           });
         });
@@ -948,6 +962,7 @@ describe("window-events", () => {
             keepSettings: false,
             keepMemberSettings: false,
             keepMemberSort: false,
+            keepTagDisplay: false,
             forceShortLinksOff: false,
           });
         });
@@ -1116,6 +1131,7 @@ describe("window-events", () => {
             keepSettings: false,
             keepMemberSettings: false,
             keepMemberSort: false,
+            keepTagDisplay: false,
             forceShortLinksOff: false,
           });
         });
@@ -1198,6 +1214,7 @@ describe("window-events", () => {
           keepSettings: false,
           keepMemberSettings: false,
           keepMemberSort: false,
+          keepTagDisplay: false,
           forceShortLinksOff: false,
         });
       });
@@ -1491,6 +1508,7 @@ describe("window-events", () => {
           keepSettings: false,
           keepMemberSettings: false,
           keepMemberSort: false,
+          keepTagDisplay: false,
           forceShortLinksOff: false,
         });
       });
@@ -1525,6 +1543,7 @@ describe("window-events", () => {
           keepSettings: false,
           keepMemberSettings: false,
           keepMemberSort: false,
+          keepTagDisplay: false,
           forceShortLinksOff: false,
         });
       });
@@ -1557,6 +1576,7 @@ describe("window-events", () => {
           keepSettings: false,
           keepMemberSettings: false,
           keepMemberSort: false,
+          keepTagDisplay: false,
           forceShortLinksOff: false,
         });
       });
@@ -1596,6 +1616,7 @@ describe("window-events", () => {
           keepSettings: false,
           keepMemberSettings: false,
           keepMemberSort: false,
+          keepTagDisplay: false,
           forceShortLinksOff: false,
         });
       });
@@ -1634,6 +1655,7 @@ describe("window-events", () => {
           keepSettings: false,
           keepMemberSettings: false,
           keepMemberSort: false,
+          keepTagDisplay: false,
           forceShortLinksOff: false,
         });
       });
@@ -1666,6 +1688,7 @@ describe("window-events", () => {
           keepSettings: false,
           keepMemberSettings: false,
           keepMemberSort: false,
+          keepTagDisplay: false,
           forceShortLinksOff: false,
         });
       });
@@ -1695,6 +1718,7 @@ describe("window-events", () => {
           keepSettings: false,
           keepMemberSettings: false,
           keepMemberSort: false,
+          keepTagDisplay: false,
           forceShortLinksOff: false,
         });
       });
@@ -1724,6 +1748,7 @@ describe("window-events", () => {
           keepSettings: false,
           keepMemberSettings: false,
           keepMemberSort: false,
+          keepTagDisplay: false,
           forceShortLinksOff: false,
         });
       });

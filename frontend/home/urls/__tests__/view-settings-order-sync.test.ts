@@ -26,7 +26,10 @@ function ok(ids: number[]): RefreshResult {
 
 function setSort(sort: "newest" | "oldest" | "title_az" | null): void {
   setState({
-    memberSettings: { urls: { ...EMPTY_MEMBER_SETTINGS.urls, sort } },
+    memberSettings: {
+      ...EMPTY_MEMBER_SETTINGS,
+      urls: { ...EMPTY_MEMBER_SETTINGS.urls, sort },
+    },
   });
 }
 
@@ -121,6 +124,7 @@ describe("syncDeckOrderToServer", () => {
     const sync = syncDeckOrderToServer();
     setState({
       memberSettings: {
+        ...EMPTY_MEMBER_SETTINGS,
         urls: {
           ...EMPTY_MEMBER_SETTINGS.urls,
           sort: "oldest",

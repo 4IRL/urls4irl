@@ -123,6 +123,7 @@ describe("hide date added", () => {
 
   function hideDateSettings(hideDateAdded: boolean) {
     return {
+      ...EMPTY_MEMBER_SETTINGS,
       urls: { ...EMPTY_MEMBER_SETTINGS.urls, hide_date_added: hideDateAdded },
     };
   }

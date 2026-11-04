@@ -63,6 +63,32 @@ describe("deck-view-attrs", () => {
     document.body.innerHTML = "";
   });
 
+  it("writes data-collapsed-tags from the resolved settings and disposes cleanly", () => {
+    setState({
+      activeUTubID: 1,
+      preferences: {
+        ...getState().preferences,
+        showTagsOnCollapsed: true,
+        collapsedTagsStyle: "all",
+      },
+    });
+    dispose = initUrlDeckPolicyAttrs();
+    expect(deck().getAttribute("data-collapsed-tags")).toBe("all");
+    setState({
+      preferences: {
+        ...getState().preferences,
+        collapsedTagsStyle: "one_line",
+      },
+    });
+    expect(deck().getAttribute("data-collapsed-tags")).toBe("one_line");
+    dispose();
+    dispose = undefined;
+    setState({
+      preferences: { ...getState().preferences, showTagsOnCollapsed: false },
+    });
+    expect(deck().getAttribute("data-collapsed-tags")).toBe("one_line");
+  });
+
   it("defaults the attribute to true without settings", () => {
     applyUrlDeckPolicyAttrs();
     expect(deck().getAttribute("data-allow-short-links")).toBe("true");
@@ -166,7 +192,10 @@ const PERSONAL_RULES = `
 function member(
   overrides: Partial<ResolvedMemberSettings["urls"]>,
 ): ResolvedMemberSettings {
-  return { urls: { ...EMPTY_MEMBER_SETTINGS.urls, ...overrides } };
+  return {
+    ...EMPTY_MEMBER_SETTINGS,
+    urls: { ...EMPTY_MEMBER_SETTINGS.urls, ...overrides },
+  };
 }
 
 describe("deck-view-attrs personal view settings", () => {
