@@ -25,6 +25,7 @@ import {
   moveStep,
   normalizeDraft,
   removeStep,
+  resolveServerPath,
   setDisplayName,
   setFilterDim,
   setFormErrors,
@@ -658,6 +659,93 @@ describe("applyServerErrors", () => {
     });
     expect(second.steps[0].errors).toEqual({});
     expect(second.serverErrors).toEqual([]);
+  });
+});
+
+describe("resolveServerPath", () => {
+  function resolve({
+    path,
+    draft = seededDraft(),
+    sentFrom = draft,
+  }: {
+    path: string;
+    draft?: FlowDraft;
+    sentFrom?: FlowDraft;
+  }) {
+    return resolveServerPath({
+      path,
+      submitted: captureSubmitted({ draft: sentFrom }),
+      draft,
+    });
+  }
+
+  it("resolves every path shape to one of the five kinds", () => {
+    const draft = seededDraft();
+    const keys = draft.steps.map((step) => step.key);
+    expect(resolve({ path: "steps.2.event_name", draft })).toEqual({
+      kind: "step_field",
+      stepKey: keys[2],
+      field: "event_name",
+    });
+    expect(resolve({ path: "steps.0.dim_filter.1", draft })).toMatchObject({
+      kind: "nested",
+      stepKey: keys[0],
+      list: "dim_filter",
+      field: "entry",
+    });
+    expect(resolve({ path: "steps.0.drop_breakdown.group_by", draft })).toEqual(
+      {
+        kind: "nested",
+        stepKey: keys[0],
+        list: "drop_breakdown",
+        entryKey: null,
+        field: "group_by",
+      },
+    );
+    expect(resolve({ path: "steps.0.dim_filter", draft })).toEqual({
+      kind: "list",
+      stepKey: keys[0],
+      list: "dim_filter",
+    });
+    expect(resolve({ path: "display_name", draft })).toEqual({
+      kind: "flow_field",
+      field: "display_name",
+    });
+    expect(resolve({ path: "steps", draft })).toEqual({
+      kind: "flow_field",
+      field: "steps",
+    });
+    for (const path of ["__root__", "window", "mystery", "steps.1.stream"]) {
+      expect(resolve({ path, draft })).toEqual({ kind: "form" });
+    }
+  });
+
+  it("returns form for a row, filter or breakdown absent from the draft", () => {
+    const base = seededDraft();
+    const keys = base.steps.map((step) => step.key);
+    const removed = removeStep({ draft: base, key: keys[2] });
+    expect(
+      resolve({ path: "steps.2.event_name", draft: removed, sentFrom: base }),
+    ).toEqual({ kind: "form" });
+    expect(resolve({ path: "steps.99.label" })).toEqual({ kind: "form" });
+    expect(resolve({ path: "steps.0.dim_filter.7" })).toEqual({ kind: "form" });
+    // Step 2 has no breakdown, and step 0's breakdown has no filters.
+    expect(resolve({ path: "steps.2.drop_breakdown.event_name" })).toEqual({
+      kind: "form",
+    });
+    expect(resolve({ path: "steps.0.drop_breakdown.dim_filter.0" })).toEqual({
+      kind: "form",
+    });
+  });
+
+  it("follows a moved step by its key and never writes serverErrors", () => {
+    const base = seededDraft();
+    const keys = base.steps.map((step) => step.key);
+    const moved = moveStep({ draft: base, key: keys[2], direction: "up" });
+    expect(
+      resolve({ path: "steps.2.event_name", draft: moved, sentFrom: base }),
+    ).toMatchObject({ kind: "step_field", stepKey: keys[2] });
+    expect(moved.serverErrors).toEqual([]);
   });
 });
 

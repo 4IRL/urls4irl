@@ -1476,6 +1476,99 @@ function clearServerNested({ step }: { step: DraftStep }): DraftStep {
   };
 }
 
+/** Where one dotted server error path lands, decided against the current draft. */
+export type ResolvedServerPath =
+  | {
+      kind: "step_field";
+      stepKey: number;
+      field: (typeof SERVER_STEP_FIELDS)[number];
+    }
+  | {
+      kind: "nested";
+      stepKey: number;
+      list: "dim_filter" | "drop_breakdown" | "drop_breakdown.dim_filter";
+      /** The sent filter's key; null for the breakdown's own event/group_by. */
+      entryKey: number | null;
+      /** `entry` is a filter row; `event_name`/`group_by` are breakdown parts. */
+      field: "entry" | "event_name" | "group_by";
+    }
+  | { kind: "list"; stepKey: number; list: keyof DraftListErrorMap }
+  | { kind: "flow_field"; field: "display_name" | "steps" }
+  | { kind: "form" };
+
+/**
+ * Resolves one server path through `submitted` (the body that was sent) to the
+ * current `draft`. A target row, filter or breakdown that is gone, an unknown
+ * path and `__root__`/`window` all resolve to `form`. Pure; writes nothing.
+ */
+export function resolveServerPath({
+  path,
+  submitted,
+  draft,
+}: {
+  path: string;
+  submitted: readonly SubmittedStep[];
+  draft: FlowDraft;
+}): ResolvedServerPath {
+  if (path === "display_name" || path === "steps") {
+    return { kind: "flow_field", field: path };
+  }
+  const match = STEP_PATH.exec(path);
+  if (match === null) {
+    return { kind: "form" };
+  }
+  const sent: SubmittedStep | undefined = submitted[Number(match[1])];
+  const step = draft.steps.find((item) => item.key === sent?.key);
+  if (sent === undefined || step === undefined) {
+    return { kind: "form" };
+  }
+  const suffix = match[2];
+  const stepKey = sent.key;
+  if (isServerStepField(suffix)) {
+    return { kind: "step_field", stepKey, field: suffix };
+  }
+  const list = LIST_SUFFIX_KEYS[suffix];
+  if (list !== undefined) {
+    return { kind: "list", stepKey, list };
+  }
+  if (
+    suffix === "drop_breakdown.event_name" ||
+    suffix === "drop_breakdown.group_by"
+  ) {
+    if (step.breakdown === null) {
+      return { kind: "form" };
+    }
+    return {
+      kind: "nested",
+      stepKey,
+      list: "drop_breakdown",
+      entryKey: null,
+      field: suffix === "drop_breakdown.group_by" ? "group_by" : "event_name",
+    };
+  }
+  const entry = ENTRY_SUFFIX.exec(suffix);
+  if (entry === null) {
+    return { kind: "form" };
+  }
+  const inBreakdown = entry[1] !== "dim_filter";
+  const sentKeys = inBreakdown ? sent.breakdownFilterKeys : sent.filterKeys;
+  const entryKey: number | undefined = sentKeys[Number(entry[2])];
+  const filters = inBreakdown ? step.breakdown?.filters : step.filters;
+  if (
+    entryKey === undefined ||
+    !filters?.some((filter) => filter.key === entryKey)
+  ) {
+    return { kind: "form" };
+  }
+  return {
+    kind: "nested",
+    stepKey,
+    list: inBreakdown ? "drop_breakdown.dim_filter" : "dim_filter",
+    entryKey,
+    field: "entry",
+  };
+}
+
 /**
  * Maps dotted, 0-based server paths onto the current draft. `steps.N` resolves
  * through `submitted[N].key` (the order of the body that was sent) and then by key,
@@ -1561,47 +1654,37 @@ export function applyServerErrors({
     },
   });
 
-  const applyStepSuffix = ({
-    sent,
-    suffix,
+  const applyResolved = ({
+    resolved,
     message,
   }: {
-    sent: SubmittedStep;
-    suffix: string;
+    resolved: Exclude<ResolvedServerPath, { kind: "form" | "flow_field" }>;
     message: string;
-  }): boolean => {
-    const entry = ENTRY_SUFFIX.exec(suffix);
-    if (isServerStepField(suffix)) {
-      return updateStep({
-        key: sent.key,
-        update: (step) => ({
-          ...step,
-          errors: {
-            ...step.errors,
-            [suffix]: [...(step.errors[suffix] ?? []), message],
-          },
-        }),
-      });
-    }
-    const list = LIST_SUFFIX_KEYS[suffix];
-    if (list !== undefined) {
-      return updateStep({
-        key: sent.key,
-        update: (step) => withListMessage({ step, list, message }),
-      });
-    }
-    if (
-      suffix === "drop_breakdown.event_name" ||
-      suffix === "drop_breakdown.group_by"
-    ) {
-      const part =
-        suffix === "drop_breakdown.group_by" ? "group_by" : "event_name";
-      return updateStep({
-        key: sent.key,
-        update: (step) =>
-          step.breakdown === null
-            ? null
-            : {
+  }): boolean =>
+    updateStep({
+      key: resolved.stepKey,
+      update: (step) => {
+        switch (resolved.kind) {
+          case "step_field":
+            return {
+              ...step,
+              errors: {
+                ...step.errors,
+                [resolved.field]: [
+                  ...(step.errors[resolved.field] ?? []),
+                  message,
+                ],
+              },
+            };
+          case "list":
+            return withListMessage({ step, list: resolved.list, message });
+          case "nested": {
+            if (resolved.list === "drop_breakdown") {
+              if (step.breakdown === null || resolved.field === "entry") {
+                return null;
+              }
+              const part = resolved.field;
+              return {
                 ...step,
                 breakdown: {
                   ...step.breakdown,
@@ -1610,58 +1693,46 @@ export function applyServerErrors({
                     [part]: [...step.breakdown.serverErrors[part], message],
                   },
                 },
-              },
-      });
-    }
-    if (entry !== null) {
-      const inBreakdown = entry[1] !== "dim_filter";
-      const sentKeys = inBreakdown ? sent.breakdownFilterKeys : sent.filterKeys;
-      const filterKey: number | undefined = sentKeys[Number(entry[2])];
-      return updateStep({
-        key: sent.key,
-        update: (step) => {
-          if (inBreakdown) {
-            if (step.breakdown === null) {
-              return null;
+              };
+            }
+            if (resolved.list === "drop_breakdown.dim_filter") {
+              if (step.breakdown === null) {
+                return null;
+              }
+              const filters = withFilterMessage({
+                filters: step.breakdown.filters,
+                filterKey: resolved.entryKey ?? undefined,
+                message,
+              });
+              return filters === null
+                ? null
+                : { ...step, breakdown: { ...step.breakdown, filters } };
             }
             const filters = withFilterMessage({
-              filters: step.breakdown.filters,
-              filterKey,
+              filters: step.filters,
+              filterKey: resolved.entryKey ?? undefined,
               message,
             });
-            return filters === null
-              ? null
-              : { ...step, breakdown: { ...step.breakdown, filters } };
+            return filters === null ? null : { ...step, filters };
           }
-          const filters = withFilterMessage({
-            filters: step.filters,
-            filterKey,
-            message,
-          });
-          return filters === null ? null : { ...step, filters };
-        },
-      });
-    }
-    return false;
-  };
+          default: {
+            const exhaustiveCheck: never = resolved;
+            return exhaustiveCheck;
+          }
+        }
+      },
+    });
 
   for (const [path, messages] of Object.entries(errors)) {
-    const match = STEP_PATH.exec(path);
+    const resolved = resolveServerPath({ path, submitted, draft });
     for (const message of messages) {
-      if (path === "display_name") {
-        serverErrors.push({ field: "display_name", stepKey: null, message });
-      } else if (path === "steps") {
-        serverErrors.push({ field: "steps", stepKey: null, message });
-      } else if (match === null) {
+      if (resolved.kind === "flow_field") {
+        serverErrors.push({ field: resolved.field, stepKey: null, message });
+      } else if (
+        resolved.kind === "form" ||
+        !applyResolved({ resolved, message })
+      ) {
         addFormError({ path, message });
-      } else {
-        const sent: SubmittedStep | undefined = submitted[Number(match[1])];
-        if (
-          sent === undefined ||
-          !applyStepSuffix({ sent, suffix: match[2], message })
-        ) {
-          addFormError({ path, message });
-        }
       }
     }
   }

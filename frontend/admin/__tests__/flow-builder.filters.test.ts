@@ -10,6 +10,7 @@ import {
   createMetricFlow,
   deleteMetricFlow,
   fetchMetricFlowCatalog,
+  previewMetricFlow,
   updateMetricFlow,
 } from "../metrics-query-client.js";
 import {
@@ -33,6 +34,7 @@ import {
 vi.mock("../metrics-query-client.js", () => ({
   fetchMetricFlowCatalog: vi.fn(),
   createMetricFlow: vi.fn(),
+  previewMetricFlow: vi.fn(),
   updateMetricFlow: vi.fn(),
   deleteMetricFlow: vi.fn(),
 }));
@@ -125,6 +127,8 @@ beforeEach(() => {
   updateMock.mockImplementation(() => makeXhr() as never);
   vi.mocked(createMetricFlow).mockReset();
   vi.mocked(deleteMetricFlow).mockReset();
+  vi.mocked(previewMetricFlow).mockReset();
+  vi.mocked(previewMetricFlow).mockImplementation(() => makeXhr() as never);
   container = document.createElement("div");
   document.body.append(container);
   callbacks = {
@@ -134,6 +138,7 @@ beforeEach(() => {
     onFlowMissing: vi.fn(),
     onDeleted: vi.fn(),
     onListStale: vi.fn(),
+    getWindow: () => "day",
   };
   builder = createFlowBuilder({ container, callbacks });
 });

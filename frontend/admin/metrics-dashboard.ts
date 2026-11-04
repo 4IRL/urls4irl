@@ -3241,6 +3241,7 @@ function handleWindowChange({ window }: { window: MetricsWindow }): void {
       buttonWindow === window ? "true" : "false",
     );
   }
+  _flowBuilder?.refreshPreview();
   fetchAll();
   startPolling();
 }
@@ -3642,6 +3643,7 @@ export function initMetricsDashboard(): void {
             onFlowMissing: handleFlowBuilderFlowMissing,
             onDeleted: handleFlowBuilderDeleted,
             onListStale: refreshFlowList,
+            getWindow: () => _currentWindow,
           },
         });
 

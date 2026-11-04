@@ -1956,6 +1956,120 @@
     margin: 0;
 }
 
+/* ---- Flow builder live preview ---------------------------------------- */
+
+.flow-builder-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    gap: 1.25rem;
+    align-items: start;
+}
+
+/* Never sticky or fixed: a soft keyboard must not sit over a pinned panel. */
+.flow-builder-preview {
+    min-width: 0;
+}
+
+.flow-builder-preview-title {
+    margin: 0 0 0.5rem;
+    font-size: 1rem;
+}
+
+.flow-builder-preview-title:focus {
+    outline: none;
+}
+
+.flow-builder-preview-title:focus-visible {
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: 2px;
+}
+
+.flow-builder-preview-status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0 0 0.5rem;
+    color: var(--cardURLTextColor);
+    font-size: 0.85rem;
+}
+
+.flow-builder-preview-status[hidden] {
+    display: none;
+}
+
+.flow-builder-preview-spinner {
+    box-sizing: border-box;
+    width: 0.9rem;
+    height: 0.9rem;
+    border: 2px solid var(--borderColor);
+    border-top-color: var(--deckSelectionGreen);
+    border-radius: 50%;
+    animation: metricsFlowPreviewSpin 0.8s linear infinite;
+}
+
+@keyframes metricsFlowPreviewSpin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.flow-builder-preview-body {
+    min-height: 12rem;
+    min-width: 0;
+    overflow-x: auto;
+}
+
+/* Not lower than 0.8, so secondary text keeps its contrast; the status line is
+ * the non-visual cue. */
+.flow-builder-preview-body[aria-busy="true"] .flow-card,
+.flow-builder-preview-body--stale .flow-card {
+    opacity: 0.8;
+}
+
+.flow-builder-preview-body--stale .flow-skeleton-bar {
+    animation: none;
+}
+
+.flow-builder-preview-placeholder,
+.flow-builder-preview-error {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 1rem;
+    border-radius: 8px;
+    font-size: 0.88rem;
+    overflow-wrap: anywhere;
+}
+
+.flow-builder-preview-placeholder {
+    border: 1px dashed var(--borderColor);
+    color: var(--cardURLTextColor);
+}
+
+.flow-builder-preview-error {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+    border: 1px solid var(--removeIconColor);
+    color: var(--removeIconColor);
+}
+
+.flow-builder-preview-error p {
+    margin: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .flow-builder-preview-spinner {
+        animation: none;
+    }
+}
+
+@media (max-width: 991.98px) {
+    .flow-builder-layout {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
 @media (max-width: 575.98px) {
     .flow-builder-step-grid,
     .flow-builder-breakdown-grid {
