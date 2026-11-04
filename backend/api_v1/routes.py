@@ -200,6 +200,7 @@ def api_v1_auth_google(api_google_auth_request: ApiGoogleAuthRequest) -> FlaskRe
 # imports must appear after the blueprint object is defined above; this is the
 # standard Flask pattern for splitting a blueprint across multiple modules.
 from backend.api_v1 import (  # noqa: E402,F401
+    invite_link_routes,
     tag_routes,
     url_routes,
     utub_member_routes,

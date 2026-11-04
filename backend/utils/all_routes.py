@@ -235,6 +235,13 @@ class API_V1_ROUTES:
     DELETE_UTUB_TAG = _API_V1 + "api_v1_delete_utub_tag"
     # Search
     SEARCH = _API_V1 + "api_v1_search_across_utubs"
+    # Invite link routes
+    GET_INVITE_LINK = _API_V1 + "api_v1_get_invite_link"
+    CREATE_INVITE_LINK = _API_V1 + "api_v1_create_invite_link"
+    UPDATE_INVITE_LINK = _API_V1 + "api_v1_update_invite_link"
+    REPLACE_INVITE_LINK = _API_V1 + "api_v1_replace_invite_link"
+    REVOKE_INVITE_LINK = _API_V1 + "api_v1_revoke_invite_link"
+    JOIN_VIA_INVITE = _API_V1 + "api_v1_join_via_invite"
 
 
 class ROUTES:
