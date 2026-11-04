@@ -60,6 +60,7 @@ from backend.utils.strings.invite_link_strs import (
     INVITE_LINK_SUCCESS,
 )
 from backend.utils.strings.json_strs import FAILURE_GENERAL
+from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.openapi_strs import OPEN_API
 
 
@@ -72,7 +73,7 @@ def map_join_result(result: InviteJoinResult) -> FlaskResponse:
             message=INVITE_LINK_SUCCESS.JOINED,
             status_code=200,
             data=JoinViaInviteResponseSchema(
-                status="Success",
+                status=STD_JSON.SUCCESS,
                 message=INVITE_LINK_SUCCESS.JOINED,
                 utub_id=result.utub_id,
                 already_member=False,
@@ -83,7 +84,7 @@ def map_join_result(result: InviteJoinResult) -> FlaskResponse:
             message=INVITE_LINK_SUCCESS.ALREADY_MEMBER,
             status_code=200,
             data=JoinViaInviteResponseSchema(
-                status="Success",
+                status=STD_JSON.SUCCESS,
                 message=INVITE_LINK_SUCCESS.ALREADY_MEMBER,
                 utub_id=result.utub_id,
                 already_member=True,

@@ -17,8 +17,6 @@ def invite_link_manage_rate_key() -> str:
 def invite_link_join_rate_key() -> str:
     """Rate-limit key for invite join: the user id, else the client IP.
 
-    Runs in ``before_request``, so it must be safe for anonymous callers.
+    Delegates to the manage key; kept as its own symbol so the limits can diverge.
     """
-    if current_user.is_authenticated:
-        return str(current_user.id)
-    return get_remote_address()
+    return invite_link_manage_rate_key()

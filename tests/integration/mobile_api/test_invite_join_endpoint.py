@@ -117,7 +117,7 @@ def _live_link(app: Flask, **kwargs: Any) -> tuple[int, str]:
     return invite_id, _token_of(app, invite_id)
 
 
-def _assert_dead(app: Flask, response: Response, reference: Response) -> None:
+def _assert_dead(response: Response, reference: Response) -> None:
     assert response.status_code == 404
     assert response.status_code == reference.status_code
     assert response.get_json() == reference.get_json()
@@ -263,7 +263,7 @@ def test_dead_reasons_are_the_uniform_404(
 
     response = _join(app, JOINER_ID, token)
 
-    _assert_dead(app, response, reference)
+    _assert_dead(response, reference)
     assert _state(app) == before
     with app.app_context():
         assert Utub_Members.query.get((FIRST_UTUB_ID, JOINER_ID)) is None
@@ -352,7 +352,7 @@ def test_patched_actor_suspended_is_the_dead_404(
     ):
         response = _join(app, JOINER_ID, token)
 
-    _assert_dead(app, response, reference)
+    _assert_dead(response, reference)
     assert _state(app) == before
 
 
@@ -378,12 +378,16 @@ def _is_path_bearing(record: logging.LogRecord) -> bool:
     )
 
 
-@pytest.mark.parametrize("scenario", ["joined", "already_member", "dead"])
+@pytest.mark.parametrize(
+    "scenario, expected_status",
+    [("joined", 200), ("already_member", 200), ("dead", 404)],
+)
 def test_token_absent_from_application_logs(
     every_user_in_every_utub,
     app: Flask,
     caplog: pytest.LogCaptureFixture,
     scenario: str,
+    expected_status: int,
 ):
     token = _live_link(app, revoked=(scenario == "dead"))[1]
     joiner = SECOND_USER_ID
@@ -394,7 +398,7 @@ def test_token_absent_from_application_logs(
         caplog.clear()
         response = _join(app, joiner, token)
 
-    assert response.status_code in (200, 404)
+    assert response.status_code == expected_status
     checked = [record for record in caplog.records if not _is_path_bearing(record)]
     if scenario == "joined":
         # The service's own log lines prove capture works and still hold no token.
@@ -420,7 +424,7 @@ def test_use_limit_one_admits_exactly_one_joiner(
     second = _join(app, SECOND_USER_ID, token)
 
     assert first.status_code == 200
-    _assert_dead(app, second, reference)
+    _assert_dead(second, reference)
     assert _state(app)[1] == acceptances_before + 1
     assert _use_count(app, invite_id) == 1
     with app.app_context():
