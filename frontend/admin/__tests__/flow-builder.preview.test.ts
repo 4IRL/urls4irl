@@ -975,3 +975,410 @@ describe("keyboard", () => {
     expect(callbacks.onCancelled).toHaveBeenCalledTimes(1);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Preview-origin field errors (Step 4)
+// ---------------------------------------------------------------------------
+
+const THREE_STEPS = [
+  ...STEPS,
+  { stream: "domain", label: "Three", event_name: "url_created" },
+];
+
+function rejectWith({
+  deferred,
+  errors,
+}: {
+  deferred: Deferred;
+  errors: Record<string, string[]>;
+}): void {
+  deferred.reject({ status: 400, responseJSON: { errors } });
+}
+
+function marks(): HTMLElement[] {
+  return [...container.querySelectorAll<HTMLElement>("[data-preview-err]")];
+}
+
+function describedTexts({ element }: { element: HTMLElement }): string[] {
+  return (element.getAttribute("aria-describedby") ?? "")
+    .split(" ")
+    .filter((id) => id !== "")
+    .map((id) => document.getElementById(id)?.textContent ?? "");
+}
+
+/** What the preview live region says once its clear-then-set tick has run. */
+function spoken(): string {
+  advance({ ms: 1 });
+  return maybe({ selector: ".flow-builder-preview-live" })?.textContent ?? "";
+}
+
+/** Sends the next preview after an edit that changes the body. */
+function nextPreview({ value }: { value: string }): Deferred {
+  editLabel({ value });
+  advance({ ms: DEBOUNCE_MS + INTERVAL_MS });
+  return previews[previews.length - 1];
+}
+
+function summaryPresent(): boolean {
+  const element = maybe({ selector: ".flow-builder-summary" });
+  return element !== null && !element.hidden && element.childElementCount > 0;
+}
+
+function eventSelect({ index }: { index: number }): HTMLElement {
+  return control({ index, field: "event_name" });
+}
+
+describe("preview field errors", () => {
+  it("marks the control in place without moving focus or opening the summary", () => {
+    openEdit({ steps: THREE_STEPS });
+    const typing = control({ index: 0, field: "label" });
+    typing.focus();
+    rejectWith({
+      deferred: sendFirst(),
+      errors: { "steps.2.event_name": ["Unknown event."] },
+    });
+    const select = eventSelect({ index: 2 });
+    expect(select.getAttribute("aria-invalid")).toBe("true");
+    expect(describedTexts({ element: select })).toEqual(["Unknown event."]);
+    expect(document.activeElement).toBe(typing);
+    expect(summaryPresent()).toBe(false);
+    expect(placeholderText()).toBe(strings().METRICS_FLOW_PREVIEW_FIX_FIELDS);
+  });
+
+  it("Save on the same draft still shows the summary and keeps its own marks", () => {
+    openEdit();
+    const errors = { "steps.0.event_name": ["Unknown event."] };
+    rejectWith({ deferred: sendFirst(), errors });
+    save();
+    rejectWith({ deferred: saves[0], errors });
+    expect(summaryPresent()).toBe(true);
+    expect(document.activeElement).toBe(
+      query({ selector: ".flow-builder-summary" }),
+    );
+    const select = eventSelect({ index: 0 });
+    expect(select.getAttribute("aria-invalid")).toBe("true");
+    expect(describedTexts({ element: select })).toEqual(["Unknown event."]);
+    // A later preview that clears its own marks leaves the Save mark alone.
+    nextPreview({ value: "Changed" }).resolve();
+    expect(marks()).toHaveLength(0);
+    expect(select.getAttribute("aria-invalid")).toBe("true");
+    expect(describedTexts({ element: select })).toEqual(["Unknown event."]);
+  });
+
+  it("lists a path with no control in the preview body", () => {
+    openEdit();
+    rejectWith({
+      deferred: sendFirst(),
+      errors: {
+        "steps.0.api_endpoint": ["No such endpoint."],
+        __root__: ["Flow rejected."],
+      },
+    });
+    const lines = marks().map((line) => line.textContent);
+    expect(lines).toContain("steps.0.api_endpoint: No such endpoint.");
+    expect(lines).toContain("Flow rejected.");
+    for (const line of marks()) {
+      expect(previewBody().contains(line)).toBe(true);
+    }
+    expect(eventSelect({ index: 0 }).hasAttribute("aria-invalid")).toBe(false);
+  });
+
+  it("renders two distinct messages once each and an identical one once", () => {
+    openEdit();
+    rejectWith({
+      deferred: sendFirst(),
+      errors: { "steps.0.event_name": ["First.", "Second.", "First."] },
+    });
+    const select = eventSelect({ index: 0 });
+    expect(marks()).toHaveLength(2);
+    expect(describedTexts({ element: select })).toEqual(["First.", "Second."]);
+    expect(spoken()).toBe(
+      strings().METRICS_FLOW_PREVIEW_ANNOUNCE_PROBLEMS.replace("{count}", "2"),
+    );
+  });
+
+  it("removes every preview mark at the next updating, result or failure", () => {
+    openEdit();
+    const errors = { "steps.0.event_name": ["Unknown event."] };
+    rejectWith({ deferred: sendFirst(), errors });
+    const select = eventSelect({ index: 0 });
+    expect(marks()).toHaveLength(1);
+    editLabel({ value: "Changed" });
+    expect(marks()).toHaveLength(0);
+    expect(select.hasAttribute("aria-invalid")).toBe(false);
+    expect(select.hasAttribute("aria-describedby")).toBe(false);
+
+    advance({ ms: DEBOUNCE_MS + INTERVAL_MS });
+    rejectWith({ deferred: previews[1], errors });
+    expect(marks()).toHaveLength(1);
+    nextPreview({ value: "Again" }).reject({ status: 500 });
+    expect(marks()).toHaveLength(0);
+
+    advance({ ms: 0 });
+    nextPreview({ value: "Third" }).resolve();
+    expect(marks()).toHaveLength(0);
+    expect(eventSelect({ index: 0 }).hasAttribute("aria-invalid")).toBe(false);
+  });
+
+  it("a 429 after a 400 leaves no preview mark", () => {
+    openEdit();
+    rejectWith({
+      deferred: sendFirst(),
+      errors: { "steps.0.event_name": ["Unknown event."] },
+    });
+    nextPreview({ value: "Changed" }).reject({ status: 429 });
+    expect(marks()).toHaveLength(0);
+  });
+
+  it("starting Save clears the marks and none return when the Save fails", () => {
+    openEdit();
+    rejectWith({
+      deferred: sendFirst(),
+      errors: { "steps.0.event_name": ["Unknown event."] },
+    });
+    expect(marks()).toHaveLength(1);
+    save();
+    const select = eventSelect({ index: 0 });
+    expect(marks()).toHaveLength(0);
+    expect(select.hasAttribute("aria-invalid")).toBe(false);
+    expect(select.hasAttribute("aria-describedby")).toBe(false);
+    saves[0].reject({ status: 500 });
+    expect(marks()).toHaveLength(0);
+    expect(eventSelect({ index: 0 }).hasAttribute("aria-invalid")).toBe(false);
+  });
+
+  it("marks a stale stored event on edit-open without moving focus, once announced", () => {
+    openEdit({ steps: [{ ...STEPS[0], event_name: "gone_event" }, STEPS[1]] });
+    const before = document.activeElement;
+    rejectWith({
+      deferred: sendFirst(),
+      errors: { "steps.0.event_name": ["Unknown event."] },
+    });
+    expect(eventSelect({ index: 0 }).getAttribute("aria-invalid")).toBe("true");
+    expect(marks()).toHaveLength(1);
+    expect(document.activeElement).toBe(before);
+    expect(summaryPresent()).toBe(false);
+    expect(spoken()).toBe(strings().METRICS_FLOW_PREVIEW_ANNOUNCE_PROBLEM_ONE);
+    expect(callbacks.announce).not.toHaveBeenCalled();
+  });
+
+  it("drops a message a Save 400 already shows and adds a different one", () => {
+    openEdit();
+    sendFirst().resolve();
+    save();
+    rejectWith({
+      deferred: saves[0],
+      errors: { "steps.0.event_name": ["Unknown event."] },
+    });
+    const select = eventSelect({ index: 0 });
+    const before = select.getAttribute("aria-describedby");
+    rejectWith({
+      deferred: nextPreview({ value: "Changed" }),
+      errors: { "steps.0.event_name": ["Unknown event."] },
+    });
+    expect(marks()).toHaveLength(0);
+    expect(select.getAttribute("aria-describedby")).toBe(before);
+    expect(spoken()).toBe("");
+    expect(document.activeElement).toBe(
+      query({ selector: ".flow-builder-summary" }),
+    );
+
+    rejectWith({
+      deferred: nextPreview({ value: "Changed again" }),
+      errors: { "steps.0.event_name": ["Unknown event.", "Also wrong."] },
+    });
+    expect(marks().map((line) => line.textContent)).toEqual(["Also wrong."]);
+    expect(describedTexts({ element: select })).toEqual([
+      "Unknown event.",
+      "Also wrong.",
+    ]);
+  });
+
+  it("announces the same error set once and a different one again", () => {
+    openEdit();
+    const first = { "steps.0.event_name": ["Unknown event."] };
+    rejectWith({ deferred: sendFirst(), errors: first });
+    expect(spoken()).toBe(strings().METRICS_FLOW_PREVIEW_ANNOUNCE_PROBLEM_ONE);
+    const live = query({ selector: ".flow-builder-preview-live" });
+    live.textContent = "";
+    rejectWith({ deferred: nextPreview({ value: "B" }), errors: first });
+    expect(spoken()).toBe("");
+    rejectWith({
+      deferred: nextPreview({ value: "C" }),
+      errors: { "steps.0.event_name": ["Different."] },
+    });
+    expect(spoken()).toBe(strings().METRICS_FLOW_PREVIEW_ANNOUNCE_PROBLEM_ONE);
+  });
+});
+
+describe("preview field errors, Delete and held problems", () => {
+  it("starting Delete clears preview marks, keeps Save marks, none return on failure", () => {
+    openEdit();
+    const errors = { "steps.0.event_name": ["Unknown event."] };
+    rejectWith({ deferred: sendFirst(), errors });
+    expect(marks()).toHaveLength(1);
+    query<HTMLButtonElement>({ selector: '[data-action="delete"]' }).click();
+    query<HTMLButtonElement>({ selector: '[data-confirm="confirm"]' }).click();
+    const select = eventSelect({ index: 0 });
+    expect(marks()).toHaveLength(0);
+    expect(select.hasAttribute("aria-invalid")).toBe(false);
+    expect(select.hasAttribute("aria-describedby")).toBe(false);
+    deletes[0].reject({ status: 500 });
+    expect(marks()).toHaveLength(0);
+  });
+
+  it("holds a problem announcement while a confirm is open and speaks it on close", async () => {
+    openEdit();
+    type({ input: nameInput(), value: "Renamed" });
+    const decision = builder.confirmDiscard();
+    rejectWith({
+      deferred: sendFirst(),
+      errors: { "steps.0.event_name": ["Unknown event."] },
+    });
+    expect(spoken()).toBe("");
+    query<HTMLButtonElement>({ selector: '[data-confirm="safe"]' }).click();
+    await decision;
+    expect(spoken()).toBe(strings().METRICS_FLOW_PREVIEW_ANNOUNCE_PROBLEM_ONE);
+  });
+
+  it("returning to the placeholder forgets the last-spoken result", () => {
+    openEdit();
+    sendFirst().resolve();
+    const text = spoken();
+    expect(text).not.toBe("");
+    pick({ select: control({ index: 0, field: "event_name" }), value: "" });
+    expect(placeholderText()).toBe(strings().METRICS_FLOW_PREVIEW_PLACEHOLDER);
+    pick({
+      select: control({ index: 0, field: "event_name" }),
+      value: "modal_open",
+    });
+    advance({ ms: DEBOUNCE_MS + INTERVAL_MS });
+    previews[previews.length - 1].resolve();
+    expect(spoken()).toBe(text);
+  });
+});
+
+describe("preview announcements", () => {
+  it("announces the card's own result text, never in the builder region", () => {
+    openEdit();
+    sendFirst().resolve();
+    expect(spoken()).toBe(
+      strings()
+        .METRICS_FLOW_PREVIEW_ANNOUNCE_RESULT.replace("{succeeded}", "5")
+        .replace("{total}", "10")
+        .replace("{pct}", "50%"),
+    );
+    expect(callbacks.announce).not.toHaveBeenCalled();
+  });
+
+  it("announces the empty text for an all-zero result", () => {
+    openEdit();
+    sendFirst().resolve({
+      steps: RESPONSE.steps.map((step) => ({ ...step, count: 0 })),
+    } as never);
+    expect(spoken()).toBe(strings().METRICS_FLOW_PREVIEW_ANNOUNCE_EMPTY);
+  });
+
+  it("a suppressed zero count is not all-zero and uses the suppressed text", () => {
+    openEdit();
+    sendFirst().resolve({
+      steps: RESPONSE.steps.map((step, index) => ({
+        ...step,
+        count: 0,
+        count_suppressed: index === 1,
+      })),
+    } as never);
+    expect(spoken()).toContain(strings().METRICS_FLOW_COUNT_SUPPRESSED_ARIA);
+    expect(spoken()).not.toBe(strings().METRICS_FLOW_PREVIEW_ANNOUNCE_EMPTY);
+  });
+
+  it("speaks a repeated result once, but again after a failure in between", () => {
+    openEdit();
+    sendFirst().resolve();
+    const live = query({ selector: ".flow-builder-preview-live" });
+    const text = spoken();
+    expect(text).not.toBe("");
+    live.textContent = "";
+    nextPreview({ value: "B" }).resolve();
+    expect(spoken()).toBe("");
+    nextPreview({ value: "C" }).reject({ status: 500 });
+    expect(spoken()).toBe(strings().METRICS_FLOW_PREVIEW_FAILED);
+    nextPreview({ value: "D" }).resolve();
+    expect(spoken()).toBe(text);
+  });
+
+  it("speaks a problem set, a result, then the same set again twice", () => {
+    openEdit();
+    const errors = { "steps.0.event_name": ["Unknown event."] };
+    rejectWith({ deferred: sendFirst(), errors });
+    const live = query({ selector: ".flow-builder-preview-live" });
+    expect(spoken()).toBe(strings().METRICS_FLOW_PREVIEW_ANNOUNCE_PROBLEM_ONE);
+    nextPreview({ value: "B" }).resolve();
+    live.textContent = "";
+    rejectWith({ deferred: nextPreview({ value: "C" }), errors });
+    expect(spoken()).toBe(strings().METRICS_FLOW_PREVIEW_ANNOUNCE_PROBLEM_ONE);
+  });
+
+  it("announces a failure and a 429 on every entry, including after Retry", () => {
+    openFailed();
+    const live = query({ selector: ".flow-builder-preview-live" });
+    expect(spoken()).toBe(strings().METRICS_FLOW_PREVIEW_FAILED);
+    live.textContent = "";
+    retryButton().click();
+    advance({ ms: DEBOUNCE_MS + INTERVAL_MS });
+    previews[previews.length - 1].reject({ status: 500 });
+    expect(spoken()).toBe(strings().METRICS_FLOW_PREVIEW_FAILED);
+    live.textContent = "";
+    retryButton().click();
+    advance({ ms: DEBOUNCE_MS + INTERVAL_MS });
+    previews[previews.length - 1].reject({ status: 429 });
+    expect(spoken()).toBe(strings().METRICS_FLOW_RATE_LIMITED);
+    expect(callbacks.announce).not.toHaveBeenCalled();
+  });
+
+  it("holds an announcement while a discard confirm is open and speaks only the latest", async () => {
+    openEdit();
+    sendFirst().resolve();
+    const live = query({ selector: ".flow-builder-preview-live" });
+    expect(spoken()).not.toBe("");
+    live.textContent = "";
+    type({ input: nameInput(), value: "Renamed" });
+    const decision = builder.confirmDiscard();
+    nextPreview({ value: "B" }).reject({ status: 500 });
+    nextPreview({ value: "C" }).reject({ status: 429 });
+    expect(spoken()).toBe("");
+    query<HTMLButtonElement>({ selector: '[data-confirm="safe"]' }).click();
+    await expect(decision).resolves.toBe(false);
+    expect(spoken()).toBe(strings().METRICS_FLOW_RATE_LIMITED);
+  });
+
+  it("speaks a held failure on confirm close even if it repeats the last one", async () => {
+    openFailed();
+    expect(spoken()).toBe(strings().METRICS_FLOW_PREVIEW_FAILED);
+    retryButton().click();
+    advance({ ms: DEBOUNCE_MS + INTERVAL_MS });
+    type({ input: nameInput(), value: "Renamed" });
+    const decision = builder.confirmDiscard();
+    previews[previews.length - 1].reject({ status: 500 });
+    const live = query({ selector: ".flow-builder-preview-live" });
+    live.textContent = "";
+    expect(spoken()).toBe("");
+    query<HTMLButtonElement>({ selector: '[data-confirm="safe"]' }).click();
+    await decision;
+    expect(spoken()).toBe(strings().METRICS_FLOW_PREVIEW_FAILED);
+  });
+
+  it("drops a held result that repeats the last spoken one on confirm close", async () => {
+    openEdit();
+    sendFirst().resolve();
+    expect(spoken()).not.toBe("");
+    const live = query({ selector: ".flow-builder-preview-live" });
+    live.textContent = "";
+    type({ input: nameInput(), value: "Renamed" });
+    const decision = builder.confirmDiscard();
+    nextPreview({ value: "B" }).resolve();
+    query<HTMLButtonElement>({ selector: '[data-confirm="safe"]' }).click();
+    await decision;
+    expect(spoken()).toBe("");
+  });
+});

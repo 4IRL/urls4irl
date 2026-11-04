@@ -65,6 +65,7 @@ import {
   listEventOptions,
   listFormErrors,
   listMethods,
+  listNestedMessages,
   listProblems,
   moveStep,
   normalizeDraft,
@@ -72,6 +73,7 @@ import {
   removeBreakdownFilter,
   removeFilter,
   removeStep,
+  resolveServerPath,
   setBreakdownEvent,
   setBreakdownFilterDim,
   setBreakdownFilterValue,
@@ -94,10 +96,17 @@ import type {
   DraftProblem,
   DraftStep,
   FlowDraft,
+  ResolvedServerPath,
   StepStream,
   SubmittedStep,
 } from "./flow-builder-state.js";
-import { PREVIEW_FLOW_ID, renderFlowGrid } from "./flow-card.js";
+import {
+  ariaCount,
+  formatPercent,
+  isAllZero,
+  PREVIEW_FLOW_ID,
+  renderFlowGrid,
+} from "./flow-card.js";
 import type { FlowCardState } from "./flow-card.js";
 import { createFlowPreview } from "./flow-preview.js";
 import type { FlowPreviewState } from "./flow-preview.js";
@@ -179,6 +188,65 @@ function entryFromResponse({ data }: { data: SaveResponse }): FlowEntry {
  * Creates the builder inside `container` (kept hidden until `open`).
  * Example: `createFlowBuilder({ container, callbacks }).open({ mode: "create" })`.
  */
+/** The control a preview 400 message is marked on. */
+type PreviewTarget =
+  | { kind: "step"; stepKey: number; field: string }
+  | {
+      kind: "entry";
+      stepKey: number;
+      list: "dim_filter" | "drop_breakdown.dim_filter";
+      entryKey: number;
+    }
+  | {
+      kind: "breakdown";
+      stepKey: number;
+      field: "event_name" | "group_by";
+    }
+  | { kind: "flow"; field: "display_name" | "steps" };
+
+type PreviewAnnouncement = {
+  kind: "result" | "problem" | "failed" | "rate-limited";
+  text: string;
+  /** Sorted `path: message` pairs for a problem announcement, else null. */
+  problems: string | null;
+};
+
+const PREVIEW_ERR_PREFIX = "flow-preview-err-";
+
+/** Fails closed: any path without a single known control is listed in the body. */
+function previewTargetFor({
+  resolved,
+}: {
+  resolved: ResolvedServerPath;
+}): PreviewTarget | null {
+  switch (resolved.kind) {
+    case "step_field":
+      return { kind: "step", stepKey: resolved.stepKey, field: resolved.field };
+    case "flow_field":
+      return { kind: "flow", field: resolved.field };
+    case "nested":
+      if (resolved.list === "drop_breakdown") {
+        return resolved.field === "entry"
+          ? null
+          : {
+              kind: "breakdown",
+              stepKey: resolved.stepKey,
+              field: resolved.field,
+            };
+      }
+      return resolved.entryKey === null || resolved.field !== "entry"
+        ? null
+        : {
+            kind: "entry",
+            stepKey: resolved.stepKey,
+            list: resolved.list,
+            entryKey: resolved.entryKey,
+          };
+    default:
+      return null;
+  }
+}
+
 export function createFlowBuilder({
   container,
   callbacks,
@@ -244,6 +312,19 @@ export function createFlowBuilder({
   let previewResponse: Schema<"FlowResponseSchema"> | null = null;
   // True from an accepted Retry click until the first non-updating render.
   let retryDriven = false;
+  let previewLive: HTMLElement | null = null;
+  // Preview-origin field errors: kept apart from draft.serverErrors, which Save owns.
+  const previewErrors = new Map<string, string[]>();
+  const previewTargets = new Map<
+    string,
+    { target: PreviewTarget; path: string }
+  >();
+  let previewBodyLines: string[] = [];
+  // Messages the open-time reason already shows: announced, never rendered twice.
+  let previewAnnouncedOnly = 0;
+  let previewLastSpoken: PreviewAnnouncement | null = null;
+  let previewHeld: PreviewAnnouncement | null = null;
+  let previewAnnounceTimer: number | null = null;
 
   const preview = createFlowPreview({
     send: ({ body: definition, window: windowKey }) =>
@@ -310,6 +391,12 @@ export function createFlowBuilder({
     previewShown = "placeholder";
     previewResponse = null;
     retryDriven = false;
+    previewLive = null;
+    resetPreviewAnnouncements();
+    previewErrors.clear();
+    previewTargets.clear();
+    previewBodyLines = [];
+    previewAnnouncedOnly = 0;
     container.replaceChildren();
     container.hidden = true;
   }
@@ -974,9 +1061,379 @@ export function createFlowBuilder({
   // Live preview
   // ---------------------------------------------------------------------
 
-  /** Step 4 marks preview field errors in place; until then there is nothing to clear. */
+  /** Drops every preview-owned element, describedby id and invalid flag; Save/client marks stay. */
+  function stripPreviewMarks(): void {
+    for (const element of container.querySelectorAll<HTMLElement>(
+      "[data-preview-err]",
+    )) {
+      element.remove();
+    }
+    for (const control of container.querySelectorAll<HTMLElement>(
+      "[aria-describedby]",
+    )) {
+      const current = control.getAttribute("aria-describedby") ?? "";
+      if (!current.includes(PREVIEW_ERR_PREFIX)) {
+        continue;
+      }
+      const rest = current
+        .split(" ")
+        .filter((id) => id !== "" && !id.includes(PREVIEW_ERR_PREFIX));
+      if (rest.length > 0) {
+        control.setAttribute("aria-describedby", rest.join(" "));
+      } else {
+        control.removeAttribute("aria-describedby");
+      }
+    }
+    // Only a flag the preview itself set is removed; a Save/client claim keeps it.
+    for (const control of container.querySelectorAll<HTMLElement>(
+      "[data-preview-invalid]",
+    )) {
+      // A Save/client message that landed since keeps its own flag.
+      if (!control.hasAttribute("aria-describedby")) {
+        control.removeAttribute("aria-invalid");
+      }
+      control.removeAttribute("data-preview-invalid");
+    }
+  }
+
+  /** Forgets the stored preview errors and removes their marks. */
   function clearPreviewMarks(): void {
-    // Intentionally empty until the field-error marks exist.
+    previewErrors.clear();
+    previewTargets.clear();
+    previewBodyLines = [];
+    previewAnnouncedOnly = 0;
+    stripPreviewMarks();
+  }
+
+  function findPreviewControl({
+    target,
+  }: {
+    target: PreviewTarget;
+  }): HTMLElement | null {
+    if (target.kind === "flow") {
+      return target.field === "display_name" ? nameInput : addButton;
+    }
+    const row = findRow({ key: target.stepKey });
+    if (row === null) {
+      return null;
+    }
+    switch (target.kind) {
+      case "step":
+        return row.querySelector<HTMLElement>(`[data-field="${target.field}"]`);
+      case "entry":
+        return findFilterControl({
+          row,
+          filterKey: target.entryKey,
+          field:
+            target.list === "dim_filter"
+              ? FILTER_DIM_FIELD
+              : BREAKDOWN_FILTER_DIM_FIELD,
+        });
+      case "breakdown":
+        return findBreakdownControl({
+          row,
+          field:
+            target.field === "event_name"
+              ? BREAKDOWN_EVENT_FIELD
+              : BREAKDOWN_GROUP_BY_FIELD,
+        });
+      default:
+        return null;
+    }
+  }
+
+  /**
+   * Messages the control already shows: `shown` come from a Save 400 or client
+   * validation (a preview duplicate is dropped); `derived` are open-time reasons
+   * (a preview duplicate is announced but not rendered twice).
+   */
+  function existingMessages({ target }: { target: PreviewTarget }): {
+    shown: string[];
+    derived: string[];
+  } {
+    if (target.kind === "flow") {
+      return {
+        shown: draft.serverErrors
+          .filter((error) => error.field === target.field)
+          .map((error) => error.message),
+        derived: [],
+      };
+    }
+    const step = draft.steps.find((item) => item.key === target.stepKey);
+    if (step === undefined) {
+      return { shown: [], derived: [] };
+    }
+    if (target.kind === "step") {
+      return { shown: step.errors[target.field] ?? [], derived: [] };
+    }
+    const shown: string[] = [];
+    const derived: string[] = [];
+    for (const error of listNestedMessages({ step, catalog })) {
+      const address = error.address;
+      const matches =
+        address !== undefined &&
+        (target.kind === "entry"
+          ? address.kind ===
+              (target.list === "dim_filter" ? "filter" : "breakdown_filter") &&
+            address.filterKey === target.entryKey
+          : address.kind === "breakdown" &&
+            address.part ===
+              (target.field === "event_name" ? "event" : "group_by"));
+      if (matches) {
+        (error.stored === true || error.server === true ? shown : derived).push(
+          error.message,
+        );
+      }
+    }
+    return { shown, derived };
+  }
+
+  /** Stores a preview 400 against the current draft (via `submitted`); renders nothing. */
+  function storePreviewErrors({
+    errors,
+    submitted,
+  }: {
+    errors: Record<string, string[]>;
+    submitted: SubmittedStep[];
+  }): void {
+    clearPreviewMarks();
+    const lines = new Set<string>();
+    const derivedSeen = new Set<string>();
+    for (const [path, messages] of Object.entries(errors)) {
+      const resolved = resolveServerPath({ path, submitted, draft });
+      const target = previewTargetFor({ resolved });
+      for (const message of messages) {
+        if (target === null) {
+          lines.add(path === "__root__" ? message : `${path}: ${message}`);
+          continue;
+        }
+        const existing = existingMessages({ target });
+        if (existing.shown.includes(message)) {
+          continue;
+        }
+        const key = JSON.stringify(target);
+        const stored = previewErrors.get(key) ?? [];
+        if (stored.includes(message)) {
+          continue;
+        }
+        if (existing.derived.includes(message)) {
+          // Counted for the announcement once, never stored or rendered twice.
+          const seen = `${key}|${message}`;
+          if (!derivedSeen.has(seen)) {
+            derivedSeen.add(seen);
+            previewAnnouncedOnly += 1;
+          }
+          continue;
+        }
+        stored.push(message);
+        previewErrors.set(key, stored);
+        previewTargets.set(key, { target, path });
+      }
+    }
+    previewBodyLines = [...lines];
+  }
+
+  /**
+   * Marks every stored preview error in place (and lists the rest in the preview
+   * body). Idempotent: it strips its own marks first, so it can run after any row
+   * rebuild. Returns how many message elements it rendered.
+   */
+  function applyPreviewMarks(): number {
+    stripPreviewMarks();
+    if (previewErrors.size === 0 && previewBodyLines.length === 0) {
+      return 0;
+    }
+    let rendered = 0;
+    let sequence = 0;
+    const lines = new Set(previewBodyLines);
+    for (const [key, messages] of previewErrors) {
+      const entry = previewTargets.get(key);
+      const control =
+        entry === undefined
+          ? null
+          : findPreviewControl({ target: entry.target });
+      if (entry === undefined || control === null) {
+        for (const message of messages) {
+          lines.add(
+            entry === undefined || entry.path === "__root__"
+              ? message
+              : `${entry.path}: ${message}`,
+          );
+        }
+        continue;
+      }
+      let tail: Element =
+        entry.target.kind === "flow"
+          ? ((entry.target.field === "display_name" ? nameError : stepsError) ??
+            control)
+          : control;
+      const ids: string[] = [];
+      for (const message of messages) {
+        sequence += 1;
+        const id = `${uid}-${PREVIEW_ERR_PREFIX}${sequence}`;
+        const line = makeElement({
+          tag: "p",
+          className: "flow-builder-error",
+          text: message,
+          attrs: { id, "data-preview-err": "true" },
+        });
+        if (entry.target.kind === "flow") {
+          tail.after(line);
+          tail = line;
+        } else {
+          control.parentElement?.append(line);
+        }
+        ids.push(id);
+        rendered += 1;
+      }
+      if (ids.length === 0) {
+        continue;
+      }
+      if (control.getAttribute("aria-invalid") !== "true") {
+        control.setAttribute("aria-invalid", "true");
+        control.setAttribute("data-preview-invalid", "true");
+      }
+      const described = control.getAttribute("aria-describedby");
+      control.setAttribute(
+        "aria-describedby",
+        [described, ...ids].filter((id) => id).join(" "),
+      );
+    }
+    for (const text of lines) {
+      previewBody?.append(
+        makeElement({
+          tag: "p",
+          className: "flow-builder-error",
+          text,
+          attrs: { "data-preview-err": "true" },
+        }),
+      );
+      rendered += 1;
+    }
+    return rendered;
+  }
+
+  // ---- Preview announcements (their own live region, never the builder's) ----
+
+  function speakPreview({ text }: { text: string }): void {
+    const region = previewLive;
+    if (region === null) {
+      return;
+    }
+    // Clear, then set on the next tick so a repeated message is re-read.
+    region.textContent = "";
+    if (previewAnnounceTimer !== null) {
+      window.clearTimeout(previewAnnounceTimer);
+    }
+    previewAnnounceTimer = window.setTimeout(() => {
+      previewAnnounceTimer = null;
+      region.textContent = text;
+    }, 0);
+  }
+
+  function deliverPreviewAnnouncement({
+    item,
+  }: {
+    item: PreviewAnnouncement;
+  }): void {
+    const repeatable = item.kind === "result" || item.kind === "problem";
+    if (
+      repeatable &&
+      previewLastSpoken !== null &&
+      previewLastSpoken.text === item.text &&
+      previewLastSpoken.problems === item.problems
+    ) {
+      return;
+    }
+    previewLastSpoken = item;
+    speakPreview({ text: item.text });
+  }
+
+  /** Speaks now, or holds (latest only) while a discard/delete confirm is open. */
+  function announcePreview({ item }: { item: PreviewAnnouncement }): void {
+    if (pendingConfirm !== null) {
+      previewHeld = item;
+      return;
+    }
+    deliverPreviewAnnouncement({ item });
+  }
+
+  function flushHeldPreviewAnnouncement(): void {
+    const held = previewHeld;
+    previewHeld = null;
+    if (held !== null) {
+      deliverPreviewAnnouncement({ item: held });
+    }
+  }
+
+  /** Forgets the last-spoken text, any held announcement and a pending speak timer. */
+  function resetPreviewAnnouncements(): void {
+    previewLastSpoken = null;
+    previewHeld = null;
+    if (previewAnnounceTimer !== null) {
+      window.clearTimeout(previewAnnounceTimer);
+      previewAnnounceTimer = null;
+    }
+  }
+
+  function announceProblems({
+    errors,
+    rendered,
+  }: {
+    errors: Record<string, string[]>;
+    rendered: number;
+  }): void {
+    const count = rendered + previewAnnouncedOnly;
+    if (count === 0) {
+      return;
+    }
+    const pairs = Object.entries(errors)
+      .flatMap(([path, messages]) =>
+        messages.map((message) => `${path}: ${message}`),
+      )
+      .sort();
+    announcePreview({
+      item: {
+        kind: "problem",
+        text:
+          count === 1
+            ? strings().METRICS_FLOW_PREVIEW_ANNOUNCE_PROBLEM_ONE
+            : fillTemplate({
+                template: strings().METRICS_FLOW_PREVIEW_ANNOUNCE_PROBLEMS,
+                values: { count: String(count) },
+              }),
+        problems: JSON.stringify(pairs),
+      },
+    });
+  }
+
+  function announceResult({
+    response,
+  }: {
+    response: Schema<"FlowResponseSchema">;
+  }): void {
+    const steps = response.steps;
+    if (steps.length === 0) {
+      return;
+    }
+    const top = steps[0];
+    const last = steps[steps.length - 1];
+    announcePreview({
+      item: {
+        kind: "result",
+        problems: null,
+        text: isAllZero({ steps })
+          ? strings().METRICS_FLOW_PREVIEW_ANNOUNCE_EMPTY
+          : fillTemplate({
+              template: strings().METRICS_FLOW_PREVIEW_ANNOUNCE_RESULT,
+              values: {
+                succeeded: ariaCount({ step: last }),
+                total: ariaCount({ step: top }),
+                pct: formatPercent({ fraction: last.pct_of_top }),
+              },
+            }),
+      },
+    });
   }
 
   function previewCardTitle(): string {
@@ -1026,6 +1483,11 @@ export function createFlowBuilder({
     retryDriven = false;
     showPreviewText({ text: strings().METRICS_FLOW_PREVIEW_PLACEHOLDER });
     previewShown = "placeholder";
+    previewLive = makeElement({
+      tag: "span",
+      className: "visually-hidden flow-builder-preview-live",
+      attrs: { "aria-live": "polite", "aria-atomic": "true" },
+    });
     section.append(
       previewTitle,
       previewStatus,
@@ -1036,11 +1498,7 @@ export function createFlowBuilder({
         text: strings().METRICS_FLOW_PREVIEW_HINT,
       }),
       // Outside the busy body, and separate from the builder status region.
-      makeElement({
-        tag: "span",
-        className: "visually-hidden flow-builder-preview-live",
-        attrs: { "aria-live": "polite", "aria-atomic": "true" },
-      }),
+      previewLive,
     );
     return section;
   }
@@ -1188,9 +1646,7 @@ export function createFlowBuilder({
           retryDriven = false;
         }
         bodyElement.classList.remove("flow-builder-preview-body--stale");
-        if (state.kind !== "field-errors") {
-          clearPreviewMarks();
-        }
+        clearPreviewMarks();
         statusElement.hidden = state.kind !== "updating";
         if (state.kind === "updating") {
           if (retryDriven && previewErrorBlock !== null) {
@@ -1218,24 +1674,36 @@ export function createFlowBuilder({
         if (state.kind === "placeholder") {
           showPreviewText({ text: strings().METRICS_FLOW_PREVIEW_PLACEHOLDER });
           previewShown = "placeholder";
+          resetPreviewAnnouncements();
         } else if (state.kind === "result") {
           previewResponse = state.response;
           showPreviewCard({
             state: { kind: "response", response: state.response },
           });
           previewShown = "card";
+          announceResult({ response: state.response });
         } else if (state.kind === "field-errors") {
           showPreviewText({ text: strings().METRICS_FLOW_PREVIEW_FIX_FIELDS });
           previewShown = "fields";
-        } else {
-          showPreviewError({
-            message:
-              state.kind === "rate-limited"
-                ? strings().METRICS_FLOW_RATE_LIMITED
-                : strings().METRICS_FLOW_PREVIEW_FAILED,
+          storePreviewErrors({
+            errors: state.errors,
+            submitted: state.submitted,
           });
+          announceProblems({
+            errors: state.errors,
+            rendered: applyPreviewMarks(),
+          });
+        } else {
+          const message =
+            state.kind === "rate-limited"
+              ? strings().METRICS_FLOW_RATE_LIMITED
+              : strings().METRICS_FLOW_PREVIEW_FAILED;
+          showPreviewError({ message });
           previewShown = "error";
           syncRetryDisabled();
+          announcePreview({
+            item: { kind: state.kind, text: message, problems: null },
+          });
         }
       },
     });
@@ -1246,6 +1714,10 @@ export function createFlowBuilder({
     preview.cancel();
     retryDriven = false;
     clearPreviewMarks();
+    resetPreviewAnnouncements();
+    if (previewLive !== null) {
+      previewLive.textContent = "";
+    }
     if (previewBody === null || previewStatus === null) {
       return;
     }
@@ -1535,6 +2007,8 @@ export function createFlowBuilder({
         });
       }
     });
+    // Rebuilt rows and re-linked controls lose their marks; put them back.
+    applyPreviewMarks();
   }
 
   function renderRow({
@@ -1622,6 +2096,7 @@ export function createFlowBuilder({
         position: String(index + 1),
       }),
     );
+    applyPreviewMarks();
   }
 
   function focusFilterControl({
@@ -2684,6 +3159,7 @@ export function createFlowBuilder({
     closing?.element.remove();
     formElement?.removeAttribute("inert");
     syncRetryDisabled();
+    flushHeldPreviewAnnouncement();
   }
 
   function openConfirm({
