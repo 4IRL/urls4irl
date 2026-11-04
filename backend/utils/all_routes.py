@@ -103,6 +103,7 @@ class USER_ROUTES:
     UPDATE_PREFERENCES = _USERS + "update_preferences"
     UPDATE_UTUB_LIST_PREFERENCES = _USERS + "update_utub_list_preferences"
     UPDATE_MEMBER_LIST_PREFERENCES = _USERS + "update_member_list_preferences"
+    UPDATE_TAG_DISPLAY_PREFERENCES = _USERS + "update_tag_display_preferences"
     OAUTH_LINK = _USERS + "link_oauth_provider"
     OAUTH_UNLINK = _USERS + "unlink_oauth_provider"
 
@@ -357,6 +358,9 @@ JS_ROUTES: dict[str, JsRoute] = {
     "updateUtubListPreferences": JsRoute(USER_ROUTES.UPDATE_UTUB_LIST_PREFERENCES, {}),
     "updateMemberListPreferences": JsRoute(
         USER_ROUTES.UPDATE_MEMBER_LIST_PREFERENCES, {}
+    ),
+    "updateTagDisplayPreferences": JsRoute(
+        USER_ROUTES.UPDATE_TAG_DISPLAY_PREFERENCES, {}
     ),
     # Contact
     "contactUs": JsRoute(ACCOUNT_AND_SETTING_ROUTES.CONTACT_US_SUBMIT, {}),

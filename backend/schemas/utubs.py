@@ -8,7 +8,7 @@ from pydantic import Field, SerializeAsAny, field_serializer
 from backend.schemas.base import BaseSchema
 from backend.schemas.tags import UtubTagSchema
 from backend.schemas.urls import UtubUrlSchema
-from backend.schemas.users import UtubMemberSchema
+from backend.schemas.users import TagDisplayPreferencesSchema, UtubMemberSchema
 from backend.schemas.utub_member_settings import (
     UtubMemberSettings,
     resolve_member_settings,
@@ -21,6 +21,10 @@ if TYPE_CHECKING:
     from backend.models.utub_members import Utub_Members
     from backend.models.utub_urls import Utub_Urls
     from backend.models.utubs import Utubs
+
+
+class TagDisplayDefaultsSchema(TagDisplayPreferencesSchema):
+    """The viewer's six resolved all-UTubs tag display defaults."""
 
 
 class UtubDetailSchema(BaseSchema):
@@ -94,6 +98,10 @@ class UtubDetailSchema(BaseSchema):
         alias=MODELS.MEMBER_SORT,
         description="The viewer's member sort; `members` is already in this order",
     )
+    tag_display_defaults: TagDisplayDefaultsSchema = Field(
+        alias=MODELS.TAG_DISPLAY_DEFAULTS,
+        description="The viewer's resolved all-UTubs tag display defaults",
+    )
 
     @field_serializer("created_at")
     def serialize_created_at(self, value: datetime) -> str:
@@ -107,6 +115,7 @@ class UtubDetailSchema(BaseSchema):
         ordered_utub_urls: list[Utub_Urls],
         ordered_members: list[Utub_Members],
         member_sort: str,
+        tag_display_defaults: TagDisplayDefaultsSchema,
     ) -> UtubDetailSchema:
         # ``Member_Role`` is imported locally to avoid a circular import: this
         # schema module is loaded during ``backend`` package init (via
@@ -169,6 +178,7 @@ class UtubDetailSchema(BaseSchema):
                 for member in ordered_members
             ],
             member_sort=member_sort,
+            tag_display_defaults=tag_display_defaults,
             urls=urls,
             tags=tags,
             is_creator=utub.utub_creator == current_user_id,

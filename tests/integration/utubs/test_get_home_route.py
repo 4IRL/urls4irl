@@ -108,6 +108,29 @@ def test_get_home_page(
     )
 
 
+def test_get_home_page_tag_sheet_handle_count_is_polite_live_region(
+    every_user_makes_a_unique_utub,
+    login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+):
+    """
+    GIVEN a logged-in user
+    WHEN the user requests the home page
+    THEN the tag sheet handle count badge is rendered as a polite live region
+
+    Args:
+        every_user_makes_a_unique_utub (None): Fixture to create a new UTub for every user
+        login_first_user_without_register (Tuple[FlaskClient, str, Users, Flask]): Fixture to login the first user
+    """
+    client, _, _, _ = login_first_user_without_register
+
+    response = client.get(url_for(ROUTES.UTUBS.HOME))
+
+    assert response.status_code == 200
+    badge = re.search(rb'<span[^>]*id="tagSheetHandleCount"[^>]*>', response.data)
+    assert badge is not None
+    assert b'aria-live="polite"' in badge.group(0)
+
+
 def test_home_page_preferences_context_reflects_stored_row(
     every_user_makes_a_unique_utub,
     login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
@@ -243,6 +266,12 @@ def test_home_page_utub_list_preferences_default_when_no_row(
     assert payload["display_member_sort"] == "name_az"
     assert payload["display_show_row_counts"] is False
     assert payload["display_show_list_totals"] is True
+    assert payload["display_tag_sort"] == "most_in_view"
+    assert payload["display_tag_match_mode"] == "all"
+    assert payload["display_tag_count_style"] == "in_view_total"
+    assert payload["display_show_tags_on_collapsed"] is False
+    assert payload["display_collapsed_tags_style"] == "one_line"
+    assert payload["display_tag_drop_opens_url"] is True
 
     deck_classes = _deck_classes(response.data)
     assert "showUTubRowCounts" not in deck_classes

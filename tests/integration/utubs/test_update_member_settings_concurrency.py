@@ -80,3 +80,37 @@ def test_concurrent_patches_to_different_keys_both_persist(
     assert _stored(app, utub_id, OWNER_USER_ID) == {
         "urls": {"hide_copy_button": True, "density": "compact"}
     }
+
+
+def test_concurrent_urls_and_tags_patches_both_persist(
+    committed_owner_utub: SeedType,  # noqa: F811
+) -> None:
+    """
+    GIVEN one member and a merge slowed down after the stored value is read
+    WHEN a urls patch and a tags patch arrive at the same time
+    THEN both get 200 and both sections are stored (the row lock serializes them)
+    """
+    app, utub_id, _ = committed_owner_utub
+    with app.test_request_context():
+        url = url_for(ROUTES.UTUBS.UPDATE_MEMBER_SETTINGS, utub_id=utub_id)
+
+    with mock.patch(MERGE_PATH, _slow_merge):
+        results = _run_concurrently(
+            {
+                "urls": lambda: _request_as_owner(
+                    app, OWNER_USER_ID, "patch", url, {"urls": {"density": "compact"}}
+                ),
+                "tags": lambda: _request_as_owner(
+                    app, OWNER_USER_ID, "patch", url, {"tags": {"tag_sort": "newest"}}
+                ),
+            }
+        )
+
+    assert {label: status for label, (status, _) in results.items()} == {
+        "urls": 200,
+        "tags": 200,
+    }
+    assert _stored(app, utub_id, OWNER_USER_ID) == {
+        "urls": {"density": "compact"},
+        "tags": {"tag_sort": "newest"},
+    }

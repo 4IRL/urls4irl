@@ -99,3 +99,7 @@ class UpdateMemberSettingsRequest(BaseModel):
         default_factory=dict,
         description="Patch for the caller's URLs panel view overrides",
     )
+    tags: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Patch for the caller's Tags panel display overrides",
+    )

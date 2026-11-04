@@ -1361,6 +1361,15 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Template:** —
 - **JS:** keys: `updateMemberListPreferences`
 
+### `PATCH /users/preferences/tags` — `users.update_tag_display_preferences`
+
+- **Handler:** `backend/users/routes.py:update_tag_display_preferences`
+- **Decorators:** `email_validation_required`, `api_route`
+- **Service:** `backend.users.services.preferences_service:apply_tag_display_preferences_change`
+- **Schema:** request: `backend.schemas.requests.users.UpdateTagDisplayPreferencesRequest`; response: `backend.schemas.users.UpdateTagDisplayPreferencesResponseSchema`; status: 200 `backend.schemas.users.UpdateTagDisplayPreferencesResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`
+- **Template:** —
+- **JS:** keys: `updateTagDisplayPreferences`
+
 ### `PATCH /users/preferences/utubs` — `users.update_utub_list_preferences`
 
 - **Handler:** `backend/users/routes.py:update_utub_list_preferences`

@@ -33,6 +33,7 @@ from backend.schemas.requests.users import (
     ProviderLinkRequest,
     UpdateMemberListPreferencesRequest,
     UpdatePreferencesRequest,
+    UpdateTagDisplayPreferencesRequest,
     UpdateUtubListPreferencesRequest,
 )
 from backend.schemas.users import (
@@ -43,6 +44,7 @@ from backend.schemas.users import (
     LoginRedirectResponseSchema,
     UpdateMemberListPreferencesResponseSchema,
     UpdatePreferencesResponseSchema,
+    UpdateTagDisplayPreferencesResponseSchema,
     UpdateUtubListPreferencesResponseSchema,
 )
 from backend.splash.constants import OAuthLinkErrorCodes
@@ -73,6 +75,7 @@ from backend.users.services.data_export_service import build_user_data_export_co
 from backend.users.services.preferences_service import (
     apply_member_list_preferences_change,
     apply_preferences_change,
+    apply_tag_display_preferences_change,
     apply_utub_list_preferences_change,
     build_display_preferences_context,
 )
@@ -310,6 +313,34 @@ def update_member_list_preferences(
     """Applies the partial member-list preferences write for ``current_user``."""
     return apply_member_list_preferences_change(
         member_sort=update_member_list_preferences_request.member_sort,
+    )
+
+
+@users.route("/users/preferences/tags", methods=["PATCH"])
+@email_validation_required
+@api_route(
+    request_schema=UpdateTagDisplayPreferencesRequest,
+    response_schema=UpdateTagDisplayPreferencesResponseSchema,
+    error_message=USER_FAILURE.INVALID_INPUT,
+    error_code=PreferencesErrorCodes.INVALID_FORM_INPUT,
+    tags=[OPEN_API.AUTH],
+    description="Partially update the authenticated user's all-UTubs tag display defaults (tag sort, match mode, count style, tags on collapsed URLs, collapsed style, drop-opens-URL). Acts only on the logged-in user and never touches the display, UTub-list or member-list preferences; the preferences row is created on the first real change, and a no-op returns 200 'No change'. An empty body, unknown key, explicit null, non-boolean toggle or unknown enum value is a 400. An unauthenticated request is answered by the app-wide login_manager unauthorized_handler with a 302 redirect to the splash page (with next), and an authenticated user with an unvalidated email gets a 302 to the splash page (no next). Metrics: API_HIT only (no DOMAIN event).",
+    status_codes={
+        200: UpdateTagDisplayPreferencesResponseSchema,
+        400: ErrorResponse,
+    },
+)
+def update_tag_display_preferences(
+    update_tag_display_preferences_request: UpdateTagDisplayPreferencesRequest,
+) -> FlaskResponse:
+    """Applies the partial tag display defaults write for ``current_user``."""
+    return apply_tag_display_preferences_change(
+        tag_sort=update_tag_display_preferences_request.tag_sort,
+        tag_match_mode=update_tag_display_preferences_request.tag_match_mode,
+        tag_count_style=update_tag_display_preferences_request.tag_count_style,
+        show_tags_on_collapsed=update_tag_display_preferences_request.show_tags_on_collapsed,
+        collapsed_tags_style=update_tag_display_preferences_request.collapsed_tags_style,
+        tag_drop_opens_url=update_tag_display_preferences_request.tag_drop_opens_url,
     )
 
 

@@ -46,7 +46,15 @@ URLS_DEFAULTS = {
     "density": None,
     "disable_swipe_delete": False,
 }
-DEFAULT_MEMBER_SETTINGS = {"urls": URLS_DEFAULTS}
+TAGS_DEFAULTS = {
+    "tag_sort": None,
+    "tag_match_mode": None,
+    "tag_count_style": None,
+    "show_tags_on_collapsed": None,
+    "collapsed_tags_style": None,
+    "tag_drop_opens_url": None,
+}
+DEFAULT_MEMBER_SETTINGS = {"urls": URLS_DEFAULTS, "tags": TAGS_DEFAULTS}
 
 
 @contextmanager
@@ -315,6 +323,204 @@ def test_no_op_makes_no_commit_and_returns_full_slice(
     }
     assert commits == 0
     assert _stored(app, CREATOR_ID) == {"urls": {"view_mode": "list"}}
+
+
+# --------------------------------------------------------------------------
+# Tags section
+# --------------------------------------------------------------------------
+
+
+def test_tags_patch_round_trips_with_snake_case_keys(
+    add_multiple_users_to_utub_without_logging_in, login_first_user_without_register
+):
+    """
+    GIVEN a member
+    WHEN they PATCH tags overrides
+    THEN the echo carries snake_case keys, storage is sparse, and urls is untouched
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+    patch = {
+        "tag_sort": "name_az",
+        "tag_match_mode": "any",
+        "tag_count_style": "hidden",
+        "show_tags_on_collapsed": True,
+        "collapsed_tags_style": "all",
+        "tag_drop_opens_url": False,
+    }
+
+    response = _patch(app, client, csrf_token, {"tags": patch})
+
+    assert response.status_code == 200
+    assert response.json[MODELS.MEMBER_SETTINGS]["tags"] == patch
+    assert response.json[MODELS.MEMBER_SETTINGS]["urls"] == URLS_DEFAULTS
+    assert _stored(app, CREATOR_ID) == {"tags": patch}
+
+
+def test_tags_patch_does_not_change_urls_and_reverse(
+    add_multiple_users_to_utub_without_logging_in, login_first_user_without_register
+):
+    """
+    GIVEN stored urls and tags overrides
+    WHEN a tags patch and then a urls patch are sent
+    THEN each leaves the other section untouched
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+    _set_stored(
+        app,
+        CREATOR_ID,
+        {"urls": {"sort": "oldest"}, "tags": {"tag_sort": "newest"}},
+    )
+
+    _patch(app, client, csrf_token, {"tags": {"tag_match_mode": "any"}})
+    assert _stored(app, CREATOR_ID) == {
+        "urls": {"sort": "oldest"},
+        "tags": {"tag_sort": "newest", "tag_match_mode": "any"},
+    }
+
+    _patch(app, client, csrf_token, {"urls": {"density": "compact"}})
+    assert _stored(app, CREATOR_ID) == {
+        "urls": {"sort": "oldest", "density": "compact"},
+        "tags": {"tag_sort": "newest", "tag_match_mode": "any"},
+    }
+
+
+def test_mixed_urls_and_tags_patch(
+    add_multiple_users_to_utub_without_logging_in, login_first_user_without_register
+):
+    """
+    GIVEN a member
+    WHEN one PATCH carries both urls and tags
+    THEN both are stored
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+
+    response = _patch(
+        app,
+        client,
+        csrf_token,
+        {"urls": {"hide_copy_button": True}, "tags": {"tag_count_style": "total_only"}},
+    )
+
+    assert response.status_code == 200
+    assert _stored(app, CREATOR_ID) == {
+        "urls": {"hide_copy_button": True},
+        "tags": {"tag_count_style": "total_only"},
+    }
+
+
+@pytest.mark.parametrize(
+    "key, stored_value",
+    [
+        ("tag_sort", "newest"),
+        ("show_tags_on_collapsed", True),
+        ("tag_drop_opens_url", False),
+    ],
+)
+def test_tags_null_clears_override(
+    add_multiple_users_to_utub_without_logging_in,
+    login_first_user_without_register,
+    key,
+    stored_value,
+):
+    """
+    GIVEN a stored tags override
+    WHEN the member PATCHes it to null (including a false boolean, which is a
+        real override and not the default)
+    THEN the override is cleared and the row returns to NULL
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+    _set_stored(app, CREATOR_ID, {"tags": {key: stored_value}})
+
+    response = _patch(app, client, csrf_token, {"tags": {key: None}})
+
+    assert response.status_code == 200
+    assert response.json[MODELS.MEMBER_SETTINGS] == DEFAULT_MEMBER_SETTINGS
+    assert _stored(app, CREATOR_ID) is None
+
+
+def test_tags_false_boolean_is_stored_as_override(
+    add_multiple_users_to_utub_without_logging_in, login_first_user_without_register
+):
+    """
+    GIVEN a member
+    WHEN they PATCH tag_drop_opens_url to false
+    THEN false is stored (null, not false, means "use my default")
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+
+    response = _patch(app, client, csrf_token, {"tags": {"tag_drop_opens_url": False}})
+
+    assert response.status_code == 200
+    assert _stored(app, CREATOR_ID) == {"tags": {"tag_drop_opens_url": False}}
+
+
+@pytest.mark.parametrize(
+    "key, value",
+    [
+        ("tag_sort", "bogus"),
+        ("tag_match_mode", "some"),
+        ("tag_count_style", 3),
+        ("show_tags_on_collapsed", "yes"),
+        ("collapsed_tags_style", "off"),
+        ("tag_drop_opens_url", 1),
+        ("nope", True),
+    ],
+)
+def test_tags_invalid_value_returns_400(
+    add_multiple_users_to_utub_without_logging_in,
+    login_first_user_without_register,
+    key,
+    value,
+):
+    """
+    GIVEN a member
+    WHEN they PATCH an invalid tags value or an unknown tags key
+    THEN 400 keyed "tags.<key>" is returned and nothing is stored
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+
+    response = _patch(app, client, csrf_token, {"tags": {key: value}})
+
+    _assert_400(response, {f"tags.{key}"})
+    assert _stored(app, CREATOR_ID) is None
+
+
+def test_tags_patch_by_non_member_gets_404(
+    add_single_user_to_utub_without_logging_in, app
+):
+    """
+    GIVEN a user who was never added to the UTub
+    WHEN they PATCH tags overrides
+    THEN 404 is returned and no row is written
+    """
+    with _client_for(app, PLAIN_MEMBER_ID) as (client, csrf_token):
+        response = _patch(app, client, csrf_token, {"tags": {"tag_sort": "newest"}})
+
+    assert response.status_code == 404
+    with app.app_context():
+        assert Utub_Members.query.get((UTUB_ID_VALUE, PLAIN_MEMBER_ID)) is None
+
+
+def test_tags_no_op_makes_no_commit(
+    add_multiple_users_to_utub_without_logging_in, login_first_user_without_register
+):
+    """
+    GIVEN a stored tags override
+    WHEN the member PATCHes the same value again
+    THEN 200 is returned and nothing is committed
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+    _set_stored(app, CREATOR_ID, {"tags": {"tag_sort": "oldest"}})
+
+    responses: list[TestResponse] = []
+    commits = _count_commits(
+        lambda: responses.append(
+            _patch(app, client, csrf_token, {"tags": {"tag_sort": "oldest"}})
+        )
+    )
+
+    assert responses[0].status_code == 200
+    assert commits == 0
 
 
 # --------------------------------------------------------------------------
