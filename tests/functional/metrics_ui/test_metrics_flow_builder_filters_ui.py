@@ -74,8 +74,37 @@ def _press_disabled(button: Locator, *, other: Locator) -> None:
     leave focus on it, i.e. the button stays focusable and does nothing."""
     other.focus()
     expect(other).to_be_focused()
+    button.scroll_into_view_if_needed()
+    _wait_for_stable_box(button)
     button.click(force=True)
     expect(button).to_be_focused()
+
+
+def _wait_for_stable_box(control: Locator) -> None:
+    """Wait until the control's viewport rect is unchanged across three frames.
+
+    A force-click skips Playwright's stability check and presses at fixed
+    coordinates, so a button below the fold (mobile) that is still shifting after
+    the scroll or a row rebuild takes the press on whatever now sits there and
+    focus lands on the body instead."""
+    control.evaluate(
+        """element => new Promise(resolve => {
+            const key = () => {
+                const r = element.getBoundingClientRect();
+                return [r.x, r.y, r.width, r.height].join();
+            };
+            let last = key();
+            let stable = 0;
+            const tick = () => {
+                const now = key();
+                stable = now === last ? stable + 1 : 0;
+                last = now;
+                if (stable >= 3) resolve(true);
+                else requestAnimationFrame(tick);
+            };
+            requestAnimationFrame(tick);
+        })"""
+    )
 
 
 def _expect_enabled(button: Locator) -> None:
