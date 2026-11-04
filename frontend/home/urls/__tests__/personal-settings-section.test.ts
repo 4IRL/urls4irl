@@ -30,7 +30,10 @@ const UTUB_ID = 7;
 function member(
   urls: Partial<ResolvedMemberSettings["urls"]> = {},
 ): ResolvedMemberSettings {
-  return { urls: { ...EMPTY_MEMBER_SETTINGS.urls, ...urls } };
+  return {
+    ...EMPTY_MEMBER_SETTINGS,
+    urls: { ...EMPTY_MEMBER_SETTINGS.urls, ...urls },
+  };
 }
 
 function query<Found extends HTMLElement>(selector: string): Found {

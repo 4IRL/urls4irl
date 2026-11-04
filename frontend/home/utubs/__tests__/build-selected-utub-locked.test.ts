@@ -7,6 +7,16 @@ import {
 } from "../selectors.js";
 import { getState, resetStore, setState } from "../../../store/app-store.js";
 import { makeUtubSummaryItem } from "../../../__tests__/helpers/utub-summary.js";
+import { TAG_DISPLAY_PREFERENCE_DEFAULTS } from "../../../__tests__/helpers/tag-display.js";
+
+const NON_DEFAULT_TAG_DISPLAY = {
+  tagSort: "name_az",
+  tagMatchMode: "any",
+  tagCountStyle: "hidden",
+  showTagsOnCollapsed: true,
+  collapsedTagsStyle: "all",
+  tagDropOpensUrl: false,
+} as const;
 
 const { mockMetricsClient } = await vi.hoisted(
   async () => await import("../../../__tests__/helpers/mock-metrics-client.js"),
@@ -230,6 +240,7 @@ describe("buildSelectedUTub — locked-UTub affordances", () => {
         settingsVersion: 4,
         memberSettingsVersion: 7,
         memberSortVersion: 9,
+        tagDisplayVersion: 5,
         policyLearnedVersion: 2,
       });
 
@@ -237,7 +248,138 @@ describe("buildSelectedUTub — locked-UTub affordances", () => {
         settingsVersion: 4,
         memberSettingsVersion: 7,
         memberSortVersion: 9,
+        tagDisplayVersion: 5,
         policyLearnedVersion: 2,
+      });
+    });
+
+    it("shouldKeepSettings keeps a locally edited tag default for the same UTub and another UTub", () => {
+      setState({ activeUTubID: 1, tagDisplayVersion: 2 });
+      const captured = {
+        settingsVersion: 0,
+        memberSettingsVersion: 0,
+        memberSortVersion: 0,
+        tagDisplayVersion: 1,
+        policyLearnedVersion: 0,
+      };
+
+      for (const id of [1, 9]) {
+        expect(
+          shouldKeepSettings({
+            selectedUTub: makeUtubDetail({ id }),
+            captured,
+          }).keepTagDisplay,
+        ).toBe(true);
+      }
+      expect(
+        shouldKeepSettings({
+          selectedUTub: makeUtubDetail({ id: 1 }),
+          captured: { ...captured, tagDisplayVersion: 2 },
+        }).keepTagDisplay,
+      ).toBe(false);
+    });
+
+    it("applies the payload's tag defaults to preferences, keeping other preferences", () => {
+      buildSelectedUTub({
+        selectedUTub: makeUtubDetail({
+          id: 1,
+          tagDisplayDefaults: NON_DEFAULT_TAG_DISPLAY,
+        }),
+      });
+
+      expect(getState().preferences).toMatchObject(NON_DEFAULT_TAG_DISPLAY);
+      expect(getState().preferences.utubSort).toBe("recent_activity");
+    });
+
+    it("keepTagDisplay preserves the stored tag defaults", () => {
+      buildSelectedUTub({
+        selectedUTub: makeUtubDetail({
+          id: 1,
+          tagDisplayDefaults: NON_DEFAULT_TAG_DISPLAY,
+        }),
+        keepTagDisplay: true,
+      });
+
+      expect(getState().preferences).toMatchObject(
+        TAG_DISPLAY_PREFERENCE_DEFAULTS,
+      );
+    });
+
+    it.each([
+      ["a missing object", undefined],
+      ["a null object", null],
+      ["a bad sort", { ...NON_DEFAULT_TAG_DISPLAY, tagSort: "bogus" }],
+      [
+        "a bad match mode",
+        { ...NON_DEFAULT_TAG_DISPLAY, tagMatchMode: "some" },
+      ],
+      ["a bad count style", { ...NON_DEFAULT_TAG_DISPLAY, tagCountStyle: 1 }],
+      [
+        "a non-boolean switch",
+        { ...NON_DEFAULT_TAG_DISPLAY, showTagsOnCollapsed: "yes" },
+      ],
+      [
+        "a bad collapsed style",
+        { ...NON_DEFAULT_TAG_DISPLAY, collapsedTagsStyle: "none" },
+      ],
+      [
+        "a non-boolean drop switch",
+        { ...NON_DEFAULT_TAG_DISPLAY, tagDropOpensUrl: 0 },
+      ],
+    ])("writes nothing for %s", (_label, tagDisplayDefaults) => {
+      buildSelectedUTub({
+        selectedUTub: makeUtubDetail({
+          id: 1,
+          tagDisplayDefaults: tagDisplayDefaults as never,
+        }),
+      });
+
+      expect(getState().preferences).toMatchObject(
+        TAG_DISPLAY_PREFERENCE_DEFAULTS,
+      );
+    });
+
+    it("lands the member sort and the tag defaults from the same payload", () => {
+      buildSelectedUTub({
+        selectedUTub: makeUtubDetail({
+          id: 1,
+          memberSort: "recently_joined",
+          tagDisplayDefaults: NON_DEFAULT_TAG_DISPLAY,
+        }),
+      });
+
+      expect(getState().preferences).toMatchObject({
+        memberSort: "recently_joined",
+        ...NON_DEFAULT_TAG_DISPLAY,
+      });
+    });
+
+    it("keepMemberSort still lands the tag defaults, and keepTagDisplay still lands the member sort", () => {
+      buildSelectedUTub({
+        selectedUTub: makeUtubDetail({
+          id: 1,
+          memberSort: "recently_joined",
+          tagDisplayDefaults: NON_DEFAULT_TAG_DISPLAY,
+        }),
+        keepMemberSort: true,
+      });
+      expect(getState().preferences).toMatchObject({
+        memberSort: "name_az",
+        ...NON_DEFAULT_TAG_DISPLAY,
+      });
+
+      resetStore();
+      buildSelectedUTub({
+        selectedUTub: makeUtubDetail({
+          id: 1,
+          memberSort: "recently_joined",
+          tagDisplayDefaults: NON_DEFAULT_TAG_DISPLAY,
+        }),
+        keepTagDisplay: true,
+      });
+      expect(getState().preferences).toMatchObject({
+        memberSort: "recently_joined",
+        ...TAG_DISPLAY_PREFERENCE_DEFAULTS,
       });
     });
 
@@ -247,6 +389,7 @@ describe("buildSelectedUTub — locked-UTub affordances", () => {
         settingsVersion: 0,
         memberSettingsVersion: 0,
         memberSortVersion: 1,
+        tagDisplayVersion: 0,
         policyLearnedVersion: 0,
       };
 
@@ -319,6 +462,7 @@ describe("buildSelectedUTub — locked-UTub affordances", () => {
             settingsVersion,
             memberSettingsVersion,
             memberSortVersion: 0,
+            tagDisplayVersion: 0,
             policyLearnedVersion,
           },
         });
@@ -327,24 +471,28 @@ describe("buildSelectedUTub — locked-UTub affordances", () => {
         keepSettings: true,
         keepMemberSettings: false,
         keepMemberSort: false,
+        keepTagDisplay: false,
         forceShortLinksOff: false,
       });
       expect(decide(sameID, 3, 4)).toEqual({
         keepSettings: false,
         keepMemberSettings: false,
         keepMemberSort: false,
+        keepTagDisplay: false,
         forceShortLinksOff: true,
       });
       expect(decide(sameID, 2, 4)).toEqual({
         keepSettings: true,
         keepMemberSettings: false,
         keepMemberSort: false,
+        keepTagDisplay: false,
         forceShortLinksOff: true,
       });
       expect(decide(sameID, 3, 5)).toEqual({
         keepSettings: false,
         keepMemberSettings: false,
         keepMemberSort: false,
+        keepTagDisplay: false,
         forceShortLinksOff: false,
       });
       // A member-settings bump alone keeps only the member slice.
@@ -352,6 +500,7 @@ describe("buildSelectedUTub — locked-UTub affordances", () => {
         keepSettings: false,
         keepMemberSettings: true,
         keepMemberSort: false,
+        keepTagDisplay: false,
         forceShortLinksOff: false,
       });
       // Both bumped: each is kept independently.
@@ -359,6 +508,7 @@ describe("buildSelectedUTub — locked-UTub affordances", () => {
         keepSettings: true,
         keepMemberSettings: true,
         keepMemberSort: false,
+        keepTagDisplay: false,
         forceShortLinksOff: false,
       });
       // A different UTub keeps neither.
@@ -366,6 +516,7 @@ describe("buildSelectedUTub — locked-UTub affordances", () => {
         keepSettings: false,
         keepMemberSettings: false,
         keepMemberSort: false,
+        keepTagDisplay: false,
         forceShortLinksOff: false,
       });
     });
@@ -395,7 +546,27 @@ describe("buildSelectedUTub — locked-UTub affordances", () => {
           density: null,
           disable_swipe_delete: false,
         },
+        tags: {
+          tag_sort: null,
+          tag_match_mode: null,
+          tag_count_style: null,
+          show_tags_on_collapsed: null,
+          collapsed_tags_style: null,
+          tag_drop_opens_url: null,
+        },
       });
+    });
+
+    it("resolves a payload with tags overrides and fills the rest with null", () => {
+      buildSelectedUTub({
+        selectedUTub: makeUtubDetail({
+          id: 1,
+          memberSettings: { tags: { tag_sort: "newest" } } as never,
+        }),
+      });
+
+      expect(getState().memberSettings?.tags.tag_sort).toBe("newest");
+      expect(getState().memberSettings?.tags.tag_drop_opens_url).toBeNull();
     });
 
     it("keepMemberSettings preserves the stored slice while settings still apply", () => {
@@ -432,6 +603,7 @@ describe("buildSelectedUTub — locked-UTub affordances", () => {
           settings: { urls: { allow_short_links: true } } as never,
         }),
         keepMemberSort: false,
+        keepTagDisplay: false,
         forceShortLinksOff: true,
       });
 

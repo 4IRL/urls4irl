@@ -84,6 +84,7 @@ describe("settings slice defaults", () => {
 
 describe("memberSettings slice", () => {
   const MEMBER = {
+    ...EMPTY_MEMBER_SETTINGS,
     urls: { ...EMPTY_MEMBER_SETTINGS.urls, hide_copy_button: true },
   };
 
@@ -112,6 +113,27 @@ describe("memberSettings slice", () => {
     expect(getState().memberSortVersion).toBe(0);
   });
 
+  it("tag display defaults start at today's behavior with version 0, restored by resetStore", () => {
+    expect(getState().preferences).toMatchObject({
+      tagSort: "most_in_view",
+      tagMatchMode: "all",
+      tagCountStyle: "in_view_total",
+      showTagsOnCollapsed: false,
+      collapsedTagsStyle: "one_line",
+      tagDropOpensUrl: true,
+    });
+    expect(getState().tagDisplayVersion).toBe(0);
+
+    setState({
+      preferences: { ...getState().preferences, tagSort: "newest" },
+      tagDisplayVersion: 3,
+    });
+    resetStore();
+
+    expect(getState().preferences.tagSort).toBe("most_in_view");
+    expect(getState().tagDisplayVersion).toBe(0);
+  });
+
   it("is nulled when the active UTub changes without a replacement", () => {
     setState({ activeUTubID: 1, memberSettings: MEMBER });
     const listener = vi.fn();
@@ -129,6 +151,7 @@ describe("memberSettings slice", () => {
   it("keeps a replacement supplied in the same setState as the UTub change", () => {
     setState({ activeUTubID: 1, memberSettings: MEMBER });
     const next = {
+      ...EMPTY_MEMBER_SETTINGS,
       urls: { ...EMPTY_MEMBER_SETTINGS.urls, sort: "oldest" as const },
     };
 

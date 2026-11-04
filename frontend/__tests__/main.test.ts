@@ -7,6 +7,12 @@ vi.mock("../store/app-store.js", () => ({
       memberSort: "name_az",
       showRowCounts: false,
       showListTotals: true,
+      tagSort: "most_in_view",
+      tagMatchMode: "all",
+      tagCountStyle: "in_view_total",
+      showTagsOnCollapsed: false,
+      collapsedTagsStyle: "one_line",
+      tagDropOpensUrl: true,
     },
   })),
   setState: vi.fn(),
@@ -59,6 +65,12 @@ describe("loadInitialPreferencesState", () => {
       display_member_sort: "recently_joined",
       display_show_row_counts: true,
       display_show_list_totals: false,
+      display_tag_sort: "name_az",
+      display_tag_match_mode: "any",
+      display_tag_count_style: "hidden",
+      display_show_tags_on_collapsed: true,
+      display_collapsed_tags_style: "all",
+      display_tag_drop_opens_url: false,
     };
     const script = document.createElement("script");
     script.id = "user-preferences-data";
@@ -81,7 +93,63 @@ describe("loadInitialPreferencesState", () => {
         memberSort: "recently_joined",
         showRowCounts: true,
         showListTotals: false,
+        tagSort: "name_az",
+        tagMatchMode: "any",
+        tagCountStyle: "hidden",
+        showTagsOnCollapsed: true,
+        collapsedTagsStyle: "all",
+        tagDropOpensUrl: false,
       },
+    });
+  });
+
+  it("falls back to each tag default for bogus or missing tag values", async () => {
+    const script = document.createElement("script");
+    script.id = "user-preferences-data";
+    script.type = "application/json";
+    script.textContent = JSON.stringify({
+      display_theme: "dark",
+      display_tag_sort: "bogus",
+      display_tag_match_mode: "some",
+      display_tag_count_style: 3,
+      display_show_tags_on_collapsed: "yes",
+      display_collapsed_tags_style: null,
+      display_tag_drop_opens_url: 0,
+    });
+    document.body.appendChild(script);
+
+    const { loadInitialPreferencesState } =
+      await import("../lib/initial-state.js");
+    loadInitialPreferencesState();
+
+    expect(vi.mocked(setState)).toHaveBeenCalledWith({
+      preferences: expect.objectContaining({
+        tagSort: "most_in_view",
+        tagMatchMode: "all",
+        tagCountStyle: "in_view_total",
+        showTagsOnCollapsed: false,
+        collapsedTagsStyle: "one_line",
+        tagDropOpensUrl: true,
+      }),
+    });
+  });
+
+  it("keeps the tag defaults when the tag keys are absent", async () => {
+    const script = document.createElement("script");
+    script.id = "user-preferences-data";
+    script.type = "application/json";
+    script.textContent = JSON.stringify({ display_theme: "dark" });
+    document.body.appendChild(script);
+
+    const { loadInitialPreferencesState } =
+      await import("../lib/initial-state.js");
+    loadInitialPreferencesState();
+
+    expect(vi.mocked(setState)).toHaveBeenCalledWith({
+      preferences: expect.objectContaining({
+        tagSort: "most_in_view",
+        tagDropOpensUrl: true,
+      }),
     });
   });
 
