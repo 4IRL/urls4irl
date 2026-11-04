@@ -1211,6 +1211,130 @@ describe("preview field errors", () => {
   });
 });
 
+// A catalog whose modal_open has a groupable dim, so a breakdown is editable.
+const GROUPABLE_CATALOG: Catalog = {
+  ...CATALOG,
+  event_groups: CATALOG.event_groups.map((group) => ({
+    ...group,
+    events: group.events.map((event) =>
+      event.event_name === "modal_open"
+        ? {
+            ...event,
+            dims: event.dims.map((dim) => ({ ...dim, groupable: true })),
+          }
+        : event,
+    ),
+  })),
+};
+
+const NESTED_STEPS = [
+  {
+    stream: "ui",
+    label: "One",
+    event_name: "modal_open",
+    dim_filter: ["device_type:mobile"],
+    drop_breakdown: {
+      event_name: "modal_open",
+      group_by: "device_type",
+      dim_filter: ["device_type:desktop"],
+    },
+  },
+  STEPS[1],
+];
+
+function openNested(): void {
+  builder.open({ mode: "edit", entry: entry({ steps: NESTED_STEPS }) });
+  catalogs[catalogs.length - 1].resolve(GROUPABLE_CATALOG);
+}
+
+describe("preview field errors on nested and flow-level controls", () => {
+  it("marks the step filter, breakdown filter and breakdown selects in place", () => {
+    openNested();
+    rejectWith({
+      deferred: sendFirst(),
+      errors: {
+        "steps.0.dim_filter.0": ["Bad filter."],
+        "steps.0.drop_breakdown.dim_filter.0": ["Bad breakdown filter."],
+        "steps.0.drop_breakdown.event_name": ["Bad breakdown event."],
+        "steps.0.drop_breakdown.group_by": ["Bad group."],
+      },
+    });
+    const expected: [string, string][] = [
+      ["filter_dim", "Bad filter."],
+      ["breakdown_filter_dim", "Bad breakdown filter."],
+      ["breakdown_event_name", "Bad breakdown event."],
+      ["breakdown_group_by", "Bad group."],
+    ];
+    for (const [field, message] of expected) {
+      const element = control({ index: 0, field });
+      expect(element.getAttribute("aria-invalid")).toBe("true");
+      expect(describedTexts({ element })).toEqual([message]);
+    }
+    expect(marks()).toHaveLength(4);
+    for (const line of marks()) {
+      expect(previewBody().contains(line)).toBe(false);
+    }
+    expect(spoken()).toBe(
+      strings().METRICS_FLOW_PREVIEW_ANNOUNCE_PROBLEMS.replace("{count}", "4"),
+    );
+  });
+
+  it("marks the name input and the steps region, inserting after the existing error", () => {
+    openEdit();
+    rejectWith({
+      deferred: sendFirst(),
+      errors: {
+        display_name: ["Name one.", "Name two."],
+        steps: ["Steps bad."],
+      },
+    });
+    const input = nameInput();
+    expect(input.getAttribute("aria-invalid")).toBe("true");
+    expect(describedTexts({ element: input })).toEqual([
+      "Name one.",
+      "Name two.",
+    ]);
+    const nameError = input.nextElementSibling as HTMLElement;
+    expect(nameError.hasAttribute("data-preview-err")).toBe(false);
+    expect(nameError.nextElementSibling?.textContent).toBe("Name one.");
+    expect(nameError.nextElementSibling?.nextElementSibling?.textContent).toBe(
+      "Name two.",
+    );
+    const add = query({ selector: '[data-action="add"]' });
+    expect(add.getAttribute("aria-invalid")).toBe("true");
+    expect(describedTexts({ element: add })).toContain("Steps bad.");
+    expect(marks()).toHaveLength(3);
+  });
+
+  it("lists a message in the body when its control is not rendered", () => {
+    openEdit();
+    rejectWith({
+      deferred: sendFirst(),
+      errors: { "steps.1.api_method": ["No method here."] },
+    });
+    expect(marks().map((line) => line.textContent)).toEqual([
+      "steps.1.api_method: No method here.",
+    ]);
+    expect(previewBody().contains(marks()[0])).toBe(true);
+  });
+
+  it("speaks nothing when every message is already shown, and the count when one is new", () => {
+    openEdit();
+    sendFirst().resolve();
+    save();
+    const known = { "steps.0.event_name": ["Unknown event."] };
+    rejectWith({ deferred: saves[0], errors: known });
+    rejectWith({ deferred: nextPreview({ value: "B" }), errors: known });
+    expect(marks()).toHaveLength(0);
+    expect(spoken()).toBe("");
+    rejectWith({
+      deferred: nextPreview({ value: "C" }),
+      errors: { "steps.0.event_name": ["Unknown event.", "New one."] },
+    });
+    expect(spoken()).toBe(strings().METRICS_FLOW_PREVIEW_ANNOUNCE_PROBLEM_ONE);
+  });
+});
+
 describe("preview field errors, Delete and held problems", () => {
   it("starting Delete clears preview marks, keeps Save marks, none return on failure", () => {
     openEdit();
@@ -1285,6 +1409,15 @@ describe("preview announcements", () => {
         .replace("{total}", "10")
         .replace("{pct}", "–"),
     );
+  });
+
+  it("renders an empty-steps result without error and announces nothing", () => {
+    openEdit();
+    expect(() => sendFirst().resolve({ steps: [] } as never)).not.toThrow();
+    expect(
+      maybe({ selector: ".flow-builder-preview-body .flow-card-empty" }),
+    ).not.toBeNull();
+    expect(spoken()).toBe("");
   });
 
   it("announces the empty text for an all-zero result", () => {

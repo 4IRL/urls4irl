@@ -184,10 +184,6 @@ function entryFromResponse({ data }: { data: SaveResponse }): FlowEntry {
   };
 }
 
-/**
- * Creates the builder inside `container` (kept hidden until `open`).
- * Example: `createFlowBuilder({ container, callbacks }).open({ mode: "create" })`.
- */
 /** The control a preview 400 message is marked on. */
 type PreviewTarget =
   | { kind: "step"; stepKey: number; field: string }
@@ -247,6 +243,10 @@ function previewTargetFor({
   }
 }
 
+/**
+ * Creates the builder inside `container` (kept hidden until `open`).
+ * Example: `createFlowBuilder({ container, callbacks }).open({ mode: "create" })`.
+ */
 export function createFlowBuilder({
   container,
   callbacks,
@@ -307,8 +307,7 @@ export function createFlowBuilder({
   let previewErrorText: HTMLElement | null = null;
   let previewRetryButton: HTMLButtonElement | null = null;
   // What the body shows now; drives the frozen render and in-place title updates.
-  let previewShown: "placeholder" | "skeleton" | "card" | "error" | "fields" =
-    "placeholder";
+  let previewShown: "skeleton" | "card" | "fields" | null = null;
   let previewResponse: Schema<"FlowResponseSchema"> | null = null;
   // True from an accepted Retry click until the first non-updating render.
   let retryDriven = false;
@@ -388,7 +387,7 @@ export function createFlowBuilder({
     previewErrorBlock = null;
     previewErrorText = null;
     previewRetryButton = null;
-    previewShown = "placeholder";
+    previewShown = null;
     previewResponse = null;
     retryDriven = false;
     previewLive = null;
@@ -1482,7 +1481,7 @@ export function createFlowBuilder({
     previewResponse = null;
     retryDriven = false;
     showPreviewText({ text: strings().METRICS_FLOW_PREVIEW_PLACEHOLDER });
-    previewShown = "placeholder";
+    previewShown = null;
     previewLive = makeElement({
       tag: "span",
       className: "visually-hidden flow-builder-preview-live",
@@ -1673,7 +1672,7 @@ export function createFlowBuilder({
         previewResponse = null;
         if (state.kind === "placeholder") {
           showPreviewText({ text: strings().METRICS_FLOW_PREVIEW_PLACEHOLDER });
-          previewShown = "placeholder";
+          previewShown = null;
           resetPreviewAnnouncements();
         } else if (state.kind === "result") {
           previewResponse = state.response;
@@ -1699,7 +1698,7 @@ export function createFlowBuilder({
               ? strings().METRICS_FLOW_RATE_LIMITED
               : strings().METRICS_FLOW_PREVIEW_FAILED;
           showPreviewError({ message });
-          previewShown = "error";
+          previewShown = null;
           syncRetryDisabled();
           announcePreview({
             item: { kind: state.kind, text: message, problems: null },
@@ -1732,7 +1731,7 @@ export function createFlowBuilder({
         } else if (previewShown === "fields") {
           // The marks are gone, so "Fix the marked fields" would no longer be true.
           showPreviewText({ text: strings().METRICS_FLOW_PREVIEW_PLACEHOLDER });
-          previewShown = "placeholder";
+          previewShown = null;
         }
         syncRetryDisabled();
       },

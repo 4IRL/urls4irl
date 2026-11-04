@@ -280,6 +280,14 @@ export function renderFlowCard({
   card.dataset.flowId = id;
 
   const steps = response.steps;
+  if (steps.length === 0) {
+    // A malformed response has no first/last step to summarize: title + empty state.
+    const emptyTitle = document.createElement(preview ? "h4" : "h3");
+    emptyTitle.className = "flow-title";
+    emptyTitle.textContent = title;
+    card.append(emptyTitle, buildEmptyState());
+    return card;
+  }
   const allZero = isAllZero({ steps });
 
   const topStep = steps[0];

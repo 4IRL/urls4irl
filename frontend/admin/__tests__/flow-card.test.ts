@@ -389,6 +389,17 @@ describe("renderFlowCard", () => {
     expect(card.querySelectorAll(".cause-pill").length).toBe(0);
   });
 
+  it("renders title and empty state for an empty steps array without throwing", () => {
+    const card = renderFlowCard({
+      id: "create_utub",
+      title: "Create UTub",
+      response: { ...buildAddUrlResponse(), steps: [] },
+    });
+    expect(card.querySelector(".flow-title")?.textContent).toBe("Create UTub");
+    expect(card.querySelector(".flow-card-empty")).not.toBeNull();
+    expect(card.querySelector(".funnel")).toBeNull();
+  });
+
   it("renders the header summary with succeeded / conversion strings", () => {
     const card = renderFlowCard({
       id: "add_url_to_utub",
