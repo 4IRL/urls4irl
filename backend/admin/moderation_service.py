@@ -14,6 +14,9 @@ from backend import db
 from backend.admin.constants import AdminActionErrorCodes
 from backend.api_common.responses import FlaskResponse
 from backend.extensions import audit
+from backend.extensions.metrics.writer import record_event
+from backend.invite_links.services.lifecycle import revoke_invite_link_created_by
+from backend.metrics.events import EventName
 from backend.models.urls import Urls
 from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utub_tags import Utub_Tags
@@ -181,6 +184,14 @@ def delete_utub_admin(*, actor_id: int, utub_id: int, reason: str) -> FlaskRespo
     ).to_response()
 
 
+def _record_role_change_revoke(*, revoked: bool) -> None:
+    """Emit ``INVITE_LINK_REVOKED`` (role_change) after the commit that revoked a link."""
+    if revoked:
+        record_event(
+            EventName.INVITE_LINK_REVOKED, dimensions={"reason": "role_change"}
+        )
+
+
 def remove_member_admin(
     *, actor_id: int, utub_id: int, target_user_id: int, reason: str
 ) -> FlaskResponse:
@@ -228,6 +239,9 @@ def remove_member_admin(
 
     if utub.utub_creator != target_user_id:
         # Case a: non-creator removal
+        revoked_invite: bool = revoke_invite_link_created_by(
+            utub_id=utub_id, creator_id=target_user_id
+        )
         db.session.delete(membership)
         utub.set_last_updated()
         audit.record(
@@ -238,6 +252,7 @@ def remove_member_admin(
             metadata={"reason": reason, "utub_id": utub_id},
         )
         db.session.commit()
+        _record_role_change_revoke(revoked=revoked_invite)
         return AdminActionResponseSchema(
             status=STD_JSON.SUCCESS,
             message=ADMIN_ACTION_STRINGS.MOD_MEMBER_REMOVE_SUCCESS,
@@ -270,6 +285,9 @@ def remove_member_admin(
     )
     new_owner_id: int = new_owner_membership.user_id
     utub.utub_creator = new_owner_id
+    revoked_creator_invite: bool = revoke_invite_link_created_by(
+        utub_id=utub_id, creator_id=target_user_id
+    )
     db.session.delete(membership)
     # Flush the old creator's delete before promoting: the single-CREATOR unique
     # index is checked per statement and UPDATEs would otherwise flush first.
@@ -288,6 +306,7 @@ def remove_member_admin(
         },
     )
     db.session.commit()
+    _record_role_change_revoke(revoked=revoked_creator_invite)
     return AdminActionResponseSchema(
         status=STD_JSON.SUCCESS,
         message=ADMIN_ACTION_STRINGS.MOD_MEMBER_REMOVE_TRANSFERRED.format(

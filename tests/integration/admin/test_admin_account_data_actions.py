@@ -10,10 +10,12 @@ Covered endpoints:
 from __future__ import annotations
 
 from typing import Tuple
+from unittest.mock import patch
 
 import pytest
 from flask import Flask
 from flask.testing import FlaskClient
+from redis import Redis
 from requests import Response
 
 from backend import db
@@ -25,12 +27,15 @@ from backend.admin.account_data_service import (
 from backend.admin.constants import AdminActionErrorCodes
 from backend.api_v1.services.tokens import issue_refresh_token
 from backend.extensions.email_sender.email_sender import EmailSender
+from backend.invite_links.services.manage_invite_link import revoke_invite_row
+from backend.metrics.events import EventName
 from backend.models.api_refresh_tokens import ApiRefreshTokens
 from backend.models.audit_log import AuditLog
 from backend.models.contact_form_entries import ContactFormEntries
 from backend.models.email_validations import Email_Validations
 from backend.models.user_oauth_identities import UserOAuthIdentity
 from backend.models.users import User_Role, Users
+from backend.models.utub_invite_links import Utub_Invite_Links
 from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utubs import Utubs
 from backend.utils.strings.admin_portal_strs import (
@@ -38,7 +43,12 @@ from backend.utils.strings.admin_portal_strs import (
     ADMIN_AUDIT_ACTIONS,
 )
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
-from tests.utils_for_test import get_csrf_token
+from tests.integration.system.metrics_helpers import (
+    find_counter_keys,
+    parse_dims,
+    sum_counter_values,
+)
+from tests.utils_for_test import add_invite_link, get_csrf_token
 
 pytestmark = pytest.mark.admin
 
@@ -463,6 +473,124 @@ def test_admin_erase_user_idempotent_noop(
 
     with app.app_context():
         assert AuditLog.query.count() == 1
+
+
+# ---------------------------------------------------------------------------
+# ERASURE: invite link revoke
+# ---------------------------------------------------------------------------
+
+
+def _seed_shared_utub_with_target(app: Flask, creator_id: int, target_id: int) -> int:
+    """Create a UTub owned by ``creator_id`` with ``target_id`` as a co-creator."""
+    with app.app_context():
+        shared = Utubs(
+            name="InviteShared", utub_creator=creator_id, utub_description=""
+        )
+        db.session.add(shared)
+        db.session.flush()
+        db.session.add_all(
+            [
+                Utub_Members(
+                    utub_id=shared.id,
+                    user_id=creator_id,
+                    member_role=Member_Role.CREATOR,
+                ),
+                Utub_Members(
+                    utub_id=shared.id,
+                    user_id=target_id,
+                    member_role=Member_Role.CO_CREATOR,
+                ),
+            ]
+        )
+        db.session.commit()
+        return shared.id
+
+
+def _revoke_event_reasons(redis_client: Redis) -> list[str]:
+    return [
+        parse_dims(key)["reason"]
+        for key in find_counter_keys(redis_client, EventName.INVITE_LINK_REVOKED)
+    ]
+
+
+def test_admin_erase_user_revokes_link_with_audit_and_metric(
+    metrics_enabled_app: Flask,
+    provide_metrics_redis: Redis | None,
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN a target who created a live invite link in a shared UTub
+    WHEN POST /admin/users/<id>/erase (twice)
+    THEN the link is revoked, audit metadata carries invite_links_revoked=1, exactly
+         one INVITE_LINK_REVOKED (role_change) event is emitted after the commit; the
+         tombstoned no-op re-erase revokes and emits nothing more.
+    """
+    if provide_metrics_redis is None:
+        pytest.skip("metrics Redis is unavailable in this environment")
+    client, csrf, admin_user, app = login_admin_user_with_register
+    target = _seed_target_user_with_password(app)
+    shared_id = _seed_shared_utub_with_target(app, admin_user.id, target.id)
+    link_id = add_invite_link(app, shared_id, target.id)
+
+    response = _post_account(client, _ERASE_URL.format(target_user_id=target.id), csrf)
+
+    assert response.status_code == 200
+    with app.app_context():
+        assert Utub_Invite_Links.query.get(link_id).revoked_at is not None
+        audit_row = AuditLog.query.first()
+        assert audit_row.log_metadata.get("invite_links_revoked") == 1
+    assert sum_counter_values(provide_metrics_redis, EventName.INVITE_LINK_REVOKED) == 1
+    assert _revoke_event_reasons(provide_metrics_redis) == ["role_change"]
+
+    noop = _post_account(client, _ERASE_URL.format(target_user_id=target.id), csrf)
+
+    assert noop.status_code == 200
+    assert noop.get_json()[STD_JSON.MESSAGE] == ADMIN_ACTION_STRINGS.ACCOUNT_ERASE_NOOP
+    with app.app_context():
+        assert AuditLog.query.count() == 1
+    assert sum_counter_values(provide_metrics_redis, EventName.INVITE_LINK_REVOKED) == 1
+
+
+def test_admin_erase_user_commit_failure_emits_nothing_and_rolls_back_revoke(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN a target with a live invite link
+    WHEN the single commit in erase_user raises
+    THEN the revoke ran before the commit, no INVITE_LINK_REVOKED event is recorded
+         and, after rollback, the link is still unrevoked.
+    """
+    client, csrf, admin_user, app = login_admin_user_with_register
+    target = _seed_target_user_with_password(app)
+    shared_id = _seed_shared_utub_with_target(app, admin_user.id, target.id)
+    link_id = add_invite_link(app, shared_id, target.id)
+    stamped_before_commit: list[bool] = []
+
+    def revoke_and_record(invite: Utub_Invite_Links) -> None:
+        revoke_invite_row(invite)
+        stamped_before_commit.append(invite.revoked_at is not None)
+
+    with (
+        patch.dict(app.config, {"PROPAGATE_EXCEPTIONS": False}),
+        patch.object(db.session, "commit", side_effect=RuntimeError("boom")),
+        patch(
+            "backend.invite_links.services.lifecycle.revoke_invite_row",
+            side_effect=revoke_and_record,
+        ) as revoke_spy,
+        patch("backend.admin.account_data_service.record_event") as emit,
+    ):
+        response = _post_account(
+            client, _ERASE_URL.format(target_user_id=target.id), csrf
+        )
+
+    assert response.status_code == 500
+    revoke_spy.assert_called_once()
+    assert stamped_before_commit == [True]
+    emit.assert_not_called()
+    with app.app_context():
+        db.session.rollback()
+        db.session.expire_all()
+        assert Utub_Invite_Links.query.get(link_id).revoked_at is None
 
 
 # ---------------------------------------------------------------------------

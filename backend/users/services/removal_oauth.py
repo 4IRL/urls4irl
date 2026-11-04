@@ -99,6 +99,10 @@ def execute_removal_intent(
             metadata=asdict(counts),
         )
         record_event(EventName.ACCOUNT_DELETED)
+        for _ in range(counts.invite_links_revoked):
+            record_event(
+                EventName.INVITE_LINK_REVOKED, dimensions={"reason": "role_change"}
+            )
         return True
 
     return False

@@ -712,6 +712,10 @@ def apply_account_deletion(
         metadata=asdict(counts),
     )
     record_event(EventName.ACCOUNT_DELETED)
+    for _ in range(counts.invite_links_revoked):
+        record_event(
+            EventName.INVITE_LINK_REVOKED, dimensions={"reason": "role_change"}
+        )
     db.session.commit()
     logout_user()
     if EMAILS.EMAIL_VALIDATED_SESS_KEY in session.keys():
