@@ -567,6 +567,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/invite/{token}/join": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** @description Join the UTub an invite link belongs to. Every dead, unknown or malformed link is the same 404. */
+    post: operations["apiV1JoinViaInvite"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/utubs/{utub_id}/invite-link": {
     parameters: {
       query?: never;
@@ -2375,6 +2392,20 @@ export interface components {
     ApiGoogleAuthRequest: {
       /** @description Google id_token obtained from the native Google Sign-In SDK */
       idToken: string;
+    };
+    /** @description Successful join (or already a member) through an invite link. */
+    JoinViaInviteResponseSchema: {
+      /**
+       * @description Response status
+       * @constant
+       */
+      status: "Success";
+      /** @description Joined or already member */
+      message: string;
+      /** @description ID of the UTub that was joined */
+      utubID: number;
+      /** @description True when the caller was already a member (nothing was consumed) */
+      alreadyMember: boolean;
     };
     /** @description One UTub's current invite link as shown to its managers. */
     InviteLinkSchema: {
@@ -6702,6 +6733,64 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ErrorResponse_ApiAuthErrorCodes"];
+        };
+      };
+      /** @description Too many requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  apiV1JoinViaInvite: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        token: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful join (or already a member) through an invite link. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["JoinViaInviteResponseSchema"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
         };
       };
       /** @description Too many requests */

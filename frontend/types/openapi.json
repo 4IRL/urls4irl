@@ -2847,6 +2847,80 @@
         }
       }
     },
+    "/api/v1/invite/{token}/join": {
+      "post": {
+        "operationId": "apiV1JoinViaInvite",
+        "tags": ["mobile-api"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "description": "Join the UTub an invite link belongs to. Every dead, unknown or malformed link is the same 404.",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful join (or already a member) through an invite link.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JoinViaInviteResponseSchema"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/utubs/{utub_id}/invite-link": {
       "get": {
         "operationId": "apiV1GetInviteLink",
@@ -11953,6 +12027,30 @@
           }
         },
         "required": ["idToken"],
+        "type": "object"
+      },
+      "JoinViaInviteResponseSchema": {
+        "description": "Successful join (or already a member) through an invite link.",
+        "properties": {
+          "status": {
+            "const": "Success",
+            "description": "Response status",
+            "type": "string"
+          },
+          "message": {
+            "description": "Joined or already member",
+            "type": "string"
+          },
+          "utubID": {
+            "description": "ID of the UTub that was joined",
+            "type": "integer"
+          },
+          "alreadyMember": {
+            "description": "True when the caller was already a member (nothing was consumed)",
+            "type": "boolean"
+          }
+        },
+        "required": ["status", "message", "utubID", "alreadyMember"],
         "type": "object"
       },
       "InviteLinkSchema": {

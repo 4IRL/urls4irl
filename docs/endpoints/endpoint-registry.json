@@ -2003,6 +2003,42 @@
     {
       "blueprint": "api_v1",
       "decorators": [
+        "api_email_validation_required",
+        "api_route",
+        "limiter.shared_limit(INVITE_LINK_JOIN_RATE_LIMIT, scope=INVITE_LINK_JOIN_RATE_SCOPE, key_func=invite_link_join_rate_key, methods=['POST'])"
+      ],
+      "endpoint": "api_v1.api_v1_join_via_invite",
+      "handler": "backend/api_v1/invite_link_routes.py:api_v1_join_via_invite",
+      "js": {
+        "indirect": null,
+        "no_js": "mobile-api",
+        "route_keys": [],
+        "template_url_for": []
+      },
+      "methods": [
+        "POST"
+      ],
+      "rule": "/api/v1/invite/<token>/join",
+      "schemas": {
+        "query": null,
+        "request": null,
+        "response": "backend.schemas.invite_links.JoinViaInviteResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.invite_links.JoinViaInviteResponseSchema",
+          "401": "backend.schemas.errors.ErrorResponse",
+          "403": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse",
+          "429": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.invite_links.services.join_via_invite:join_via_invite"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "api_v1",
+      "decorators": [
         "api_authentication_required",
         "api_route"
       ],

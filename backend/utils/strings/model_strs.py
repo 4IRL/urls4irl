@@ -105,6 +105,7 @@ TOKEN = "token"
 MAX_USES = "maxUses"
 USE_COUNT = "useCount"
 CREATOR_USERNAME = "creatorUsername"
+ALREADY_MEMBER = "alreadyMember"
 
 
 class MODELS:
@@ -211,4 +212,5 @@ class MODELS:
     TOKEN = TOKEN
     MAX_USES = MAX_USES
     USE_COUNT = USE_COUNT
+    ALREADY_MEMBER = ALREADY_MEMBER
     CREATOR_USERNAME = CREATOR_USERNAME

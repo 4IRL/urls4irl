@@ -450,6 +450,15 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Template:** —
 - **JS:** no-js: mobile-api
 
+### `POST /api/v1/invite/<token>/join` — `api_v1.api_v1_join_via_invite`
+
+- **Handler:** `backend/api_v1/invite_link_routes.py:api_v1_join_via_invite`
+- **Decorators:** `api_email_validation_required`, `api_route`, `limiter.shared_limit(INVITE_LINK_JOIN_RATE_LIMIT, scope=INVITE_LINK_JOIN_RATE_SCOPE, key_func=invite_link_join_rate_key, methods=['POST'])`
+- **Service:** `backend.invite_links.services.join_via_invite:join_via_invite`
+- **Schema:** response: `backend.schemas.invite_links.JoinViaInviteResponseSchema`; status: 200 `backend.schemas.invite_links.JoinViaInviteResponseSchema`, 401 `backend.schemas.errors.ErrorResponse`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`, 429 `backend.schemas.errors.ErrorResponse`
+- **Template:** —
+- **JS:** no-js: mobile-api
+
 ### `GET /api/v1/me` — `api_v1.api_v1_get_me`
 
 - **Handler:** `backend/api_v1/routes.py:api_v1_get_me`

@@ -242,6 +242,7 @@ class API_V1_ROUTES:
     REPLACE_INVITE_LINK = _API_V1 + "api_v1_replace_invite_link"
     REVOKE_INVITE_LINK = _API_V1 + "api_v1_revoke_invite_link"
     JOIN_VIA_INVITE = _API_V1 + "api_v1_join_via_invite"
+    JOIN_VIA_INVITE = _API_V1 + "api_v1_join_via_invite"
 
 
 class ROUTES:
