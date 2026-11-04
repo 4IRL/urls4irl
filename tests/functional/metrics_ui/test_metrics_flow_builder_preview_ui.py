@@ -9,7 +9,7 @@ from urllib.parse import parse_qs, urlparse
 import pytest
 from flask import Flask
 from playwright.sync_api import Error as PlaywrightError
-from playwright.sync_api import Page, Request, Route, expect
+from playwright.sync_api import Locator, Page, Request, Route, expect
 
 from backend import db
 from backend.config import ConfigTestUI
@@ -39,14 +39,29 @@ FLOW_PREVIEW_URL_RE: re.Pattern[str] = re.compile(
 SETTLE_TIMEOUT_MS: int = 15_000
 DESKTOP_VIEWPORT_WIDTH: int = 1280
 SOFT_KEYBOARD_VIEWPORT: dict[str, int] = {"width": 420, "height": 480}
-ANNOUNCE_RESULT_RE: re.Pattern[str] = re.compile(
-    r"^Preview updated: \S+ of \S+ succeeded, \S+ conversion\.$"
+ANNOUNCE_RESULT_PATTERN: str = (
+    re.escape(UI_TEST_STRINGS.METRICS_FLOW_PREVIEW_ANNOUNCE_RESULT)
+    .replace(re.escape("{succeeded}"), r"(\S+)")
+    .replace(re.escape("{total}"), r"(\S+)")
+    .replace(re.escape("{pct}"), r"\S+")
 )
+ANNOUNCE_RESULT_RE: re.Pattern[str] = re.compile(f"^{ANNOUNCE_RESULT_PATTERN}$")
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+
+def _center_hits(locator: Locator) -> bool:
+    """True when the element's center point hit-tests to the element itself."""
+    return locator.evaluate(
+        """(el) => {
+            const rect = el.getBoundingClientRect();
+            return document.elementFromPoint(
+                rect.x + rect.width / 2, rect.y + rect.height / 2) === el;
+        }"""
+    )
 
 
 class HeldPreviews:
@@ -277,7 +292,9 @@ def test_preview_real_result_renders_seeded_counts_and_announces_them(
     assert counts, "preview card rendered no step counts"
     assert all(text.strip() not in ("", "0") for text in counts)
     announcement = page.locator(MDL.FLOW_PREVIEW_LIVE_REGION).inner_text()
-    succeeded, total = re.findall(r"updated: (\S+) of (\S+) succeeded", announcement)[0]
+    match = ANNOUNCE_RESULT_RE.fullmatch(announcement)
+    assert match is not None
+    succeeded, total = match.groups()  # template order: {succeeded}, {total}
     assert counts[0].strip() == total
     assert counts[-1].strip() == succeeded
 
@@ -563,14 +580,7 @@ def test_preview_stacks_below_save_at_420_without_occluding_the_edited_field(
     short_height = page.evaluate("() => window.innerHeight")
     assert short_box["y"] >= 0
     assert short_box["y"] + short_box["height"] <= short_height
-    center_is_input = label.evaluate(
-        """(el) => {
-            const rect = el.getBoundingClientRect();
-            return document.elementFromPoint(
-                rect.x + rect.width / 2, rect.y + rect.height / 2) === el;
-        }"""
-    )
-    assert center_is_input
+    assert _center_hits(label)
     positions = page.locator(MDL.FLOW_PREVIEW_REGION).evaluate(
         """(el) => {
             const out = [];
@@ -594,10 +604,4 @@ def test_preview_stacks_below_save_at_420_without_occluding_the_edited_field(
     assert settled_box is not None
     assert settled_box["y"] >= 0
     assert settled_box["y"] + settled_box["height"] <= short_height
-    assert label.evaluate(
-        """(el) => {
-            const rect = el.getBoundingClientRect();
-            return document.elementFromPoint(
-                rect.x + rect.width / 2, rect.y + rect.height / 2) === el;
-        }"""
-    )
+    assert _center_hits(label)
