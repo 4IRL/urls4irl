@@ -35,6 +35,12 @@ _EXPECTED_USER_PREFERENCES_COLUMNS = {
     "memberSort",
     "showRowCounts",
     "showListTotals",
+    "tagSort",
+    "tagMatchMode",
+    "tagCountStyle",
+    "showTagsOnCollapsed",
+    "collapsedTagsStyle",
+    "tagDropOpensUrl",
     "createdAt",
     "updatedAt",
 }
@@ -49,6 +55,10 @@ _ENUM_BACKED_COLUMNS = {
     "dateFormat",
     "utubSort",
     "memberSort",
+    "tagSort",
+    "tagMatchMode",
+    "tagCountStyle",
+    "collapsedTagsStyle",
 }
 
 _PRE_UTUB_LIST_REVISION = _VIEW_SPLIT_REVISION

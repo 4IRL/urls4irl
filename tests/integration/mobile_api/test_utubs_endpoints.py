@@ -505,6 +505,32 @@ def test_get_single_utub_includes_member_sort_and_joined_at(
     assert MODELS.JOINED_AT in response_json[MODELS.MEMBERS][0]
 
 
+def test_get_single_utub_includes_tag_display_defaults(
+    app: Flask,
+    api_client: FlaskClient,
+    bearer_headers_first_user: dict[str, str],
+    add_single_utub_as_user_without_logging_in,
+):
+    """
+    GIVEN a validated UTub owner with no preferences row
+    WHEN GET /api/v1/utubs/1
+    THEN the response carries the six resolved ``tagDisplayDefaults``
+    """
+    response = api_client.get(
+        _get_single_utub_url(app, utub_id=1), headers=bearer_headers_first_user
+    )
+
+    assert response.status_code == 200
+    assert response.get_json()[MODELS.TAG_DISPLAY_DEFAULTS] == {
+        MODELS.TAG_SORT: "most_in_view",
+        MODELS.TAG_MATCH_MODE: "all",
+        MODELS.TAG_COUNT_STYLE: "in_view_total",
+        MODELS.SHOW_TAGS_ON_COLLAPSED: False,
+        MODELS.COLLAPSED_TAGS_STYLE: "one_line",
+        MODELS.TAG_DROP_OPENS_URL: True,
+    }
+
+
 def test_members_with_different_sorts_each_see_their_own_order(
     app: Flask,
     api_client: FlaskClient,

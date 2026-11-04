@@ -5,7 +5,11 @@ from pydantic import ValidationError
 
 from backend.schemas.utubs import UtubDetailSchema
 from backend.utils.strings.model_strs import MODELS
-from tests.settings_stub import DEFAULT_MEMBER_SETTINGS_DICT, DEFAULT_SETTINGS_DICT
+from tests.settings_stub import (
+    DEFAULT_MEMBER_SETTINGS_DICT,
+    DEFAULT_SETTINGS_DICT,
+    DEFAULT_TAG_DISPLAY_DEFAULTS_DICT,
+)
 
 pytestmark = pytest.mark.unit
 
@@ -36,6 +40,7 @@ _UTUB_DICT = {
     MODELS.IS_LOCKED: False,
     MODELS.CURRENT_USER: 1,
     MODELS.MEMBER_SORT: "name_az",
+    MODELS.TAG_DISPLAY_DEFAULTS: DEFAULT_TAG_DISPLAY_DEFAULTS_DICT,
 }
 
 
@@ -58,11 +63,38 @@ def test_utub_detail_schema_settings_defaults_are_the_last_fields():
     assert dumped[MODELS.SETTINGS] == DEFAULT_SETTINGS_DICT
     assert dumped[MODELS.MEMBER_SETTINGS] == DEFAULT_MEMBER_SETTINGS_DICT
     assert dumped[MODELS.MEMBER_SORT] == "name_az"
-    assert list(dumped)[-3:] == [
+    assert dumped[MODELS.TAG_DISPLAY_DEFAULTS] == DEFAULT_TAG_DISPLAY_DEFAULTS_DICT
+    assert list(dumped)[-4:] == [
         MODELS.SETTINGS,
         MODELS.MEMBER_SETTINGS,
         MODELS.MEMBER_SORT,
+        MODELS.TAG_DISPLAY_DEFAULTS,
     ]
+
+
+@pytest.mark.parametrize(
+    "bad_defaults",
+    [
+        {**DEFAULT_TAG_DISPLAY_DEFAULTS_DICT, "tagSort": "bogus"},
+        {**DEFAULT_TAG_DISPLAY_DEFAULTS_DICT, "tagDropOpensUrl": None},
+        {"tagSort": "name_az"},
+    ],
+)
+def test_utub_detail_schema_tag_display_defaults_rejects_bad_values(bad_defaults):
+    with pytest.raises(ValidationError):
+        UtubDetailSchema.model_validate(
+            {**_UTUB_DICT, MODELS.TAG_DISPLAY_DEFAULTS: bad_defaults}
+        )
+
+
+def test_utub_detail_schema_tag_display_defaults_required():
+    data = {
+        key: value
+        for key, value in _UTUB_DICT.items()
+        if key != MODELS.TAG_DISPLAY_DEFAULTS
+    }
+    with pytest.raises(ValidationError):
+        UtubDetailSchema.model_validate(data)
 
 
 def test_utub_detail_schema_member_sort_rejects_unknown_value():

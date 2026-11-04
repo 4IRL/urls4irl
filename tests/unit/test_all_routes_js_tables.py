@@ -73,6 +73,7 @@ EXPECTED_JS_ROUTE_URLS: dict[str, str] = {
     "logout": "/logout",
     "updateUtubListPreferences": "/users/preferences/utubs",
     "updateMemberListPreferences": "/users/preferences/members",
+    "updateTagDisplayPreferences": "/users/preferences/tags",
     # Contact
     "contactUs": "/contact",
     # Search

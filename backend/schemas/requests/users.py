@@ -12,10 +12,14 @@ from pydantic import (
 )
 
 from backend.models.user_preferences import (
+    CollapsedTagsStyle,
     DateFormat,
     Density,
     MemberSort,
     SortOrder,
+    TagCountStyle,
+    TagMatchMode,
+    TagSort,
     Theme,
     UtubSort,
     ViewMode,
@@ -221,6 +225,56 @@ class UpdateMemberListPreferencesRequest(BaseModel):
     def reject_empty_or_null(self) -> UpdateMemberListPreferencesRequest:
         if not self.model_fields_set:
             raise ValueError("At least one member list preference is required")
+        for field_name in self.model_fields_set:
+            if getattr(self, field_name) is None:
+                raise ValueError(f"{field_name} cannot be null")
+        return self
+
+
+class UpdateTagDisplayPreferencesRequest(BaseModel):
+    """Partial write of the six tag display defaults. Omitted means "not sent";
+    an explicit ``null`` is never a value and is rejected, as are unknown keys
+    and an empty body."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    tag_sort: TagSort | None = Field(
+        default=None,
+        alias="tagSort",
+        description=(
+            "How tags are sorted: most_in_view, most_used, name_az, newest, or oldest"
+        ),
+    )
+    tag_match_mode: TagMatchMode | None = Field(
+        default=None,
+        alias="tagMatchMode",
+        description="Whether selected tags match all or any of a URL's tags",
+    )
+    tag_count_style: TagCountStyle | None = Field(
+        default=None,
+        alias="tagCountStyle",
+        description="How tag counts show: in_view_total, total_only, or hidden",
+    )
+    show_tags_on_collapsed: StrictBool | None = Field(
+        default=None,
+        alias="showTagsOnCollapsed",
+        description="Whether collapsed URL cards show their tags",
+    )
+    collapsed_tags_style: CollapsedTagsStyle | None = Field(
+        default=None,
+        alias="collapsedTagsStyle",
+        description="How collapsed URL cards show tags: one_line or all",
+    )
+    tag_drop_opens_url: StrictBool | None = Field(
+        default=None,
+        alias="tagDropOpensUrl",
+        description="Whether dropping a tag on a URL also opens that URL",
+    )
+
+    @model_validator(mode="after")
+    def reject_empty_or_null(self) -> UpdateTagDisplayPreferencesRequest:
+        if not self.model_fields_set:
+            raise ValueError("At least one tag display preference is required")
         for field_name in self.model_fields_set:
             if getattr(self, field_name) is None:
                 raise ValueError(f"{field_name} cannot be null")

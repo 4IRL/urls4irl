@@ -144,6 +144,12 @@ def build_user_data_export_core(
         member_sort=resolved_preferences.member_sort.value,
         show_row_counts=resolved_preferences.show_row_counts,
         show_list_totals=resolved_preferences.show_list_totals,
+        tag_sort=resolved_preferences.tag_sort.value,
+        tag_match_mode=resolved_preferences.tag_match_mode.value,
+        tag_count_style=resolved_preferences.tag_count_style.value,
+        show_tags_on_collapsed=resolved_preferences.show_tags_on_collapsed,
+        collapsed_tags_style=resolved_preferences.collapsed_tags_style.value,
+        tag_drop_opens_url=resolved_preferences.tag_drop_opens_url,
     )
     # Trashed UTubs and trashed URLs are included deliberately: their data is
     # still held during the retention window, so the export must cover it. No
