@@ -11,6 +11,7 @@ import { showURLOutcomeBanner } from "../urls/outcome-banner.js";
 import { fillTemplate } from "../../lib/string-template.js";
 import { getActiveUTubID } from "../utubs/utils.js";
 import { debug } from "../../lib/debug.js";
+import { effectiveTagDisplaySettings } from "./display-settings.js";
 
 const log = debug("tags:drag-drop");
 
@@ -394,7 +395,13 @@ function showDropOutcome({
     $(OPEN_COMBOBOX_SELECTOR).length === 0 &&
     getState().multiSelectMode === false &&
     cardVisible;
-  if (canSelect && card.attr("urlSelected") !== "true") selectURLCard(card);
+  if (
+    canSelect &&
+    effectiveTagDisplaySettings().tagDropOpensUrl &&
+    card.attr("urlSelected") !== "true"
+  ) {
+    selectURLCard(card);
+  }
 
   const values = { tag: tagString, title: card.find(".urlTitle").text() };
   showURLOutcomeBanner({

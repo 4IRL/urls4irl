@@ -137,7 +137,6 @@
   "logic/multi-select.ts:removeIds",
   "logic/multi-select.ts:symmetricToggle",
   "logic/multi-select.ts:toggleId",
-  "logic/tag-filtering.ts:computeURLVisibility",
   "logic/tag-filtering.ts:computeVisibleTagCounts",
   "logic/tag-search.ts:filterTagsByName",
   "logic/url-search.ts:filterURLsBySearchTerm",

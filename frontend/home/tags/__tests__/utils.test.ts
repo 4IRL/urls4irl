@@ -1,9 +1,71 @@
 import {
+  collapsedTagFilterAnnouncement,
   currentTagDeckIDs,
   isATagSelected,
   isTagInUTubTagDeck,
+  tagFilterPillLabel,
+  tagFilterResultAnnouncement,
 } from "../utils.js";
 import { resetStore, setState } from "../../../store/app-store.js";
+
+describe("match-mode wording", () => {
+  it.each([
+    { count: 0, mode: "all" as const, expected: "" },
+    { count: 0, mode: "any" as const, expected: "" },
+    { count: 1, mode: "any" as const, expected: "1 filtered" },
+    { count: 2, mode: "all" as const, expected: "2 filtered" },
+    { count: 2, mode: "any" as const, expected: "2 filtered · any" },
+  ])("pill $count/$mode -> '$expected'", ({ count, mode, expected }) => {
+    expect(tagFilterPillLabel({ count, mode })).toBe(expected);
+  });
+
+  it.each([
+    { count: 1, mode: "any" as const, expected: "1 tag filtered" },
+    { count: 3, mode: "all" as const, expected: "3 tags filtered" },
+    {
+      count: 3,
+      mode: "any" as const,
+      expected: "3 tags filtered, matching any",
+    },
+  ])("collapsed announcement $count/$mode", ({ count, mode, expected }) => {
+    expect(collapsedTagFilterAnnouncement({ count, mode })).toBe(expected);
+  });
+
+  it.each([
+    {
+      count: 0,
+      mode: "all" as const,
+      expected: "0 URLs shown, matching all selected tags",
+    },
+    {
+      count: 1,
+      mode: "all" as const,
+      expected: "1 URL shown, matching all selected tags",
+    },
+    {
+      count: 4,
+      mode: "all" as const,
+      expected: "4 URLs shown, matching all selected tags",
+    },
+    {
+      count: 0,
+      mode: "any" as const,
+      expected: "0 URLs shown, matching any selected tags",
+    },
+    {
+      count: 1,
+      mode: "any" as const,
+      expected: "1 URL shown, matching any selected tags",
+    },
+    {
+      count: 4,
+      mode: "any" as const,
+      expected: "4 URLs shown, matching any selected tags",
+    },
+  ])("result sentence $count/$mode", ({ count, mode, expected }) => {
+    expect(tagFilterResultAnnouncement({ count, mode })).toBe(expected);
+  });
+});
 
 describe("currentTagDeckIDs", () => {
   beforeEach(() => {

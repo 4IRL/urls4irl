@@ -180,6 +180,9 @@ export function openTagSheet({
   // instead — aria-modal is set only while open, and the body's inert/aria-hidden
   // are cleared here.
   $(SHEET_SELECTOR).addClass(SHEET_OPEN_CLASS).attr("aria-modal", "true");
+  // The handle's count must not speak while the sheet is open: the settings
+  // surface owns the live announcements then. closeTagSheet restores it.
+  $(HANDLE_COUNT_SELECTOR).removeAttr("aria-live");
   $(SHEET_BODY_SELECTOR).prop("inert", false).attr("aria-hidden", "false");
   // Defer the backdrop class one tick so the CSS opacity transition fires. Also
   // clear any inline opacity set mid-drag so the committed-open gesture does not
@@ -339,6 +342,8 @@ export function closeTagSheet({
   const wasOpen = sheetOpen;
 
   $(SHEET_SELECTOR).removeClass(SHEET_OPEN_CLASS).removeAttr("aria-modal");
+  // Idempotent: also runs on an already-closed sheet.
+  $(HANDLE_COUNT_SELECTOR).attr("aria-live", "polite");
   $(SHEET_BODY_SELECTOR).prop("inert", true).attr("aria-hidden", "true");
   $(BACKDROP_SELECTOR).removeClass(BACKDROP_SHOW_CLASS);
   $(document).off(ESCAPE_KEYDOWN_NAMESPACE);
@@ -794,8 +799,11 @@ export function initTagSheet(): void {
   // never accumulates duplicates across UTub changes.
   on(AppEvents.TAG_FILTER_CHANGED, ({ selectedTagIDs }) => {
     const count = selectedTagIDs.length;
-    $(HANDLE_COUNT_SELECTOR)
-      .toggleClass(HIDDEN_CLASS, count === 0)
-      .text(count > 0 ? String(count) : "");
+    const handleCount = $(HANDLE_COUNT_SELECTOR);
+    handleCount.toggleClass(HIDDEN_CLASS, count === 0);
+    // Skip an unchanged write so a match-mode change that leaves the selection
+    // alone is not re-announced.
+    const nextText = count > 0 ? String(count) : "";
+    if (handleCount.text() !== nextText) handleCount.text(nextText);
   });
 }

@@ -18,7 +18,8 @@ import { getState, setState } from "../../store/app-store.js";
 import { getNumOfUTubs } from "../utubs/utils.js";
 import { refreshTagDeckTagCount } from "./deck.js";
 import { closeTagNameFilter, reapplyTagFilter } from "./search.js";
-import { buildTagFilterInDeck } from "./tags.js";
+import { reapplyTagSortForNonDefault } from "../urls/cards/filtering.js";
+import { buildTagFilterInDeck, syncTagCapState } from "./tags.js";
 import {
   FORM_CANCEL_TRIGGER,
   FORM_SUBMIT_TRIGGER,
@@ -217,6 +218,10 @@ function createUTubTagSuccess(
   );
   refreshTagDeckTagCount();
   reapplyTagFilter();
+  // A new tag appends under "Most in view"; the other orders place it by rule.
+  reapplyTagSortForNonDefault();
+  // A new chip must respect the "all" selection cap if it is already reached.
+  syncTagCapState();
 
   // Show unselect all and update buttons if not already shown
   $("#unselectAllTagFilters").showClassNormal();

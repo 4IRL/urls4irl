@@ -5,7 +5,7 @@ import { AppEvents, emit } from "../../../../lib/event-bus.js";
 import { APP_CONFIG } from "../../../../lib/config.js";
 import { disposeTooltipsWithin } from "../../../../lib/tooltips.js";
 import { getState, setState } from "../../../../store/app-store.js";
-import { isATagSelected } from "../../../tags/utils.js";
+import { isATagSelected, readTagCount } from "../../../tags/utils.js";
 import { applyRowCountDelta } from "../../../utubs/row-counts.js";
 import { getNumOfVisibleURLs } from "../../utils.js";
 import { renderAppliedTagsForUrl } from "../../tags/tag-render.js";
@@ -55,7 +55,8 @@ vi.mock("../../../../store/app-store.js", () => ({
   setState: vi.fn(),
 }));
 
-vi.mock("../../../tags/utils.js", () => ({
+vi.mock("../../../tags/utils.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../../tags/utils.js")>()),
   isATagSelected: vi.fn(() => false),
 }));
 
@@ -415,10 +416,14 @@ describe("removeURLCardFromDeck", () => {
         <div class="urlRow" utuburlid="11" data-utub-url-tag-ids=""></div>
       </div>
       <div class="tagFilter" data-utub-tag-id="1">
-        <span class="tagAppliedToUrlsCount">3 / 5</span>
+        <span class="tagAppliedToUrlsCount">
+          <span class="tagCountInView">3</span><span class="tagCountSep"> / </span><span class="tagCountTotal">5</span>
+        </span>
       </div>
       <div class="tagFilter" data-utub-tag-id="2">
-        <span class="tagAppliedToUrlsCount">malformed</span>
+        <span class="tagAppliedToUrlsCount">
+          <span class="tagCountInView">malformed</span><span class="tagCountSep"> / </span><span class="tagCountTotal"></span>
+        </span>
       </div>
     `;
     mockStoreUrls([10, 11]);
@@ -512,19 +517,20 @@ describe("removeURLCardFromDeck", () => {
 
     removeURLCardFromDeck({ urlCard, utubUrlID: 10, animate: false });
 
-    expect(
-      $('.tagFilter[data-utub-tag-id="1"] .tagAppliedToUrlsCount').text(),
-    ).toBe("2 / 4");
+    expect(readTagCount($('.tagFilter[data-utub-tag-id="1"]'))).toEqual({
+      inView: 2,
+      total: 4,
+    });
   });
 
-  it("skips a tag whose count text is malformed", () => {
+  it("skips a tag whose count is malformed", () => {
     const urlCard = getUrlCard(10).attr("data-utub-url-tag-ids", "2");
 
     removeURLCardFromDeck({ urlCard, utubUrlID: 10, animate: false });
 
-    expect(
-      $('.tagFilter[data-utub-tag-id="2"] .tagAppliedToUrlsCount').text(),
-    ).toBe("malformed");
+    expect($('.tagFilter[data-utub-tag-id="2"] .tagCountInView').text()).toBe(
+      "malformed",
+    );
     expect(getDeckOrder()).toEqual(["11"]);
   });
 
@@ -535,9 +541,10 @@ describe("removeURLCardFromDeck", () => {
       animate: false,
     });
 
-    expect(
-      $('.tagFilter[data-utub-tag-id="1"] .tagAppliedToUrlsCount').text(),
-    ).toBe("3 / 5");
+    expect(readTagCount($('.tagFilter[data-utub-tag-id="1"]'))).toEqual({
+      inView: 3,
+      total: 5,
+    });
   });
 
   it("calls onRemoved after the card is detached, once the fade completes", () => {

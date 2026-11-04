@@ -5,6 +5,7 @@ from flask import Flask
 from playwright.sync_api import Page, expect
 
 from backend import db
+from backend.models.user_preferences import TagMatchMode
 from backend.models.utub_tags import Utub_Tags
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utub_urls import Utub_Urls
@@ -14,6 +15,7 @@ from tests.functional.db_utils import (
     add_tag_to_utub_user_created,
     add_two_tags_across_urls_in_utub,
     get_utub_this_user_created,
+    set_tag_display_defaults,
 )
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.playwright_assert_utils import assert_tooltip_animates
@@ -401,6 +403,52 @@ def test_filter_tag_clickable_after_unclicking_from_tag_limit(
     utub_tag_filter = get_utub_tag_filter_selector(utub_tag_id=tag_in_utub.id)
 
     page.locator(utub_tag_filter).first.click()
+
+
+def test_filter_tag_has_no_limit_in_any_mode(
+    page: Page, create_test_tags, provide_app: Flask
+):
+    """
+    GIVEN "any" as the match mode and the same tag count that disables the next
+        chip under "all"
+    WHEN every tag plus one more is selected
+    THEN the extra chip is not disabled and selecting it succeeds
+    """
+    app = provide_app
+    user_id_for_test = 1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+    set_tag_display_defaults(app, user_id_for_test, tag_match_mode=TagMatchMode.ANY)
+
+    with app.app_context():
+        utub_tags: list[Utub_Tags] = Utub_Tags.query.filter(
+            Utub_Tags.utub_id == utub_user_created.id
+        ).all()
+        utub_tag_ids = [utub_tag.id for utub_tag in utub_tags]
+
+    tag_in_utub = add_tag_to_utub_user_created(
+        app, utub_user_created.id, user_id_for_test, UTS.TEST_TAG_NAME_1
+    )
+
+    login_user_and_select_utub_by_utubid(
+        app=app, page=page, user_id=user_id_for_test, utub_id=utub_user_created.id
+    )
+    wait_until_visible_css_selector(
+        page=page, css_selector=f"{HPL.TAG_FILTERS}{HPL.UNSELECTED}"
+    )
+
+    for utub_tag_id in utub_tag_ids:
+        utub_tag_filter = get_utub_tag_filter_selector(utub_tag_id=utub_tag_id)
+        wait_then_click_element(page=page, css_selector=utub_tag_filter)
+
+    extra_badge = page.locator(
+        get_utub_tag_filter_selector(utub_tag_id=tag_in_utub.id)
+    ).first
+    expect(extra_badge).not_to_have_class(re.compile(r"(^|\s)disabled(\s|$)"))
+
+    extra_badge.click()
+
+    expect(extra_badge).to_have_class(re.compile(r"(^|\s)selected(\s|$)"))
+    expect(page.locator(f"{HPL.TAG_FILTERS}.disabled")).to_have_count(0)
 
 
 def test_filtered_url_hides_when_filter_tag_deleted(

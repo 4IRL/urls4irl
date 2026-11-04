@@ -5,7 +5,9 @@ import { on, AppEvents } from "../../lib/event-bus.js";
 import { $ } from "../../lib/globals.js";
 import { hideTooltip } from "../../lib/tooltips.js";
 import { applyDeckDiff } from "../../logic/apply-deck-diff.js";
+import { resolveTagDisplaySettings } from "../../logic/tag-display-settings.js";
 import { getState } from "../../store/app-store.js";
+import { reapplyTagSortForNonDefault } from "../urls/cards/filtering.js";
 import {
   createUTubTagHideInput,
   removeCreateUTubTagEventListeners,
@@ -23,14 +25,20 @@ import {
   showTagFilterBar,
 } from "./search.js";
 import { hideTagDeckEmptyState, showTagDeckEmptyState } from "./empty-state.js";
-import { buildTagFilterInDeck } from "./tags.js";
+import { buildTagFilterInDeck, syncTagCapState } from "./tags.js";
 import {
   closeUTubTagBtnMenuOnUTubTags,
   setTagDeckBtnsOnUpdateAllUTubTagsClosed,
   setUnselectUpdateUTubTagEventListeners,
 } from "./update-all.js";
 import { disableUnselectAllButtonAfterTagFilterRemoved } from "./unselect-all.js";
-import { collapsedTagFilterAnnouncement, tagFilterPillLabel } from "./utils.js";
+import { effectiveTagDisplaySettings } from "./display-settings.js";
+import {
+  collapsedTagFilterAnnouncement,
+  isAnyModeWithSeveralTags,
+  tagFilterPillLabel,
+} from "./utils.js";
+import type { TagMatchModeValue } from "../../types/preferences.js";
 
 const log = debug("tags");
 
@@ -39,6 +47,7 @@ const TAG_FILTER_PILL_SELECTOR = "#TagDeckFilterPill";
 const TAG_FILTER_PILL_LABEL_SELECTOR = "#TagDeckFilterPillLabel";
 const COLLAPSED_FILTER_ANNOUNCEMENT_SELECTOR =
   "#TagDeckCollapsedFilterAnnouncement";
+const TAG_MATCH_MODE_CUE_SELECTOR = "#TagMatchModeCue";
 const FILTERING_CLASS = "filtering";
 
 // A collapsed Tag deck hides the chips that carry "a filter is applied", so the
@@ -50,6 +59,34 @@ function resetTagFilterPill(): void {
   $(TAG_FILTER_PILL_SELECTOR).removeClass(FILTERING_CLASS);
   $(TAG_FILTER_PILL_LABEL_SELECTOR).text("");
   $(COLLAPSED_FILTER_ANNOUNCEMENT_SELECTOR).text("");
+  $(TAG_MATCH_MODE_CUE_SELECTOR).addClass("hidden");
+}
+
+// The cue under the deck header: visible only under "any" with 2+ tags selected.
+// Silent (no live region); the match-mode sentences announce elsewhere.
+function refreshTagMatchModeCue({
+  count,
+  mode,
+}: {
+  count: number;
+  mode: TagMatchModeValue;
+}): void {
+  $(TAG_MATCH_MODE_CUE_SELECTOR).toggleClass(
+    "hidden",
+    !isAnyModeWithSeveralTags({ count, mode }),
+  );
+}
+
+// Writes the resolved "Tag counts" style to #TagDeck[data-tag-count-style], which
+// the CSS reads to show "3 / 7", "7" or no count. Exported so the settings
+// subscriptions can re-run it after a setting change.
+export function applyTagCountStyleAttribute(): void {
+  const { preferences, memberSettings } = getState();
+  const { tagCountStyle } = resolveTagDisplaySettings({
+    preferences,
+    tagsOverride: memberSettings?.tags,
+  });
+  $(TAG_DECK_SELECTOR).attr("data-tag-count-style", tagCountStyle);
 }
 
 export function setTagDeckOnUTubSelected(
@@ -60,6 +97,7 @@ export function setTagDeckOnUTubSelected(
     utubID,
     tagCount: dictTags.length,
   });
+  applyTagCountStyleAttribute();
   resetTagDeck();
   setupOpenCreateUTubTagEventListeners(utubID);
   setUnselectUpdateUTubTagEventListeners();
@@ -92,6 +130,9 @@ export function setTagDeckOnUTubSelected(
 
   // Stripe the freshly-built rows (mirrors the member deck build).
   applyAlternatingTagBackground();
+  // Build-time order for the non-default sorts ("Most in view" keeps the
+  // server order until the first filter change, as before).
+  reapplyTagSortForNonDefault();
 
   setTagSelectorSearchEventListener();
   setTagNameFilterToggleListeners();
@@ -164,6 +205,9 @@ export function updateTagDeck(updatedTags: UtubTag[], utubID: number): void {
   refreshTagDeckTagCount();
 
   reapplyTagFilter();
+  reapplyTagSortForNonDefault();
+  // Chips added by the diff must respect an already-reached "all" cap.
+  syncTagCapState();
   if (updatedTags.length === 0) {
     showTagDeckEmptyState();
   } else {
@@ -201,14 +245,16 @@ on(AppEvents.STALE_DATA_DETECTED, ({ tags, utubID }) =>
 // handle-count badge subscriber).
 on(AppEvents.TAG_FILTER_CHANGED, ({ selectedTagIDs }) => {
   const count = selectedTagIDs.length;
+  const mode = effectiveTagDisplaySettings().tagMatchMode;
   $(TAG_FILTER_PILL_SELECTOR).toggleClass(FILTERING_CLASS, count > 0);
-  $(TAG_FILTER_PILL_LABEL_SELECTOR).text(tagFilterPillLabel(count));
+  $(TAG_FILTER_PILL_LABEL_SELECTOR).text(tagFilterPillLabel({ count, mode }));
+  refreshTagMatchModeCue({ count, mode });
   // The pill only exists to be seen while collapsed (Design Decision 4), so the
   // announcement fires on the same condition: an expanded deck already exposes
   // filter state through the chips themselves, and re-announcing it there on
   // every filter change would be redundant screen-reader chatter.
   const isCollapsed = $(TAG_DECK_SELECTOR).hasClass("collapsed");
   $(COLLAPSED_FILTER_ANNOUNCEMENT_SELECTOR).text(
-    isCollapsed ? collapsedTagFilterAnnouncement(count) : "",
+    isCollapsed ? collapsedTagFilterAnnouncement({ count, mode }) : "",
   );
 });

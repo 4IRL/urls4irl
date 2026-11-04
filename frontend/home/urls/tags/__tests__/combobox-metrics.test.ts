@@ -61,6 +61,7 @@ vi.mock("../../../tags/utils.js", () => ({
 }));
 
 vi.mock("../../../tags/tags.js", () => ({
+  syncTagCapState: vi.fn(),
   buildTagFilterInDeck: vi.fn(() => window.jQuery("<div></div>")),
 }));
 

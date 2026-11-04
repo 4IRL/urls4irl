@@ -4,9 +4,8 @@ import {
   showCreateURLTagForm,
 } from "../create.js";
 import { enableClickOnSelectedURLCardToHide } from "../../cards/selection.js";
-import { buildTagFilterInDeck } from "../../../tags/tags.js";
+import { buildTagFilterInDeck, syncTagCapState } from "../../../tags/tags.js";
 import { isTagInUTubTagDeck } from "../../../tags/utils.js";
-import { APP_CONFIG } from "../../../../lib/config.js";
 
 const { mockMetricsClient } = await vi.hoisted(
   async () =>
@@ -44,6 +43,7 @@ vi.mock("../../../tags/utils.js", () => ({
 }));
 
 vi.mock("../../../tags/tags.js", () => ({
+  syncTagCapState: vi.fn(),
   buildTagFilterInDeck: vi.fn(),
 }));
 
@@ -149,8 +149,8 @@ describe("createURLTagSuccess — at-cap branch", () => {
     vi.mocked(isTagInUTubTagDeck).mockReturnValue(false);
   });
 
-  it("does NOT disable the newly-built tag filter when below the cap", () => {
-    document.body.innerHTML = URL_CARD_HTML;
+  it("appends the new chip and re-derives the selection cap state", () => {
+    document.body.innerHTML = URL_CARD_HTML + '<div id="listTags"></div>';
     const newTag = $("<button class='tagFilter'></button>");
     vi.mocked(buildTagFilterInDeck).mockReturnValue(
       newTag as JQuery<HTMLDivElement>,
@@ -158,24 +158,8 @@ describe("createURLTagSuccess — at-cap branch", () => {
 
     createURLTagSuccess(response, $(".urlRow"), 1);
 
-    expect(newTag.hasClass("disabled")).toBe(false);
-  });
-
-  it("disables the newly-built tag filter when the cap is reached", () => {
-    document.body.innerHTML = URL_CARD_HTML;
-    $(".urlRow").append(
-      Array(APP_CONFIG.constants.TAGS_MAX_ON_URLS)
-        .fill("<span class='tagFilter selected'></span>")
-        .join(""),
-    );
-    const capTag = $("<button class='tagFilter'></button>");
-    vi.mocked(buildTagFilterInDeck).mockReturnValue(
-      capTag as JQuery<HTMLDivElement>,
-    );
-
-    createURLTagSuccess(response, $(".urlRow"), 1);
-
-    expect(capTag.hasClass("disabled")).toBe(true);
+    expect($("#listTags > .tagFilter").length).toBe(1);
+    expect(syncTagCapState).toHaveBeenCalledTimes(1);
   });
 
   it("refreshes #TagDeckCount when the tag is new to the UTub deck", () => {

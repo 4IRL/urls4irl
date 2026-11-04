@@ -13,6 +13,14 @@ vi.mock("../../../../logic/tag-filtering.js", () => ({
   computeURLVisibility: vi.fn(() => []),
   computeVisibleTagCounts: vi.fn(() => new Map()),
   sortTagsByCount: vi.fn((tags: unknown[]) => tags),
+  compareTags: vi.fn(() => 0),
+}));
+
+vi.mock("../../../tags/display-settings.js", () => ({
+  effectiveTagDisplaySettings: vi.fn(() => ({
+    tagSort: "most_in_view",
+    tagMatchMode: "all",
+  })),
 }));
 
 vi.mock("../../../../store/app-store.js", () => ({
@@ -245,13 +253,14 @@ describe("updateURLsAndTagSubheaderWhenTagSelected - explicit urls (stale refres
 
     updateURLsAndTagSubheaderWhenTagSelected({ urls: refreshedUrls });
 
-    expect(computeURLVisibility).toHaveBeenCalledWith(
-      [99],
-      [
+    expect(computeURLVisibility).toHaveBeenCalledWith({
+      selectedTagIDs: [99],
+      urlsWithTagIDs: [
         { urlId: 1, tagIDs: [99] },
         { urlId: 2, tagIDs: [] },
       ],
-    );
+      mode: "all",
+    });
   });
 
   it("does not count a card absent from the payload (fading out) as visible nor suppress the no-results message", () => {
@@ -284,10 +293,11 @@ describe("updateURLsAndTagSubheaderWhenTagSelected - explicit urls (stale refres
 
     updateTagFilteringOnURLOrURLTagDeletion({ urls: refreshedUrls });
 
-    expect(computeURLVisibility).toHaveBeenCalledWith(
-      [99],
-      [{ urlId: 7, tagIDs: [99] }],
-    );
+    expect(computeURLVisibility).toHaveBeenCalledWith({
+      selectedTagIDs: [99],
+      urlsWithTagIDs: [{ urlId: 7, tagIDs: [99] }],
+      mode: "all",
+    });
   });
 });
 

@@ -1,6 +1,6 @@
 // Marks this file as a module so its top-level names do not collide with the
 // sibling drag-drop.test.ts (which has no imports).
-export {};
+import { EMPTY_MEMBER_SETTINGS } from "../../../types/settings.js";
 
 const submitStagedTagsMock = vi.hoisted(() => vi.fn());
 const selectURLCardMock = vi.hoisted(() => vi.fn());
@@ -771,6 +771,41 @@ describe("tag drag-and-drop drop target", () => {
       expect(selectURLCardMock.mock.invocationCallOrder[0]).toBeLessThan(
         showURLOutcomeBannerMock.mock.invocationCallOrder[0],
       );
+    });
+
+    it("leaves the card collapsed but still shows the banner when the drop toggle is off", async () => {
+      store.setState({
+        preferences: {
+          ...store.getState().preferences,
+          tagDropOpensUrl: false,
+        },
+      });
+      await dropAndSettle({ outcome: "applied" });
+
+      expect(selectURLCardMock).not.toHaveBeenCalled();
+      expect(showURLOutcomeBannerMock).toHaveBeenCalledTimes(1);
+      expect(showURLOutcomeBannerMock.mock.calls[0][0].variant).toBe("success");
+    });
+
+    it("selects the card when the drop toggle is explicitly on", async () => {
+      store.setState({
+        preferences: { ...store.getState().preferences, tagDropOpensUrl: true },
+      });
+      await dropAndSettle({ outcome: "applied" });
+
+      expect(selectURLCardMock).toHaveBeenCalledTimes(1);
+    });
+
+    it("honors a per-UTub override that turns the drop toggle off", async () => {
+      store.setState({
+        memberSettings: {
+          ...EMPTY_MEMBER_SETTINGS,
+          tags: { ...EMPTY_MEMBER_SETTINGS.tags, tag_drop_opens_url: false },
+        },
+      });
+      await dropAndSettle({ outcome: "applied" });
+
+      expect(selectURLCardMock).not.toHaveBeenCalled();
     });
 
     it("shows only the banner on an already selected card", async () => {
