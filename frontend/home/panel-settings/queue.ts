@@ -203,7 +203,15 @@ export function createSaveQueue({ sink }: { sink: QueueSink }): SaveQueue {
       result.outcome !== "stale" &&
       utubID !== getState().activeUTubID
     ) {
-      result = { outcome: "stale", failed: result.outcome !== "ok" };
+      // Only a failure's notice survives the conversion: an ok notice describes
+      // a change to the UTub the user has since left.
+      const carriedNotice =
+        result.outcome === "error" ? result.notice : undefined;
+      result = {
+        outcome: "stale",
+        failed: result.outcome !== "ok",
+        ...(carriedNotice ? { notice: carriedNotice } : {}),
+      };
     }
 
     // A user endpoint's 403/404 says nothing about the UTub's lock or existence.
@@ -233,7 +241,12 @@ export function createSaveQueue({ sink }: { sink: QueueSink }): SaveQueue {
         return;
       case "error": {
         dropPending({ state });
-        sink.report({ sectionId, utubID, status: "error" });
+        sink.report({
+          sectionId,
+          utubID,
+          status: "error",
+          ...(result.notice ? { notice: result.notice } : {}),
+        });
         if (
           (section.scope === "utub" ||
             (section.scope === "user" && section.userKind === "per-utub")) &&
@@ -264,11 +277,14 @@ export function createSaveQueue({ sink }: { sink: QueueSink }): SaveQueue {
       case "stale":
         // Keep the pending patch: it still goes to its captured UTub.
         if (result.failed) {
+          const failure = `${section.title}: ${APP_CONFIG.strings.PANEL_SETTINGS_SAVE_FAILED}`;
           sink.announce({
             sectionId,
             utubID,
-            message: `${section.title}: ${APP_CONFIG.strings.PANEL_SETTINGS_SAVE_FAILED}`,
+            message: result.notice ? `${failure}. ${result.notice}` : failure,
           });
+        } else if (result.notice) {
+          sink.announce({ sectionId, utubID, message: result.notice });
         }
         return;
       default:

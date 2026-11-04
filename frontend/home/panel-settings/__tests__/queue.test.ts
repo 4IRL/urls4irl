@@ -311,7 +311,7 @@ describe("createSaveQueue", () => {
       });
     });
 
-    it("never forwards a notice on a stale outcome", async () => {
+    it("an ok result with a notice converted to stale carries no notice (deliberate)", async () => {
       const { sink, queue } = setup();
       const { section, pending } = controlledSection({
         scope: "user",
@@ -529,6 +529,100 @@ describe("createSaveQueue", () => {
 
       expect(resyncSettings).toHaveBeenCalledTimes(1);
       expect(sink.resynced).not.toHaveBeenCalled();
+    });
+
+    it("forwards an error notice to the sink report", async () => {
+      const { sink, queue } = setup();
+      const { section, pending } = controlledSection();
+
+      queue.enqueue({ section, patch: { a: 1 } });
+      await settle();
+      pending[0].resolve({ outcome: "error", resync: false, notice: "Kept." });
+      await settle();
+
+      expect(sink.report).toHaveBeenLastCalledWith({
+        sectionId: section.id,
+        utubID: UTUB_ID,
+        status: "error",
+        notice: "Kept.",
+      });
+    });
+
+    it("an error with no notice reports none", async () => {
+      const { sink, queue } = setup();
+      const { section, pending } = controlledSection();
+
+      queue.enqueue({ section, patch: { a: 1 } });
+      await settle();
+      pending[0].resolve({ outcome: "error", resync: false });
+      await settle();
+
+      expect(vi.mocked(sink.report).mock.lastCall?.[0]).not.toHaveProperty(
+        "notice",
+      );
+    });
+
+    it("a failed stale result appends its notice to the failure announcement", async () => {
+      const { sink, queue } = setup();
+      const { section, pending } = controlledSection({ title: "Tags" });
+
+      queue.enqueue({ section, patch: { a: 1 } });
+      await settle();
+      pending[0].resolve({ outcome: "stale", failed: true, notice: "Kept." });
+      await settle();
+
+      expect(sink.announce).toHaveBeenCalledWith({
+        sectionId: section.id,
+        utubID: UTUB_ID,
+        message: "Tags: Couldn't save. Kept.",
+      });
+    });
+
+    it("a non-failed stale result announces its notice alone, and stays silent without one", async () => {
+      const { sink, queue } = setup();
+      const { section, pending } = controlledSection({ title: "Tags" });
+
+      queue.enqueue({ section, patch: { a: 1 } });
+      await settle();
+      pending[0].resolve({ outcome: "stale", failed: false, notice: "Kept." });
+      await settle();
+
+      expect(sink.announce).toHaveBeenCalledTimes(1);
+      expect(sink.announce).toHaveBeenCalledWith({
+        sectionId: section.id,
+        utubID: UTUB_ID,
+        message: "Kept.",
+      });
+
+      vi.mocked(sink.announce).mockClear();
+      queue.enqueue({ section, patch: { a: 2 } });
+      await settle();
+      pending[1].resolve({ outcome: "stale", failed: false });
+      await settle();
+
+      expect(sink.announce).not.toHaveBeenCalled();
+    });
+
+    it("an error notice survives the per-utub stale conversion", async () => {
+      const { sink, queue } = setup();
+      const { section, pending } = controlledSection({
+        scope: "user",
+        userKind: "per-utub",
+        panel: "tags",
+        title: "Tags",
+      });
+
+      queue.enqueue({ section, patch: { a: 1 } });
+      await settle();
+      setState({ activeUTubID: 99 });
+      pending[0].resolve({ outcome: "error", notice: "Kept." });
+      await settle();
+
+      expect(sink.announce).toHaveBeenCalledWith({
+        sectionId: section.id,
+        utubID: UTUB_ID,
+        message: "Tags: Couldn't save. Kept.",
+      });
     });
 
     it("a 429-shaped error rolls back with no resync, no resynced and no read-only flip", async () => {
