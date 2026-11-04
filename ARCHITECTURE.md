@@ -349,7 +349,7 @@ Organized by domain with per-feature conftest files:
 - `account_and_settings/` (marker: `account_and_support`) — Profile, password change
 - `admin/` (marker: `admin`) — Admin portal: audit log, health/DB browser, user & account moderation, backup triggers
 - `cli/` (marker: `cli`) — CLI commands: DB migrations, mock data seeding, DB management, CLI login
-- `mobile_api/` (marker: `mobile_api`) — `/api/v1` mobile bearer-token API: auth (login/refresh/logout/Google), UTubs/URLs/tags/members endpoints
+- `mobile_api/` (marker: `mobile_api`) — `/api/v1` mobile bearer-token API: auth (login/refresh/logout/Google), UTubs/URLs/tags/members/invite links endpoints
 - `search/` (marker: `urls`, shared with `utuburls/`) — Cross-UTub search: query schema, route, metrics
 - `system/` (marker: `cli`, shared with `cli/`) — Metrics/latency pipeline, health checks, gauges, admin-route gating (ops/observability)
 - `trash/` (marker: `trash`) — Trash API: list, restore, purge (delete forever) and empty-trash routes for soft-deleted URLs and UTubs

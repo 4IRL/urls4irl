@@ -7,7 +7,9 @@ from pydantic import Field, field_serializer
 
 from backend.invite_links.constants import InviteLinkStatus
 from backend.schemas.base import BaseSchema
+from backend.utils.strings.json_strs import MESSAGE
 from backend.utils.strings.model_strs import MODELS
+from backend.utils.strings.utub_strs import UTUB_ID
 
 
 class InviteLinkSchema(BaseSchema):
@@ -39,6 +41,20 @@ class InviteLinkSchema(BaseSchema):
     @field_serializer("expires_at", "created_at")
     def serialize_datetimes(self, value: datetime) -> str:
         return value.isoformat()
+
+
+class JoinViaInviteResponseSchema(BaseSchema):
+    """Successful join (or already a member) through an invite link."""
+
+    status: Literal["Success"] = Field(
+        alias=MODELS.STATUS, description="Response status"
+    )
+    message: str = Field(alias=MESSAGE, description="Joined or already member")
+    utub_id: int = Field(alias=UTUB_ID, description="ID of the UTub that was joined")
+    already_member: bool = Field(
+        alias=MODELS.ALREADY_MEMBER,
+        description="True when the caller was already a member (nothing was consumed)",
+    )
 
 
 class InviteLinkResponseSchema(BaseSchema):

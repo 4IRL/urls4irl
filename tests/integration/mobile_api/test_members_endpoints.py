@@ -20,18 +20,17 @@ from flask.testing import FlaskClient
 from sqlalchemy import null
 
 from backend import db, limiter
-from backend.api_v1.services.tokens import create_access_token
 from backend.members.constants import MEMBER_ADD_RATE_LIMIT, UTubMembersErrorCodes
 from backend.metrics.events import EventName
-from backend.models.users import Users
 from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utubs import Utubs
 from backend.utils.all_routes import ROUTES
-from backend.utils.strings.api_auth_strs import API_AUTH, API_AUTH_FAILURE
+from backend.utils.strings.api_auth_strs import API_AUTH_FAILURE
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.model_strs import MODELS
 from backend.utils.strings.user_strs import MEMBER_FAILURE, MEMBER_SUCCESS
 from backend.utils.strings.utub_strs import UTUB_FAILURE, UTUB_ID
+from tests.integration.mobile_api.mobile_helpers import token_for_user
 from tests.integration.system.metrics_helpers import (
     count_counter_keys,
     find_counter_keys,
@@ -77,16 +76,6 @@ def _transfer_ownership_url(app: Flask, utub_id: int) -> str:
         return url_for(ROUTES.API_V1.TRANSFER_UTUB_OWNERSHIP, utub_id=utub_id)
 
 
-def _bearer(token: str) -> dict[str, str]:
-    return {API_AUTH.AUTHORIZATION_HEADER: f"{API_AUTH.BEARER_PREFIX}{token}"}
-
-
-def _token_for_user(app: Flask, user_id: int) -> str:
-    with app.app_context():
-        user: Users = Users.query.get(user_id)
-        return create_access_token(user=user)
-
-
 # ===========================================================================
 # POST /api/v1/utubs/<utub_id>/members — add member
 # ===========================================================================
@@ -106,7 +95,7 @@ def test_add_member_happy_path(
     Note: bearer headers are minted after every_user_makes_a_unique_utub runs
     (which registers all 3 users) to avoid fixture conflict with register_first_user.
     """
-    user_1_headers = make_bearer_headers(_token_for_user(app, user_id=1))
+    user_1_headers = make_bearer_headers(token_for_user(app, user_id=1))
     user_2_username = valid_users[1]["username"]
 
     with app.app_context():
@@ -146,7 +135,7 @@ def test_remove_then_readd_member_gets_new_joined_at(
     WHEN user 2 is added again
     THEN the add response carries a joinedAt later than the first one
     """
-    user_1_headers = make_bearer_headers(_token_for_user(app, user_id=1))
+    user_1_headers = make_bearer_headers(token_for_user(app, user_id=1))
     user_2_username = valid_users[1]["username"]
 
     first = api_client.post(
@@ -202,7 +191,7 @@ def test_add_member_not_creator_is_403(
     WHEN user 2 tries to add another member
     THEN 403
     """
-    user_2_token = _token_for_user(app, user_id=2)
+    user_2_token = token_for_user(app, user_id=2)
     user_3_username = valid_users[2]["username"]
 
     response = api_client.post(
@@ -246,7 +235,7 @@ def test_add_member_rejects_client_sent_invite_link_source(
     WHEN they POST add-member with the server-only source='invite_link'
     THEN 400, no member is added and no MEMBER_ADDED metric is recorded
     """
-    user_1_headers = make_bearer_headers(_token_for_user(app, user_id=1))
+    user_1_headers = make_bearer_headers(token_for_user(app, user_id=1))
 
     with app.app_context():
         initial_member_count = Utub_Members.query.filter_by(utub_id=1).count()
@@ -289,7 +278,7 @@ def test_add_member_records_source_dimension(
     WHEN they POST add-member with a client source (or none)
     THEN one MEMBER_ADDED counter exists whose source dimension is the converted value
     """
-    user_1_headers = make_bearer_headers(_token_for_user(app, user_id=1))
+    user_1_headers = make_bearer_headers(token_for_user(app, user_id=1))
     body = {_USERNAME_FIELD: valid_users[1]["username"]}
     if body_source is not None:
         body["source"] = body_source
@@ -347,7 +336,7 @@ def test_remove_member_creator_removes_member_happy_path(
     Note: bearer headers are minted after the multi-user fixture runs
     to avoid fixture conflict with register_first_user.
     """
-    user_1_headers = make_bearer_headers(_token_for_user(app, user_id=1))
+    user_1_headers = make_bearer_headers(token_for_user(app, user_id=1))
 
     with app.app_context():
         initial_member_count = Utub_Members.query.filter_by(utub_id=1).count()
@@ -382,7 +371,7 @@ def test_remove_member_self_removal_happy_path(
     WHEN user 2 (non-creator member) removes themselves
     THEN 200
     """
-    user_2_token = _token_for_user(app, user_id=2)
+    user_2_token = token_for_user(app, user_id=2)
 
     with app.app_context():
         initial_member_count = Utub_Members.query.filter_by(utub_id=1).count()
@@ -425,7 +414,7 @@ def test_remove_member_non_member_cannot_remove_other(
     WHEN user 1 tries DELETE /api/v1/utubs/2/members/3
     THEN 404 (not a member of that UTub → utub_membership_required returns 404)
     """
-    user_1_token = _token_for_user(app, user_id=1)
+    user_1_token = token_for_user(app, user_id=1)
 
     response = api_client.delete(
         _remove_member_url(app, utub_id=2, user_id=3),
@@ -448,7 +437,7 @@ def test_remove_member_member_cannot_remove_other_member(
     WHEN user 2 tries to remove user 3
     THEN 403 (only creator may remove others)
     """
-    user_2_token = _token_for_user(app, user_id=2)
+    user_2_token = token_for_user(app, user_id=2)
 
     response = api_client.delete(
         _remove_member_url(app, utub_id=1, user_id=3),
@@ -475,7 +464,7 @@ def test_remove_member_co_creator_can_remove_self(
     THEN 200 (co-creators may leave voluntarily — DD-5) and the row is gone
     """
     set_member_role(app, utub_id=1, user_id=2, role=Member_Role.CO_CREATOR)
-    user_2_headers = make_bearer_headers(_token_for_user(app, user_id=2))
+    user_2_headers = make_bearer_headers(token_for_user(app, user_id=2))
 
     with app.app_context():
         initial_member_count = Utub_Members.query.filter_by(utub_id=1).count()
@@ -509,7 +498,7 @@ def test_remove_member_creator_cannot_remove_self_with_co_creator_present(
     THEN 400 — the true owner stays blocked even when a co-creator exists
     """
     set_member_role(app, utub_id=1, user_id=2, role=Member_Role.CO_CREATOR)
-    user_1_headers = make_bearer_headers(_token_for_user(app, user_id=1))
+    user_1_headers = make_bearer_headers(token_for_user(app, user_id=1))
 
     response = api_client.delete(
         _remove_member_url(app, utub_id=1, user_id=1),
@@ -540,7 +529,7 @@ def test_remove_member_co_creator_can_remove_another_member(
     THEN 200 — the co-owner's right to remove other members is preserved (DD-1)
     """
     set_member_role(app, utub_id=1, user_id=2, role=Member_Role.CO_CREATOR)
-    user_2_headers = make_bearer_headers(_token_for_user(app, user_id=2))
+    user_2_headers = make_bearer_headers(token_for_user(app, user_id=2))
 
     with app.app_context():
         initial_member_count = Utub_Members.query.filter_by(utub_id=1).count()
@@ -577,7 +566,7 @@ def test_remove_member_co_creator_cannot_remove_literal_owner(
         an ownerless UTub, and the owner's membership row remains intact
     """
     set_member_role(app, utub_id=1, user_id=2, role=Member_Role.CO_CREATOR)
-    user_2_headers = make_bearer_headers(_token_for_user(app, user_id=2))
+    user_2_headers = make_bearer_headers(token_for_user(app, user_id=2))
 
     with app.app_context():
         initial_member_count = Utub_Members.query.filter_by(utub_id=1).count()
@@ -610,7 +599,7 @@ def test_remove_member_plain_member_cannot_remove_literal_owner(
         generic "remove another member" check, yielding the specific owner-protection error,
         and the owner's membership row remains intact
     """
-    user_2_headers = make_bearer_headers(_token_for_user(app, user_id=2))
+    user_2_headers = make_bearer_headers(token_for_user(app, user_id=2))
 
     with app.app_context():
         initial_member_count = Utub_Members.query.filter_by(utub_id=1).count()
@@ -656,7 +645,7 @@ def test_modify_member_role_grant_happy_path(
     WHEN the owner PATCHes user 2 with member_role=cocreator
     THEN 200, success envelope, and user 2's role flips to CO_CREATOR
     """
-    user_1_headers = make_bearer_headers(_token_for_user(app, user_id=1))
+    user_1_headers = make_bearer_headers(token_for_user(app, user_id=1))
 
     response = api_client.patch(
         _modify_member_role_url(app, utub_id=1, user_id=2),
@@ -683,7 +672,7 @@ def test_modify_member_role_revoke_happy_path(
     THEN 200 and user 2's role flips back to MEMBER
     """
     set_member_role(app, utub_id=1, user_id=2, role=Member_Role.CO_CREATOR)
-    user_1_headers = make_bearer_headers(_token_for_user(app, user_id=1))
+    user_1_headers = make_bearer_headers(token_for_user(app, user_id=1))
 
     response = api_client.patch(
         _modify_member_role_url(app, utub_id=1, user_id=2),
@@ -718,7 +707,7 @@ def test_modify_member_role_co_creator_actor_is_403(
 ):
     """A co-creator (not the literal owner) cannot change roles → 403."""
     set_member_role(app, utub_id=1, user_id=2, role=Member_Role.CO_CREATOR)
-    user_2_headers = make_bearer_headers(_token_for_user(app, user_id=2))
+    user_2_headers = make_bearer_headers(token_for_user(app, user_id=2))
 
     response = api_client.patch(
         _modify_member_role_url(app, utub_id=1, user_id=3),
@@ -738,7 +727,7 @@ def test_modify_member_role_plain_member_actor_is_403(
     make_bearer_headers,
 ):
     """A plain member cannot change roles → 403."""
-    user_3_headers = make_bearer_headers(_token_for_user(app, user_id=3))
+    user_3_headers = make_bearer_headers(token_for_user(app, user_id=3))
 
     response = api_client.patch(
         _modify_member_role_url(app, utub_id=1, user_id=2),
@@ -758,7 +747,7 @@ def test_modify_member_role_target_not_a_member_is_404(
     make_bearer_headers,
 ):
     """Targeting a user who is not a member of the UTub → 404."""
-    user_1_headers = make_bearer_headers(_token_for_user(app, user_id=1))
+    user_1_headers = make_bearer_headers(token_for_user(app, user_id=1))
 
     response = api_client.patch(
         _modify_member_role_url(app, utub_id=1, user_id=9999),
@@ -779,7 +768,7 @@ def test_modify_member_role_target_owner_is_400(
     make_bearer_headers,
 ):
     """Targeting the literal creator → 400 with CANNOT_MODIFY_OWNER error code."""
-    user_1_headers = make_bearer_headers(_token_for_user(app, user_id=1))
+    user_1_headers = make_bearer_headers(token_for_user(app, user_id=1))
 
     response = api_client.patch(
         _modify_member_role_url(app, utub_id=1, user_id=1),
@@ -809,7 +798,7 @@ def test_modify_member_role_locked_utub_is_403(
         utub.is_locked = True
         db.session.commit()
 
-    user_1_headers = make_bearer_headers(_token_for_user(app, user_id=1))
+    user_1_headers = make_bearer_headers(token_for_user(app, user_id=1))
 
     response = api_client.patch(
         _modify_member_role_url(app, utub_id=1, user_id=2),
@@ -842,7 +831,7 @@ def test_modify_member_role_missing_or_invalid_role_is_400(
 ):
     """Missing or invalid `member_role` → 400 with the generic invalid-input
     envelope."""
-    user_1_headers = make_bearer_headers(_token_for_user(app, user_id=1))
+    user_1_headers = make_bearer_headers(token_for_user(app, user_id=1))
 
     response = api_client.patch(
         _modify_member_role_url(app, utub_id=1, user_id=2),
@@ -875,7 +864,7 @@ def test_remove_member_creator_cannot_remove_self(
 
     Note: bearer headers minted after multi-user fixture to avoid fixture conflict.
     """
-    user_1_headers = make_bearer_headers(_token_for_user(app, user_id=1))
+    user_1_headers = make_bearer_headers(token_for_user(app, user_id=1))
 
     response = api_client.delete(
         _remove_member_url(app, utub_id=1, user_id=1),
@@ -931,7 +920,7 @@ def test_transfer_ownership_happy_path(
         (user 1) is demoted to CO_CREATOR, and the newOwner/previousOwner payload
         reflects the swap
     """
-    user_1_headers = make_bearer_headers(_token_for_user(app, user_id=1))
+    user_1_headers = make_bearer_headers(token_for_user(app, user_id=1))
 
     response = api_client.patch(
         _transfer_ownership_url(app, utub_id=1),
@@ -979,7 +968,7 @@ def test_transfer_ownership_response_joined_at_null_for_dateless_member(
         membership.joined_at = null()
         db.session.commit()
 
-    user_1_headers = make_bearer_headers(_token_for_user(app, user_id=1))
+    user_1_headers = make_bearer_headers(token_for_user(app, user_id=1))
     response = api_client.patch(
         _transfer_ownership_url(app, utub_id=1),
         json={_NEW_OWNER_ID_FIELD: 2},
@@ -1005,7 +994,7 @@ def test_transfer_ownership_to_existing_co_owner_happy_path(
         outgoing owner→CO_CREATOR)
     """
     set_member_role(app, utub_id=1, user_id=2, role=Member_Role.CO_CREATOR)
-    user_1_headers = make_bearer_headers(_token_for_user(app, user_id=1))
+    user_1_headers = make_bearer_headers(token_for_user(app, user_id=1))
 
     response = api_client.patch(
         _transfer_ownership_url(app, utub_id=1),
@@ -1046,7 +1035,7 @@ def test_transfer_ownership_co_creator_actor_is_403(
     """A co-creator (not the literal owner) cannot transfer ownership → 403, and
     utub_creator is unchanged."""
     set_member_role(app, utub_id=1, user_id=2, role=Member_Role.CO_CREATOR)
-    user_2_headers = make_bearer_headers(_token_for_user(app, user_id=2))
+    user_2_headers = make_bearer_headers(token_for_user(app, user_id=2))
 
     response = api_client.patch(
         _transfer_ownership_url(app, utub_id=1),
@@ -1068,7 +1057,7 @@ def test_transfer_ownership_plain_member_actor_is_403(
 ):
     """A plain member cannot transfer ownership → 403, and utub_creator is
     unchanged."""
-    user_3_headers = make_bearer_headers(_token_for_user(app, user_id=3))
+    user_3_headers = make_bearer_headers(token_for_user(app, user_id=3))
 
     response = api_client.patch(
         _transfer_ownership_url(app, utub_id=1),
@@ -1090,7 +1079,7 @@ def test_transfer_ownership_target_not_a_member_is_404(
 ):
     """Transferring to a user who is not a member of the UTub → 404 with
     TARGET_NOT_A_MEMBER error code."""
-    user_1_headers = make_bearer_headers(_token_for_user(app, user_id=1))
+    user_1_headers = make_bearer_headers(token_for_user(app, user_id=1))
 
     response = api_client.patch(
         _transfer_ownership_url(app, utub_id=1),
@@ -1116,7 +1105,7 @@ def test_transfer_ownership_target_already_owner_is_400(
 ):
     """Transferring to the current owner (themself) → 400 with TARGET_ALREADY_OWNER
     error code, and utub_creator unchanged."""
-    user_1_headers = make_bearer_headers(_token_for_user(app, user_id=1))
+    user_1_headers = make_bearer_headers(token_for_user(app, user_id=1))
 
     response = api_client.patch(
         _transfer_ownership_url(app, utub_id=1),
@@ -1148,7 +1137,7 @@ def test_transfer_ownership_locked_utub_is_403(
         utub.is_locked = True
         db.session.commit()
 
-    user_1_headers = make_bearer_headers(_token_for_user(app, user_id=1))
+    user_1_headers = make_bearer_headers(token_for_user(app, user_id=1))
 
     response = api_client.patch(
         _transfer_ownership_url(app, utub_id=1),
@@ -1183,7 +1172,7 @@ def test_transfer_ownership_missing_or_invalid_new_owner_id_is_400(
 ):
     """Missing or invalid `new_owner_id` → 400 with the generic invalid-input
     envelope."""
-    user_1_headers = make_bearer_headers(_token_for_user(app, user_id=1))
+    user_1_headers = make_bearer_headers(token_for_user(app, user_id=1))
 
     response = api_client.patch(
         _transfer_ownership_url(app, utub_id=1),
@@ -1243,7 +1232,7 @@ def test_add_member_rate_limit_returns_json_429(
     WHEN a 31st add-member request arrives within the window
     THEN a 429 is returned as the JSON ErrorResponse envelope (never HTML).
     """
-    user_1_headers = make_bearer_headers(_token_for_user(app, user_id=1))
+    user_1_headers = make_bearer_headers(token_for_user(app, user_id=1))
     user_2_username = valid_users[1]["username"]
     add_url = _create_member_url(app, utub_id=1)
     add_body = {_USERNAME_FIELD: user_2_username}

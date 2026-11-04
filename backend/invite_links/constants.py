@@ -11,6 +11,10 @@ INVITE_LINK_DEFAULT_TTL: timedelta = timedelta(days=7)
 INVITE_LINK_EXPIRY_DAYS_VALUES: tuple[int, ...] = (1, 7, 30)
 INVITE_LINK_MAX_USES_VALUES: tuple[int, ...] = (1, 5, 10, 25)
 INVITE_LINK_MANAGE_RATE_LIMIT: str = "30 per minute"
+# One shared bucket for web and mobile create/replace, per manager.
+INVITE_LINK_MANAGE_RATE_SCOPE: str = "invite_link_manage"
+INVITE_LINK_JOIN_RATE_LIMIT: str = "10 per minute"
+INVITE_LINK_JOIN_RATE_SCOPE: str = "invite_link_join"
 INVITE_LINK_TOKEN_MAX_ATTEMPTS: int = 5
 
 # Metric dimension closed sets (DD-15).

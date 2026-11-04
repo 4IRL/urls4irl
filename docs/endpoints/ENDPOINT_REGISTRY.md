@@ -450,6 +450,15 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Template:** —
 - **JS:** no-js: mobile-api
 
+### `POST /api/v1/invite/<token>/join` — `api_v1.api_v1_join_via_invite`
+
+- **Handler:** `backend/api_v1/invite_link_routes.py:api_v1_join_via_invite`
+- **Decorators:** `api_email_validation_required`, `api_route`, `limiter.shared_limit(INVITE_LINK_JOIN_RATE_LIMIT, scope=INVITE_LINK_JOIN_RATE_SCOPE, key_func=invite_link_join_rate_key, methods=['POST'])`
+- **Service:** `backend.invite_links.services.join_via_invite:join_via_invite`
+- **Schema:** response: `backend.schemas.invite_links.JoinViaInviteResponseSchema`; status: 200 `backend.schemas.invite_links.JoinViaInviteResponseSchema`, 401 `backend.schemas.errors.ErrorResponse`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`, 429 `backend.schemas.errors.ErrorResponse`
+- **Template:** —
+- **JS:** no-js: mobile-api
+
 ### `GET /api/v1/me` — `api_v1.api_v1_get_me`
 
 - **Handler:** `backend/api_v1/routes.py:api_v1_get_me`
@@ -519,6 +528,51 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Decorators:** `api_utub_manager_required`, `api_route`
 - **Service:** `backend.utubs.services.update_utubs:update_utub_desc_if_new`
 - **Schema:** request: `backend.schemas.requests.utubs.UpdateUTubDescriptionRequest`; response: `backend.schemas.utubs.UtubDescUpdatedResponseSchema`; status: 200 `backend.schemas.utubs.UtubDescUpdatedResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 401 `backend.schemas.errors.ErrorResponse`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`
+- **Template:** —
+- **JS:** no-js: mobile-api
+
+### `DELETE /api/v1/utubs/<int:utub_id>/invite-link` — `api_v1.api_v1_revoke_invite_link`
+
+- **Handler:** `backend/api_v1/invite_link_routes.py:api_v1_revoke_invite_link`
+- **Decorators:** `api_utub_manager_required`, `api_route`
+- **Service:** `backend.invite_links.services.manage_invite_link:revoke_invite_link_for_utub`
+- **Schema:** response: `backend.schemas.base.StatusMessageResponseSchema`; status: 200 `backend.schemas.base.StatusMessageResponseSchema`, 401 `backend.schemas.errors.ErrorResponse`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`
+- **Template:** —
+- **JS:** no-js: mobile-api
+
+### `GET /api/v1/utubs/<int:utub_id>/invite-link` — `api_v1.api_v1_get_invite_link`
+
+- **Handler:** `backend/api_v1/invite_link_routes.py:api_v1_get_invite_link`
+- **Decorators:** `api_utub_manager_required`, `api_route`
+- **Service:** `backend.invite_links.services.manage_invite_link:read_invite_link`
+- **Schema:** response: `backend.schemas.invite_links.InviteLinkResponseSchema`; status: 200 `backend.schemas.invite_links.InviteLinkResponseSchema`, 401 `backend.schemas.errors.ErrorResponse`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`
+- **Template:** —
+- **JS:** no-js: mobile-api
+
+### `PATCH /api/v1/utubs/<int:utub_id>/invite-link` — `api_v1.api_v1_update_invite_link`
+
+- **Handler:** `backend/api_v1/invite_link_routes.py:api_v1_update_invite_link`
+- **Decorators:** `api_utub_manager_required`, `api_route`
+- **Service:** `backend.invite_links.services.manage_invite_link:update_invite_link_for_utub`
+- **Schema:** request: `backend.schemas.requests.invite_links.UpdateInviteLinkRequest`; response: `backend.schemas.invite_links.InviteLinkResponseSchema`; status: 200 `backend.schemas.invite_links.InviteLinkResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 401 `backend.schemas.errors.ErrorResponse`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`, 409 `backend.schemas.errors.ErrorResponse`
+- **Template:** —
+- **JS:** no-js: mobile-api
+
+### `POST /api/v1/utubs/<int:utub_id>/invite-link` — `api_v1.api_v1_create_invite_link`
+
+- **Handler:** `backend/api_v1/invite_link_routes.py:api_v1_create_invite_link`
+- **Decorators:** `api_utub_manager_required`, `api_route`, `limiter.shared_limit(INVITE_LINK_MANAGE_RATE_LIMIT, scope=INVITE_LINK_MANAGE_RATE_SCOPE, key_func=invite_link_manage_rate_key, methods=['POST'])`
+- **Service:** `backend.invite_links.services.manage_invite_link:create_invite_link_for_utub`
+- **Schema:** request: `backend.schemas.requests.invite_links.InviteLinkSettingsRequest`; response: `backend.schemas.invite_links.InviteLinkResponseSchema`; status: 201 `backend.schemas.invite_links.InviteLinkResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 401 `backend.schemas.errors.ErrorResponse`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`, 409 `backend.schemas.errors.ErrorResponse`, 429 `backend.schemas.errors.ErrorResponse`
+- **Template:** —
+- **JS:** no-js: mobile-api
+
+### `POST /api/v1/utubs/<int:utub_id>/invite-link/replace` — `api_v1.api_v1_replace_invite_link`
+
+- **Handler:** `backend/api_v1/invite_link_routes.py:api_v1_replace_invite_link`
+- **Decorators:** `api_utub_manager_required`, `api_route`, `limiter.shared_limit(INVITE_LINK_MANAGE_RATE_LIMIT, scope=INVITE_LINK_MANAGE_RATE_SCOPE, key_func=invite_link_manage_rate_key, methods=['POST'])`
+- **Service:** `backend.invite_links.services.manage_invite_link:replace_invite_link_for_utub`
+- **Schema:** request: `backend.schemas.requests.invite_links.InviteLinkSettingsRequest`; response: `backend.schemas.invite_links.InviteLinkResponseSchema`; status: 201 `backend.schemas.invite_links.InviteLinkResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 401 `backend.schemas.errors.ErrorResponse`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`, 429 `backend.schemas.errors.ErrorResponse`
 - **Template:** —
 - **JS:** no-js: mobile-api
 
@@ -709,7 +763,7 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 ### `POST /utubs/<int:utub_id>/invite-link` — `invite_links.create_invite_link`
 
 - **Handler:** `backend/invite_links/routes.py:create_invite_link`
-- **Decorators:** `utub_manager_required`, `api_route`, `limiter.limit(INVITE_LINK_MANAGE_RATE_LIMIT, key_func=invite_link_manage_rate_key, methods=['POST'])`
+- **Decorators:** `utub_manager_required`, `api_route`, `limiter.shared_limit(INVITE_LINK_MANAGE_RATE_LIMIT, scope=INVITE_LINK_MANAGE_RATE_SCOPE, key_func=invite_link_manage_rate_key, methods=['POST'])`
 - **Service:** `backend.invite_links.services.manage_invite_link:create_invite_link_for_utub`
 - **Schema:** request: `backend.schemas.requests.invite_links.InviteLinkSettingsRequest`; response: `backend.schemas.invite_links.InviteLinkResponseSchema`; status: 201 `backend.schemas.invite_links.InviteLinkResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`, 409 `backend.schemas.errors.ErrorResponse`, 429 `backend.schemas.errors.ErrorResponse`
 - **Template:** —
@@ -718,7 +772,7 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 ### `POST /utubs/<int:utub_id>/invite-link/replace` — `invite_links.replace_invite_link`
 
 - **Handler:** `backend/invite_links/routes.py:replace_invite_link`
-- **Decorators:** `utub_manager_required`, `api_route`, `limiter.limit(INVITE_LINK_MANAGE_RATE_LIMIT, key_func=invite_link_manage_rate_key, methods=['POST'])`
+- **Decorators:** `utub_manager_required`, `api_route`, `limiter.shared_limit(INVITE_LINK_MANAGE_RATE_LIMIT, scope=INVITE_LINK_MANAGE_RATE_SCOPE, key_func=invite_link_manage_rate_key, methods=['POST'])`
 - **Service:** `backend.invite_links.services.manage_invite_link:replace_invite_link_for_utub`
 - **Schema:** request: `backend.schemas.requests.invite_links.InviteLinkSettingsRequest`; response: `backend.schemas.invite_links.InviteLinkResponseSchema`; status: 201 `backend.schemas.invite_links.InviteLinkResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`, 429 `backend.schemas.errors.ErrorResponse`
 - **Template:** —
