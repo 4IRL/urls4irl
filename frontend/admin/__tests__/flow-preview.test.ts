@@ -310,6 +310,11 @@ describe("createFlowPreview", () => {
   it.each([
     ["rate-limited", { status: 429 }, { kind: "rate-limited" }],
     [
+      "rate-limited with errors in the body",
+      { status: 429, responseJSON: { errors: { "steps.0.x": ["bad"] } } },
+      { kind: "rate-limited" },
+    ],
+    [
       "field-errors",
       { status: 400, responseJSON: { errors: { "steps.0.x": ["bad"] } } },
       {
