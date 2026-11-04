@@ -1271,6 +1271,22 @@ describe("preview announcements", () => {
     expect(callbacks.announce).not.toHaveBeenCalled();
   });
 
+  it("announces the placeholder percent when pct_of_top is null", () => {
+    openEdit();
+    sendFirst().resolve({
+      steps: RESPONSE.steps.map((step, index) => ({
+        ...step,
+        pct_of_top: index === 1 ? null : step.pct_of_top,
+      })),
+    } as never);
+    expect(spoken()).toBe(
+      strings()
+        .METRICS_FLOW_PREVIEW_ANNOUNCE_RESULT.replace("{succeeded}", "5")
+        .replace("{total}", "10")
+        .replace("{pct}", "–"),
+    );
+  });
+
   it("announces the empty text for an all-zero result", () => {
     openEdit();
     sendFirst().resolve({
