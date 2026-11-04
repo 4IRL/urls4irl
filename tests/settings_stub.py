@@ -36,7 +36,25 @@ DEFAULT_MEMBER_SETTINGS_DICT: dict[str, dict[str, Any]] = {
         "view_mode": None,
         "density": None,
         "disable_swipe_delete": False,
-    }
+    },
+    "tags": {
+        "tag_sort": None,
+        "tag_match_mode": None,
+        "tag_count_style": None,
+        "show_tags_on_collapsed": None,
+        "collapsed_tags_style": None,
+        "tag_drop_opens_url": None,
+    },
+}
+
+# The ``tagDisplayDefaults`` of a user with no stored preferences row.
+DEFAULT_TAG_DISPLAY_DEFAULTS_DICT: dict[str, Any] = {
+    "tagSort": "most_in_view",
+    "tagMatchMode": "all",
+    "tagCountStyle": "in_view_total",
+    "showTagsOnCollapsed": False,
+    "collapsedTagsStyle": "one_line",
+    "tagDropOpensUrl": True,
 }
 
 

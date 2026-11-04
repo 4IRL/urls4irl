@@ -45,6 +45,38 @@ class MemberUrlsSettings(SettingsSection):
     )
 
 
+class MemberTagsSettings(SettingsSection):
+    """A member's private display overrides for the Tags panel of one UTub.
+
+    Every key is nullable: ``None`` means "use my account default".
+    """
+
+    tag_sort: (
+        Literal["most_in_view", "most_used", "name_az", "newest", "oldest"] | None
+    ) = Field(
+        default=None, description="Tag sort override; null uses the account default"
+    )
+    tag_match_mode: Literal["all", "any"] | None = Field(
+        default=None,
+        description="Multi-tag match override; null uses the account default",
+    )
+    tag_count_style: Literal["in_view_total", "total_only", "hidden"] | None = Field(
+        default=None, description="Tag count override; null uses the account default"
+    )
+    show_tags_on_collapsed: bool | None = Field(
+        default=None,
+        description="Show tags on collapsed URLs override; null uses the account default",
+    )
+    collapsed_tags_style: Literal["one_line", "all"] | None = Field(
+        default=None,
+        description="Collapsed tags style override; null uses the account default",
+    )
+    tag_drop_opens_url: bool | None = Field(
+        default=None,
+        description="Open the URL after a tag drop override; null uses the account default",
+    )
+
+
 class UtubMemberSettings(BaseModel):
     """Resolved per-member settings for one UTub, one section per panel."""
 
@@ -53,6 +85,10 @@ class UtubMemberSettings(BaseModel):
     urls: MemberUrlsSettings = Field(
         default_factory=MemberUrlsSettings,
         description="The member's view overrides for the URLs panel",
+    )
+    tags: MemberTagsSettings = Field(
+        default_factory=MemberTagsSettings,
+        description="The member's display overrides for the Tags panel",
     )
 
 
@@ -68,20 +104,24 @@ class UtubMemberSettingsPatchError(ValueError):
         self.errors = errors
 
 
-_SECTION_NAME = "urls"
-_SECTION_CLS = MemberUrlsSettings
+_SECTIONS: dict[str, type[SettingsSection]] = {
+    "urls": MemberUrlsSettings,
+    "tags": MemberTagsSettings,
+}
 
 
-def _clean_stored_section(stored: Any) -> dict[str, Any]:
+def _clean_stored_section(
+    section_cls: type[SettingsSection], stored: Any
+) -> dict[str, Any]:
     """Known, individually valid stored overrides; anything else is dropped."""
     if not isinstance(stored, dict):
         return {}
     cleaned: dict[str, Any] = {}
     for key, value in stored.items():
-        if key not in _SECTION_CLS.model_fields:
+        if key not in section_cls.model_fields:
             continue
         try:
-            _SECTION_CLS.model_validate({key: value}, strict=True)
+            section_cls.model_validate({key: value}, strict=True)
         except ValidationError:
             continue
         cleaned[key] = value
@@ -90,13 +130,20 @@ def _clean_stored_section(stored: Any) -> dict[str, Any]:
 
 def resolve_member_settings(raw: dict | None) -> UtubMemberSettings:
     """Resolve stored overrides to full settings. Never raises (reads never 500)."""
-    stored = raw.get(_SECTION_NAME) if isinstance(raw, dict) else None
-    section = _SECTION_CLS.model_validate(_clean_stored_section(stored), strict=True)
-    return UtubMemberSettings(urls=section)
+    sections = {
+        name: section_cls.model_validate(
+            _clean_stored_section(
+                section_cls, raw.get(name) if isinstance(raw, dict) else None
+            ),
+            strict=True,
+        )
+        for name, section_cls in _SECTIONS.items()
+    }
+    return UtubMemberSettings.model_validate(sections)
 
 
-def _is_nullable(key: str) -> bool:
-    return _SECTION_CLS.model_fields[key].default is None
+def _is_nullable(section_cls: type[SettingsSection], key: str) -> bool:
+    return section_cls.model_fields[key].default is None
 
 
 def merge_member_settings(raw: dict | None, patch: dict[str, Any]) -> dict | None:
@@ -112,17 +159,18 @@ def merge_member_settings(raw: dict | None, patch: dict[str, Any]) -> dict | Non
     new_overrides: dict[str, Any] = dict(raw_dict)
 
     for name, patch_section in patch.items():
-        if name != _SECTION_NAME:
+        section_cls = _SECTIONS.get(name)
+        if section_cls is None:
             errors[name] = ["Unknown settings section"]
             continue
         if not isinstance(patch_section, dict):
             errors[name] = ["Settings section must be an object"]
             continue
-        merged = _clean_stored_section(raw_dict.get(name))
+        merged = _clean_stored_section(section_cls, raw_dict.get(name))
         for key, value in patch_section.items():
-            if key not in _SECTION_CLS.model_fields:
+            if key not in section_cls.model_fields:
                 errors.setdefault(f"{name}.{key}", []).append("Unknown setting")
-            elif value is None and _is_nullable(key):
+            elif value is None and _is_nullable(section_cls, key):
                 merged.pop(key, None)
             elif value is None:
                 errors.setdefault(f"{name}.{key}", []).append("Value cannot be null")
@@ -131,7 +179,7 @@ def merge_member_settings(raw: dict | None, patch: dict[str, Any]) -> dict | Non
         if errors:
             continue
         try:
-            section = _SECTION_CLS.model_validate(merged, strict=True)
+            section = section_cls.model_validate(merged, strict=True)
         except ValidationError as exc:
             for error in exc.errors():
                 loc = error["loc"]
@@ -141,7 +189,7 @@ def merge_member_settings(raw: dict | None, patch: dict[str, Any]) -> dict | Non
         sparse = {
             key: value
             for key, value in section.model_dump(mode="json").items()
-            if key in merged and value != _SECTION_CLS.model_fields[key].default
+            if key in merged and value != section_cls.model_fields[key].default
         }
         if sparse:
             new_overrides[name] = sparse

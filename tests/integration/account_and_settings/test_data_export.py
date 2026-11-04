@@ -29,10 +29,14 @@ from werkzeug.test import TestResponse
 from backend import db, limiter
 from backend.metrics.events import EventName
 from backend.models.user_preferences import (
+    CollapsedTagsStyle,
     DateFormat,
     Density,
     MemberSort,
     SortOrder,
+    TagCountStyle,
+    TagMatchMode,
+    TagSort,
     Theme,
     User_Preferences,
     UtubSort,
@@ -174,7 +178,10 @@ def test_data_export_core_includes_member_settings(
     """Each exported UTub carries the acting user's sparse overrides for it
     (``memberSettings``), and ``null`` when none are stored."""
     _logged_in_client, seeded_user, app = login_first_user_with_distinct_stats
-    stored_overrides = {"urls": {"sort": "title_az", "hide_copy_button": True}}
+    stored_overrides = {
+        "urls": {"sort": "title_az", "hide_copy_button": True},
+        "tags": {"tag_sort": "name_az", "tag_drop_opens_url": False},
+    }
 
     with app.app_context():
         membership: Utub_Members = Utub_Members.query.filter(
@@ -292,6 +299,12 @@ def test_data_export_core_includes_stored_preferences(
                 member_sort=MemberSort.RECENTLY_JOINED,
                 show_row_counts=True,
                 show_list_totals=False,
+                tag_sort=TagSort.NAME_AZ,
+                tag_match_mode=TagMatchMode.ANY,
+                tag_count_style=TagCountStyle.HIDDEN,
+                show_tags_on_collapsed=True,
+                collapsed_tags_style=CollapsedTagsStyle.ALL,
+                tag_drop_opens_url=False,
             )
         )
         db.session.commit()
@@ -308,6 +321,12 @@ def test_data_export_core_includes_stored_preferences(
     assert export.preferences.member_sort == MemberSort.RECENTLY_JOINED.value
     assert export.preferences.show_row_counts is True
     assert export.preferences.show_list_totals is False
+    assert export.preferences.tag_sort == TagSort.NAME_AZ.value
+    assert export.preferences.tag_match_mode == TagMatchMode.ANY.value
+    assert export.preferences.tag_count_style == TagCountStyle.HIDDEN.value
+    assert export.preferences.show_tags_on_collapsed is True
+    assert export.preferences.collapsed_tags_style == CollapsedTagsStyle.ALL.value
+    assert export.preferences.tag_drop_opens_url is False
 
 
 def test_user_preferences_orm_roundtrip_defaults_then_non_defaults(
@@ -365,6 +384,12 @@ def test_data_export_core_defaults_preferences_when_no_row(
     assert export.preferences.member_sort == MemberSort.NAME_AZ.value
     assert export.preferences.show_row_counts is False
     assert export.preferences.show_list_totals is True
+    assert export.preferences.tag_sort == TagSort.MOST_IN_VIEW.value
+    assert export.preferences.tag_match_mode == TagMatchMode.ALL.value
+    assert export.preferences.tag_count_style == TagCountStyle.IN_VIEW_TOTAL.value
+    assert export.preferences.show_tags_on_collapsed is False
+    assert export.preferences.collapsed_tags_style == CollapsedTagsStyle.ONE_LINE.value
+    assert export.preferences.tag_drop_opens_url is True
 
 
 # --------------------------------------------------------------------------- #

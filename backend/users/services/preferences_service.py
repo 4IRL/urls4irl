@@ -7,10 +7,14 @@ from flask_login import current_user
 from backend import db
 from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.models.user_preferences import (
+    CollapsedTagsStyle,
     DateFormat,
     Density,
     MemberSort,
     SortOrder,
+    TagCountStyle,
+    TagMatchMode,
+    TagSort,
     Theme,
     User_Preferences,
     UtubSort,
@@ -21,6 +25,7 @@ from backend.schemas.errors import build_message_error_response
 from backend.schemas.users import (
     UpdateMemberListPreferencesResponseSchema,
     UpdatePreferencesResponseSchema,
+    UpdateTagDisplayPreferencesResponseSchema,
     UpdateUtubListPreferencesResponseSchema,
 )
 from backend.users.constants import PreferencesErrorCodes
@@ -55,6 +60,12 @@ def build_display_preferences_context() -> dict[str, Any]:
         "display_member_sort": resolved.member_sort.value,
         "display_show_row_counts": resolved.show_row_counts,
         "display_show_list_totals": resolved.show_list_totals,
+        "display_tag_sort": resolved.tag_sort.value,
+        "display_tag_match_mode": resolved.tag_match_mode.value,
+        "display_tag_count_style": resolved.tag_count_style.value,
+        "display_show_tags_on_collapsed": resolved.show_tags_on_collapsed,
+        "display_collapsed_tags_style": resolved.collapsed_tags_style.value,
+        "display_tag_drop_opens_url": resolved.tag_drop_opens_url,
     }
 
 
@@ -141,6 +152,69 @@ def apply_member_list_preferences_change(
         status_code=200,
         data=UpdateMemberListPreferencesResponseSchema(
             member_sort=resolved_sort.value,
+            status=status,
+            message=message,
+        ),
+    ).to_response()
+
+
+def apply_tag_display_preferences_change(
+    *,
+    tag_sort: TagSort | None,
+    tag_match_mode: TagMatchMode | None,
+    tag_count_style: TagCountStyle | None,
+    show_tags_on_collapsed: bool | None,
+    collapsed_tags_style: CollapsedTagsStyle | None,
+    tag_drop_opens_url: bool | None,
+) -> FlaskResponse:
+    """Persist only the provided tag display defaults for ``current_user``.
+
+    ``None`` means "not sent" (the request schema already rejected an explicit
+    null). Compares each sent field to the resolved value first, so a no-op
+    returns ``No change`` before any row is created or committed. The response
+    echoes all six resolved post-write values, not the request values.
+    """
+    preferences: User_Preferences | None = current_user.preferences
+    existing = resolve_preferences(preferences)
+
+    sent: dict[str, Any] = {
+        "tag_sort": tag_sort,
+        "tag_match_mode": tag_match_mode,
+        "tag_count_style": tag_count_style,
+        "show_tags_on_collapsed": show_tags_on_collapsed,
+        "collapsed_tags_style": collapsed_tags_style,
+        "tag_drop_opens_url": tag_drop_opens_url,
+    }
+    changes: dict[str, Any] = {
+        field_name: value
+        for field_name, value in sent.items()
+        if value is not None and value != getattr(existing, field_name)
+    }
+
+    if not changes:
+        resolved = existing
+        status = STD_JSON.NO_CHANGE
+        message = PREFERENCES_CHANGE_NO_CHANGE
+    else:
+        if preferences is None:
+            preferences = User_Preferences(user_id=current_user.id)
+            db.session.add(preferences)
+        for field_name, value in changes.items():
+            setattr(preferences, field_name, value)
+        db.session.commit()
+        resolved = resolve_preferences(preferences)
+        status = STD_JSON.SUCCESS
+        message = PREFERENCES_CHANGE_SUCCESS
+
+    return APIResponse(
+        status_code=200,
+        data=UpdateTagDisplayPreferencesResponseSchema(
+            tag_sort=resolved.tag_sort.value,
+            tag_match_mode=resolved.tag_match_mode.value,
+            tag_count_style=resolved.tag_count_style.value,
+            show_tags_on_collapsed=resolved.show_tags_on_collapsed,
+            collapsed_tags_style=resolved.collapsed_tags_style.value,
+            tag_drop_opens_url=resolved.tag_drop_opens_url,
             status=status,
             message=message,
         ),

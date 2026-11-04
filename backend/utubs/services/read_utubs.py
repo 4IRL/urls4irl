@@ -15,7 +15,7 @@ from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
 from backend.schemas.users import UtubSummaryListSchema
 from backend.schemas.utub_member_settings import resolve_member_settings
-from backend.schemas.utubs import UtubDetailSchema
+from backend.schemas.utubs import TagDisplayDefaultsSchema, UtubDetailSchema
 from backend.utils.datetime_utils import utc_now
 from backend.utubs.services.trash_predicates import (
     count_trash_rows_for_user,
@@ -93,7 +93,16 @@ def _build_utub_detail_for_user(current_utub: Utubs) -> UtubDetailSchema:
     # The membership rows are fetched with their users in one join, so the statement
     # count does not grow with the member count (``to_user`` is read for every row by
     # the sort and the serializer).
-    member_sort = resolve_preferences(current_user.preferences).member_sort
+    resolved_preferences = resolve_preferences(current_user.preferences)
+    member_sort = resolved_preferences.member_sort
+    tag_display_defaults = TagDisplayDefaultsSchema(
+        tag_sort=resolved_preferences.tag_sort.value,
+        tag_match_mode=resolved_preferences.tag_match_mode.value,
+        tag_count_style=resolved_preferences.tag_count_style.value,
+        show_tags_on_collapsed=resolved_preferences.show_tags_on_collapsed,
+        collapsed_tags_style=resolved_preferences.collapsed_tags_style.value,
+        tag_drop_opens_url=resolved_preferences.tag_drop_opens_url,
+    )
     memberships: list[Utub_Members] = (
         Utub_Members.query.populate_existing()
         .options(joinedload(Utub_Members.to_user))
@@ -106,6 +115,7 @@ def _build_utub_detail_for_user(current_utub: Utubs) -> UtubDetailSchema:
         ordered_utub_urls,
         sort_members(memberships, member_sort),
         member_sort.value,
+        tag_display_defaults,
     )
 
 

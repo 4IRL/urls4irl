@@ -64,6 +64,30 @@ class ExportPreferencesSchema(BaseSchema):
         alias="showListTotals",
         description="Whether the UTub list totals are shown",
     )
+    tag_sort: str = Field(
+        alias="tagSort",
+        description="The Tags deck sort order (most_in_view/most_used/name_az/newest/oldest)",
+    )
+    tag_match_mode: str = Field(
+        alias="tagMatchMode",
+        description="How several selected tags match URLs (all/any)",
+    )
+    tag_count_style: str = Field(
+        alias="tagCountStyle",
+        description="How tag counts are shown (in_view_total/total_only/hidden)",
+    )
+    show_tags_on_collapsed: bool = Field(
+        alias="showTagsOnCollapsed",
+        description="Whether collapsed URLs show their tags",
+    )
+    collapsed_tags_style: str = Field(
+        alias="collapsedTagsStyle",
+        description="How collapsed URLs show tags (one_line/all)",
+    )
+    tag_drop_opens_url: bool = Field(
+        alias="tagDropOpensUrl",
+        description="Whether dropping a tag on a URL opens it",
+    )
 
 
 class ExportMemberSchema(BaseSchema):

@@ -7,7 +7,14 @@ from flask.testing import FlaskClient
 from sqlalchemy import event
 
 from backend import db
-from backend.models.user_preferences import MemberSort, User_Preferences
+from backend.models.user_preferences import (
+    CollapsedTagsStyle,
+    MemberSort,
+    TagCountStyle,
+    TagMatchMode,
+    TagSort,
+    User_Preferences,
+)
 from backend.models.users import Users
 from backend.models.utub_members import Member_Role, Utub_Members
 from backend.utils.all_routes import ROUTES
@@ -105,6 +112,54 @@ def test_detail_defaults_to_name_az_without_preferences_row(
     detail = _get_detail(client)
     assert detail[MODELS.MEMBER_SORT] == "name_az"
     assert _member_ids(detail) == [3, 2, 1]
+
+
+_DEFAULT_TAG_DISPLAY = {
+    MODELS.TAG_SORT: "most_in_view",
+    MODELS.TAG_MATCH_MODE: "all",
+    MODELS.TAG_COUNT_STYLE: "in_view_total",
+    MODELS.SHOW_TAGS_ON_COLLAPSED: False,
+    MODELS.COLLAPSED_TAGS_STYLE: "one_line",
+    MODELS.TAG_DROP_OPENS_URL: True,
+}
+
+
+@pytest.mark.parametrize(
+    "route", [ROUTES.UTUBS.GET_SINGLE_UTUB, ROUTES.UTUBS.REFRESH_SINGLE_UTUB]
+)
+def test_detail_carries_tag_display_defaults(
+    every_user_in_every_utub,
+    login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+    route: str,
+):
+    """
+    GIVEN a viewer with no preferences row, then one with stored tag defaults
+    WHEN they load the UTub
+    THEN ``tagDisplayDefaults`` holds the resolved defaults, then the stored values
+    """
+    client, _, _, app = login_first_user_without_register
+    assert _get_detail(client, route)[MODELS.TAG_DISPLAY_DEFAULTS] == (
+        _DEFAULT_TAG_DISPLAY
+    )
+
+    _set_user_preferences(
+        app,
+        1,
+        tag_sort=TagSort.NAME_AZ,
+        tag_match_mode=TagMatchMode.ANY,
+        tag_count_style=TagCountStyle.HIDDEN,
+        show_tags_on_collapsed=True,
+        collapsed_tags_style=CollapsedTagsStyle.ALL,
+        tag_drop_opens_url=False,
+    )
+    assert _get_detail(client, route)[MODELS.TAG_DISPLAY_DEFAULTS] == {
+        MODELS.TAG_SORT: "name_az",
+        MODELS.TAG_MATCH_MODE: "any",
+        MODELS.TAG_COUNT_STYLE: "hidden",
+        MODELS.SHOW_TAGS_ON_COLLAPSED: True,
+        MODELS.COLLAPSED_TAGS_STYLE: "all",
+        MODELS.TAG_DROP_OPENS_URL: False,
+    }
 
 
 def test_joined_at_is_millisecond_iso_or_explicit_null(
