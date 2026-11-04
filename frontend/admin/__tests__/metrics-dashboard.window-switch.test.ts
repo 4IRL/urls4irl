@@ -33,6 +33,7 @@ vi.mock("../metrics-query-client.js", () => ({
   fetchMetricFlows: vi.fn(),
   deleteMetricFlow: vi.fn(),
   createMetricFlow: vi.fn(),
+  previewMetricFlow: vi.fn(),
   updateMetricFlow: vi.fn(),
   fetchMetricFlowCatalog: vi.fn(),
 }));

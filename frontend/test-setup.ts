@@ -124,6 +124,7 @@ const appConfig = {
     adminMetricFlowCreate: "/admin/metrics/flows",
     adminMetricFlowUpdate: "/admin/metrics/flows/-1",
     adminMetricFlowCatalog: "/admin/metrics/flows/catalog",
+    adminMetricFlowPreview: "/admin/metrics/flows/preview",
   },
   constants: {
     UTUBS_MIN_NAME_LENGTH: 1,
@@ -800,6 +801,21 @@ const appConfig = {
     METRICS_FLOW_LOADING_LABEL: "{title}: loading",
     METRICS_FLOW_LOAD_FAILED: "Couldn't load this flow.",
     METRICS_FLOW_RETRY: "Retry",
+    METRICS_FLOW_PREVIEW_HEADING: "Preview",
+    METRICS_FLOW_PREVIEW_HINT:
+      "Updates as you edit, for the selected time window.",
+    METRICS_FLOW_PREVIEW_PLACEHOLDER: "Finish the steps to see a preview.",
+    METRICS_FLOW_PREVIEW_FIX_FIELDS: "Fix the marked fields to see a preview.",
+    METRICS_FLOW_PREVIEW_UPDATING: "Updating preview…",
+    METRICS_FLOW_PREVIEW_FAILED: "Couldn't load the preview.",
+    METRICS_FLOW_PREVIEW_ANNOUNCE_RESULT:
+      "Preview updated: {succeeded} of {total} succeeded, {pct} conversion.",
+    METRICS_FLOW_PREVIEW_ANNOUNCE_EMPTY:
+      "Preview updated: no funnel activity in the selected window.",
+    METRICS_FLOW_PREVIEW_ANNOUNCE_PROBLEMS:
+      "Preview: {count} problems found. Fix the marked fields.",
+    METRICS_FLOW_PREVIEW_ANNOUNCE_PROBLEM_ONE:
+      "Preview: 1 problem found. Fix the marked fields.",
     METRICS_FLOWS_LIST_FAILED: "Custom flows couldn't be loaded.",
     METRICS_FLOWS_LIST_RETRYING: "Retrying…",
     METRICS_FLOW_DELETE_LOCKED: "Another flow is being deleted.",
