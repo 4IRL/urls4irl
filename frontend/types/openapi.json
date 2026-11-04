@@ -2847,6 +2847,516 @@
         }
       }
     },
+    "/api/v1/invite/{token}/join": {
+      "post": {
+        "operationId": "apiV1JoinViaInvite",
+        "tags": ["mobile-api"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "description": "Join the UTub an invite link belongs to. Every dead, unknown or malformed link is the same 404.",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful join (or already a member) through an invite link.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JoinViaInviteResponseSchema"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/utubs/{utub_id}/invite-link": {
+      "get": {
+        "operationId": "apiV1GetInviteLink",
+        "tags": ["mobile-api"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "description": "Get the UTub's current invite link and its status, or null when there is none (owner and co-owner only)",
+        "parameters": [
+          {
+            "name": "utub_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Envelope for the invite link routes; ``inviteLink`` is null when none exists.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InviteLinkResponseSchema"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "InviteLinkErrorCodes": {
+            "$ref": "#/components/schemas/InviteLinkErrorCodes"
+          }
+        }
+      },
+      "post": {
+        "operationId": "apiV1CreateInviteLink",
+        "tags": ["mobile-api"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "description": "Create the UTub's invite link with an expiry and an optional use limit (owner and co-owner only). A dead unrevoked link is revoked first.",
+        "parameters": [
+          {
+            "name": "utub_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InviteLinkSettingsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Envelope for the invite link routes; ``inviteLink`` is null when none exists.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InviteLinkResponseSchema"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_InviteLinkErrorCodes"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_InviteLinkErrorCodes"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "InviteLinkErrorCodes": {
+            "$ref": "#/components/schemas/InviteLinkErrorCodes"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "apiV1UpdateInviteLink",
+        "tags": ["mobile-api"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "description": "Change the expiry and/or use limit of the UTub's live invite link (owner and co-owner only). An absent field is unchanged; a null max_uses means unlimited.",
+        "parameters": [
+          {
+            "name": "utub_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateInviteLinkRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Envelope for the invite link routes; ``inviteLink`` is null when none exists.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InviteLinkResponseSchema"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_InviteLinkErrorCodes"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_InviteLinkErrorCodes"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "InviteLinkErrorCodes": {
+            "$ref": "#/components/schemas/InviteLinkErrorCodes"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "apiV1RevokeInviteLink",
+        "tags": ["mobile-api"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "description": "Revoke the UTub's invite link (owner and co-owner only)",
+        "parameters": [
+          {
+            "name": "utub_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Status and message response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusMessageResponseSchema"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "InviteLinkErrorCodes": {
+            "$ref": "#/components/schemas/InviteLinkErrorCodes"
+          }
+        }
+      }
+    },
+    "/api/v1/utubs/{utub_id}/invite-link/replace": {
+      "post": {
+        "operationId": "apiV1ReplaceInviteLink",
+        "tags": ["mobile-api"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "description": "Revoke the UTub's invite link and create a new one with the given settings (owner and co-owner only)",
+        "parameters": [
+          {
+            "name": "utub_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InviteLinkSettingsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Envelope for the invite link routes; ``inviteLink`` is null when none exists.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InviteLinkResponseSchema"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_InviteLinkErrorCodes"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "InviteLinkErrorCodes": {
+            "$ref": "#/components/schemas/InviteLinkErrorCodes"
+          }
+        }
+      }
+    },
     "/api/v1/utubs/{utub_id}/urls/{utub_url_id}/tags": {
       "post": {
         "operationId": "apiV1CreateUtubUrlTag",
@@ -4843,6 +5353,396 @@
         }
       }
     },
+    "/utubs/{utub_id}/invite-link": {
+      "get": {
+        "operationId": "getInviteLink",
+        "tags": ["members"],
+        "security": [
+          {
+            "sessionAuth": []
+          }
+        ],
+        "description": "Get the UTub's current invite link and its status, or null when there is none (owner and co-owner only)",
+        "parameters": [
+          {
+            "name": "utub_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Envelope for the invite link routes; ``inviteLink`` is null when none exists.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InviteLinkResponseSchema"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "InviteLinkErrorCodes": {
+            "$ref": "#/components/schemas/InviteLinkErrorCodes"
+          }
+        }
+      },
+      "post": {
+        "operationId": "createInviteLink",
+        "tags": ["members"],
+        "security": [
+          {
+            "sessionAuth": [],
+            "csrfToken": []
+          }
+        ],
+        "description": "Create the UTub's invite link with an expiry and an optional use limit (owner and co-owner only). A dead unrevoked link is revoked first.",
+        "parameters": [
+          {
+            "name": "utub_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InviteLinkSettingsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Envelope for the invite link routes; ``inviteLink`` is null when none exists.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InviteLinkResponseSchema"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_InviteLinkErrorCodes"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_InviteLinkErrorCodes"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "InviteLinkErrorCodes": {
+            "$ref": "#/components/schemas/InviteLinkErrorCodes"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateInviteLink",
+        "tags": ["members"],
+        "security": [
+          {
+            "sessionAuth": [],
+            "csrfToken": []
+          }
+        ],
+        "description": "Change the expiry and/or use limit of the UTub's live invite link (owner and co-owner only). An absent field is unchanged; a null max_uses means unlimited.",
+        "parameters": [
+          {
+            "name": "utub_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateInviteLinkRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Envelope for the invite link routes; ``inviteLink`` is null when none exists.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InviteLinkResponseSchema"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_InviteLinkErrorCodes"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_InviteLinkErrorCodes"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "InviteLinkErrorCodes": {
+            "$ref": "#/components/schemas/InviteLinkErrorCodes"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "revokeInviteLink",
+        "tags": ["members"],
+        "security": [
+          {
+            "sessionAuth": [],
+            "csrfToken": []
+          }
+        ],
+        "description": "Revoke the UTub's invite link (owner and co-owner only)",
+        "parameters": [
+          {
+            "name": "utub_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Status and message response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusMessageResponseSchema"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "InviteLinkErrorCodes": {
+            "$ref": "#/components/schemas/InviteLinkErrorCodes"
+          }
+        }
+      }
+    },
+    "/utubs/{utub_id}/invite-link/replace": {
+      "post": {
+        "operationId": "replaceInviteLink",
+        "tags": ["members"],
+        "security": [
+          {
+            "sessionAuth": [],
+            "csrfToken": []
+          }
+        ],
+        "description": "Revoke the UTub's invite link and create a new one with the given settings (owner and co-owner only)",
+        "parameters": [
+          {
+            "name": "utub_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InviteLinkSettingsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Envelope for the invite link routes; ``inviteLink`` is null when none exists.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InviteLinkResponseSchema"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_InviteLinkErrorCodes"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "InviteLinkErrorCodes": {
+            "$ref": "#/components/schemas/InviteLinkErrorCodes"
+          }
+        }
+      }
+    },
     "/utubs/{utub_id}/members/{user_id}": {
       "delete": {
         "operationId": "removeMember",
@@ -5498,6 +6398,8 @@
                 "cross_utub_search_performed",
                 "data_exported",
                 "email_verified",
+                "invite_link_created",
+                "invite_link_revoked",
                 "login_failure",
                 "login_success",
                 "member_added",
@@ -5865,6 +6767,8 @@
                 "cross_utub_search_performed",
                 "data_exported",
                 "email_verified",
+                "invite_link_created",
+                "invite_link_revoked",
                 "login_failure",
                 "login_success",
                 "member_added",
@@ -11123,6 +12027,200 @@
           }
         },
         "required": ["idToken"],
+        "type": "object"
+      },
+      "JoinViaInviteResponseSchema": {
+        "description": "Successful join (or already a member) through an invite link.",
+        "properties": {
+          "status": {
+            "const": "Success",
+            "description": "Response status",
+            "type": "string"
+          },
+          "message": {
+            "description": "Joined or already member",
+            "type": "string"
+          },
+          "utubID": {
+            "description": "ID of the UTub that was joined",
+            "type": "integer"
+          },
+          "alreadyMember": {
+            "description": "True when the caller was already a member (nothing was consumed)",
+            "type": "boolean"
+          }
+        },
+        "required": ["status", "message", "utubID", "alreadyMember"],
+        "type": "object"
+      },
+      "InviteLinkSchema": {
+        "description": "One UTub's current invite link as shown to its managers.",
+        "properties": {
+          "token": {
+            "description": "The 22-character invite token",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/InviteLinkStatus",
+            "description": "live, expired, used_up or creator_demoted"
+          },
+          "expiresAt": {
+            "description": "UTC ISO-8601 timestamp after which the link stops working",
+            "format": "date-time",
+            "type": "string"
+          },
+          "maxUses": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Use limit; null means unlimited"
+          },
+          "useCount": {
+            "description": "How many people joined with this link",
+            "type": "integer"
+          },
+          "createdAt": {
+            "description": "UTC ISO-8601 creation timestamp",
+            "format": "date-time",
+            "type": "string"
+          },
+          "creatorUsername": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Username of the link's creator; null when that account was erased"
+          }
+        },
+        "required": [
+          "token",
+          "status",
+          "expiresAt",
+          "maxUses",
+          "useCount",
+          "createdAt",
+          "creatorUsername"
+        ],
+        "type": "object"
+      },
+      "InviteLinkStatus": {
+        "enum": ["live", "expired", "used_up", "creator_demoted"],
+        "type": "string"
+      },
+      "InviteLinkResponseSchema": {
+        "description": "Envelope for the invite link routes; ``inviteLink`` is null when none exists.",
+        "properties": {
+          "status": {
+            "const": "Success",
+            "description": "Response status",
+            "type": "string"
+          },
+          "inviteLink": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InviteLinkSchema"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The current invite link, or null when the UTub has none"
+          }
+        },
+        "required": ["status", "inviteLink"],
+        "type": "object"
+      },
+      "InviteLinkErrorCodes": {
+        "type": "integer",
+        "enum": [1, 2, 3, 4, 5, 6],
+        "x-enum-varnames": [
+          "INVITE_LINK_NOT_FOUND",
+          "INVALID_FORM_INPUT",
+          "UTUB_IS_LOCKED",
+          "LIVE_LINK_EXISTS",
+          "DEAD_LINK_UPDATE",
+          "USES_BELOW_JOINED"
+        ],
+        "description": "Error codes for InviteLinkErrorCodes"
+      },
+      "InviteLinkSettingsRequest": {
+        "properties": {
+          "expires_in_days": {
+            "default": 7,
+            "description": "Days until the link expires: 1, 7 or 30",
+            "enum": [1, 7, 30],
+            "type": "integer"
+          },
+          "max_uses": {
+            "anyOf": [
+              {
+                "enum": [1, 5, 10, 25],
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "How many people may join with the link: 1, 5, 10 or 25; null means unlimited"
+          }
+        },
+        "type": "object"
+      },
+      "ErrorResponse_InviteLinkErrorCodes": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "errorCode": {
+                "$ref": "#/components/schemas/InviteLinkErrorCodes"
+              }
+            }
+          }
+        ]
+      },
+      "UpdateInviteLinkRequest": {
+        "description": "Partial update: an absent field is left unchanged; an explicit null\n``max_uses`` sets the link to unlimited.",
+        "properties": {
+          "expires_in_days": {
+            "anyOf": [
+              {
+                "enum": [1, 7, 30],
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Days until the link expires: 1, 7 or 30"
+          },
+          "max_uses": {
+            "anyOf": [
+              {
+                "enum": [1, 5, 10, 25],
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "How many people may join with the link: 1, 5, 10 or 25; null means unlimited"
+          }
+        },
         "type": "object"
       },
       "AddTagRequest": {

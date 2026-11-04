@@ -100,6 +100,12 @@ SCOPE = "scope"
 SHORT_URL = "shortUrl"
 CAN_REVOKE = "canRevoke"
 CREATED = "created"
+INVITE_LINK = "inviteLink"
+TOKEN = "token"
+MAX_USES = "maxUses"
+USE_COUNT = "useCount"
+CREATOR_USERNAME = "creatorUsername"
+ALREADY_MEMBER = "alreadyMember"
 
 
 class MODELS:
@@ -202,3 +208,9 @@ class MODELS:
     SHORT_URL = SHORT_URL
     CAN_REVOKE = CAN_REVOKE
     CREATED = CREATED
+    INVITE_LINK = INVITE_LINK
+    TOKEN = TOKEN
+    MAX_USES = MAX_USES
+    USE_COUNT = USE_COUNT
+    ALREADY_MEMBER = ALREADY_MEMBER
+    CREATOR_USERNAME = CREATOR_USERNAME

@@ -79,6 +79,15 @@ class SHORT_LINK_ROUTES:
     RESOLVE_SHORT_LINK = _SHORT_LINKS + "resolve_short_link"
 
 
+class INVITE_LINK_ROUTES:
+    _INVITE_LINKS = "invite_links."
+    GET_INVITE_LINK = _INVITE_LINKS + "get_invite_link"
+    CREATE_INVITE_LINK = _INVITE_LINKS + "create_invite_link"
+    UPDATE_INVITE_LINK = _INVITE_LINKS + "update_invite_link"
+    REPLACE_INVITE_LINK = _INVITE_LINKS + "replace_invite_link"
+    REVOKE_INVITE_LINK = _INVITE_LINKS + "revoke_invite_link"
+
+
 class USER_ROUTES:
     _USERS = "users."
     LOGOUT = _USERS + "logout"
@@ -226,6 +235,13 @@ class API_V1_ROUTES:
     DELETE_UTUB_TAG = _API_V1 + "api_v1_delete_utub_tag"
     # Search
     SEARCH = _API_V1 + "api_v1_search_across_utubs"
+    # Invite link routes
+    GET_INVITE_LINK = _API_V1 + "api_v1_get_invite_link"
+    CREATE_INVITE_LINK = _API_V1 + "api_v1_create_invite_link"
+    UPDATE_INVITE_LINK = _API_V1 + "api_v1_update_invite_link"
+    REPLACE_INVITE_LINK = _API_V1 + "api_v1_replace_invite_link"
+    REVOKE_INVITE_LINK = _API_V1 + "api_v1_revoke_invite_link"
+    JOIN_VIA_INVITE = _API_V1 + "api_v1_join_via_invite"
 
 
 class ROUTES:
@@ -237,6 +253,7 @@ class ROUTES:
     UTUB_TAGS = UTUB_TAG_ROUTES
     URLS = URL_ROUTES
     SHORT_LINKS = SHORT_LINK_ROUTES
+    INVITE_LINKS = INVITE_LINK_ROUTES
     USERS = USER_ROUTES
     ACCOUNT_AND_SETTINGS = ACCOUNT_AND_SETTING_ROUTES
     ADMIN = ADMIN_ROUTES
@@ -429,6 +446,7 @@ class NoJsReason(StrEnum):
     BROWSER_REDIRECT = "browser-redirect"
     INFRA_PROBE = "infra-probe"
     PUBLIC_SHARE_LINK = "public-share-link"
+    PANEL_PENDING = "panel-pending"
 
 
 # Keys are exact endpoints, or `<blueprint>.*` for a whole blueprint. A
@@ -448,6 +466,13 @@ NO_JS_ENDPOINTS: dict[str, NoJsReason] = {
     "splash.oauth_link": NoJsReason.BROWSER_REDIRECT,
     # Public share-link page opened from outside the app (confirmation page).
     "short_links.resolve_short_link": NoJsReason.PUBLIC_SHARE_LINK,
+    # Invite link manager API: no web-JS caller until the manager panel lands.
+    # Exact keys, not `invite_links.*`: the public join routes join this blueprint.
+    "invite_links.get_invite_link": NoJsReason.PANEL_PENDING,
+    "invite_links.create_invite_link": NoJsReason.PANEL_PENDING,
+    "invite_links.update_invite_link": NoJsReason.PANEL_PENDING,
+    "invite_links.replace_invite_link": NoJsReason.PANEL_PENDING,
+    "invite_links.revoke_invite_link": NoJsReason.PANEL_PENDING,
 }
 
 
