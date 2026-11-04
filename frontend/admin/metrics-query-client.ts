@@ -271,8 +271,8 @@ export function createMetricFlow({
 /**
  * Preview one draft flow's real numbers for a time window.
  *
- * Example: `previewMetricFlow({ definition, window: "7d" })` issues
- * `POST /admin/metrics/flows/preview?window=7d` with the definition as the body.
+ * Example: `previewMetricFlow({ definition, window: "week" })` issues
+ * `POST /admin/metrics/flows/preview?window=week` with the definition as the body.
  */
 export function previewMetricFlow({
   definition,

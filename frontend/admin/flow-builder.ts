@@ -143,7 +143,7 @@ export interface FlowBuilderCallbacks {
   onFlowMissing({ id }: { id: string }): void;
   onDeleted({ id, name }: { id: string; name: string }): void;
   onListStale(): void;
-  /** The dashboard's current time window key (e.g. "7d"), read at each preview send. */
+  /** The dashboard's current time window key (e.g. "week"), read at each preview send. */
   getWindow(): string;
 }
 
@@ -1084,11 +1084,11 @@ export function createFlowBuilder({
         control.removeAttribute("aria-describedby");
       }
     }
-    // Only a flag the preview itself set is removed; a Save/client claim keeps it.
     for (const control of container.querySelectorAll<HTMLElement>(
       "[data-preview-invalid]",
     )) {
-      // A Save/client message that landed since keeps its own flag.
+      // Only a flag the preview itself set is removed; a Save/client message
+      // that landed since keeps its own aria-invalid.
       if (!control.hasAttribute("aria-describedby")) {
         control.removeAttribute("aria-invalid");
       }
