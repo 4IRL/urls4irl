@@ -453,17 +453,18 @@ def test_the_trash_label_is_vertically_centered_in_its_row(
 
     label = page.locator("#TrashSelector > span").first
     expect(label).to_be_visible()
-    gaps = page.evaluate(
+    # The deck's height is still settling right after login (the list and the
+    # pinned Trash row lay out asynchronously), so wait until the gaps agree.
+    page.wait_for_function(
         """() => {
             const label = document.querySelector("#TrashSelector > span").getBoundingClientRect();
             const ruleBottom = document.querySelector("#TrashSelectorWrap").getBoundingClientRect().top
                 + parseFloat(getComputedStyle(document.querySelector("#TrashSelectorWrap")).borderTopWidth);
             const deckBottom = document.querySelector("#UTubDeck").getBoundingClientRect().bottom;
-            return {above: label.top - ruleBottom, below: deckBottom - label.bottom};
-        }"""
+            return Math.abs((label.top - ruleBottom) - (deckBottom - label.bottom)) <= 1;
+        }""",
+        timeout=5000,
     )
-
-    assert abs(gaps["above"] - gaps["below"]) <= 1, gaps
 
 
 def test_create_under_name_az_lands_mid_list_and_is_scrolled_into_view(
