@@ -1,0 +1,56 @@
+{% extends "pages/layout.html" %}
+{# Public invite page. Only the states that need them receive the UTub name, description
+   and inviter (join_ready, login_required); the dead, unvalidated and error variants
+   carry no invite detail. #}
+{% block mainbody %}
+{% macro back_link(page) %}
+{% if page.back_url %}
+<p class="short-link-hint"><a class="invite-back-link" href="{{ page.back_url }}">{{ invite_strings.BACK_TO_INVITE }}</a></p>
+{% endif %}
+{% endmacro %}
+<main id="InviteMain" class="short-link-main">
+  <section class="short-link-panel" aria-labelledby="inviteHeading">
+    {% if page.kind == "join_ready" or page.kind == "login_required" %}
+    {% if page.message %}
+    <p class="invite-message" role="{{ page.message_role or 'status' }}">{{ page.message }}</p>
+    {% endif %}
+    <p class="short-link-eyebrow">{{ invite_strings.EYEBROW_TEMPLATE.format(inviter=page.inviter) }}</p>
+    <h1 id="inviteHeading" class="short-link-heading">{{ page.utub_name }}</h1>
+    {% if page.utub_description %}
+    <p class="invite-description">{{ page.utub_description }}</p>
+    {% endif %}
+    {% if page.kind == "join_ready" %}
+    <p class="short-link-hint">{{ invite_strings.JOIN_HINT }}</p>
+    <div class="short-link-cta-row">
+      <a class="short-link-secondary" href="/home">Not now</a>
+    </div>
+    {% else %}
+    <p class="short-link-hint">{{ invite_strings.LOGIN_HINT }}</p>
+    <div class="short-link-cta-row">
+      <a class="splash-button" href="{{ page.register_url }}">Create account</a>
+      <a class="short-link-secondary" href="{{ page.login_url }}">Log in</a>
+    </div>
+    {% endif %}
+    {% elif page.kind == "email_unvalidated" %}
+    <p class="invite-message" role="status">{{ page.message }}</p>
+    <h1 id="inviteHeading" class="short-link-heading">{{ page.heading }}</h1>
+    {{ back_link(page) }}
+    {% elif page.kind == "error" %}
+    <p class="invite-message" role="{{ page.message_role or 'alert' }}">{{ page.message }}</p>
+    <h1 id="inviteHeading" class="short-link-heading">{{ page.heading }}</h1>
+    {{ back_link(page) }}
+    {% else %}
+    <h1 id="inviteHeading" class="short-link-heading">{{ invite_strings.DEAD_HEADING }}</h1>
+    <p class="short-link-hint">{{ invite_strings.DEAD_HINT }}</p>
+    {% if page.show_home_link %}
+    <div class="short-link-cta-row">
+      <a class="splash-button" href="/">Go to URLS4IRL</a>
+    </div>
+    {% endif %}
+    {% endif %}
+  </section>
+</main>
+
+<!-- Initialized by frontend/invite.ts -->
+<script nonce="{{ nonce }}" type="module" src="{{ vite_asset('invite.ts') }}"></script>
+{% endblock %}

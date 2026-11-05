@@ -413,6 +413,14 @@ def test_ajax_required_routes_reject_non_ajax(
             id="resolve_short_link",
         ),
         pytest.param(
+            "invite_page",
+            "GET",
+            ROUTES.INVITE_LINKS.INVITE_PAGE,
+            {"token": "Zzzzzzzzzzzzzzzzzzzzzz"},
+            None,
+            id="invite_page",
+        ),
+        pytest.param(
             "health",
             "GET",
             SYSTEM_ROUTES.HEALTH,

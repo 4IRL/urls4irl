@@ -1,5 +1,6 @@
 from datetime import timedelta
 from enum import IntEnum, StrEnum
+from typing import Final
 
 # secrets.token_urlsafe(16): 128 bits of randomness, 22 base64url characters.
 INVITE_LINK_TOKEN_BYTES: int = 16
@@ -13,6 +14,7 @@ INVITE_LINK_MAX_USES_VALUES: tuple[int, ...] = (1, 5, 10, 25)
 INVITE_LINK_MANAGE_RATE_LIMIT: str = "30 per minute"
 # One shared bucket for web and mobile create/replace, per manager.
 INVITE_LINK_MANAGE_RATE_SCOPE: str = "invite_link_manage"
+INVITE_LINK_PAGE_RATE_LIMIT: Final = "60 per minute"
 INVITE_LINK_JOIN_RATE_LIMIT: str = "10 per minute"
 INVITE_LINK_JOIN_RATE_SCOPE: str = "invite_link_join"
 INVITE_LINK_TOKEN_MAX_ATTEMPTS: int = 5

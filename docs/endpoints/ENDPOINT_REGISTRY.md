@@ -733,6 +733,15 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 
 ## invite_links
 
+### `GET /invite/<token>` — `invite_links.invite_page`
+
+- **Handler:** `backend/invite_links/routes.py:invite_page`
+- **Decorators:** `api_route`, `limiter.limit(INVITE_LINK_PAGE_RATE_LIMIT)`
+- **Service:** `backend.invite_links.services.invite_page:resolve_invite_page`
+- **Schema:** status: 200 `backend.schemas.base.HtmlErrorPageSchema`, 302 `backend.schemas.base.HtmlErrorPageSchema`, 404 `backend.schemas.base.HtmlErrorPageSchema`, 429 `backend.schemas.base.HtmlErrorPageSchema`
+- **Template:** —
+- **JS:** indirect: page-self-url
+
 ### `DELETE /utubs/<int:utub_id>/invite-link` — `invite_links.revoke_invite_link`
 
 - **Handler:** `backend/invite_links/routes.py:revoke_invite_link`

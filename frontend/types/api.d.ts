@@ -932,6 +932,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/invite/{token}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** @description Public invite-link landing page. Shows who invited the visitor to which UTub (200) for a live link, a Confirm-your-email page (200) for an unconfirmed viewer, and redirects a member into the UTub (302). Every dead, unknown or malformed token returns the same 404 page. */
+    get: operations["invitePage"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/utubs/{utub_id}/invite-link": {
     parameters: {
       query?: never;
@@ -3228,6 +3245,11 @@ export interface components {
      */
     ContactErrorCodes: 1;
     /**
+     * @description Documents an HTML page render (not a JSON body) returned for an
+     *     error/reject state.
+     */
+    HtmlErrorPageSchema: Record<string, never>;
+    /**
      * @description One UI metrics event submitted by the browser.
      *
      *     Per-event dimension validation lives at the route layer
@@ -3754,11 +3776,6 @@ export interface components {
       /** @description Zero-filled per-bucket percentile series in chronological order. */
       buckets: components["schemas"]["LatencyTimeseriesBucket"][];
     };
-    /**
-     * @description Documents an HTML page render (not a JSON body) returned for an
-     *     error/reject state.
-     */
-    HtmlErrorPageSchema: Record<string, never>;
     RegisterRequest: {
       /**
        * @description Username for the new account
@@ -8635,6 +8652,61 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ErrorResponse_ContactErrorCodes"];
+        };
+      };
+    };
+  };
+  invitePage: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        token: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /**
+       * @description Documents an HTML page render (not a JSON body) returned for an
+       *         error/reject state.
+       */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"];
+        };
+      };
+      /**
+       * @description Documents an HTML page render (not a JSON body) returned for an
+       *         error/reject state.
+       */
+      302: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HtmlErrorPageSchema"];
+        };
+      };
+      /** @description Too many requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HtmlErrorPageSchema"];
         };
       };
     };

@@ -70,4 +70,11 @@ describe("initNavbarBackdrop", () => {
     vi.advanceTimersByTime(BACKDROP_FADE_REMOVE_MS);
     expect($(`.${BACKDROP_CLASS}`).length).toBe(0);
   });
+
+  it("does not throw when the navbar has no dropdown (logged-in invite page)", () => {
+    document.body.innerHTML = `<nav id="mainNavbar"><span class="navbar-brand">Brand</span></nav>`;
+
+    expect(() => initNavbarBackdrop()).not.toThrow();
+    expect($(`.${BACKDROP_CLASS}`).length).toBe(0);
+  });
 });
