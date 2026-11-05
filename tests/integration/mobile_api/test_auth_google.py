@@ -1,15 +1,24 @@
+import time
+from types import SimpleNamespace
+from urllib.error import URLError
+
+import jwt
 import pytest
+from cryptography.hazmat.primitives.asymmetric import rsa
 from flask import Flask, url_for
 from flask.testing import FlaskClient
+from jwt.exceptions import PyJWKClientConnectionError
 
 from backend import db
 from backend.api_v1.constants import ApiAuthErrorCodes
+from backend.api_v1.services import google_tokens as _google_tokens
 from backend.api_v1.services.google_tokens import GoogleIdTokenClaims
 from backend.models.api_refresh_tokens import ApiRefreshTokens
 from backend.models.user_oauth_identities import UserOAuthIdentity
 from backend.models.users import Users
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings.api_auth_strs import API_AUTH_FAILURE
+from backend.utils.strings.config_strs import CONFIG_ENVS
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.model_strs import MODELS
 from backend.utils.strings.oauth_strs import (
@@ -27,6 +36,8 @@ _GOOGLE_SUBJECT = "google-subject-1234567890"
 _GOOGLE_EMAIL = "google_mobile_user@example.com"
 _GOOGLE_NAME = "Google Mobile User"
 
+_TEST_CLIENT_ID = "test-client-id"
+_GOOGLE_ISSUER = "https://accounts.google.com"
 _VERIFY_FN_PATH = "backend.api_v1.services.auth.verify_google_id_token"
 
 
@@ -115,6 +126,140 @@ def test_google_auth_unverifiable_token_is_401(
     assert response_json[STD_JSON.MESSAGE] == (
         API_AUTH_FAILURE.UNABLE_TO_VERIFY_GOOGLE_TOKEN
     )
+    assert response_json[STD_JSON.ERROR_CODE] == ApiAuthErrorCodes.INVALID_GOOGLE_TOKEN
+
+    with app.app_context():
+        assert Users.query.count() == 0
+
+
+def test_google_auth_jwks_fetch_failure_is_401(
+    app: Flask, api_client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+):
+    """
+    GIVEN the transport under the Google JWKS fetch raises URLError
+    WHEN verify_google_id_token runs (real PyJWKClient path, which wraps the
+        error in PyJWKClientConnectionError) and POST /api/v1/auth/google is called
+    THEN verification returns None and the route answers the usual 401
+    """
+    fetch_calls: list[str] = []
+
+    def _failing_urlopen():
+        fetch_calls.append("fetch")
+        raise URLError("simulated JWKS fetch failure")
+
+    monkeypatch.setitem(
+        app.config, CONFIG_ENVS.GOOGLE_OAUTH_CLIENT_ID, "test-client-id"
+    )
+    # PyJWKClient fetches via build_opener(...).open(...), so patch the opener
+    monkeypatch.setattr(
+        "urllib.request.OpenerDirector.open",
+        lambda *args, **kwargs: _failing_urlopen(),
+    )
+    # Drop any JWKS cached by the module-level client so the fetch is exercised
+    monkeypatch.setattr(_google_tokens._google_jwk_client, "jwk_set_cache", None)
+    # A well-formed JWT is needed so PyJWKClient reaches the JWKS fetch
+    well_formed_token = _signed_google_token(
+        rsa.generate_private_key(public_exponent=65537, key_size=2048),
+        headers={"kid": "unknown-kid"},
+    )
+    # Confirm the real client wraps the transport error as expected
+    with pytest.raises(PyJWKClientConnectionError):
+        _google_tokens._google_jwk_client.get_signing_key_from_jwt(well_formed_token)
+    fetch_calls.clear()
+
+    with app.app_context():
+        assert _google_tokens.verify_google_id_token(id_token=well_formed_token) is None
+    assert len(fetch_calls) == 1
+
+    response = api_client.post(
+        _google_url(app), json={_ID_TOKEN_KEY: well_formed_token}
+    )
+
+    assert response.status_code == 401
+    response_json = response.get_json()
+    assert response_json[STD_JSON.MESSAGE] == (
+        API_AUTH_FAILURE.UNABLE_TO_VERIFY_GOOGLE_TOKEN
+    )
+    assert response_json[STD_JSON.ERROR_CODE] == ApiAuthErrorCodes.INVALID_GOOGLE_TOKEN
+    assert len(fetch_calls) == 2
+
+    with app.app_context():
+        assert Users.query.count() == 0
+
+
+def _signed_google_token(
+    private_key: rsa.RSAPrivateKey,
+    headers: dict | None = None,
+    **claim_overrides,
+) -> str:
+    claims = {
+        "iss": _GOOGLE_ISSUER,
+        "aud": _TEST_CLIENT_ID,
+        "sub": _GOOGLE_SUBJECT,
+        "email": _GOOGLE_EMAIL,
+        "email_verified": True,
+        "iat": int(time.time()) - 60,
+        "exp": int(time.time()) + 3600,
+    }
+    claims.update(claim_overrides)
+    return jwt.encode(claims, private_key, algorithm="RS256", headers=headers)
+
+
+@pytest.fixture
+def google_signing_key(app: Flask, monkeypatch: pytest.MonkeyPatch):
+    """Patch the JWKS lookup to return a locally generated RSA public key."""
+    private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    monkeypatch.setitem(app.config, CONFIG_ENVS.GOOGLE_OAUTH_CLIENT_ID, _TEST_CLIENT_ID)
+    monkeypatch.setattr(
+        _google_tokens._google_jwk_client,
+        "get_signing_key_from_jwt",
+        lambda token: SimpleNamespace(key=private_key.public_key()),
+    )
+    return private_key
+
+
+def test_verify_google_id_token_valid_token_returns_claims(
+    app: Flask, google_signing_key: rsa.RSAPrivateKey
+):
+    """Positive control: the locally signed token verifies, so failures below are real."""
+    token = _signed_google_token(google_signing_key)
+
+    with app.app_context():
+        claims = _google_tokens.verify_google_id_token(id_token=token)
+
+    assert claims is not None
+    assert claims.subject == _GOOGLE_SUBJECT
+    assert claims.email == _GOOGLE_EMAIL
+
+
+@pytest.mark.parametrize(
+    "claim_overrides",
+    [
+        pytest.param({"exp": int(time.time()) - 3600}, id="expired"),
+        pytest.param({"aud": "some-other-client-id"}, id="wrong_aud"),
+        pytest.param({"iss": "https://evil.example.com"}, id="wrong_iss"),
+    ],
+)
+def test_google_auth_invalid_token_claims_are_401(
+    app: Flask,
+    api_client: FlaskClient,
+    google_signing_key: rsa.RSAPrivateKey,
+    claim_overrides: dict,
+):
+    """
+    GIVEN a validly signed Google id_token with an expired exp, wrong aud or wrong iss
+    WHEN verify_google_id_token runs and POST /api/v1/auth/google is called
+    THEN verification returns None, the route answers 401, and no user is created
+    """
+    token = _signed_google_token(google_signing_key, **claim_overrides)
+
+    with app.app_context():
+        assert _google_tokens.verify_google_id_token(id_token=token) is None
+
+    response = api_client.post(_google_url(app), json={_ID_TOKEN_KEY: token})
+
+    assert response.status_code == 401
+    response_json = response.get_json()
     assert response_json[STD_JSON.ERROR_CODE] == ApiAuthErrorCodes.INVALID_GOOGLE_TOKEN
 
     with app.app_context():

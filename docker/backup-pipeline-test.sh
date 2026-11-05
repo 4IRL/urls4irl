@@ -147,7 +147,7 @@ docker run --rm \
   --network "$NET" \
   -e DOCKER=true \
   -e POSTGRES_USER=bob -e POSTGRES_DB=test -e POSTGRES_PASSWORD=test -e POSTGRES_TEST_DB=test \
-  -e SECRET_KEY=backup-pipeline-test-secret \
+  -e SECRET_KEY=backup-pipeline-test-secret-0123456789 \
   -e MAILJET_API_KEY=test -e MAILJET_SECRET_KEY=test \
   --entrypoint bash \
   "$PROVISION_IMAGE" \
