@@ -14,6 +14,7 @@ caller and the self-service caller are proven against the same core behavior.
 from __future__ import annotations
 
 from typing import Any
+from unittest.mock import patch
 
 import pytest
 from flask import Flask
@@ -36,9 +37,11 @@ from backend.models.forgot_passwords import Forgot_Passwords
 from backend.models.user_oauth_identities import UserOAuthIdentity
 from backend.models.user_preferences import User_Preferences
 from backend.models.users import Users
+from backend.models.utub_invite_links import Utub_Invite_Links
 from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utubs import Utubs
-from tests.utils_for_test import trash_utub
+from backend.utubs.guards import lock_utub_for_update
+from tests.utils_for_test import add_invite_link, remove_member, trash_utub
 
 pytestmark = pytest.mark.account_and_support
 
@@ -399,6 +402,213 @@ def test_erase_core_locks_utubs_in_ascending_id_order(app: Flask) -> None:
 
     assert list({low_id, high_id}) == [high_id, low_id]  # precondition
     assert locked_ids == [low_id, high_id]
+
+
+# ---------------------------------------------------------------------------
+# erase_user_core — invite link revoke
+# ---------------------------------------------------------------------------
+
+
+def _seed_shared_utub(
+    app: Flask, *, owner_id: int, member_ids: list[int], name: str = "SharedLinkUTub"
+) -> int:
+    """Create a UTub owned by ``owner_id`` with co-creator members; return its id."""
+    with app.app_context():
+        shared = Utubs(name=name, utub_creator=owner_id, utub_description="")
+        db.session.add(shared)
+        db.session.flush()
+        db.session.add(
+            Utub_Members(
+                utub_id=shared.id, user_id=owner_id, member_role=Member_Role.CREATOR
+            )
+        )
+        for member_id in member_ids:
+            db.session.add(
+                Utub_Members(
+                    utub_id=shared.id,
+                    user_id=member_id,
+                    member_role=Member_Role.CO_CREATOR,
+                )
+            )
+        db.session.commit()
+        return shared.id
+
+
+def _unrevoked_link_ids(app: Flask, utub_id: int) -> list[int]:
+    with app.app_context():
+        db.session.expire_all()
+        return [
+            row.id
+            for row in Utub_Invite_Links.query.filter(
+                Utub_Invite_Links.utub_id == utub_id,
+                Utub_Invite_Links.revoked_at.is_(None),
+            ).all()
+        ]
+
+
+def _erase(app: Flask, user_id: int) -> ErasureCounts:
+    with app.app_context():
+        counts: ErasureCounts = erase_user_core(target_user=Users.query.get(user_id))
+        db.session.commit()
+    return counts
+
+
+def test_erase_core_revokes_link_in_member_utub(app: Flask) -> None:
+    target = _seed_user(app, username="core_lnk_a", email="core_lnk_a@test.com")
+    other = _seed_user(app, username="core_lnk_b", email="core_lnk_b@test.com")
+    utub_id = _seed_shared_utub(app, owner_id=other.id, member_ids=[target.id])
+    add_invite_link(app, utub_id, target.id)
+
+    counts = _erase(app, target.id)
+
+    assert counts.invite_links_revoked == 1
+    assert _unrevoked_link_ids(app, utub_id) == []
+
+
+def test_erase_core_leaves_other_managers_link_untouched(app: Flask) -> None:
+    target = _seed_user(app, username="core_lnk_c", email="core_lnk_c@test.com")
+    other = _seed_user(app, username="core_lnk_d", email="core_lnk_d@test.com")
+    utub_id = _seed_shared_utub(app, owner_id=other.id, member_ids=[target.id])
+    other_link_id = add_invite_link(app, utub_id, other.id)
+
+    counts = _erase(app, target.id)
+
+    assert counts.invite_links_revoked == 0
+    assert _unrevoked_link_ids(app, utub_id) == [other_link_id]
+
+
+def test_erase_core_solo_utub_with_link_deleted_count_zero(app: Flask) -> None:
+    target = _seed_user(app, username="core_lnk_e", email="core_lnk_e@test.com")
+    solo_id: int = _seed_solo_utub(app, target).id
+    link_id = add_invite_link(app, solo_id, target.id)
+
+    counts = _erase(app, target.id)
+
+    assert counts.utubs_deleted == 1
+    assert counts.invite_links_revoked == 0
+    with app.app_context():
+        assert Utubs.query.get(solo_id) is None
+        assert Utub_Invite_Links.query.get(link_id) is None
+
+
+def test_erase_core_revokes_link_in_utub_user_left(app: Flask) -> None:
+    target = _seed_user(app, username="core_lnk_f", email="core_lnk_f@test.com")
+    other = _seed_user(app, username="core_lnk_g", email="core_lnk_g@test.com")
+    utub_id = _seed_shared_utub(app, owner_id=other.id, member_ids=[target.id])
+    add_invite_link(app, utub_id, target.id)
+    remove_member(app, utub_id, target.id)
+
+    counts = _erase(app, target.id)
+
+    assert counts.invite_links_revoked == 1
+    assert _unrevoked_link_ids(app, utub_id) == []
+
+
+def test_erase_core_owner_link_revoked_successor_can_create_new_link(
+    app: Flask,
+) -> None:
+    target = _seed_user(app, username="core_lnk_h", email="core_lnk_h@test.com")
+    other = _seed_user(app, username="core_lnk_i", email="core_lnk_i@test.com")
+    utub_id = _seed_shared_utub(app, owner_id=target.id, member_ids=[other.id])
+    add_invite_link(app, utub_id, target.id)
+
+    counts = _erase(app, target.id)
+
+    assert counts.invite_links_revoked == 1
+    assert counts.ownerships_transferred == 1
+    assert _unrevoked_link_ids(app, utub_id) == []
+    # The partial unique index no longer blocks a new live link for the successor.
+    new_link_id = add_invite_link(app, utub_id, other.id)
+    assert _unrevoked_link_ids(app, utub_id) == [new_link_id]
+
+
+def test_erase_core_owner_already_revoked_link_leaves_successor_link(
+    app: Flask,
+) -> None:
+    target = _seed_user(app, username="core_lnk_j", email="core_lnk_j@test.com")
+    other = _seed_user(app, username="core_lnk_k", email="core_lnk_k@test.com")
+    utub_id = _seed_shared_utub(app, owner_id=target.id, member_ids=[other.id])
+    add_invite_link(app, utub_id, target.id, revoked=True)
+    successor_link_id = add_invite_link(app, utub_id, other.id)
+
+    counts = _erase(app, target.id)
+
+    assert counts.invite_links_revoked == 0
+    assert _unrevoked_link_ids(app, utub_id) == [successor_link_id]
+
+
+def test_erase_core_locks_member_and_link_only_utubs_in_ascending_order(
+    app: Flask,
+) -> None:
+    """The lock set is the sorted union: the lowest id is a link-only UTub."""
+    target = _seed_user(app, username="core_lnk_l", email="core_lnk_l@test.com")
+    other = _seed_user(app, username="core_lnk_m", email="core_lnk_m@test.com")
+    link_only_id = _seed_shared_utub(
+        app, owner_id=other.id, member_ids=[target.id], name="LinkOnly"
+    )
+    member_low_id = _seed_shared_utub(
+        app, owner_id=other.id, member_ids=[target.id], name="MemberLow"
+    )
+    member_high_id = _seed_shared_utub(
+        app, owner_id=other.id, member_ids=[target.id], name="MemberHigh"
+    )
+    add_invite_link(app, link_only_id, target.id)
+    remove_member(app, link_only_id, target.id)
+
+    locked_ids: list[int] = []
+
+    def record_statement(
+        conn: Any,
+        cursor: Any,
+        statement: str,
+        parameters: Any,
+        context: Any,
+        executemany: bool,
+    ) -> None:
+        normalized = " ".join(statement.split())
+        if 'FROM "Utubs"' in normalized and "FOR NO KEY UPDATE" in normalized:
+            locked_ids.append(next(iter(parameters.values())))
+
+    event.listen(Engine, "before_cursor_execute", record_statement)
+    try:
+        counts = _erase(app, target.id)
+    finally:
+        event.remove(Engine, "before_cursor_execute", record_statement)
+
+    assert counts.invite_links_revoked == 1
+    assert locked_ids == [link_only_id, member_low_id, member_high_id]
+
+
+def test_erase_core_skips_link_only_utub_deleted_before_lock(app: Flask) -> None:
+    target = _seed_user(app, username="core_lnk_n", email="core_lnk_n@test.com")
+    other = _seed_user(app, username="core_lnk_o", email="core_lnk_o@test.com")
+    gone_id = _seed_shared_utub(
+        app, owner_id=other.id, member_ids=[target.id], name="GoneUTub"
+    )
+    member_id = _seed_shared_utub(
+        app, owner_id=other.id, member_ids=[target.id], name="StillHere"
+    )
+    gone_link_id = add_invite_link(app, gone_id, target.id)
+    add_invite_link(app, member_id, target.id)
+    remove_member(app, gone_id, target.id)
+
+    lock_order: list[int] = []
+
+    def lock_returning_none_for_gone(*, utub_id: int) -> Utubs | None:
+        lock_order.append(utub_id)
+        locked = lock_utub_for_update(utub_id=utub_id)
+        return None if utub_id == gone_id else locked
+
+    with patch(
+        "backend.admin.account_data_service.lock_utub_for_update",
+        side_effect=lock_returning_none_for_gone,
+    ):
+        counts = _erase(app, target.id)
+
+    assert counts.invite_links_revoked == 1
+    assert lock_order == [gone_id, member_id]
+    assert _unrevoked_link_ids(app, gone_id) == [gone_link_id]
+    assert _unrevoked_link_ids(app, member_id) == []
 
 
 def test_erase_core_child_rows_deleted_and_tokens_revoked(app: Flask) -> None:

@@ -522,6 +522,7 @@ PATH_MARKERS: tuple[MarkerRow, ...] = (
     ("scripts/trash_retention.py", ("unit", "trash")),
     ("scripts/purge_trash.py", ("unit", "trash")),
     ("scripts/purge_short_links.py", ("unit", "short_links")),
+    ("scripts/purge_invite_links.py", ("unit", "invite_links")),
     ("scripts/*.py", ("unit",)),
     ("scripts/*.sh", ("unit", "admin")),
 )

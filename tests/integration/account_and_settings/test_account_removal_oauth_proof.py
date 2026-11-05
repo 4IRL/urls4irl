@@ -22,11 +22,14 @@ from unittest import mock
 import pytest
 from flask import Flask, redirect, url_for
 from flask.testing import FlaskClient
+from redis import Redis
 
 from backend import db
 from backend.admin.account_data_service import is_tombstoned
+from backend.metrics.events import EventName
 from backend.models.audit_log import AuditLog
 from backend.models.users import User_Role, Users
+from backend.models.utub_invite_links import Utub_Invite_Links
 from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utubs import Utubs
 from backend.splash.services.oauth.constants import (
@@ -53,7 +56,13 @@ from tests.integration.account_and_settings.conftest import (
     _OAUTH_ONLY_EMAIL,
     _OAUTH_ONLY_GOOGLE_SUBJECT,
 )
+from tests.integration.system.metrics_helpers import (
+    find_counter_keys,
+    parse_dims,
+    sum_counter_values,
+)
 from tests.models_for_test import valid_user_1
+from tests.utils_for_test import add_invite_link
 
 pytestmark = pytest.mark.account_and_support
 
@@ -278,6 +287,49 @@ def test_oauth_only_delete_callback_erases_membership_matrix(
         assert audit_row.actor_id == user_id
         assert audit_row.log_metadata.get("utubs_deleted") == 1
         assert audit_row.log_metadata.get("ownerships_transferred") == 1
+
+
+def test_oauth_only_delete_callback_revokes_created_invite_link(
+    metrics_enabled_app: Flask,
+    provide_metrics_redis: Redis | None,
+    oauth_only_google_user_logged_in: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """The OAuth-proof erasure revokes the erased user's live invite link,
+    records ``invite_links_revoked`` in the audit metadata and emits one
+    ``INVITE_LINK_REVOKED`` (role_change) event."""
+    if provide_metrics_redis is None:
+        pytest.skip("metrics Redis is unavailable in this environment")
+
+    client, csrf_token, user, app = oauth_only_google_user_logged_in
+    user_id = user.id
+    other_id = _seed_user(app, username="oauthlinkown", email="oauthlink@test.com")
+    shared_utub_id = _seed_shared_utub(
+        app, creator_id=other_id, other_id=user_id, name="OAuthLinkUTub"
+    )
+    link_id = add_invite_link(app, shared_utub_id, user_id)
+
+    assert (
+        _initiate_oauth_delete(client, csrf_token, user_id, user.username).status_code
+        == 200
+    )
+    callback_response = _drive_google_proof_callback(
+        client, subject=_OAUTH_ONLY_GOOGLE_SUBJECT, email=_OAUTH_ONLY_EMAIL
+    )
+    assert callback_response.status_code == 302
+
+    with app.app_context():
+        assert Utub_Invite_Links.query.get(link_id).revoked_at is not None
+        audit_row = AuditLog.query.filter_by(
+            action=ACCOUNT_AUDIT_ACTIONS.SELF_ACCOUNT_ERASE
+        ).first()
+        assert audit_row.log_metadata.get("invite_links_revoked") == 1
+    assert sum_counter_values(provide_metrics_redis, EventName.INVITE_LINK_REVOKED) == 1
+    assert [
+        parse_dims(key)["reason"]
+        for key in find_counter_keys(
+            provide_metrics_redis, EventName.INVITE_LINK_REVOKED
+        )
+    ] == ["role_change"]
 
 
 def test_oauth_only_delete_callback_expired_intent_no_removal(

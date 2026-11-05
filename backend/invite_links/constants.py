@@ -23,6 +23,7 @@ INVITE_LINK_METRIC_REVOKE_REASONS: tuple[str, ...] = (
     "manual",
     "replaced",
     "dead_on_create",
+    "role_change",
 )
 
 UNIQUE_INVITE_LINK_TOKEN: str = "unique_utub_invite_link_token"
