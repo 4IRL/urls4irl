@@ -28,6 +28,9 @@ INVITE_LINK_METRIC_REVOKE_REASONS: tuple[str, ...] = (
     "role_change",
 )
 
+INVITE_LINK_METRIC_VIEWER_STATE_VALUES: Final = ("member", "logged_in", "logged_out")
+INVITE_LINK_METRIC_VIEW_OUTCOME_VALUES: Final = ("valid", "dead")
+
 UNIQUE_INVITE_LINK_TOKEN: str = "unique_utub_invite_link_token"
 ONE_ACTIVE_INVITE_LINK_PER_UTUB: str = "uq_utub_invite_links_one_active_per_utub"
 FK_EMAIL_VALIDATIONS_PENDING_INVITE: str = "fk_email_validations_pending_invite"

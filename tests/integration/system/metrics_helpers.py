@@ -48,6 +48,9 @@ DOMAIN_EVENTS_TESTED_ELSEWHERE: frozenset[EventName] = frozenset(
         # (counter 0 -> 1).
         EventName.INVITE_LINK_CREATED,
         EventName.INVITE_LINK_REVOKED,
+        # Covered by tests/integration/invite_links/test_invite_page_metrics.py
+        # (counter 0 -> 1).
+        EventName.INVITE_LINK_VIEWED,
         # Covered by tests/integration/trash/test_purge_route.py (counter 0 -> 1).
         EventName.URL_PURGED_FROM_TRASH,
         # Covered by test_restore_url_route.py and test_restore_url_to_destination_route.py.

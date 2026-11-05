@@ -7,6 +7,7 @@ from backend import limiter
 from backend.api_common.auth_decorators import utub_manager_required
 from backend.api_common.parse_request import api_route
 from backend.api_common.responses import APIResponse, FlaskResponse
+from backend.extensions.metrics.writer import record_event
 from backend.invite_links.constants import (
     INVITE_LINK_MANAGE_RATE_LIMIT,
     INVITE_LINK_MANAGE_RATE_SCOPE,
@@ -30,6 +31,7 @@ from backend.invite_links.services.manage_invite_link import (
     revoke_invite_link_for_utub,
     update_invite_link_for_utub,
 )
+from backend.metrics.events import EventName
 from backend.models.users import Users
 from backend.models.utubs import Utubs
 from backend.schemas.base import HtmlErrorPageSchema, StatusMessageResponseSchema
@@ -115,6 +117,20 @@ def invite_page(token: str) -> Response:
     """
     visitor: Users | None = current_user if current_user.is_authenticated else None
     resolution = resolve_invite_page(visitor=visitor, token=token)
+
+    if resolution.state == InvitePageState.MEMBER_REDIRECT:
+        viewer_state = "member"
+    elif visitor is not None:
+        viewer_state = "logged_in"
+    else:
+        viewer_state = "logged_out"
+    record_event(
+        EventName.INVITE_LINK_VIEWED,
+        dimensions={
+            "viewer_state": viewer_state,
+            "outcome": "valid" if resolution.link_live else "dead",
+        },
+    )
 
     if resolution.state == InvitePageState.MEMBER_REDIRECT:
         return invite_redirect(f"/home?UTubID={resolution.utub_id}")

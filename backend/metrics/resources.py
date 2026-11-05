@@ -92,6 +92,7 @@ EVENT_NAME_TO_RESOURCE: dict[EventName, Resource] = {
     EventName.UTUB_TAG_CREATED: Resource.TAG,
     EventName.INVITE_LINK_CREATED: Resource.MEMBER,
     EventName.INVITE_LINK_REVOKED: Resource.MEMBER,
+    EventName.INVITE_LINK_VIEWED: Resource.MEMBER,
     EventName.MEMBER_ADDED: Resource.MEMBER,
     EventName.MEMBER_ADD_CANDIDATES_LOADED: Resource.MEMBER,
     EventName.MEMBER_REMOVED: Resource.MEMBER,
