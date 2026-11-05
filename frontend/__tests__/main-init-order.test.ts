@@ -27,6 +27,7 @@ vi.mock("../lib/globals.js", () => ({
 }));
 vi.mock("../store/app-store.js", () => ({
   getState: () => ({ preferences: {} }),
+  subscribe: vi.fn(),
 }));
 
 vi.mock("../lib/initial-state.js", () => ({
@@ -104,6 +105,9 @@ vi.mock("../home/tags/sheet.js", () => ({
 vi.mock("../home/tags/drag-drop.js", () => ({
   initTagDragDrop: track("initTagDragDrop"),
 }));
+vi.mock("../home/tags/tags.js", () => ({
+  initTagMatchMode: track("initTagMatchMode"),
+}));
 vi.mock("../home/urls/cards/filtering.js", () => ({
   applyDefaultDensity: track("applyDefaultDensity"),
   applyDefaultViewMode: track("applyDefaultViewMode"),
@@ -132,6 +136,14 @@ vi.mock("../home/members/list-settings-section.js", () => ({
   registerMembersListSettingsSection: track(
     "registerMembersListSettingsSection",
   ),
+}));
+vi.mock("../home/tags/personal-settings-section.js", () => ({
+  registerTagsPersonalSettingsSection: track(
+    "registerTagsPersonalSettingsSection",
+  ),
+}));
+vi.mock("../home/tags/display-subscriptions.js", () => ({
+  initTagDisplaySubscriptions: track("initTagDisplaySubscriptions"),
 }));
 vi.mock("../home/urls/deck-view-attrs.js", () => ({
   initUrlDeckPolicyAttrs: track("initUrlDeckPolicyAttrs"),
@@ -215,6 +227,22 @@ describe("main.ts init order", () => {
     expect(personalIndex).toBeLessThan(callOrder.indexOf("initTooltips"));
     expect(personalIndex).toBeLessThan(
       callOrder.indexOf("initOnboardingNudges"),
+    );
+  });
+
+  it("registers the Tags personal section and starts the display subscriptions after initPanelSettings, before tooltips and nudges", () => {
+    const panelSettingsIndex = callOrder.indexOf("initPanelSettings");
+    for (const name of [
+      "registerTagsPersonalSettingsSection",
+      "initTagDisplaySubscriptions",
+    ]) {
+      const index = callOrder.indexOf(name);
+      expect(index).toBeGreaterThan(panelSettingsIndex);
+      expect(index).toBeLessThan(callOrder.indexOf("initTooltips"));
+      expect(index).toBeLessThan(callOrder.indexOf("initOnboardingNudges"));
+    }
+    expect(callOrder.indexOf("initTagDisplaySubscriptions")).toBeGreaterThan(
+      callOrder.indexOf("initTagMatchMode"),
     );
   });
 
