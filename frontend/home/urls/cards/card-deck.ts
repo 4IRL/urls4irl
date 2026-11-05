@@ -6,7 +6,11 @@ import { AppEvents, emit as emitAppEvent } from "../../../lib/event-bus.js";
 import { disposeTooltipsWithin } from "../../../lib/tooltips.js";
 import { getState, setState } from "../../../store/app-store.js";
 import { applyRowCountDelta } from "../../utubs/row-counts.js";
-import { isATagSelected } from "../../tags/utils.js";
+import {
+  isATagSelected,
+  readTagCount,
+  writeTagCount,
+} from "../../tags/utils.js";
 import { getNumOfVisibleURLs } from "../utils.js";
 import { createURLBlock } from "./cards.js";
 import { selectURLCard } from "./selection.js";
@@ -236,21 +240,15 @@ export function removeURLCardFromDeck({
   const currentURLTagIDs = urlCard.attr("data-utub-url-tag-ids") || "";
   if (currentURLTagIDs.trim()) {
     const tagIDs = currentURLTagIDs.split(",").map((part) => part.trim());
-    let tagCountElem: JQuery;
-    let tagID: string;
-    let tagCountText: string[];
     for (let tagIdIndex = 0; tagIdIndex < tagIDs.length; tagIdIndex++) {
-      tagID = tagIDs[tagIdIndex];
-      tagCountElem = $(
-        `.tagFilter[data-utub-tag-id=${tagID}]` + " .tagAppliedToUrlsCount",
-      );
-      tagCountText = tagCountElem.text().split(" / ");
-      if (!tagCountText || tagCountText.length !== 2) continue;
-      tagCountElem.text(
-        `${parseInt(tagCountText[0]) - 1}` +
-          " / " +
-          `${parseInt(tagCountText[1]) - 1}`,
-      );
+      const chip = $(`.tagFilter[data-utub-tag-id=${tagIDs[tagIdIndex]}]`);
+      const current = readTagCount(chip);
+      if (!current) continue;
+      writeTagCount({
+        chip,
+        inView: current.inView - 1,
+        total: current.total - 1,
+      });
     }
   }
 

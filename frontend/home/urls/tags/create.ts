@@ -39,7 +39,7 @@ import {
   restoreShortLinkStatus,
 } from "../cards/short-link-state.js";
 import { isTagInUTubTagDeck } from "../../tags/utils.js";
-import { buildTagFilterInDeck } from "../../tags/tags.js";
+import { buildTagFilterInDeck, syncTagCapState } from "../../tags/tags.js";
 import { refreshTagDeckTagCount } from "../../tags/deck.js";
 import { updateTagFilterCount, TagCountOperation } from "../cards/filtering.js";
 import { getState, setState } from "../../../store/app-store.js";
@@ -289,13 +289,9 @@ export function createURLTagSuccess(
 
   if (!isTagInUTubTagDeck(utubTagID)) {
     const newTag = buildTagFilterInDeck(utubID, utubTagID, tagString, tagCount);
-    // If max number of tags already selected
-    if (
-      $(".tagFilter.selected").length === APP_CONFIG.constants.TAGS_MAX_ON_URLS
-    ) {
-      newTag.addClass("disabled").off(".tagFilterSelected");
-    }
     $("#listTags").append(newTag);
+    // Disables the new chip when the "all" selection cap is already reached.
+    syncTagCapState();
     // This tag is new to the UTub, so the deck's total grew — keep the inline
     // "(n)" beside the Tags title in sync.
     refreshTagDeckTagCount();

@@ -7,7 +7,14 @@ import type {
   ThemeValue,
   ViewModeValue,
 } from "../types/preferences.js";
-import { isMemberSortValue, isUtubSortValue } from "../types/preferences.js";
+import {
+  isCollapsedTagsStyleValue,
+  isMemberSortValue,
+  isTagCountStyleValue,
+  isTagMatchModeValue,
+  isTagSortValue,
+  isUtubSortValue,
+} from "../types/preferences.js";
 import type { UtubSummaryItem } from "../types/utub.js";
 
 const log = debug("init");
@@ -24,6 +31,12 @@ interface PreferencesContext {
   display_member_sort?: unknown;
   display_show_row_counts?: unknown;
   display_show_list_totals?: unknown;
+  display_tag_sort?: unknown;
+  display_tag_match_mode?: unknown;
+  display_tag_count_style?: unknown;
+  display_show_tags_on_collapsed?: unknown;
+  display_collapsed_tags_style?: unknown;
+  display_tag_drop_opens_url?: unknown;
 }
 
 export function loadInitialUtubState(): void {
@@ -75,6 +88,28 @@ export function loadInitialPreferencesState(): void {
         typeof context.display_show_list_totals === "boolean"
           ? context.display_show_list_totals
           : defaults.showListTotals,
+      tagSort: isTagSortValue(context.display_tag_sort)
+        ? context.display_tag_sort
+        : defaults.tagSort,
+      tagMatchMode: isTagMatchModeValue(context.display_tag_match_mode)
+        ? context.display_tag_match_mode
+        : defaults.tagMatchMode,
+      tagCountStyle: isTagCountStyleValue(context.display_tag_count_style)
+        ? context.display_tag_count_style
+        : defaults.tagCountStyle,
+      showTagsOnCollapsed:
+        typeof context.display_show_tags_on_collapsed === "boolean"
+          ? context.display_show_tags_on_collapsed
+          : defaults.showTagsOnCollapsed,
+      collapsedTagsStyle: isCollapsedTagsStyleValue(
+        context.display_collapsed_tags_style,
+      )
+        ? context.display_collapsed_tags_style
+        : defaults.collapsedTagsStyle,
+      tagDropOpensUrl:
+        typeof context.display_tag_drop_opens_url === "boolean"
+          ? context.display_tag_drop_opens_url
+          : defaults.tagDropOpensUrl,
       theme: context.display_theme,
       defaultView: context.display_default_view,
       defaultSort: context.display_default_sort,

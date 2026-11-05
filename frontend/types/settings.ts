@@ -5,8 +5,12 @@
  */
 import type { Schema } from "./api-helpers.d.ts";
 import type {
+  CollapsedTagsStyleValue,
   DensityValue,
   SortOrderValue,
+  TagCountStyleValue,
+  TagMatchModeValue,
+  TagSortValue,
   ViewModeValue,
 } from "./preferences.js";
 
@@ -31,6 +35,7 @@ export const EMPTY_UTUB_SETTINGS: ResolvedUtubSettings = Object.freeze({
 export type MemberSettings = Schema<"UtubMemberSettings">;
 
 type MemberUrlsSettings = Schema<"MemberUrlsSettings">;
+type MemberTagsSettings = Schema<"MemberTagsSettings">;
 
 /** The member's own resolved URLs overrides, with enum values narrowed. */
 export interface ResolvedMemberUrlsSettings {
@@ -43,8 +48,19 @@ export interface ResolvedMemberUrlsSettings {
   disable_swipe_delete: boolean;
 }
 
+/** The member's own resolved Tags overrides. Null means "use my default". */
+export interface ResolvedMemberTagsSettings {
+  tag_sort: TagSortValue | null;
+  tag_match_mode: TagMatchModeValue | null;
+  tag_count_style: TagCountStyleValue | null;
+  show_tags_on_collapsed: boolean | null;
+  collapsed_tags_style: CollapsedTagsStyleValue | null;
+  tag_drop_opens_url: boolean | null;
+}
+
 export interface ResolvedMemberSettings {
   urls: ResolvedMemberUrlsSettings;
+  tags: ResolvedMemberTagsSettings;
 }
 
 /** Resolved shape for a member with no overrides. Copy it, never mutate it. */
@@ -58,6 +74,14 @@ export const EMPTY_MEMBER_SETTINGS: ResolvedMemberSettings = Object.freeze({
     density: null,
     disable_swipe_delete: false,
   }),
+  tags: Object.freeze({
+    tag_sort: null,
+    tag_match_mode: null,
+    tag_count_style: null,
+    show_tags_on_collapsed: null,
+    collapsed_tags_style: null,
+    tag_drop_opens_url: null,
+  }),
 });
 
 /** Copies a (possibly partial or absent) payload into the resolved shape. */
@@ -65,8 +89,10 @@ export function resolveMemberSettings(
   raw: MemberSettings | undefined | null,
 ): ResolvedMemberSettings {
   const urls: Partial<MemberUrlsSettings> | undefined = raw?.urls;
+  const tags: Partial<MemberTagsSettings> | undefined = raw?.tags;
   return {
     urls: { ...EMPTY_MEMBER_SETTINGS.urls, ...urls },
+    tags: { ...EMPTY_MEMBER_SETTINGS.tags, ...tags },
   };
 }
 

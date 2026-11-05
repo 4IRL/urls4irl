@@ -39,6 +39,7 @@ vi.mock("../metrics-query-client.js", () => ({
   fetchMetricFlows: fetchMetricFlowsSpy,
   deleteMetricFlow: deleteMetricFlowSpy,
   createMetricFlow: vi.fn(),
+  previewMetricFlow: vi.fn(),
   updateMetricFlow: vi.fn(),
   fetchMetricFlowCatalog: fetchMetricFlowCatalogSpy,
 }));
@@ -53,7 +54,11 @@ import {
   _resetMetricsDashboardForTests,
   initMetricsDashboard,
 } from "../metrics-dashboard.js";
-import { createMetricFlow, updateMetricFlow } from "../metrics-query-client.js";
+import {
+  createMetricFlow,
+  previewMetricFlow,
+  updateMetricFlow,
+} from "../metrics-query-client.js";
 import { makeListEntry } from "./helpers/flow-list-mock.js";
 
 const DASHBOARD_HTML = `
@@ -227,6 +232,11 @@ describe("metrics-dashboard flow builder: pause, Refresh and close tails", () =>
   let listDeferreds: Deferred[] = [];
   let deleteDeferreds: Deferred[] = [];
   let catalogDeferreds: Deferred[] = [];
+  let previewDeferreds: Deferred[] = [];
+
+  function previewDeferred({ index }: { index: number }): Deferred {
+    return previewDeferreds[index];
+  }
 
   beforeEach(() => {
     document.body.innerHTML = DASHBOARD_HTML;
@@ -247,6 +257,13 @@ describe("metrics-dashboard flow builder: pause, Refresh and close tails", () =>
       const deferred = makeDeferred({ key: flowId });
       flowDeferreds.push(deferred);
       return deferred.xhr;
+    });
+    vi.mocked(previewMetricFlow).mockReset();
+    previewDeferreds = [];
+    vi.mocked(previewMetricFlow).mockImplementation(() => {
+      const deferred = makeDeferred({ key: "preview" });
+      previewDeferreds.push(deferred);
+      return deferred.xhr as never;
     });
     fetchMetricFlowsSpy.mockReset();
     fetchMetricFlowsSpy.mockImplementation(() => {
@@ -408,6 +425,98 @@ describe("metrics-dashboard flow builder: pause, Refresh and close tails", () =>
     expect(calls.map((call) => call.flowId).sort()).toEqual(
       [...BUILTIN_IDS].sort(),
     );
+  });
+
+  describe("builder preview and the window", () => {
+    const PREVIEW_CATALOG = {
+      event_groups: [
+        {
+          category: "ui",
+          events: [
+            {
+              event_name: "modal_open",
+              description: "",
+              category: "ui",
+              step_allowed: true,
+              dims: [],
+            },
+          ],
+        },
+      ],
+      api_endpoints: [],
+    };
+    const PREVIEW_ENTRY = {
+      id: "custom_1",
+      display_name: "My flow",
+      is_builtin: false,
+      definition: {
+        steps: [
+          { stream: "ui", label: "One", event_name: "modal_open" },
+          { stream: "ui", label: "Two", event_name: "modal_open" },
+        ],
+      },
+      errors: {},
+      first_invalid: null,
+    };
+
+    function previewCalls() {
+      return vi.mocked(previewMetricFlow).mock.calls.map(
+        ([args]) =>
+          args as {
+            definition: { display_name: string; steps: unknown[] };
+            window: string;
+          },
+      );
+    }
+    function openEditWithCatalog(): void {
+      openFlowsWithList({ customs: [CUSTOM_ONE] });
+      _openFlowBuilderForTests({
+        mode: "edit",
+        entry: PREVIEW_ENTRY as never,
+      });
+      catalogDeferreds[catalogDeferreds.length - 1].resolve(PREVIEW_CATALOG);
+    }
+    function clickWindow({ window }: { window: string }): void {
+      (
+        document.querySelector(`[data-window="${window}"]`) as HTMLButtonElement
+      ).click();
+      latestList().resolve(listResponse({ customs: [CUSTOM_ONE] }));
+    }
+
+    it("a window change while open re-previews with the new window and the same body", () => {
+      openEditWithCatalog();
+      vi.advanceTimersByTime(300);
+      expect(previewCalls()).toHaveLength(1);
+      expect(previewCalls()[0].window).toBe("day");
+      previewDeferred({ index: 0 }).resolve(okFlowResponse());
+      clickWindow({ window: "week" });
+      vi.advanceTimersByTime(300 + 2500);
+      expect(previewCalls()).toHaveLength(2);
+      expect(previewCalls()[1].window).toBe("week");
+      expect(previewCalls()[1].definition).toEqual(
+        previewCalls()[0].definition,
+      );
+    });
+
+    it("a window change while the builder is closed makes no preview call", () => {
+      openEditWithCatalog();
+      vi.advanceTimersByTime(300);
+      _closeFlowBuilderForTests({ reason: "cancel" });
+      clickWindow({ window: "week" });
+      vi.advanceTimersByTime(10_000);
+      expect(previewCalls()).toHaveLength(1);
+    });
+
+    it("a window change before the catalog has loaded makes no preview call", () => {
+      openFlowsWithList({ customs: [CUSTOM_ONE] });
+      _openFlowBuilderForTests({
+        mode: "edit",
+        entry: PREVIEW_ENTRY as never,
+      });
+      clickWindow({ window: "week" });
+      vi.advanceTimersByTime(10_000);
+      expect(previewCalls()).toHaveLength(0);
+    });
   });
 
   it("a list failure while open raises no banner and leaves the builder alone", () => {

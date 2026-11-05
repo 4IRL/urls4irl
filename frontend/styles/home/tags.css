@@ -145,6 +145,23 @@
 }
 
 
+/* "Tag counts" setting, written to #TagDeck[data-tag-count-style] by JS.
+   total_only keeps just the total; hidden removes the count (and so its text
+   from the chip's accessible name). The in-view span stays in the DOM and
+   current in every mode. */
+#TagDeck[data-tag-count-style="total_only"] .tagCountInView,
+#TagDeck[data-tag-count-style="total_only"] .tagCountSep {
+  display: none;
+}
+
+#TagDeck[data-tag-count-style="total_only"] .tagAppliedToUrlsCount {
+  width: 3rem;
+}
+
+#TagDeck[data-tag-count-style="hidden"] .tagCountWrap {
+  display: none;
+}
+
 .tagAppliedToUrlsCount {
   display: flex;
   justify-content: center;

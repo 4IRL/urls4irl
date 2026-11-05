@@ -9521,6 +9521,55 @@
         }
       }
     },
+    "/users/preferences/tags": {
+      "patch": {
+        "operationId": "updateTagDisplayPreferences",
+        "tags": ["auth"],
+        "security": [
+          {
+            "sessionAuth": [],
+            "csrfToken": []
+          }
+        ],
+        "description": "Partially update the authenticated user's all-UTubs tag display defaults (tag sort, match mode, count style, tags on collapsed URLs, collapsed style, drop-opens-URL). Acts only on the logged-in user and never touches the display, UTub-list or member-list preferences; the preferences row is created on the first real change, and a no-op returns 200 'No change'. An empty body, unknown key, explicit null, non-boolean toggle or unknown enum value is a 400. An unauthenticated request is answered by the app-wide login_manager unauthorized_handler with a 302 redirect to the splash page (with next), and an authenticated user with an unvalidated email gets a 302 to the splash page (no next). Metrics: API_HIT only (no DOMAIN event).",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTagDisplayPreferencesRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Response for ``PATCH /users/preferences/tags``.\n\n    Always echoes all six resolved tag display defaults (never the request\n    values); ``status`` is ``No change`` when nothing differed (no row created).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateTagDisplayPreferencesResponseSchema"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_PreferencesErrorCodes"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "PreferencesErrorCodes": {
+            "$ref": "#/components/schemas/PreferencesErrorCodes"
+          }
+        }
+      }
+    },
     "/users/{user_id}/password": {
       "put": {
         "operationId": "changePassword",
@@ -13200,6 +13249,95 @@
         "required": ["utubs", "preferences"],
         "type": "object"
       },
+      "MemberTagsSettings": {
+        "additionalProperties": false,
+        "description": "A member's private display overrides for the Tags panel of one UTub.\n\nEvery key is nullable: ``None`` means \"use my account default\".",
+        "properties": {
+          "tag_sort": {
+            "anyOf": [
+              {
+                "enum": [
+                  "most_in_view",
+                  "most_used",
+                  "name_az",
+                  "newest",
+                  "oldest"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Tag sort override; null uses the account default"
+          },
+          "tag_match_mode": {
+            "anyOf": [
+              {
+                "enum": ["all", "any"],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Multi-tag match override; null uses the account default"
+          },
+          "tag_count_style": {
+            "anyOf": [
+              {
+                "enum": ["in_view_total", "total_only", "hidden"],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Tag count override; null uses the account default"
+          },
+          "show_tags_on_collapsed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Show tags on collapsed URLs override; null uses the account default"
+          },
+          "collapsed_tags_style": {
+            "anyOf": [
+              {
+                "enum": ["one_line", "all"],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Collapsed tags style override; null uses the account default"
+          },
+          "tag_drop_opens_url": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Open the URL after a tag drop override; null uses the account default"
+          }
+        },
+        "type": "object"
+      },
       "MemberUrlsSettings": {
         "additionalProperties": false,
         "description": "A member's private view overrides for the URLs panel of one UTub.",
@@ -13272,6 +13410,54 @@
         "properties": {},
         "type": "object"
       },
+      "TagDisplayDefaultsSchema": {
+        "description": "The viewer's six resolved all-UTubs tag display defaults.",
+        "properties": {
+          "tagSort": {
+            "description": "How tags are sorted",
+            "enum": [
+              "most_in_view",
+              "most_used",
+              "name_az",
+              "newest",
+              "oldest"
+            ],
+            "type": "string"
+          },
+          "tagMatchMode": {
+            "description": "Whether selected tags match all or any of a URL's tags",
+            "enum": ["all", "any"],
+            "type": "string"
+          },
+          "tagCountStyle": {
+            "description": "How tag counts are shown",
+            "enum": ["in_view_total", "total_only", "hidden"],
+            "type": "string"
+          },
+          "showTagsOnCollapsed": {
+            "description": "Whether collapsed URL cards show their tags",
+            "type": "boolean"
+          },
+          "collapsedTagsStyle": {
+            "description": "How collapsed URL cards show their tags",
+            "enum": ["one_line", "all"],
+            "type": "string"
+          },
+          "tagDropOpensUrl": {
+            "description": "Whether dropping a tag on a URL also opens that URL",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "tagSort",
+          "tagMatchMode",
+          "tagCountStyle",
+          "showTagsOnCollapsed",
+          "collapsedTagsStyle",
+          "tagDropOpensUrl"
+        ],
+        "type": "object"
+      },
       "TagsSettings": {
         "additionalProperties": false,
         "description": "Settings for the tags panel (no settings yet).",
@@ -13307,6 +13493,10 @@
           "urls": {
             "$ref": "#/components/schemas/MemberUrlsSettings",
             "description": "The member's view overrides for the URLs panel"
+          },
+          "tags": {
+            "$ref": "#/components/schemas/MemberTagsSettings",
+            "description": "The member's display overrides for the Tags panel"
           }
         },
         "type": "object"
@@ -13477,6 +13667,10 @@
             "description": "The viewer's member sort; `members` is already in this order",
             "enum": ["name_az", "role_then_name", "recently_joined"],
             "type": "string"
+          },
+          "tagDisplayDefaults": {
+            "$ref": "#/components/schemas/TagDisplayDefaultsSchema",
+            "description": "The viewer's resolved all-UTubs tag display defaults"
           }
         },
         "required": [
@@ -13492,7 +13686,8 @@
           "isCoCreator",
           "isLocked",
           "currentUser",
-          "memberSort"
+          "memberSort",
+          "tagDisplayDefaults"
         ],
         "type": "object"
       },
@@ -15558,6 +15753,160 @@
         "required": ["memberSort", "status", "message"],
         "type": "object"
       },
+      "CollapsedTagsStyle": {
+        "enum": ["one_line", "all"],
+        "type": "string"
+      },
+      "TagCountStyle": {
+        "enum": ["in_view_total", "total_only", "hidden"],
+        "type": "string"
+      },
+      "TagMatchMode": {
+        "enum": ["all", "any"],
+        "type": "string"
+      },
+      "TagSort": {
+        "enum": ["most_in_view", "most_used", "name_az", "newest", "oldest"],
+        "type": "string"
+      },
+      "UpdateTagDisplayPreferencesRequest": {
+        "additionalProperties": false,
+        "description": "Partial write of the six tag display defaults. Omitted means \"not sent\";\nan explicit ``null`` is never a value and is rejected, as are unknown keys\nand an empty body.",
+        "properties": {
+          "tagSort": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TagSort"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "How tags are sorted: most_in_view, most_used, name_az, newest, or oldest"
+          },
+          "tagMatchMode": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TagMatchMode"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Whether selected tags match all or any of a URL's tags"
+          },
+          "tagCountStyle": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TagCountStyle"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "How tag counts show: in_view_total, total_only, or hidden"
+          },
+          "showTagsOnCollapsed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Whether collapsed URL cards show their tags"
+          },
+          "collapsedTagsStyle": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CollapsedTagsStyle"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "How collapsed URL cards show tags: one_line or all"
+          },
+          "tagDropOpensUrl": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Whether dropping a tag on a URL also opens that URL"
+          }
+        },
+        "type": "object"
+      },
+      "UpdateTagDisplayPreferencesResponseSchema": {
+        "description": "Response for ``PATCH /users/preferences/tags``.\n\nAlways echoes all six resolved tag display defaults (never the request\nvalues); ``status`` is ``No change`` when nothing differed (no row created).",
+        "properties": {
+          "tagSort": {
+            "description": "How tags are sorted",
+            "enum": [
+              "most_in_view",
+              "most_used",
+              "name_az",
+              "newest",
+              "oldest"
+            ],
+            "type": "string"
+          },
+          "tagMatchMode": {
+            "description": "Whether selected tags match all or any of a URL's tags",
+            "enum": ["all", "any"],
+            "type": "string"
+          },
+          "tagCountStyle": {
+            "description": "How tag counts are shown",
+            "enum": ["in_view_total", "total_only", "hidden"],
+            "type": "string"
+          },
+          "showTagsOnCollapsed": {
+            "description": "Whether collapsed URL cards show their tags",
+            "type": "boolean"
+          },
+          "collapsedTagsStyle": {
+            "description": "How collapsed URL cards show their tags",
+            "enum": ["one_line", "all"],
+            "type": "string"
+          },
+          "tagDropOpensUrl": {
+            "description": "Whether dropping a tag on a URL also opens that URL",
+            "type": "boolean"
+          },
+          "status": {
+            "description": "Response status: Success or No change",
+            "enum": ["Success", "No change"],
+            "type": "string"
+          },
+          "message": {
+            "description": "Human-readable, server-sourced banner text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tagSort",
+          "tagMatchMode",
+          "tagCountStyle",
+          "showTagsOnCollapsed",
+          "collapsedTagsStyle",
+          "tagDropOpensUrl",
+          "status",
+          "message"
+        ],
+        "type": "object"
+      },
       "ChangePasswordRequest": {
         "properties": {
           "currentPassword": {
@@ -15849,6 +16198,30 @@
           "showListTotals": {
             "description": "Whether the UTub list totals are shown",
             "type": "boolean"
+          },
+          "tagSort": {
+            "description": "The Tags deck sort order (most_in_view/most_used/name_az/newest/oldest)",
+            "type": "string"
+          },
+          "tagMatchMode": {
+            "description": "How several selected tags match URLs (all/any)",
+            "type": "string"
+          },
+          "tagCountStyle": {
+            "description": "How tag counts are shown (in_view_total/total_only/hidden)",
+            "type": "string"
+          },
+          "showTagsOnCollapsed": {
+            "description": "Whether collapsed URLs show their tags",
+            "type": "boolean"
+          },
+          "collapsedTagsStyle": {
+            "description": "How collapsed URLs show tags (one_line/all)",
+            "type": "string"
+          },
+          "tagDropOpensUrl": {
+            "description": "Whether dropping a tag on a URL opens it",
+            "type": "boolean"
           }
         },
         "required": [
@@ -15860,7 +16233,13 @@
           "utubSort",
           "memberSort",
           "showRowCounts",
-          "showListTotals"
+          "showListTotals",
+          "tagSort",
+          "tagMatchMode",
+          "tagCountStyle",
+          "showTagsOnCollapsed",
+          "collapsedTagsStyle",
+          "tagDropOpensUrl"
         ],
         "type": "object"
       },
@@ -16447,6 +16826,11 @@
           "urls": {
             "additionalProperties": true,
             "description": "Patch for the caller's URLs panel view overrides",
+            "type": "object"
+          },
+          "tags": {
+            "additionalProperties": true,
+            "description": "Patch for the caller's Tags panel display overrides",
             "type": "object"
           }
         },

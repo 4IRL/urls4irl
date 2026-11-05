@@ -58,6 +58,30 @@ class MemberSort(Enum):
     RECENTLY_JOINED = "recently_joined"
 
 
+class TagSort(Enum):
+    MOST_IN_VIEW = "most_in_view"
+    MOST_USED = "most_used"
+    NAME_AZ = "name_az"
+    NEWEST = "newest"
+    OLDEST = "oldest"
+
+
+class TagMatchMode(Enum):
+    ALL = "all"
+    ANY = "any"
+
+
+class TagCountStyle(Enum):
+    IN_VIEW_TOTAL = "in_view_total"
+    TOTAL_ONLY = "total_only"
+    HIDDEN = "hidden"
+
+
+class CollapsedTagsStyle(Enum):
+    ONE_LINE = "one_line"
+    ALL = "all"
+
+
 class Density(Enum):
     COMFORTABLE = "comfortable"
     COMPACT = "compact"
@@ -186,6 +210,64 @@ class User_Preferences(db.Model):
         server_default=sa_text("true"),
         name="showListTotals",
     )
+    tag_sort: TagSort = Column(
+        SQLEnum(
+            TagSort,
+            values_callable=lambda enum_cls: [member.value for member in enum_cls],
+            name="tag_sort_enum",
+        ),
+        nullable=False,
+        default=TagSort.MOST_IN_VIEW,
+        server_default=TagSort.MOST_IN_VIEW.value,
+        name="tagSort",
+    )
+    tag_match_mode: TagMatchMode = Column(
+        SQLEnum(
+            TagMatchMode,
+            values_callable=lambda enum_cls: [member.value for member in enum_cls],
+            name="tag_match_mode_enum",
+        ),
+        nullable=False,
+        default=TagMatchMode.ALL,
+        server_default=TagMatchMode.ALL.value,
+        name="tagMatchMode",
+    )
+    tag_count_style: TagCountStyle = Column(
+        SQLEnum(
+            TagCountStyle,
+            values_callable=lambda enum_cls: [member.value for member in enum_cls],
+            name="tag_count_style_enum",
+        ),
+        nullable=False,
+        default=TagCountStyle.IN_VIEW_TOTAL,
+        server_default=TagCountStyle.IN_VIEW_TOTAL.value,
+        name="tagCountStyle",
+    )
+    show_tags_on_collapsed: bool = Column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default=sa_text("false"),
+        name="showTagsOnCollapsed",
+    )
+    collapsed_tags_style: CollapsedTagsStyle = Column(
+        SQLEnum(
+            CollapsedTagsStyle,
+            values_callable=lambda enum_cls: [member.value for member in enum_cls],
+            name="collapsed_tags_style_enum",
+        ),
+        nullable=False,
+        default=CollapsedTagsStyle.ONE_LINE,
+        server_default=CollapsedTagsStyle.ONE_LINE.value,
+        name="collapsedTagsStyle",
+    )
+    tag_drop_opens_url: bool = Column(
+        Boolean,
+        nullable=False,
+        default=True,
+        server_default=sa_text("true"),
+        name="tagDropOpensUrl",
+    )
     created_at: datetime = Column(
         DateTime(timezone=True), nullable=False, default=utc_now, name="createdAt"
     )
@@ -221,6 +303,12 @@ class ResolvedPreferences:
     member_sort: MemberSort
     show_row_counts: bool
     show_list_totals: bool
+    tag_sort: TagSort
+    tag_match_mode: TagMatchMode
+    tag_count_style: TagCountStyle
+    show_tags_on_collapsed: bool
+    collapsed_tags_style: CollapsedTagsStyle
+    tag_drop_opens_url: bool
 
 
 def resolve_preferences(row: User_Preferences | None) -> ResolvedPreferences:
@@ -244,6 +332,12 @@ def resolve_preferences(row: User_Preferences | None) -> ResolvedPreferences:
             member_sort=MemberSort.NAME_AZ,
             show_row_counts=False,
             show_list_totals=True,
+            tag_sort=TagSort.MOST_IN_VIEW,
+            tag_match_mode=TagMatchMode.ALL,
+            tag_count_style=TagCountStyle.IN_VIEW_TOTAL,
+            show_tags_on_collapsed=False,
+            collapsed_tags_style=CollapsedTagsStyle.ONE_LINE,
+            tag_drop_opens_url=True,
         )
     return ResolvedPreferences(
         theme=row.theme,
@@ -255,4 +349,10 @@ def resolve_preferences(row: User_Preferences | None) -> ResolvedPreferences:
         member_sort=row.member_sort,
         show_row_counts=row.show_row_counts,
         show_list_totals=row.show_list_totals,
+        tag_sort=row.tag_sort,
+        tag_match_mode=row.tag_match_mode,
+        tag_count_style=row.tag_count_style,
+        show_tags_on_collapsed=row.show_tags_on_collapsed,
+        collapsed_tags_style=row.collapsed_tags_style,
+        tag_drop_opens_url=row.tag_drop_opens_url,
     )

@@ -111,6 +111,26 @@ class ADMIN_METRICS_STRINGS:
     METRICS_FLOW_LOADING_LABEL: str = "{title}: loading"
     METRICS_FLOW_LOAD_FAILED: str = "Couldn't load this flow."
     METRICS_FLOW_RETRY: str = "Retry"
+    METRICS_FLOW_PREVIEW_HEADING: str = "Preview"
+    METRICS_FLOW_PREVIEW_HINT: str = (
+        "Updates as you edit, for the selected time window."
+    )
+    METRICS_FLOW_PREVIEW_PLACEHOLDER: str = "Finish the steps to see a preview."
+    METRICS_FLOW_PREVIEW_FIX_FIELDS: str = "Fix the marked fields to see a preview."
+    METRICS_FLOW_PREVIEW_UPDATING: str = "Updating preview…"
+    METRICS_FLOW_PREVIEW_FAILED: str = "Couldn't load the preview."
+    METRICS_FLOW_PREVIEW_ANNOUNCE_RESULT: str = (
+        "Preview updated: {succeeded} of {total} succeeded, {pct} conversion."
+    )
+    METRICS_FLOW_PREVIEW_ANNOUNCE_EMPTY: str = (
+        "Preview updated: no funnel activity in the selected window."
+    )
+    METRICS_FLOW_PREVIEW_ANNOUNCE_PROBLEMS: str = (
+        "Preview: {count} problems found. Fix the marked fields."
+    )
+    METRICS_FLOW_PREVIEW_ANNOUNCE_PROBLEM_ONE: str = (
+        "Preview: 1 problem found. Fix the marked fields."
+    )
     METRICS_FLOWS_LIST_FAILED: str = "Custom flows couldn't be loaded."
     METRICS_FLOWS_LIST_RETRYING: str = "Retrying…"
     METRICS_FLOW_DELETE_LOCKED: str = "Another flow is being deleted."

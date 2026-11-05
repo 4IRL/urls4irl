@@ -12,6 +12,7 @@ import { createMemberHideInput } from "./members/create.js";
 import { createUTubTagHideInput } from "./tags/create.js";
 import { maybeShowNextTip } from "./onboarding/nudges.js";
 import { getState } from "../store/app-store.js";
+import { effectiveTagDisplaySettings } from "./tags/display-settings.js";
 import { collapsedTagFilterAnnouncement } from "./tags/utils.js";
 import {
   getDeckLayout,
@@ -531,7 +532,10 @@ function setupTagHeaderForMaximizeMinimize() {
     // user who collapses an already-filtered deck hears nothing about the
     // filters the deck just hid until they next change one.
     $(COLLAPSED_TAG_FILTER_ANNOUNCEMENT_SELECTOR).text(
-      collapsedTagFilterAnnouncement(getState().selectedTagIDs.length),
+      collapsedTagFilterAnnouncement({
+        count: getState().selectedTagIDs.length,
+        mode: effectiveTagDisplaySettings().tagMatchMode,
+      }),
     );
 
     // Before the cap, for the same reason as the Member collapse branch above:

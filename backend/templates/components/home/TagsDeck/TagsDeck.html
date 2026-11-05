@@ -90,6 +90,13 @@
 		<span id="TagDeckCollapsedFilterAnnouncement" class="visually-hidden" aria-live="polite"></span>
 	</div>
 
+	{# Match-mode cue: shown only under "any" with 2+ tags selected. Plain text,
+	   no live region -- the match-mode sentences announce elsewhere. A <span>
+	   (not a <div>) so it does not shift the `.titleElement:nth-of-type(2)`
+	   collapse rule; it is a sibling row BELOW the header band (the band is a
+	   non-wrapping flex row, so a child there is squeezed, never a full line). #}
+	<span id="TagMatchModeCue" class="hidden">{{ CONSTANTS.STRINGS.TAG_MATCH_MODE_CUE }}</span>
+
 	<!-- Subheader: tag name filter input. Header band mirroring the UTub/URL search
 	     subheader (sits below the title row, above the scrollable list) instead of
 	     inside the list body. The whole band is CSS-gated by #TagDeck.tag-search-open

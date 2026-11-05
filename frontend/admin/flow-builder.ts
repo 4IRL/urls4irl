@@ -65,6 +65,7 @@ import {
   listEventOptions,
   listFormErrors,
   listMethods,
+  listNestedMessages,
   listProblems,
   moveStep,
   normalizeDraft,
@@ -72,6 +73,7 @@ import {
   removeBreakdownFilter,
   removeFilter,
   removeStep,
+  resolveServerPath,
   setBreakdownEvent,
   setBreakdownFilterDim,
   setBreakdownFilterValue,
@@ -94,13 +96,25 @@ import type {
   DraftProblem,
   DraftStep,
   FlowDraft,
+  ResolvedServerPath,
   StepStream,
   SubmittedStep,
 } from "./flow-builder-state.js";
 import {
+  ariaCount,
+  formatPercent,
+  isAllZero,
+  PREVIEW_FLOW_ID,
+  renderFlowGrid,
+} from "./flow-card.js";
+import type { FlowCardState } from "./flow-card.js";
+import { createFlowPreview } from "./flow-preview.js";
+import type { FlowPreviewState } from "./flow-preview.js";
+import {
   createMetricFlow,
   deleteMetricFlow,
   fetchMetricFlowCatalog,
+  previewMetricFlow,
   updateMetricFlow,
 } from "./metrics-query-client.js";
 import {
@@ -129,9 +143,13 @@ export interface FlowBuilderCallbacks {
   onFlowMissing({ id }: { id: string }): void;
   onDeleted({ id, name }: { id: string; name: string }): void;
   onListStale(): void;
+  /** The dashboard's current time window key (e.g. "week"), read at each preview send. */
+  getWindow(): string;
 }
 
 export interface FlowBuilder {
+  /** Re-previews the draft for the dashboard's current window (no-op unless idle). */
+  refreshPreview(): void;
   open({ mode, entry }: { mode: BuilderMode; entry?: FlowEntry }): void;
   close(): void;
   isOpen(): boolean;
@@ -164,6 +182,65 @@ function entryFromResponse({ data }: { data: SaveResponse }): FlowEntry {
     errors: data.errors,
     first_invalid: data.first_invalid,
   };
+}
+
+/** The control a preview 400 message is marked on. */
+type PreviewTarget =
+  | { kind: "step"; stepKey: number; field: string }
+  | {
+      kind: "entry";
+      stepKey: number;
+      list: "dim_filter" | "drop_breakdown.dim_filter";
+      entryKey: number;
+    }
+  | {
+      kind: "breakdown";
+      stepKey: number;
+      field: "event_name" | "group_by";
+    }
+  | { kind: "flow"; field: "display_name" | "steps" };
+
+type PreviewAnnouncement = {
+  kind: "result" | "problem" | "failed" | "rate-limited";
+  text: string;
+  /** Sorted `path: message` pairs for a problem announcement, else null. */
+  problems: string | null;
+};
+
+const PREVIEW_ERR_PREFIX = "flow-preview-err-";
+
+/** Fails closed: any path without a single known control is listed in the body. */
+function previewTargetFor({
+  resolved,
+}: {
+  resolved: ResolvedServerPath;
+}): PreviewTarget | null {
+  switch (resolved.kind) {
+    case "step_field":
+      return { kind: "step", stepKey: resolved.stepKey, field: resolved.field };
+    case "flow_field":
+      return { kind: "flow", field: resolved.field };
+    case "nested":
+      if (resolved.list === "drop_breakdown") {
+        return resolved.field === "entry"
+          ? null
+          : {
+              kind: "breakdown",
+              stepKey: resolved.stepKey,
+              field: resolved.field,
+            };
+      }
+      return resolved.entryKey === null || resolved.field !== "entry"
+        ? null
+        : {
+            kind: "entry",
+            stepKey: resolved.stepKey,
+            list: resolved.list,
+            entryKey: resolved.entryKey,
+          };
+    default:
+      return null;
+  }
 }
 
 /**
@@ -220,6 +297,39 @@ export function createFlowBuilder({
   let stepList: HTMLElement | null = null;
   let addButton: HTMLButtonElement | null = null;
   let reasonLine: HTMLElement | null = null;
+  // Live preview column (mounted by renderForm, so absent while the catalog loads).
+  let previewTitle: HTMLElement | null = null;
+  let previewStatus: HTMLElement | null = null;
+  let previewBody: HTMLElement | null = null;
+  let previewGrid: HTMLElement | null = null;
+  let previewPlaceholder: HTMLElement | null = null;
+  let previewErrorBlock: HTMLElement | null = null;
+  let previewErrorText: HTMLElement | null = null;
+  let previewRetryButton: HTMLButtonElement | null = null;
+  // What the body shows now; drives the frozen render and in-place title updates.
+  let previewShown: "skeleton" | "card" | "fields" | null = null;
+  let previewResponse: Schema<"FlowResponseSchema"> | null = null;
+  // True from an accepted Retry click until the first non-updating render.
+  let retryDriven = false;
+  let previewLive: HTMLElement | null = null;
+  // Preview-origin field errors: kept apart from draft.serverErrors, which Save owns.
+  const previewErrors = new Map<string, string[]>();
+  const previewTargets = new Map<
+    string,
+    { target: PreviewTarget; path: string }
+  >();
+  let previewBodyLines: string[] = [];
+  // Messages the open-time reason already shows: announced, never rendered twice.
+  let previewAnnouncedOnly = 0;
+  let previewLastSpoken: PreviewAnnouncement | null = null;
+  let previewHeld: PreviewAnnouncement | null = null;
+  let previewAnnounceTimer: number | null = null;
+
+  const preview = createFlowPreview({
+    send: ({ body: definition, window: windowKey }) =>
+      previewMetricFlow({ definition, window: windowKey }),
+    onState: (state) => renderPreviewState({ state }),
+  });
 
   const strings = () => APP_CONFIG.strings;
   const constants = () => APP_CONFIG.constants;
@@ -229,6 +339,7 @@ export function createFlowBuilder({
   // ---------------------------------------------------------------------
 
   function teardown(): void {
+    preview.cancel();
     if (catalogXhr !== null) {
       const pending = catalogXhr;
       catalogXhr = null;
@@ -268,6 +379,23 @@ export function createFlowBuilder({
     stepList = null;
     addButton = null;
     reasonLine = null;
+    previewTitle = null;
+    previewStatus = null;
+    previewBody = null;
+    previewGrid = null;
+    previewPlaceholder = null;
+    previewErrorBlock = null;
+    previewErrorText = null;
+    previewRetryButton = null;
+    previewShown = null;
+    previewResponse = null;
+    retryDriven = false;
+    previewLive = null;
+    resetPreviewAnnouncements();
+    previewErrors.clear();
+    previewTargets.clear();
+    previewBodyLines = [];
+    previewAnnouncedOnly = 0;
     container.replaceChildren();
     container.hidden = true;
   }
@@ -373,6 +501,7 @@ export function createFlowBuilder({
       retryButton = null;
       renderForm();
       heading?.focus();
+      schedulePreview();
     });
     request.fail(() => {
       if (catalogXhr !== request) {
@@ -852,6 +981,7 @@ export function createFlowBuilder({
         : createMetricFlow({ definition });
     saveXhr = request;
     setSaving({ value: true });
+    freezePreview();
     request.done((data) => {
       if (saveXhr !== request) {
         return;
@@ -870,6 +1000,9 @@ export function createFlowBuilder({
       saveXhr = null;
       setSaving({ value: false });
       handleSaveFailure({ request, submitted });
+      // The failure may have closed the builder; both calls guard themselves.
+      syncRetryDisabled();
+      schedulePreview();
     });
   }
 
@@ -921,6 +1054,729 @@ export function createFlowBuilder({
         messages: [strings().METRICS_FLOW_BUILDER_ERR_SAVE_FAILED],
       });
     }
+  }
+
+  // ---------------------------------------------------------------------
+  // Live preview
+  // ---------------------------------------------------------------------
+
+  /** Drops every preview-owned element, describedby id and invalid flag; Save/client marks stay. */
+  function stripPreviewMarks(): void {
+    for (const element of container.querySelectorAll<HTMLElement>(
+      "[data-preview-err]",
+    )) {
+      element.remove();
+    }
+    for (const control of container.querySelectorAll<HTMLElement>(
+      "[aria-describedby]",
+    )) {
+      const current = control.getAttribute("aria-describedby") ?? "";
+      if (!current.includes(PREVIEW_ERR_PREFIX)) {
+        continue;
+      }
+      const rest = current
+        .split(" ")
+        .filter((id) => id !== "" && !id.includes(PREVIEW_ERR_PREFIX));
+      if (rest.length > 0) {
+        control.setAttribute("aria-describedby", rest.join(" "));
+      } else {
+        control.removeAttribute("aria-describedby");
+      }
+    }
+    for (const control of container.querySelectorAll<HTMLElement>(
+      "[data-preview-invalid]",
+    )) {
+      // Only a flag the preview itself set is removed; a Save/client message
+      // that landed since keeps its own aria-invalid.
+      if (!control.hasAttribute("aria-describedby")) {
+        control.removeAttribute("aria-invalid");
+      }
+      control.removeAttribute("data-preview-invalid");
+    }
+  }
+
+  /** Forgets the stored preview errors and removes their marks. */
+  function clearPreviewMarks(): void {
+    previewErrors.clear();
+    previewTargets.clear();
+    previewBodyLines = [];
+    previewAnnouncedOnly = 0;
+    stripPreviewMarks();
+  }
+
+  function findPreviewControl({
+    target,
+  }: {
+    target: PreviewTarget;
+  }): HTMLElement | null {
+    if (target.kind === "flow") {
+      return target.field === "display_name" ? nameInput : addButton;
+    }
+    const row = findRow({ key: target.stepKey });
+    if (row === null) {
+      return null;
+    }
+    switch (target.kind) {
+      case "step":
+        return row.querySelector<HTMLElement>(`[data-field="${target.field}"]`);
+      case "entry":
+        return findFilterControl({
+          row,
+          filterKey: target.entryKey,
+          field:
+            target.list === "dim_filter"
+              ? FILTER_DIM_FIELD
+              : BREAKDOWN_FILTER_DIM_FIELD,
+        });
+      case "breakdown":
+        return findBreakdownControl({
+          row,
+          field:
+            target.field === "event_name"
+              ? BREAKDOWN_EVENT_FIELD
+              : BREAKDOWN_GROUP_BY_FIELD,
+        });
+      default:
+        return null;
+    }
+  }
+
+  /**
+   * Messages the control already shows: `shown` come from a Save 400 or client
+   * validation (a preview duplicate is dropped); `derived` are open-time reasons
+   * (a preview duplicate is announced but not rendered twice).
+   */
+  function existingMessages({ target }: { target: PreviewTarget }): {
+    shown: string[];
+    derived: string[];
+  } {
+    if (target.kind === "flow") {
+      return {
+        shown: draft.serverErrors
+          .filter((error) => error.field === target.field)
+          .map((error) => error.message),
+        derived: [],
+      };
+    }
+    const step = draft.steps.find((item) => item.key === target.stepKey);
+    if (step === undefined) {
+      return { shown: [], derived: [] };
+    }
+    if (target.kind === "step") {
+      return { shown: step.errors[target.field] ?? [], derived: [] };
+    }
+    const shown: string[] = [];
+    const derived: string[] = [];
+    for (const error of listNestedMessages({ step, catalog })) {
+      const address = error.address;
+      const matches =
+        address !== undefined &&
+        (target.kind === "entry"
+          ? address.kind ===
+              (target.list === "dim_filter" ? "filter" : "breakdown_filter") &&
+            address.filterKey === target.entryKey
+          : address.kind === "breakdown" &&
+            address.part ===
+              (target.field === "event_name" ? "event" : "group_by"));
+      if (matches) {
+        (error.stored === true || error.server === true ? shown : derived).push(
+          error.message,
+        );
+      }
+    }
+    return { shown, derived };
+  }
+
+  /** Stores a preview 400 against the current draft (via `submitted`); renders nothing. */
+  function storePreviewErrors({
+    errors,
+    submitted,
+  }: {
+    errors: Record<string, string[]>;
+    submitted: SubmittedStep[];
+  }): void {
+    clearPreviewMarks();
+    const lines = new Set<string>();
+    const derivedSeen = new Set<string>();
+    for (const [path, messages] of Object.entries(errors)) {
+      const resolved = resolveServerPath({ path, submitted, draft });
+      const target = previewTargetFor({ resolved });
+      for (const message of messages) {
+        if (target === null) {
+          lines.add(path === "__root__" ? message : `${path}: ${message}`);
+          continue;
+        }
+        const existing = existingMessages({ target });
+        if (existing.shown.includes(message)) {
+          continue;
+        }
+        const key = JSON.stringify(target);
+        const stored = previewErrors.get(key) ?? [];
+        if (stored.includes(message)) {
+          continue;
+        }
+        if (existing.derived.includes(message)) {
+          // Counted for the announcement once, never stored or rendered twice.
+          const seen = `${key}|${message}`;
+          if (!derivedSeen.has(seen)) {
+            derivedSeen.add(seen);
+            previewAnnouncedOnly += 1;
+          }
+          continue;
+        }
+        stored.push(message);
+        previewErrors.set(key, stored);
+        previewTargets.set(key, { target, path });
+      }
+    }
+    previewBodyLines = [...lines];
+  }
+
+  /**
+   * Marks every stored preview error in place (and lists the rest in the preview
+   * body). Idempotent: it strips its own marks first, so it can run after any row
+   * rebuild. Returns how many message elements it rendered.
+   */
+  function applyPreviewMarks(): number {
+    stripPreviewMarks();
+    if (previewErrors.size === 0 && previewBodyLines.length === 0) {
+      return 0;
+    }
+    let rendered = 0;
+    let sequence = 0;
+    const lines = new Set(previewBodyLines);
+    for (const [key, messages] of previewErrors) {
+      const entry = previewTargets.get(key);
+      const control =
+        entry === undefined
+          ? null
+          : findPreviewControl({ target: entry.target });
+      if (entry === undefined || control === null) {
+        for (const message of messages) {
+          lines.add(
+            entry === undefined || entry.path === "__root__"
+              ? message
+              : `${entry.path}: ${message}`,
+          );
+        }
+        continue;
+      }
+      let tail: Element =
+        entry.target.kind === "flow"
+          ? ((entry.target.field === "display_name" ? nameError : stepsError) ??
+            control)
+          : control;
+      const ids: string[] = [];
+      for (const message of messages) {
+        sequence += 1;
+        const id = `${uid}-${PREVIEW_ERR_PREFIX}${sequence}`;
+        const line = makeElement({
+          tag: "p",
+          className: "flow-builder-error",
+          text: message,
+          attrs: { id, "data-preview-err": "true" },
+        });
+        if (entry.target.kind === "flow") {
+          tail.after(line);
+          tail = line;
+        } else {
+          control.parentElement?.append(line);
+        }
+        ids.push(id);
+        rendered += 1;
+      }
+      if (ids.length === 0) {
+        continue;
+      }
+      if (control.getAttribute("aria-invalid") !== "true") {
+        control.setAttribute("aria-invalid", "true");
+        control.setAttribute("data-preview-invalid", "true");
+      }
+      const described = control.getAttribute("aria-describedby");
+      control.setAttribute(
+        "aria-describedby",
+        [described, ...ids].filter((id) => id).join(" "),
+      );
+    }
+    for (const text of lines) {
+      previewBody?.append(
+        makeElement({
+          tag: "p",
+          className: "flow-builder-error",
+          text,
+          attrs: { "data-preview-err": "true" },
+        }),
+      );
+      rendered += 1;
+    }
+    return rendered;
+  }
+
+  // ---- Preview announcements (their own live region, never the builder's) ----
+
+  function speakPreview({ text }: { text: string }): void {
+    const region = previewLive;
+    if (region === null) {
+      return;
+    }
+    // Clear, then set on the next tick so a repeated message is re-read.
+    region.textContent = "";
+    if (previewAnnounceTimer !== null) {
+      window.clearTimeout(previewAnnounceTimer);
+    }
+    previewAnnounceTimer = window.setTimeout(() => {
+      previewAnnounceTimer = null;
+      region.textContent = text;
+    }, 0);
+  }
+
+  function deliverPreviewAnnouncement({
+    item,
+  }: {
+    item: PreviewAnnouncement;
+  }): void {
+    const repeatable = item.kind === "result" || item.kind === "problem";
+    if (
+      repeatable &&
+      previewLastSpoken !== null &&
+      previewLastSpoken.text === item.text &&
+      previewLastSpoken.problems === item.problems
+    ) {
+      return;
+    }
+    previewLastSpoken = item;
+    speakPreview({ text: item.text });
+  }
+
+  /** Speaks now, or holds (latest only) while a discard/delete confirm is open. */
+  function announcePreview({ item }: { item: PreviewAnnouncement }): void {
+    if (pendingConfirm !== null) {
+      previewHeld = item;
+      return;
+    }
+    deliverPreviewAnnouncement({ item });
+  }
+
+  function flushHeldPreviewAnnouncement(): void {
+    const held = previewHeld;
+    previewHeld = null;
+    if (held !== null) {
+      deliverPreviewAnnouncement({ item: held });
+    }
+  }
+
+  /** Forgets the last-spoken text, any held announcement and a pending speak timer. */
+  function resetPreviewAnnouncements(): void {
+    previewLastSpoken = null;
+    previewHeld = null;
+    if (previewAnnounceTimer !== null) {
+      window.clearTimeout(previewAnnounceTimer);
+      previewAnnounceTimer = null;
+    }
+  }
+
+  function announceProblems({
+    errors,
+    rendered,
+  }: {
+    errors: Record<string, string[]>;
+    rendered: number;
+  }): void {
+    const count = rendered + previewAnnouncedOnly;
+    if (count === 0) {
+      return;
+    }
+    const pairs = Object.entries(errors)
+      .flatMap(([path, messages]) =>
+        messages.map((message) => `${path}: ${message}`),
+      )
+      .sort();
+    announcePreview({
+      item: {
+        kind: "problem",
+        text:
+          count === 1
+            ? strings().METRICS_FLOW_PREVIEW_ANNOUNCE_PROBLEM_ONE
+            : fillTemplate({
+                template: strings().METRICS_FLOW_PREVIEW_ANNOUNCE_PROBLEMS,
+                values: { count: String(count) },
+              }),
+        problems: JSON.stringify(pairs),
+      },
+    });
+  }
+
+  function announceResult({
+    response,
+  }: {
+    response: Schema<"FlowResponseSchema">;
+  }): void {
+    const steps = response.steps;
+    if (steps.length === 0) {
+      return;
+    }
+    const top = steps[0];
+    const last = steps[steps.length - 1];
+    announcePreview({
+      item: {
+        kind: "result",
+        problems: null,
+        text: isAllZero({ steps })
+          ? strings().METRICS_FLOW_PREVIEW_ANNOUNCE_EMPTY
+          : fillTemplate({
+              template: strings().METRICS_FLOW_PREVIEW_ANNOUNCE_RESULT,
+              values: {
+                succeeded: ariaCount({ step: last }),
+                total: ariaCount({ step: top }),
+                pct: formatPercent({ fraction: last.pct_of_top }),
+              },
+            }),
+      },
+    });
+  }
+
+  function previewCardTitle(): string {
+    return draft.displayName.trim() || strings().METRICS_FLOW_PREVIEW_HEADING;
+  }
+
+  function buildPreviewSection(): HTMLElement {
+    const titleId = `${uid}-preview-title`;
+    const section = makeElement({
+      tag: "section",
+      className: "flow-builder-preview",
+      attrs: { "aria-labelledby": titleId },
+    });
+    previewTitle = makeElement({
+      tag: "h4",
+      className: "flow-builder-preview-title",
+      text: strings().METRICS_FLOW_PREVIEW_HEADING,
+      attrs: { id: titleId, tabindex: "-1" },
+    });
+    previewStatus = makeElement({
+      tag: "p",
+      className: "flow-builder-preview-status",
+    });
+    previewStatus.append(
+      makeElement({
+        tag: "span",
+        className: "flow-builder-preview-spinner",
+        attrs: { "aria-hidden": "true" },
+      }),
+      document.createTextNode(strings().METRICS_FLOW_PREVIEW_UPDATING),
+    );
+    previewStatus.hidden = true;
+    previewBody = makeElement({
+      tag: "div",
+      className: "flow-builder-preview-body",
+    });
+    previewGrid = makeElement({
+      tag: "div",
+      className: "flow-builder-preview-grid",
+    });
+    previewBody.append(previewGrid);
+    previewPlaceholder = null;
+    previewErrorBlock = null;
+    previewErrorText = null;
+    previewRetryButton = null;
+    previewResponse = null;
+    retryDriven = false;
+    showPreviewText({ text: strings().METRICS_FLOW_PREVIEW_PLACEHOLDER });
+    previewShown = null;
+    previewLive = makeElement({
+      tag: "span",
+      className: "visually-hidden flow-builder-preview-live",
+      attrs: { "aria-live": "polite", "aria-atomic": "true" },
+    });
+    section.append(
+      previewTitle,
+      previewStatus,
+      previewBody,
+      makeElement({
+        tag: "p",
+        className: "flow-builder-hint",
+        text: strings().METRICS_FLOW_PREVIEW_HINT,
+      }),
+      // Outside the busy body, and separate from the builder status region.
+      previewLive,
+    );
+    return section;
+  }
+
+  function clearPreviewBlocks({
+    placeholder,
+    error,
+    grid,
+  }: {
+    placeholder: boolean;
+    error: boolean;
+    grid: boolean;
+  }): void {
+    if (placeholder) {
+      previewPlaceholder?.remove();
+      previewPlaceholder = null;
+    }
+    if (error) {
+      previewErrorBlock?.remove();
+      previewErrorBlock = null;
+      previewErrorText = null;
+      previewRetryButton = null;
+    }
+    if (grid && previewGrid !== null) {
+      // An empty render also resets the grid's reconcile cache.
+      renderFlowGrid({ container: previewGrid, entries: [] });
+    }
+  }
+
+  function showPreviewText({ text }: { text: string }): void {
+    if (previewBody === null) {
+      return;
+    }
+    clearPreviewBlocks({ placeholder: false, error: true, grid: true });
+    if (previewPlaceholder === null) {
+      previewPlaceholder = makeElement({
+        tag: "p",
+        className: "flow-builder-preview-placeholder",
+        attrs: { tabindex: "0" },
+      });
+      previewBody.append(previewPlaceholder);
+    }
+    previewPlaceholder.textContent = text;
+  }
+
+  function showPreviewCard({ state }: { state: FlowCardState }): void {
+    if (previewGrid === null) {
+      return;
+    }
+    clearPreviewBlocks({ placeholder: true, error: true, grid: false });
+    renderFlowGrid({
+      container: previewGrid,
+      entries: [
+        {
+          id: PREVIEW_FLOW_ID,
+          title: previewCardTitle(),
+          preview: true,
+          state,
+        },
+      ],
+    });
+  }
+
+  function showPreviewError({ message }: { message: string }): void {
+    if (previewBody === null) {
+      return;
+    }
+    clearPreviewBlocks({ placeholder: true, error: false, grid: true });
+    if (previewErrorBlock === null) {
+      previewErrorBlock = makeElement({
+        tag: "div",
+        className: "flow-builder-preview-error",
+      });
+      previewErrorText = makeElement({ tag: "p" });
+      previewRetryButton = makeElement({
+        tag: "button",
+        className: "flow-builder-btn",
+        text: strings().METRICS_FLOW_RETRY,
+        attrs: { type: "button" },
+      });
+      previewRetryButton.addEventListener("click", handlePreviewRetry);
+      previewErrorBlock.append(previewErrorText, previewRetryButton);
+      previewBody.append(previewErrorBlock);
+    }
+    if (previewErrorText !== null) {
+      previewErrorText.textContent = message;
+    }
+  }
+
+  /**
+   * Retry is inert (aria-disabled, so it keeps focus) while a Retry flight runs and
+   * while a Save, a Delete or a confirm owns the builder.
+   */
+  function syncRetryDisabled(): void {
+    if (previewRetryButton === null) {
+      return;
+    }
+    if (retryDriven || saving || deleting || pendingConfirm !== null) {
+      previewRetryButton.setAttribute("aria-disabled", "true");
+    } else {
+      previewRetryButton.removeAttribute("aria-disabled");
+    }
+  }
+
+  function handlePreviewRetry(): void {
+    if (
+      previewRetryButton === null ||
+      retryDriven ||
+      saving ||
+      deleting ||
+      pendingConfirm !== null
+    ) {
+      return;
+    }
+    retryDriven = true;
+    syncRetryDisabled();
+    schedulePreview();
+  }
+
+  /**
+   * Runs a preview render; when it removed the element that held focus inside the
+   * preview body, focus moves to the preview title. Nothing else here moves focus.
+   */
+  function withPreviewFocusGuard({ render }: { render: () => void }): void {
+    const active = document.activeElement;
+    const held =
+      previewBody !== null &&
+      active instanceof HTMLElement &&
+      previewBody.contains(active);
+    render();
+    if (held && active instanceof HTMLElement && !active.isConnected) {
+      previewTitle?.focus();
+    }
+  }
+
+  function renderPreviewState({ state }: { state: FlowPreviewState }): void {
+    if (previewBody === null || previewStatus === null) {
+      return;
+    }
+    const bodyElement = previewBody;
+    const statusElement = previewStatus;
+    withPreviewFocusGuard({
+      render: () => {
+        if (state.kind !== "updating") {
+          retryDriven = false;
+        }
+        bodyElement.classList.remove("flow-builder-preview-body--stale");
+        clearPreviewMarks();
+        statusElement.hidden = state.kind !== "updating";
+        if (state.kind === "updating") {
+          if (retryDriven && previewErrorBlock !== null) {
+            // A busy region would hide the focused Retry from assistive tech.
+            bodyElement.removeAttribute("aria-busy");
+            syncRetryDisabled();
+            return;
+          }
+          bodyElement.setAttribute("aria-busy", "true");
+          if (state.previous !== null) {
+            previewResponse = state.previous;
+            showPreviewCard({
+              state: { kind: "response", response: state.previous },
+            });
+            previewShown = "card";
+          } else {
+            previewResponse = null;
+            showPreviewCard({ state: { kind: "loading" } });
+            previewShown = "skeleton";
+          }
+          return;
+        }
+        bodyElement.removeAttribute("aria-busy");
+        previewResponse = null;
+        if (state.kind === "placeholder") {
+          showPreviewText({ text: strings().METRICS_FLOW_PREVIEW_PLACEHOLDER });
+          previewShown = null;
+          resetPreviewAnnouncements();
+        } else if (state.kind === "result") {
+          previewResponse = state.response;
+          showPreviewCard({
+            state: { kind: "response", response: state.response },
+          });
+          previewShown = "card";
+          announceResult({ response: state.response });
+        } else if (state.kind === "field-errors") {
+          showPreviewText({ text: strings().METRICS_FLOW_PREVIEW_FIX_FIELDS });
+          previewShown = "fields";
+          storePreviewErrors({
+            errors: state.errors,
+            submitted: state.submitted,
+          });
+          announceProblems({
+            errors: state.errors,
+            rendered: applyPreviewMarks(),
+          });
+        } else {
+          const message =
+            state.kind === "rate-limited"
+              ? strings().METRICS_FLOW_RATE_LIMITED
+              : strings().METRICS_FLOW_PREVIEW_FAILED;
+          showPreviewError({ message });
+          previewShown = null;
+          syncRetryDisabled();
+          announcePreview({
+            item: { kind: state.kind, text: message, problems: null },
+          });
+        }
+      },
+    });
+  }
+
+  /** Save/Delete start: the controller is silent after `cancel()`, so freeze by hand. */
+  function freezePreview(): void {
+    preview.cancel();
+    retryDriven = false;
+    clearPreviewMarks();
+    resetPreviewAnnouncements();
+    if (previewLive !== null) {
+      previewLive.textContent = "";
+    }
+    if (previewBody === null || previewStatus === null) {
+      return;
+    }
+    const bodyElement = previewBody;
+    const statusElement = previewStatus;
+    withPreviewFocusGuard({
+      render: () => {
+        statusElement.hidden = true;
+        bodyElement.removeAttribute("aria-busy");
+        if (previewShown === "card" || previewShown === "skeleton") {
+          bodyElement.classList.add("flow-builder-preview-body--stale");
+        } else if (previewShown === "fields") {
+          // The marks are gone, so "Fix the marked fields" would no longer be true.
+          showPreviewText({ text: strings().METRICS_FLOW_PREVIEW_PLACEHOLDER });
+          previewShown = null;
+        }
+        syncRetryDisabled();
+      },
+    });
+  }
+
+  /** Only the card title follows a name edit; the request body never contains it. */
+  function refreshPreviewTitle(): void {
+    if (previewShown === "card" && previewResponse !== null) {
+      showPreviewCard({
+        state: { kind: "response", response: previewResponse },
+      });
+    }
+  }
+
+  /**
+   * Feeds the preview controller from the current draft. Called after every edit
+   * except a rename; a draft that is not client-valid (ignoring the name) shows
+   * the placeholder instead of sending.
+   */
+  function schedulePreview(): void {
+    if (
+      !opened ||
+      catalog === null ||
+      previewBody === null ||
+      saving ||
+      deleting
+    ) {
+      return;
+    }
+    const blocking = validateDraft({ draft, catalog }).filter(
+      (error) => error.field !== "display_name",
+    );
+    if (blocking.length > 0) {
+      preview.invalidate();
+      return;
+    }
+    preview.update({
+      body: {
+        ...toRequestBody({ draft }),
+        display_name: strings().METRICS_FLOW_PREVIEW_HEADING,
+      },
+      window: callbacks.getWindow(),
+      submitted: captureSubmitted({ draft }),
+    });
   }
 
   // ---------------------------------------------------------------------
@@ -1055,7 +1911,12 @@ export function createFlowBuilder({
       formErrorRegion,
       actions,
     );
-    body.replaceChildren(form);
+    const layout = makeElement({
+      tag: "div",
+      className: "flow-builder-layout",
+    });
+    layout.append(form, buildPreviewSection());
+    body.replaceChildren(layout);
     renderSteps();
     renderNameError();
     renderStepsError();
@@ -1145,6 +2006,8 @@ export function createFlowBuilder({
         });
       }
     });
+    // Rebuilt rows and re-linked controls lose their marks; put them back.
+    applyPreviewMarks();
   }
 
   function renderRow({
@@ -1232,6 +2095,7 @@ export function createFlowBuilder({
         position: String(index + 1),
       }),
     );
+    applyPreviewMarks();
   }
 
   function focusFilterControl({
@@ -1926,12 +2790,14 @@ export function createFlowBuilder({
       draft = clearDraftError({ draft, field: "display_name" });
       renderNameError();
       renderSummary();
+      refreshPreviewTitle();
       return;
     }
     const key = stepKeyOf({ target });
     if (target.dataset.field === "label" && key !== null) {
       draft = setStepLabel({ draft, key, value: target.value });
       clearFieldError({ key, field: "label" });
+      schedulePreview();
       return;
     }
     const filterKey = filterKeyOf({ target });
@@ -1949,6 +2815,7 @@ export function createFlowBuilder({
       });
       clearRowError({ target });
       renderSummary();
+      schedulePreview();
     }
     if (
       target.dataset.field === BREAKDOWN_FILTER_VALUE_FIELD &&
@@ -1963,10 +2830,20 @@ export function createFlowBuilder({
       });
       clearRowError({ target });
       renderSummary();
+      schedulePreview();
     }
   }
 
+  /** Every select change is structural, so it ends in a preview refresh. */
   function handleChange(event: Event): void {
+    const before = draft;
+    applyChange(event);
+    if (draft !== before && event.target instanceof HTMLSelectElement) {
+      schedulePreview();
+    }
+  }
+
+  function applyChange(event: Event): void {
     const target = event.target;
     if (
       target instanceof HTMLInputElement &&
@@ -2115,7 +2992,16 @@ export function createFlowBuilder({
     });
   }
 
+  /** Step, filter and breakdown buttons change the draft; Cancel and Delete do not. */
   function handleClick(event: MouseEvent): void {
+    const before = draft;
+    applyClick(event);
+    if (draft !== before) {
+      schedulePreview();
+    }
+  }
+
+  function applyClick(event: MouseEvent): void {
     const target = event.target;
     if (!(target instanceof Element)) {
       return;
@@ -2271,6 +3157,8 @@ export function createFlowBuilder({
     pendingConfirm = null;
     closing?.element.remove();
     formElement?.removeAttribute("inert");
+    syncRetryDisabled();
+    flushHeldPreviewAnnouncement();
   }
 
   function openConfirm({
@@ -2355,6 +3243,7 @@ export function createFlowBuilder({
     };
     formElement?.setAttribute("inert", "");
     body.append(element);
+    syncRetryDisabled();
     safeButton.focus();
   }
 
@@ -2447,6 +3336,7 @@ export function createFlowBuilder({
     }
     deleting = true;
     refreshBusy();
+    freezePreview();
     confirm.confirmButton.textContent = strings().METRICS_FLOW_DELETING;
     confirm.confirmButton.setAttribute("aria-disabled", "true");
     confirm.safeButton.setAttribute("aria-disabled", "true");
@@ -2472,6 +3362,8 @@ export function createFlowBuilder({
       refreshBusy();
       deleteButton?.focus();
       handleDeleteFailure({ request });
+      syncRetryDisabled();
+      schedulePreview();
     });
   }
 
@@ -2510,6 +3402,7 @@ export function createFlowBuilder({
     open,
     close: teardown,
     isOpen: () => opened,
+    refreshPreview: schedulePreview,
     isDirty,
     confirmDiscard,
     focusPendingConfirm,

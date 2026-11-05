@@ -20,13 +20,20 @@ from backend.schemas.users import (
     UtubListPreferencesSchema,
     UtubSummaryListSchema,
 )
-from backend.schemas.utubs import UtubDetailSchema, UtubTagSchema
+from backend.schemas.utubs import (
+    TagDisplayDefaultsSchema,
+    UtubDetailSchema,
+    UtubTagSchema,
+)
 from backend.utils.datetime_utils import to_iso_milliseconds
 from backend.utils.strings.model_strs import MODELS as MODEL_STRS
 from backend.utils.strings.splash_form_strs import REGISTER_FORM
 from backend.utubs.services.trash_predicates import _sort_summary_memberships
 from tests.functional.db_utils import count_urls_with_tag_applied_by_tag_id
-from tests.settings_stub import DEFAULT_MEMBER_SETTINGS_DICT
+from tests.settings_stub import (
+    DEFAULT_MEMBER_SETTINGS_DICT,
+    DEFAULT_TAG_DISPLAY_DEFAULTS_DICT,
+)
 
 pytestmark = pytest.mark.unit
 
@@ -448,6 +455,7 @@ def _add_member_sort_fields(test_utub: dict, utub: Utubs) -> None:
             member_dict[MODEL_STRS.ID]
         ]
     test_utub[MODEL_STRS.MEMBER_SORT] = MemberSort.NAME_AZ.value
+    test_utub[MODEL_STRS.TAG_DISPLAY_DEFAULTS] = dict(DEFAULT_TAG_DISPLAY_DEFAULTS_DICT)
 
 
 def test_utub_serialized_only_creator_no_urls_no_tags(
@@ -506,7 +514,14 @@ def test_utub_serialized_only_creator_no_urls_no_tags(
 
             # Match creator elements
             utub_in_data_serialized = UtubDetailSchema.from_utub(
-                utub, 1, utub.utub_urls, utub.members, MemberSort.NAME_AZ.value
+                utub,
+                1,
+                utub.utub_urls,
+                utub.members,
+                MemberSort.NAME_AZ.value,
+                TagDisplayDefaultsSchema.model_validate(
+                    DEFAULT_TAG_DISPLAY_DEFAULTS_DICT
+                ),
             ).model_dump(by_alias=True)
             test_utub[MODEL_STRS.IS_CREATOR] = utub_in_data_serialized[
                 MODEL_STRS.IS_CREATOR
@@ -583,7 +598,14 @@ def test_utub_serialized_creator_and_members_no_urls_no_tags(
 
             # Array of members needs to be sorted by ID's to match
             utub_in_data_serialized = UtubDetailSchema.from_utub(
-                utub, 1, utub.utub_urls, utub.members, MemberSort.NAME_AZ.value
+                utub,
+                1,
+                utub.utub_urls,
+                utub.members,
+                MemberSort.NAME_AZ.value,
+                TagDisplayDefaultsSchema.model_validate(
+                    DEFAULT_TAG_DISPLAY_DEFAULTS_DICT
+                ),
             ).model_dump(by_alias=True)
             utub_in_data_serialized[MODEL_STRS.MEMBERS] = sorted(
                 utub_in_data_serialized[MODEL_STRS.MEMBERS],
@@ -668,7 +690,14 @@ def test_utub_serialized_creator_and_members_and_url_no_tags(
 
             # Array of members needs to be sorted by ID's to match
             utub_in_data_serialized = UtubDetailSchema.from_utub(
-                utub, 1, utub.utub_urls, utub.members, MemberSort.NAME_AZ.value
+                utub,
+                1,
+                utub.utub_urls,
+                utub.members,
+                MemberSort.NAME_AZ.value,
+                TagDisplayDefaultsSchema.model_validate(
+                    DEFAULT_TAG_DISPLAY_DEFAULTS_DICT
+                ),
             ).model_dump(by_alias=True)
             utub_in_data_serialized[MODEL_STRS.MEMBERS] = sorted(
                 utub_in_data_serialized[MODEL_STRS.MEMBERS],
@@ -799,7 +828,14 @@ def test_utub_serialized_creator_and_members_and_urls_and_tags(
 
             # Array of members needs to be sorted by ID's to match
             utub_in_data_serialized = UtubDetailSchema.from_utub(
-                utub, 1, utub.utub_urls, utub.members, MemberSort.NAME_AZ.value
+                utub,
+                1,
+                utub.utub_urls,
+                utub.members,
+                MemberSort.NAME_AZ.value,
+                TagDisplayDefaultsSchema.model_validate(
+                    DEFAULT_TAG_DISPLAY_DEFAULTS_DICT
+                ),
             ).model_dump(by_alias=True)
             utub_in_data_serialized[MODEL_STRS.MEMBERS] = sorted(
                 utub_in_data_serialized[MODEL_STRS.MEMBERS],

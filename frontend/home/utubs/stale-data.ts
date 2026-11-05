@@ -12,10 +12,12 @@ import {
   fetchUTubForRefresh,
   buildSelectedUTub,
   captureSettingsVersions,
+  readTagDisplayDefaults,
   resolveIncomingSettings,
   shouldKeepSettings,
   makeUTubRoleIcon,
   applyUTubDescriptionVisibility,
+  type TagDisplayDefaults,
 } from "./selectors.js";
 import { removeUTubLocally } from "./remove-local.js";
 import { setRowCountsFromStore } from "./row-counts.js";
@@ -125,6 +127,7 @@ export async function updateUTubOnFindingStaleData({
     keepSettings,
     keepMemberSettings,
     keepMemberSort,
+    keepTagDisplay,
     forceShortLinksOff,
   } = shouldKeepSettings({
     selectedUTub: utub,
@@ -143,6 +146,24 @@ export async function updateUTubOnFindingStaleData({
           memberSort: utub.memberSort,
         },
       });
+    }
+  }
+  // The tag display defaults follow the same rule (global, own version). A
+  // partly invalid object writes nothing. Built from the store at write time so
+  // the member sort write above is never overwritten.
+  if (!keepTagDisplay) {
+    const incomingTagDisplay = readTagDisplayDefaults(utub.tagDisplayDefaults);
+    if (incomingTagDisplay !== null) {
+      const latestPreferences = getState().preferences;
+      const tagDisplayChanged = Object.entries(incomingTagDisplay).some(
+        ([key, value]) =>
+          latestPreferences[key as keyof TagDisplayDefaults] !== value,
+      );
+      if (tagDisplayChanged) {
+        setState({
+          preferences: { ...latestPreferences, ...incomingTagDisplay },
+        });
+      }
     }
   }
   // The member slice follows the same rule, guarded by its own version.
@@ -465,6 +486,7 @@ function applyPermissionFallback({ data }: { data: UtubDetail }): void {
     keepSettings: true,
     keepMemberSettings: true,
     keepMemberSort: true,
+    keepTagDisplay: true,
   });
   syncSidebarUTubEntry({ data });
 

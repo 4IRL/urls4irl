@@ -36,6 +36,9 @@ import { initUTubRefreshOnFocus } from "./home/utubs/refresh-on-focus.js";
 import { initUTubSelectionIndicator } from "./home/utubs/selection-indicator.js";
 import { initTagSheet } from "./home/tags/sheet.js";
 import { initTagDragDrop } from "./home/tags/drag-drop.js";
+import { initTagMatchMode } from "./home/tags/tags.js";
+import { initTagDisplaySubscriptions } from "./home/tags/display-subscriptions.js";
+import { registerTagsPersonalSettingsSection } from "./home/tags/personal-settings-section.js";
 import {
   applyDefaultDensity,
   applyDefaultViewMode,
@@ -82,6 +85,7 @@ $(document).ready(() => {
   registerUrlsPersonalSettingsSection();
   registerUtubListSettingsSection();
   registerMembersListSettingsSection();
+  registerTagsPersonalSettingsSection();
   initLeftPanelToggle();
   setCreateUTubEventListeners();
   setUTubEventListenersOnInitialPageLoad();
@@ -91,6 +95,8 @@ $(document).ready(() => {
   initURLDeck();
   initUrlDeckPolicyAttrs();
   initTagDragDrop();
+  initTagMatchMode();
+  initTagDisplaySubscriptions();
   initBulkActions();
   initTransferPicker();
   loadInitialTrashCount();

@@ -135,6 +135,33 @@ class UtubListPreferencesSchema(BaseSchema):
     )
 
 
+class TagDisplayPreferencesSchema(BaseSchema):
+    """The requesting user's six resolved tag display defaults (plain data)."""
+
+    tag_sort: Literal["most_in_view", "most_used", "name_az", "newest", "oldest"] = (
+        Field(alias=MODELS.TAG_SORT, description="How tags are sorted")
+    )
+    tag_match_mode: Literal["all", "any"] = Field(
+        alias=MODELS.TAG_MATCH_MODE,
+        description="Whether selected tags match all or any of a URL's tags",
+    )
+    tag_count_style: Literal["in_view_total", "total_only", "hidden"] = Field(
+        alias=MODELS.TAG_COUNT_STYLE, description="How tag counts are shown"
+    )
+    show_tags_on_collapsed: bool = Field(
+        alias=MODELS.SHOW_TAGS_ON_COLLAPSED,
+        description="Whether collapsed URL cards show their tags",
+    )
+    collapsed_tags_style: Literal["one_line", "all"] = Field(
+        alias=MODELS.COLLAPSED_TAGS_STYLE,
+        description="How collapsed URL cards show their tags",
+    )
+    tag_drop_opens_url: bool = Field(
+        alias=MODELS.TAG_DROP_OPENS_URL,
+        description="Whether dropping a tag on a URL also opens that URL",
+    )
+
+
 class UtubSummaryListSchema(BaseSchema):
     """List of UTub summaries"""
 
@@ -334,6 +361,23 @@ class UpdateMemberListPreferencesResponseSchema(BaseSchema):
     member_sort: Literal["name_az", "role_then_name", "recently_joined"] = Field(
         alias=MODELS.MEMBER_SORT, description="How the member list is sorted"
     )
+    status: Literal["Success", "No change"] = Field(
+        alias=STD_JSON.STATUS,
+        description="Response status: Success or No change",
+    )
+    message: str = Field(
+        alias=STD_JSON.MESSAGE,
+        description="Human-readable, server-sourced banner text",
+    )
+
+
+class UpdateTagDisplayPreferencesResponseSchema(TagDisplayPreferencesSchema):
+    """Response for ``PATCH /users/preferences/tags``.
+
+    Always echoes all six resolved tag display defaults (never the request
+    values); ``status`` is ``No change`` when nothing differed (no row created).
+    """
+
     status: Literal["Success", "No change"] = Field(
         alias=STD_JSON.STATUS,
         description="Response status: Success or No change",

@@ -4174,6 +4174,40 @@
         "email_validation_required",
         "api_route"
       ],
+      "endpoint": "users.update_tag_display_preferences",
+      "handler": "backend/users/routes.py:update_tag_display_preferences",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "updateTagDisplayPreferences"
+        ],
+        "template_url_for": []
+      },
+      "methods": [
+        "PATCH"
+      ],
+      "rule": "/users/preferences/tags",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.users.UpdateTagDisplayPreferencesRequest",
+        "response": "backend.schemas.users.UpdateTagDisplayPreferencesResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.users.UpdateTagDisplayPreferencesResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.users.services.preferences_service:apply_tag_display_preferences_change"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "users",
+      "decorators": [
+        "email_validation_required",
+        "api_route"
+      ],
       "endpoint": "users.update_utub_list_preferences",
       "handler": "backend/users/routes.py:update_utub_list_preferences",
       "js": {

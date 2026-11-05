@@ -7,7 +7,15 @@ from sqlalchemy import null
 
 from backend import db
 from backend.models.urls import Urls
-from backend.models.user_preferences import MemberSort, User_Preferences, UtubSort
+from backend.models.user_preferences import (
+    CollapsedTagsStyle,
+    MemberSort,
+    TagCountStyle,
+    TagMatchMode,
+    TagSort,
+    User_Preferences,
+    UtubSort,
+)
 from backend.models.users import Users
 from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utub_tags import Utub_Tags
@@ -725,6 +733,86 @@ def set_utub_list_preferences(
         if member_sort is not None:
             row.member_sort = member_sort
         db.session.commit()
+
+
+def set_tag_display_defaults(
+    app: Flask,
+    user_id: int,
+    *,
+    tag_sort: TagSort | None = None,
+    tag_match_mode: TagMatchMode | None = None,
+    tag_count_style: TagCountStyle | None = None,
+    show_tags_on_collapsed: bool | None = None,
+    collapsed_tags_style: CollapsedTagsStyle | None = None,
+    tag_drop_opens_url: bool | None = None,
+) -> None:
+    """Upsert ``user_id``'s preferences row with the given tag display defaults (a
+    ``None`` argument leaves that column at its current or default value) and
+    commit so the running server resolves it on the next load."""
+    with app.app_context():
+        row: User_Preferences | None = User_Preferences.query.filter(
+            User_Preferences.user_id == user_id
+        ).first()
+        if row is None:
+            row = User_Preferences(user_id=user_id)
+            db.session.add(row)
+        if tag_sort is not None:
+            row.tag_sort = tag_sort
+        if tag_match_mode is not None:
+            row.tag_match_mode = tag_match_mode
+        if tag_count_style is not None:
+            row.tag_count_style = tag_count_style
+        if show_tags_on_collapsed is not None:
+            row.show_tags_on_collapsed = show_tags_on_collapsed
+        if collapsed_tags_style is not None:
+            row.collapsed_tags_style = collapsed_tags_style
+        if tag_drop_opens_url is not None:
+            row.tag_drop_opens_url = tag_drop_opens_url
+        db.session.commit()
+
+
+def get_tag_display_defaults(app: Flask, user_id: int) -> User_Preferences | None:
+    """``user_id``'s stored preferences row (``None`` when they have none), with
+    its columns loaded so they can be read after the app context closes."""
+    with app.app_context():
+        row: User_Preferences | None = User_Preferences.query.filter(
+            User_Preferences.user_id == user_id
+        ).first()
+        if row is not None:
+            db.session.expunge(row)
+        return row
+
+
+def set_tag_overrides(
+    app: Flask, utub_id: int, user_id: int, overrides: dict | None
+) -> None:
+    """Write the ``tags`` section of ``Utub_Members.settings`` for ``user_id`` in
+    ``utub_id`` (snake_case keys, for example ``{"tag_sort": "name_az"}``),
+    keeping any other panel's stored settings. ``None`` clears the section."""
+    with app.app_context():
+        membership: Utub_Members = Utub_Members.query.filter(
+            Utub_Members.user_id == user_id, Utub_Members.utub_id == utub_id
+        ).first()
+        assert membership is not None
+        settings = dict(membership.settings or {})
+        if overrides is None:
+            settings.pop("tags", None)
+        else:
+            settings["tags"] = overrides
+        membership.settings = settings or None
+        db.session.commit()
+
+
+def get_member_settings_section(
+    app: Flask, utub_id: int, user_id: int, section: str
+) -> dict | None:
+    """The stored ``Utub_Members.settings[section]`` dict (``None`` when unset)."""
+    with app.app_context():
+        membership: Utub_Members = Utub_Members.query.filter(
+            Utub_Members.user_id == user_id, Utub_Members.utub_id == utub_id
+        ).first()
+        assert membership is not None
+        return (membership.settings or {}).get(section)
 
 
 def get_member_sort_preference(app: Flask, user_id: int) -> MemberSort:

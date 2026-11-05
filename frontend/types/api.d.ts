@@ -1670,6 +1670,23 @@ export interface paths {
     patch: operations["updateMemberListPreferences"];
     trace?: never;
   };
+  "/users/preferences/tags": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /** @description Partially update the authenticated user's all-UTubs tag display defaults (tag sort, match mode, count style, tags on collapsed URLs, collapsed style, drop-opens-URL). Acts only on the logged-in user and never touches the display, UTub-list or member-list preferences; the preferences row is created on the first real change, and a no-op returns 200 'No change'. An empty body, unknown key, explicit null, non-boolean toggle or unknown enum value is a 400. An unauthenticated request is answered by the app-wide login_manager unauthorized_handler with a 302 redirect to the splash page (with next), and an authenticated user with an unvalidated email gets a 302 to the splash page (no next). Metrics: API_HIT only (no DOMAIN event). */
+    patch: operations["updateTagDisplayPreferences"];
+    trace?: never;
+  };
   "/users/{user_id}/password": {
     parameters: {
       query?: never;
@@ -2942,6 +2959,45 @@ export interface components {
       /** @description The user's resolved UTub-list preferences */
       preferences: components["schemas"]["UtubListPreferencesSchema"];
     };
+    /**
+     * @description A member's private display overrides for the Tags panel of one UTub.
+     *
+     *     Every key is nullable: ``None`` means "use my account default".
+     */
+    MemberTagsSettings: {
+      /**
+       * @description Tag sort override; null uses the account default
+       * @default null
+       */
+      tag_sort:
+        | ("most_in_view" | "most_used" | "name_az" | "newest" | "oldest")
+        | null;
+      /**
+       * @description Multi-tag match override; null uses the account default
+       * @default null
+       */
+      tag_match_mode: ("all" | "any") | null;
+      /**
+       * @description Tag count override; null uses the account default
+       * @default null
+       */
+      tag_count_style: ("in_view_total" | "total_only" | "hidden") | null;
+      /**
+       * @description Show tags on collapsed URLs override; null uses the account default
+       * @default null
+       */
+      show_tags_on_collapsed: boolean | null;
+      /**
+       * @description Collapsed tags style override; null uses the account default
+       * @default null
+       */
+      collapsed_tags_style: ("one_line" | "all") | null;
+      /**
+       * @description Open the URL after a tag drop override; null uses the account default
+       * @default null
+       */
+      tag_drop_opens_url: boolean | null;
+    };
     /** @description A member's private view overrides for the URLs panel of one UTub. */
     MemberUrlsSettings: {
       /**
@@ -2982,6 +3038,33 @@ export interface components {
     };
     /** @description Settings for the members panel (no settings yet). */
     MembersSettings: Record<string, never>;
+    /** @description The viewer's six resolved all-UTubs tag display defaults. */
+    TagDisplayDefaultsSchema: {
+      /**
+       * @description How tags are sorted
+       * @enum {string}
+       */
+      tagSort: "most_in_view" | "most_used" | "name_az" | "newest" | "oldest";
+      /**
+       * @description Whether selected tags match all or any of a URL's tags
+       * @enum {string}
+       */
+      tagMatchMode: "all" | "any";
+      /**
+       * @description How tag counts are shown
+       * @enum {string}
+       */
+      tagCountStyle: "in_view_total" | "total_only" | "hidden";
+      /** @description Whether collapsed URL cards show their tags */
+      showTagsOnCollapsed: boolean;
+      /**
+       * @description How collapsed URL cards show their tags
+       * @enum {string}
+       */
+      collapsedTagsStyle: "one_line" | "all";
+      /** @description Whether dropping a tag on a URL also opens that URL */
+      tagDropOpensUrl: boolean;
+    };
     /** @description Settings for the tags panel (no settings yet). */
     TagsSettings: Record<string, never>;
     /** @description Settings for the URLs panel: default link type and selector visibility. */
@@ -3006,6 +3089,8 @@ export interface components {
     UtubMemberSettings: {
       /** @description The member's view overrides for the URLs panel */
       urls?: components["schemas"]["MemberUrlsSettings"];
+      /** @description The member's display overrides for the Tags panel */
+      tags?: components["schemas"]["MemberTagsSettings"];
     };
     /** @description Resolved per-UTub settings, one namespaced section per panel. */
     UtubSettings: {
@@ -3081,6 +3166,8 @@ export interface components {
        * @enum {string}
        */
       memberSort: "name_az" | "role_then_name" | "recently_joined";
+      /** @description The viewer's resolved all-UTubs tag display defaults */
+      tagDisplayDefaults: components["schemas"]["TagDisplayDefaultsSchema"];
     };
     UpdateUTubNameRequest: {
       /** @description New name for the UTub */
@@ -4196,6 +4283,90 @@ export interface components {
       /** @description Human-readable, server-sourced banner text */
       message: string;
     };
+    /** @enum {string} */
+    CollapsedTagsStyle: "one_line" | "all";
+    /** @enum {string} */
+    TagCountStyle: "in_view_total" | "total_only" | "hidden";
+    /** @enum {string} */
+    TagMatchMode: "all" | "any";
+    /** @enum {string} */
+    TagSort: "most_in_view" | "most_used" | "name_az" | "newest" | "oldest";
+    /**
+     * @description Partial write of the six tag display defaults. Omitted means "not sent";
+     *     an explicit ``null`` is never a value and is rejected, as are unknown keys
+     *     and an empty body.
+     */
+    UpdateTagDisplayPreferencesRequest: {
+      /**
+       * @description How tags are sorted: most_in_view, most_used, name_az, newest, or oldest
+       * @default null
+       */
+      tagSort: components["schemas"]["TagSort"] | null;
+      /**
+       * @description Whether selected tags match all or any of a URL's tags
+       * @default null
+       */
+      tagMatchMode: components["schemas"]["TagMatchMode"] | null;
+      /**
+       * @description How tag counts show: in_view_total, total_only, or hidden
+       * @default null
+       */
+      tagCountStyle: components["schemas"]["TagCountStyle"] | null;
+      /**
+       * @description Whether collapsed URL cards show their tags
+       * @default null
+       */
+      showTagsOnCollapsed: boolean | null;
+      /**
+       * @description How collapsed URL cards show tags: one_line or all
+       * @default null
+       */
+      collapsedTagsStyle: components["schemas"]["CollapsedTagsStyle"] | null;
+      /**
+       * @description Whether dropping a tag on a URL also opens that URL
+       * @default null
+       */
+      tagDropOpensUrl: boolean | null;
+    };
+    /**
+     * @description Response for ``PATCH /users/preferences/tags``.
+     *
+     *     Always echoes all six resolved tag display defaults (never the request
+     *     values); ``status`` is ``No change`` when nothing differed (no row created).
+     */
+    UpdateTagDisplayPreferencesResponseSchema: {
+      /**
+       * @description How tags are sorted
+       * @enum {string}
+       */
+      tagSort: "most_in_view" | "most_used" | "name_az" | "newest" | "oldest";
+      /**
+       * @description Whether selected tags match all or any of a URL's tags
+       * @enum {string}
+       */
+      tagMatchMode: "all" | "any";
+      /**
+       * @description How tag counts are shown
+       * @enum {string}
+       */
+      tagCountStyle: "in_view_total" | "total_only" | "hidden";
+      /** @description Whether collapsed URL cards show their tags */
+      showTagsOnCollapsed: boolean;
+      /**
+       * @description How collapsed URL cards show their tags
+       * @enum {string}
+       */
+      collapsedTagsStyle: "one_line" | "all";
+      /** @description Whether dropping a tag on a URL also opens that URL */
+      tagDropOpensUrl: boolean;
+      /**
+       * @description Response status: Success or No change
+       * @enum {string}
+       */
+      status: "Success" | "No change";
+      /** @description Human-readable, server-sourced banner text */
+      message: string;
+    };
     ChangePasswordRequest: {
       /** @description Current account password, re-authenticated before the change. Length is validated against the stored hash in the service (min 1, like LoginRequest), not against the new-password policy */
       currentPassword: string;
@@ -4368,6 +4539,18 @@ export interface components {
       showRowCounts: boolean;
       /** @description Whether the UTub list totals are shown */
       showListTotals: boolean;
+      /** @description The Tags deck sort order (most_in_view/most_used/name_az/newest/oldest) */
+      tagSort: string;
+      /** @description How several selected tags match URLs (all/any) */
+      tagMatchMode: string;
+      /** @description How tag counts are shown (in_view_total/total_only/hidden) */
+      tagCountStyle: string;
+      /** @description Whether collapsed URLs show their tags */
+      showTagsOnCollapsed: boolean;
+      /** @description How collapsed URLs show tags (one_line/all) */
+      collapsedTagsStyle: string;
+      /** @description Whether dropping a tag on a URL opens it */
+      tagDropOpensUrl: boolean;
     };
     /**
      * @description A tag in a UTub's tag vocabulary. No internal IDs; the creator is
@@ -4663,6 +4846,10 @@ export interface components {
     UpdateMemberSettingsRequest: {
       /** @description Patch for the caller's URLs panel view overrides */
       urls?: {
+        [key: string]: unknown;
+      };
+      /** @description Patch for the caller's Tags panel display overrides */
+      tags?: {
         [key: string]: unknown;
       };
     };
@@ -11203,6 +11390,44 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["UpdateMemberListPreferencesResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_PreferencesErrorCodes"];
+        };
+      };
+    };
+  };
+  updateTagDisplayPreferences: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["UpdateTagDisplayPreferencesRequest"];
+      };
+    };
+    responses: {
+      /**
+       * @description Response for ``PATCH /users/preferences/tags``.
+       *
+       *         Always echoes all six resolved tag display defaults (never the request
+       *         values); ``status`` is ``No change`` when nothing differed (no row created).
+       */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["UpdateTagDisplayPreferencesResponseSchema"];
         };
       };
       /** @description Bad request */

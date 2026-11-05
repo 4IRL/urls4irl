@@ -172,6 +172,14 @@ function transferredUtubDetail(): UtubDetail {
       { id: 1, username: "acting", memberRole: "cocreator", joinedAt: null },
     ],
     memberSort: "name_az",
+    tagDisplayDefaults: {
+      tagSort: "most_in_view",
+      tagMatchMode: "all",
+      tagCountStyle: "in_view_total",
+      showTagsOnCollapsed: false,
+      collapsedTagsStyle: "one_line",
+      tagDropOpensUrl: true,
+    },
   } as UtubDetail;
 }
 

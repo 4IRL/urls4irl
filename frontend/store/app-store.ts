@@ -5,6 +5,10 @@ import type {
   SortOrderValue,
   ThemeValue,
   MemberSortValue,
+  TagSortValue,
+  TagMatchModeValue,
+  TagCountStyleValue,
+  CollapsedTagsStyleValue,
   UtubSortValue,
   ViewModeValue,
 } from "../types/preferences.js";
@@ -28,6 +32,12 @@ export interface UserPreferences {
   memberSort: MemberSortValue;
   showRowCounts: boolean;
   showListTotals: boolean;
+  tagSort: TagSortValue;
+  tagMatchMode: TagMatchModeValue;
+  tagCountStyle: TagCountStyleValue;
+  showTagsOnCollapsed: boolean;
+  collapsedTagsStyle: CollapsedTagsStyleValue;
+  tagDropOpensUrl: boolean;
 }
 
 export interface AppState {
@@ -62,6 +72,9 @@ export interface AppState {
   // save success (same setState that writes the echoed value). Refresh and
   // UTub-select writes never bump it; it only guards refresh payloads.
   memberSortVersion: number;
+  // Monotonic; bumped on each local tag-display default edit and on its confirmed
+  // echo. Like memberSortVersion it only guards refresh payloads.
+  tagDisplayVersion: number;
   // Monotonic; bumped only by the short-link policy 403 branch, in the same
   // setState that writes `allow_short_links: false`. In-flight settings writers
   // compare it (via captureSettingsVersions) so a response that predates the
@@ -102,6 +115,7 @@ function createInitialState(): AppState {
     memberSettings: null,
     memberSettingsVersion: 0,
     memberSortVersion: 0,
+    tagDisplayVersion: 0,
     policyLearnedVersion: 0,
     coMemberCandidates: [],
     coMemberCandidatesLoaded: false,
@@ -115,6 +129,12 @@ function createInitialState(): AppState {
       memberSort: "name_az",
       showRowCounts: false,
       showListTotals: true,
+      tagSort: "most_in_view",
+      tagMatchMode: "all",
+      tagCountStyle: "in_view_total",
+      showTagsOnCollapsed: false,
+      collapsedTagsStyle: "one_line",
+      tagDropOpensUrl: true,
     },
     trashCount: 0,
   };

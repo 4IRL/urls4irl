@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import pytest
 from flask import Flask, url_for
-from playwright.sync_api import Page
+from playwright.sync_api import Page, expect
 
 from backend import db
 from backend.cli.mock_constants import MOCK_TAGS
 from backend.models.urls import Urls
+from backend.models.user_preferences import TagCountStyle
 from backend.models.utub_tags import Utub_Tags
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utub_urls import Utub_Urls
@@ -23,6 +24,7 @@ from tests.functional.db_utils import (
     get_url_in_utub,
     get_utub_this_user_created,
     get_utub_this_user_did_not_create,
+    set_tag_display_defaults,
 )
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.playwright_login_utils import (
@@ -537,3 +539,109 @@ def test_create_non_fresh_tag_increments_counts(
     )
     assert visible_urls == init_vis + 1
     assert total_urls == init_total + 1
+
+
+def _setup_two_tags_with_count_style(
+    *, app: Flask, page: Page, count_style: TagCountStyle
+) -> tuple[int, int, int, int]:
+    """Set the account's tag count style, tag URLs with two tags and open the UTub.
+
+    Returns (first_tag_id, second_tag_id, num_urls_for_first_tag,
+    num_urls_for_second_tag).
+    """
+    user_id_for_test = 1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+    first_tag_id = add_tag_to_utub_user_created(
+        app, utub_user_created.id, user_id_for_test, "TestTag1"
+    ).id
+    second_tag_id = add_tag_to_utub_user_created(
+        app, utub_user_created.id, user_id_for_test, "TestTag2"
+    ).id
+    _, num_first, num_second = add_two_tags_across_urls_in_utub(
+        app, utub_user_created.id, first_tag_id, second_tag_id
+    )
+    set_tag_display_defaults(app, user_id_for_test, tag_count_style=count_style)
+    login_user_and_select_utub_by_utubid(
+        app=app, page=page, user_id=user_id_for_test, utub_id=utub_user_created.id
+    )
+    return first_tag_id, second_tag_id, num_first, num_second
+
+
+def _tag_chip(*, page: Page, tag_id: int):
+    return page.locator(f"{HPL.TAG_FILTERS}[{HPL.TAG_BADGE_ID_ATTRIB}='{tag_id}']")
+
+
+def test_tag_filter_count_total_only_style(
+    page: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN the user's tag count style default is "Total only"
+    WHEN a UTub with tagged URLs is opened and a tag filter is applied
+    THEN each chip shows only its total, the in-view number stays current
+    underneath, and the accessible name carries only the total
+    """
+    app = provide_app
+    first_tag_id, second_tag_id, num_first, num_second = (
+        _setup_two_tags_with_count_style(
+            app=app, page=page, count_style=TagCountStyle.TOTAL_ONLY
+        )
+    )
+    chip = _tag_chip(page=page, tag_id=first_tag_id)
+
+    expect(page.locator(HPL.TAG_DECK)).to_have_attribute(
+        "data-tag-count-style", "total_only"
+    )
+    # use_inner_text: rendered text, so the display:none in-view span is excluded.
+    expect(chip.locator(HPL.TAG_COUNT)).to_have_text(
+        str(num_first), use_inner_text=True
+    )
+    expect(chip.locator(HPL.TAG_COUNT_IN_VIEW)).to_be_hidden()
+    expect(chip.locator(HPL.TAG_COUNT_SEP)).to_be_hidden()
+    expect(chip.locator(HPL.TAG_COUNT_TOTAL)).to_be_visible()
+    # The aria snapshot is the chip's accessible text: name plus the total only.
+    expect(chip).to_match_aria_snapshot(f"- text: /TestTag1\\s*{num_first}/")
+
+    apply_tag_filter_by_id_and_get_shown_urls(page=page, utub_tag_id=second_tag_id)
+
+    in_view, total = get_visible_urls_and_urls_with_tag_text_by_tag_id(
+        page=page, tag_id=first_tag_id
+    )
+    assert in_view == num_second
+    assert total == num_first
+    expect(chip.locator(HPL.TAG_COUNT)).to_have_text(
+        str(num_first), use_inner_text=True
+    )
+
+
+def test_tag_filter_count_hidden_style(
+    page: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN the user's tag count style default is "Hide counts"
+    WHEN a UTub with tagged URLs is opened and a tag filter is applied
+    THEN no count is shown or in the accessible name, but the in-view and total
+    numbers stay current in the DOM
+    """
+    app = provide_app
+    first_tag_id, second_tag_id, num_first, num_second = (
+        _setup_two_tags_with_count_style(
+            app=app, page=page, count_style=TagCountStyle.HIDDEN
+        )
+    )
+    chip = _tag_chip(page=page, tag_id=first_tag_id)
+
+    expect(page.locator(HPL.TAG_DECK)).to_have_attribute(
+        "data-tag-count-style", "hidden"
+    )
+    expect(chip.locator(HPL.UTUB_TAG_COUNT_WRAP)).to_be_hidden()
+    expect(chip.locator(HPL.TAG_COUNT)).to_be_hidden()
+    expect(chip).to_match_aria_snapshot("- text: TestTag1")
+
+    apply_tag_filter_by_id_and_get_shown_urls(page=page, utub_tag_id=second_tag_id)
+
+    in_view, total = get_visible_urls_and_urls_with_tag_text_by_tag_id(
+        page=page, tag_id=first_tag_id
+    )
+    assert in_view == num_second
+    assert total == num_first
+    expect(chip.locator(HPL.UTUB_TAG_COUNT_WRAP)).to_be_hidden()

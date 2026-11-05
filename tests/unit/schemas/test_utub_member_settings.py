@@ -4,8 +4,17 @@ from typing import Any, get_args
 
 import pytest
 
-from backend.models.user_preferences import Density, SortOrder, ViewMode
+from backend.models.user_preferences import (
+    CollapsedTagsStyle,
+    Density,
+    SortOrder,
+    TagCountStyle,
+    TagMatchMode,
+    TagSort,
+    ViewMode,
+)
 from backend.schemas.utub_member_settings import (
+    MemberTagsSettings,
     MemberUrlsSettings,
     UtubMemberSettings,
     UtubMemberSettingsPatchError,
@@ -26,8 +35,21 @@ URLS_DEFAULTS: dict[str, Any] = {
 }
 
 
-def _literal_values(field_name: str) -> set[str]:
-    annotation = MemberUrlsSettings.model_fields[field_name].annotation
+TAGS_DEFAULTS: dict[str, Any] = {
+    "tag_sort": None,
+    "tag_match_mode": None,
+    "tag_count_style": None,
+    "show_tags_on_collapsed": None,
+    "collapsed_tags_style": None,
+    "tag_drop_opens_url": None,
+}
+ALL_DEFAULTS: dict[str, Any] = {"urls": URLS_DEFAULTS, "tags": TAGS_DEFAULTS}
+
+
+def _literal_values(
+    field_name: str, section_cls: type = MemberUrlsSettings
+) -> set[str]:
+    annotation = section_cls.model_fields[field_name].annotation
     return {
         value
         for union_member in get_args(annotation)
@@ -40,11 +62,88 @@ def test_literal_value_sets_match_preference_enums():
     assert _literal_values("sort") == {member.value for member in SortOrder}
     assert _literal_values("view_mode") == {member.value for member in ViewMode}
     assert _literal_values("density") == {member.value for member in Density}
+    for field_name, enum_cls in (
+        ("tag_sort", TagSort),
+        ("tag_match_mode", TagMatchMode),
+        ("tag_count_style", TagCountStyle),
+        ("collapsed_tags_style", CollapsedTagsStyle),
+    ):
+        assert _literal_values(field_name, MemberTagsSettings) == {
+            member.value for member in enum_cls
+        }
 
 
-@pytest.mark.parametrize("raw", [None, {}, {"urls": {}}, {"urls": None}, "junk", []])
+@pytest.mark.parametrize(
+    "raw",
+    [
+        None,
+        {},
+        {"urls": {}},
+        {"urls": None},
+        {"tags": None},
+        {"tags": "junk"},
+        {"tags": []},
+        "junk",
+        [],
+    ],
+)
 def test_resolve_defaults(raw: Any):
-    assert resolve_member_settings(raw).model_dump() == {"urls": URLS_DEFAULTS}
+    assert resolve_member_settings(raw).model_dump() == ALL_DEFAULTS
+
+
+def test_resolve_tags_applies_valid_and_drops_invalid_or_unknown():
+    resolved = resolve_member_settings(
+        {
+            "tags": {
+                "tag_sort": "newest",
+                "tag_match_mode": "bogus",
+                "tag_drop_opens_url": False,
+                "retired": 1,
+            }
+        }
+    )
+    assert resolved.tags.model_dump() == {
+        **TAGS_DEFAULTS,
+        "tag_sort": "newest",
+        "tag_drop_opens_url": False,
+    }
+
+
+def test_resolve_stored_row_without_tags_is_all_null():
+    resolved = resolve_member_settings({"urls": {"sort": "oldest"}})
+    assert resolved.tags.model_dump() == TAGS_DEFAULTS
+
+
+def test_merge_tags_patch_leaves_urls_untouched():
+    result = merge_member_settings(
+        {"urls": {"sort": "oldest"}}, {"tags": {"tag_sort": "newest"}}
+    )
+    assert result == {"urls": {"sort": "oldest"}, "tags": {"tag_sort": "newest"}}
+
+
+def test_merge_urls_patch_leaves_tags_untouched():
+    result = merge_member_settings(
+        {"tags": {"tag_sort": "newest"}}, {"urls": {"sort": "oldest"}}
+    )
+    assert result == {"urls": {"sort": "oldest"}, "tags": {"tag_sort": "newest"}}
+
+
+def test_merge_tags_false_boolean_is_kept_and_null_clears_it():
+    stored = merge_member_settings(None, {"tags": {"tag_drop_opens_url": False}})
+    assert stored == {"tags": {"tag_drop_opens_url": False}}
+    assert merge_member_settings(stored, {"tags": {"tag_drop_opens_url": None}}) is None
+
+
+def test_merge_tags_rejects_invalid_value():
+    with pytest.raises(UtubMemberSettingsPatchError) as exc_info:
+        merge_member_settings(None, {"tags": {"tag_sort": "bogus"}})
+    assert set(exc_info.value.errors) == {"tags.tag_sort"}
+
+
+def test_merge_tags_rejects_unknown_key():
+    with pytest.raises(UtubMemberSettingsPatchError) as exc_info:
+        merge_member_settings(None, {"tags": {"nope": 1}})
+    assert set(exc_info.value.errors) == {"tags.nope"}
 
 
 def test_resolve_applies_stored_overrides():
@@ -157,8 +256,8 @@ def test_merge_rejects_invalid_values(key: str, value: Any):
 
 def test_merge_rejects_unknown_key_and_section():
     with pytest.raises(UtubMemberSettingsPatchError) as exc_info:
-        merge_member_settings(None, {"urls": {"bogus": True}, "tags": {"x": 1}})
-    assert set(exc_info.value.errors) == {"urls.bogus", "tags"}
+        merge_member_settings(None, {"urls": {"bogus": True}, "utubs": {"x": 1}})
+    assert set(exc_info.value.errors) == {"urls.bogus", "utubs"}
 
 
 def test_merge_rejects_non_object_section():

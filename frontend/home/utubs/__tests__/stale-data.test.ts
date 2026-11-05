@@ -16,6 +16,7 @@ import { APP_CONFIG } from "../../../lib/config.js";
 import { isBackgroundRefreshActive } from "../background-refresh-flag.js";
 import type { UtubDetail } from "../../../types/utub.js";
 import { makeUtubSummaryItem } from "../../../__tests__/helpers/utub-summary.js";
+import { TAG_DISPLAY_PREFERENCE_DEFAULTS } from "../../../__tests__/helpers/tag-display.js";
 import {
   resolveMemberSettings,
   resolveUtubSettings,
@@ -192,7 +193,29 @@ function seedStore(
     memberSettings: resolveMemberSettings(detail.memberSettings),
     memberSettingsVersion: 0,
     memberSortVersion: 0,
+    tagDisplayVersion: 0,
     policyLearnedVersion: 0,
+    ...overrides,
+  };
+}
+
+const NON_DEFAULT_TAG_DISPLAY = {
+  tagSort: "name_az",
+  tagMatchMode: "any",
+  tagCountStyle: "hidden",
+  showTagsOnCollapsed: true,
+  collapsedTagsStyle: "all",
+  tagDropOpensUrl: false,
+} as const;
+
+// A store whose preferences hold today's tag defaults beside the other fields.
+function seedTagPreferences(
+  overrides: Record<string, unknown> = {},
+): Record<string, unknown> {
+  return {
+    utubSort: "recent_activity",
+    memberSort: "name_az",
+    ...TAG_DISPLAY_PREFERENCE_DEFAULTS,
     ...overrides,
   };
 }
@@ -510,6 +533,7 @@ describe("updateUTubOnFindingStaleData", () => {
         keepSettings: true,
         keepMemberSettings: true,
         keepMemberSort: true,
+        keepTagDisplay: true,
       });
     });
   });
@@ -580,6 +604,108 @@ describe("updateUTubOnFindingStaleData", () => {
       expect(setState).toHaveBeenCalledWith({
         memberSettings: resolveMemberSettings(populatedMember),
       });
+    });
+  });
+
+  describe("tag display defaults", () => {
+    beforeEach(() => {
+      storeState.value.preferences = seedTagPreferences();
+    });
+
+    it("writes a defaults-only difference to the store and emits nothing", async () => {
+      await refreshWith(
+        ok(makeDetail({ tagDisplayDefaults: NON_DEFAULT_TAG_DISPLAY })),
+      );
+
+      expect(storeState.value.preferences).toEqual(
+        seedTagPreferences(NON_DEFAULT_TAG_DISPLAY),
+      );
+      expect(emitsOf(AppEvents.STALE_DATA_DETECTED)).toHaveLength(0);
+      expect(emit).not.toHaveBeenCalled();
+    });
+
+    it("writes nothing when the incoming defaults equal the store's", async () => {
+      await refreshWith(
+        ok(makeDetail({ tagDisplayDefaults: TAG_DISPLAY_PREFERENCE_DEFAULTS })),
+      );
+
+      expect(setState).not.toHaveBeenCalledWith(
+        expect.objectContaining({ preferences: expect.anything() }),
+      );
+    });
+
+    it.each([
+      ["a missing object", undefined],
+      [
+        "a partly invalid object",
+        { ...NON_DEFAULT_TAG_DISPLAY, tagMatchMode: "some" },
+      ],
+      [
+        "a non-boolean switch",
+        { ...NON_DEFAULT_TAG_DISPLAY, tagDropOpensUrl: "no" },
+      ],
+    ])("writes nothing for %s", async (_label, tagDisplayDefaults) => {
+      await refreshWith(
+        ok(makeDetail({ tagDisplayDefaults: tagDisplayDefaults as never })),
+      );
+
+      expect(storeState.value.preferences).toEqual(seedTagPreferences());
+    });
+
+    it("keeps a local default saved mid-flight", async () => {
+      let resolveFetch!: () => void;
+      const fresh = makeDetail({ tagDisplayDefaults: NON_DEFAULT_TAG_DISPLAY });
+      vi.mocked(fetchUTubForRefresh).mockReturnValue(
+        new Promise<RefreshResult>((resolve) => {
+          resolveFetch = () => resolve(ok(fresh));
+        }),
+      );
+      const pending = updateUTubOnFindingStaleData({ utubID: UTUB_ID });
+      storeState.value.preferences = seedTagPreferences({ tagSort: "newest" });
+      storeState.value.tagDisplayVersion = 1;
+
+      resolveFetch();
+      await pending;
+
+      expect(storeState.value.preferences).toEqual(
+        seedTagPreferences({ tagSort: "newest" }),
+      );
+    });
+
+    it("lands the member sort and the tag defaults from the same payload", async () => {
+      await refreshWith(
+        ok(
+          makeDetail({
+            memberSort: "recently_joined",
+            tagDisplayDefaults: NON_DEFAULT_TAG_DISPLAY,
+          }),
+        ),
+      );
+
+      expect(storeState.value.preferences).toEqual(
+        seedTagPreferences({
+          memberSort: "recently_joined",
+          ...NON_DEFAULT_TAG_DISPLAY,
+        }),
+      );
+    });
+
+    it("leaves the resolved defaults alone on a permission-changing refresh", async () => {
+      await refreshWith(
+        ok(
+          makeDetail({
+            isCoCreator: true,
+            tagDisplayDefaults: NON_DEFAULT_TAG_DISPLAY,
+          }),
+        ),
+      );
+
+      expect(buildSelectedUTub).toHaveBeenCalledWith(
+        expect.objectContaining({ keepTagDisplay: true }),
+      );
+      expect(storeState.value.preferences).toEqual(
+        seedTagPreferences(NON_DEFAULT_TAG_DISPLAY),
+      );
     });
   });
 
@@ -1270,6 +1396,7 @@ describe("updateUTubOnFindingStaleData", () => {
           keepSettings: true,
           keepMemberSettings: true,
           keepMemberSort: true,
+          keepTagDisplay: true,
         });
         expect(emitsOf(AppEvents.STALE_DATA_DETECTED)).toHaveLength(0);
         expect(storeState.value.utubs).toEqual([
@@ -1289,6 +1416,7 @@ describe("updateUTubOnFindingStaleData", () => {
         keepSettings: true,
         keepMemberSettings: true,
         keepMemberSort: true,
+        keepTagDisplay: true,
       });
       expect(emitsOf(AppEvents.STALE_DATA_DETECTED)).toHaveLength(0);
     });

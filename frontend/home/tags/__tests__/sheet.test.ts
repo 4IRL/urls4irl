@@ -113,7 +113,7 @@ const SHEET_HTML = `
       <section id="tagDeckSheet" class="tag-deck-sheet hidden" role="dialog" aria-label="Filter URLs by tag">
         <button id="tagSheetHandle" class="tag-sheet-handle" type="button" aria-expanded="false" aria-controls="tagSheetBody">
           <span class="tag-sheet-handle-grabber"></span>
-          <span id="tagSheetHandleCount" class="tag-sheet-handle-count hidden"></span>
+          <span id="tagSheetHandleCount" class="tag-sheet-handle-count hidden" aria-live="polite"></span>
         </button>
         <div id="tagSheetBody" class="tag-sheet-body" inert aria-hidden="true">
         </div>
@@ -405,6 +405,44 @@ describe("Tag Sheet Controller", () => {
 
       emit(AppEvents.TAG_FILTER_CHANGED, { selectedTagIDs: [] });
       expect($("#tagSheetHandleCount").hasClass(HIDDEN_CLASS)).toBe(true);
+    });
+
+    it("does not rewrite the text when the count is unchanged", async () => {
+      await setIsMobile(true);
+      initTagSheet();
+      const { emit, AppEvents } = await import("../../../lib/event-bus.js");
+      emit(AppEvents.TAG_FILTER_CHANGED, { selectedTagIDs: [1, 2] });
+
+      const textSpy = vi.spyOn($.fn, "text");
+      emit(AppEvents.TAG_FILTER_CHANGED, { selectedTagIDs: [3, 4] });
+      const setterCalls = textSpy.mock.calls.filter((args) => args.length > 0);
+      textSpy.mockRestore();
+      expect(setterCalls).toHaveLength(0);
+      expect($("#tagSheetHandleCount").text()).toBe("2");
+    });
+
+    it("drops aria-live while the sheet is open and restores it on close", async () => {
+      vi.useFakeTimers();
+      try {
+        await setIsMobile(true);
+        expect($("#tagSheetHandleCount").attr("aria-live")).toBe("polite");
+
+        openTagSheet({ trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP });
+        expect($("#tagSheetHandleCount").attr("aria-live")).toBeUndefined();
+
+        closeTagSheet({ trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP });
+        expect($("#tagSheetHandleCount").attr("aria-live")).toBe("polite");
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("restores aria-live idempotently when closing an already-closed sheet", async () => {
+      await setIsMobile(true);
+      $("#tagSheetHandleCount").removeAttr("aria-live");
+      closeTagSheet({ trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP });
+      closeTagSheet({ trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP });
+      expect($("#tagSheetHandleCount").attr("aria-live")).toBe("polite");
     });
   });
 
