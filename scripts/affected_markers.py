@@ -117,6 +117,8 @@ _SYSTEM: tuple[str, ...] = ("cli",)
 _API_V1: tuple[str, ...] = ("mobile_api",)
 _SHORT_LINKS: tuple[str, ...] = ("short_links",)
 _INVITE_LINKS: tuple[str, ...] = ("invite_links",)
+_INVITE_LINKS_UI: tuple[str, ...] = ("invite_links_ui",)
+_INVITE_PAGE: tuple[str, ...] = _union(_INVITE_LINKS, _INVITE_LINKS_UI)
 
 BLUEPRINT_MARKERS: dict[str, tuple[str, ...]] = {
     "splash": _SPLASH,
@@ -371,6 +373,7 @@ PATH_MARKERS: tuple[MarkerRow, ...] = (
     ("tests/functional/splash_ui/*", _SPLASH_UI_DIR),
     ("tests/functional/tags_ui/*", _TAGS_UI_DIR),
     ("tests/functional/trash_ui/*", _TRASH_UI_DIR),
+    ("tests/functional/invite_links_ui/*", _INVITE_LINKS_UI),
     ("tests/functional/urls_ui/*", _URLS_UI_DIR),
     ("tests/functional/utubs_ui/*", _UTUBS_UI_DIR),
     # --- backend extensions ------------------------------------------------
@@ -450,7 +453,7 @@ PATH_MARKERS: tuple[MarkerRow, ...] = (
     ("backend/templates/pages/privacy_policy.html", ("splash_ui",)),
     ("backend/templates/pages/terms_and_conditions.html", ("splash_ui",)),
     ("backend/templates/pages/short_link.html", _SHORT_LINKS),
-    ("backend/templates/pages/invite.html", _INVITE_LINKS),
+    ("backend/templates/pages/invite.html", _INVITE_PAGE),
     # --- backend domains (same markers as their blueprint) ------------------
     ("backend/testing/*", _union(_SPLASH, _USERS)),
     # Imported by splash (OAuth linking), users and members services.
@@ -504,8 +507,8 @@ PATH_MARKERS: tuple[MarkerRow, ...] = (
     ("frontend/navbar.ts", ("splash_ui", "home_ui")),
     ("frontend/short-link.ts", _SHORT_LINKS),
     ("frontend/styles/short-link.css", _SHORT_LINKS),
-    ("frontend/invite.ts", _INVITE_LINKS),
-    ("frontend/styles/invite.css", _INVITE_LINKS),
+    ("frontend/invite.ts", _INVITE_PAGE),
+    ("frontend/styles/invite.css", _INVITE_PAGE),
     (
         "frontend/logic/*",
         _union(_URLS_UI_DIR, _TAGS_UI_DIR, _MEMBERS_UI_DIR, _UTUBS_UI_DIR),
