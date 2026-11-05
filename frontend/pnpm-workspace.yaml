@@ -16,6 +16,12 @@ overrides:
   esbuild: 0.28.2
   picomatch: 4.0.4
   postcss: 8.5.23
+  # Dependabot alert #180: @redocly/openapi-core locks js-yaml 4.3.1 (affected
+  # < 4.3.2); pnpm update does not move it.
+  "js-yaml@<4.3.2": 4.3.2
+  # Dependabot alert #334: minimatch >= 7.0.0, < 11.0.1 has no backport; only
+  # the 10.x line (typescript-estree) is in range, 3.x and 5.x are not.
+  "minimatch@>=7.0.0 <11.0.1": 11.0.1
 
 # openapi-typescript@7.13.0 declares a `typescript ^5.x` peer, but the project
 # uses typescript 6.0.2. Scoped to this one known conflict (replaces npm's
@@ -33,7 +39,7 @@ minimumReleaseAge: 129600 # 90 days, ported from npm min-release-age=90
 # b6e29d99), all under 90 days old at the npm -> pnpm migration. Without an
 # entry, installs fail (pinned overrides, --frozen-lockfile) or re-resolve to
 # an older mature version (ranged transitives). Exact versions only, never a
-# wildcard like "@esbuild/*". Prune after ~2027-01-20. A future in-window
+# wildcard like "@esbuild/*". Prune after ~2027-01-25. A future in-window
 # security bump needs its own exact entry (replaces `npm i --min-release-age 0`).
 minimumReleaseAgeExclude:
   - esbuild@0.28.2
@@ -66,10 +72,15 @@ minimumReleaseAgeExclude:
   - postcss@8.5.23
   - nanoid@3.3.18
   - "@redocly/openapi-core@1.34.19"
-  - brace-expansion@1.1.18
-  - brace-expansion@2.1.4
-  - brace-expansion@5.0.9
-  - js-yaml@4.3.1
+  - brace-expansion@1.1.21
+  - brace-expansion@2.1.7
+  - brace-expansion@5.0.12
+  - postcss-selector-parser@7.1.6
+  - source-map-js@1.2.2
+  - js-yaml@4.3.2
+  - "@humanfs/node@0.16.8"
+  - minimatch@11.0.1
+  - "@isaacs/nonrecursive-glob-match@1.0.1"
   - ws@8.21.3
   - vite@7.3.7
   - vitest@4.1.12
