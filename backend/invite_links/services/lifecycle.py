@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+from backend.extensions.metrics.writer import record_event
 from backend.invite_links.guards import lock_current_invite_for_update
 from backend.invite_links.services.manage_invite_link import revoke_invite_row
+from backend.metrics.events import EventName
 from backend.models.utub_invite_links import Utub_Invite_Links
 
 
@@ -27,3 +29,17 @@ def revoke_invite_link_created_by(*, utub_id: int, creator_id: int) -> bool:
         return False
     revoke_invite_row(invite)
     return True
+
+
+def emit_role_change_revokes(count: int) -> None:
+    """Emit one ``INVITE_LINK_REVOKED`` (``reason="role_change"``) event per revoked link.
+
+    Call only after the commit that persisted the revokes.
+
+    Args:
+        count (int): Number of links revoked (0 emits nothing).
+    """
+    for _ in range(count):
+        record_event(
+            EventName.INVITE_LINK_REVOKED, dimensions={"reason": "role_change"}
+        )

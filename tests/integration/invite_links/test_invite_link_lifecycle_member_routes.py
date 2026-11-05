@@ -7,6 +7,7 @@ revoked in the same transaction, anything else leaves the link untouched.
 from __future__ import annotations
 
 from contextlib import contextmanager
+from datetime import timedelta
 from typing import Any, Callable, Generator
 from unittest.mock import patch
 
@@ -23,6 +24,7 @@ from backend.models.utub_invite_links import Utub_Invite_Links
 from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utubs import Utubs
 from backend.utils.all_routes import ROUTES
+from backend.utils.datetime_utils import utc_now
 from backend.utils.strings.model_strs import MODELS
 from tests.integration.invite_links.invite_route_helpers import (
     rows,
@@ -229,6 +231,26 @@ def test_co_owner_leaving_revokes_their_link(
 
     assert response.status_code == 200
     assert unrevoked(app) == []
+    assert _revoke_events(provide_metrics_redis) == ["role_change"]
+
+
+def test_removing_creator_with_expired_unrevoked_link_revokes_it(
+    metrics_enabled_app, provide_metrics_redis, every_user_in_every_utub, app: Flask
+) -> None:
+    set_member_role(app, FIRST_UTUB_ID, SECOND_USER_ID, _CO)
+    add_invite_link(
+        app,
+        FIRST_UTUB_ID,
+        SECOND_USER_ID,
+        expires_at=utc_now() - timedelta(days=1),
+    )
+    assert _revoked_count(app) == 0
+
+    response = _remove(app, CREATOR_ID, SECOND_USER_ID)
+
+    assert response.status_code == 200
+    assert unrevoked(app) == []
+    assert _revoked_count(app) == 1
     assert _revoke_events(provide_metrics_redis) == ["role_change"]
 
 

@@ -43,6 +43,25 @@ def test_api_v1_removal_revokes(
     assert [row.revoked_at is not None for row in rows(app)] == [True]
 
 
+def test_api_v1_self_leave_revokes_creators_link(
+    every_user_in_every_utub, app: Flask, api_client: FlaskClient, make_bearer_headers
+) -> None:
+    set_member_role(app, FIRST_UTUB_ID, SECOND_USER_ID, Member_Role.CO_CREATOR)
+    add_invite_link(app, FIRST_UTUB_ID, SECOND_USER_ID)
+    with app.test_request_context():
+        url = url_for(
+            ROUTES.API_V1.REMOVE_MEMBER, utub_id=FIRST_UTUB_ID, user_id=SECOND_USER_ID
+        )
+
+    response = api_client.delete(
+        url, headers=make_bearer_headers(token_for_user(app, user_id=SECOND_USER_ID))
+    )
+
+    assert response.status_code == 200
+    assert [row.revoked_at is not None for row in rows(app)] == [True]
+    assert unrevoked(app) == []
+
+
 def test_api_v1_demotion_revokes(
     every_user_in_every_utub, app: Flask, api_client: FlaskClient, make_bearer_headers
 ) -> None:

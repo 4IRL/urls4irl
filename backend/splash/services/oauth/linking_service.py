@@ -10,6 +10,7 @@ from werkzeug import Response as WerkzeugResponse
 from backend import db, oauth
 from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.extensions.metrics.writer import record_event
+from backend.invite_links.services.lifecycle import emit_role_change_revokes
 from backend.metrics.events import EventName
 from backend.models.user_oauth_identities import UserOAuthIdentity
 from backend.models.users import Users
@@ -495,10 +496,10 @@ def handle_authenticated_oauth_callback(
         # Execute the stashed removal (DD-20): the neutral dispatcher re-verifies
         # the returned subject matches a linked identity, then erases without
         # committing. This module owns the commit/logout/redirect.
-        mutation_succeeded = execute_removal_intent(
+        revoked_link_count: int | None = execute_removal_intent(
             intent=intent, provider=provider, subject=subject
         )
-        if not mutation_succeeded:
+        if revoked_link_count is None:
             return redirect(
                 url_for(
                     ROUTES.USERS.SETTINGS,
@@ -506,6 +507,7 @@ def handle_authenticated_oauth_callback(
                 )
             )
         db.session.commit()
+        emit_role_change_revokes(revoked_link_count)
         logout_user()
         if EMAILS.EMAIL_VALIDATED_SESS_KEY in session.keys():
             session.pop(EMAILS.EMAIL_VALIDATED_SESS_KEY)

@@ -2,7 +2,10 @@ from backend import db
 from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.app_logger import safe_add_many_logs
 from backend.extensions.metrics.writer import record_event
-from backend.invite_links.services.lifecycle import revoke_invite_link_created_by
+from backend.invite_links.services.lifecycle import (
+    emit_role_change_revokes,
+    revoke_invite_link_created_by,
+)
 from backend.members.constants import MemberRoleTarget, UTubMembersErrorCodes
 from backend.metrics.events import EventName
 from backend.models.utub_members import Member_Role, Utub_Members
@@ -98,10 +101,7 @@ def modify_member_role(
     record_event(
         EventName.MEMBER_ROLE_CHANGED, dimensions={"new_role": target_role.value}
     )
-    if revoked_invite:
-        record_event(
-            EventName.INVITE_LINK_REVOKED, dimensions={"reason": "role_change"}
-        )
+    emit_role_change_revokes(int(revoked_invite))
 
     return _build_success_response(member=member, current_utub=current_utub)
 

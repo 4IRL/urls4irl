@@ -14,9 +14,10 @@ from backend import db
 from backend.admin.constants import AdminActionErrorCodes
 from backend.api_common.responses import FlaskResponse
 from backend.extensions import audit
-from backend.extensions.metrics.writer import record_event
-from backend.invite_links.services.lifecycle import revoke_invite_link_created_by
-from backend.metrics.events import EventName
+from backend.invite_links.services.lifecycle import (
+    emit_role_change_revokes,
+    revoke_invite_link_created_by,
+)
 from backend.models.urls import Urls
 from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utub_tags import Utub_Tags
@@ -184,14 +185,6 @@ def delete_utub_admin(*, actor_id: int, utub_id: int, reason: str) -> FlaskRespo
     ).to_response()
 
 
-def _record_role_change_revoke(*, revoked: bool) -> None:
-    """Emit ``INVITE_LINK_REVOKED`` (role_change) after the commit that revoked a link."""
-    if revoked:
-        record_event(
-            EventName.INVITE_LINK_REVOKED, dimensions={"reason": "role_change"}
-        )
-
-
 def remove_member_admin(
     *, actor_id: int, utub_id: int, target_user_id: int, reason: str
 ) -> FlaskResponse:
@@ -252,7 +245,7 @@ def remove_member_admin(
             metadata={"reason": reason, "utub_id": utub_id},
         )
         db.session.commit()
-        _record_role_change_revoke(revoked=revoked_invite)
+        emit_role_change_revokes(int(revoked_invite))
         return AdminActionResponseSchema(
             status=STD_JSON.SUCCESS,
             message=ADMIN_ACTION_STRINGS.MOD_MEMBER_REMOVE_SUCCESS,
@@ -306,7 +299,7 @@ def remove_member_admin(
         },
     )
     db.session.commit()
-    _record_role_change_revoke(revoked=revoked_creator_invite)
+    emit_role_change_revokes(int(revoked_creator_invite))
     return AdminActionResponseSchema(
         status=STD_JSON.SUCCESS,
         message=ADMIN_ACTION_STRINGS.MOD_MEMBER_REMOVE_TRANSFERRED.format(

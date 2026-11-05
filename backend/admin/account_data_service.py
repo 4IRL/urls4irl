@@ -23,9 +23,10 @@ from backend.api_common.responses import FlaskResponse
 from backend.api_v1.services.tokens import mark_all_refresh_tokens_revoked_for_user
 from backend.extensions import audit
 from backend.extensions.extension_utils import safe_get_email_sender
-from backend.extensions.metrics.writer import record_event
-from backend.invite_links.services.lifecycle import revoke_invite_link_created_by
-from backend.metrics.events import EventName
+from backend.invite_links.services.lifecycle import (
+    emit_role_change_revokes,
+    revoke_invite_link_created_by,
+)
 from backend.models.contact_form_entries import ContactFormEntries
 from backend.models.email_validations import Email_Validations
 from backend.models.user_oauth_identities import UserOAuthIdentity
@@ -124,7 +125,8 @@ def erase_user_core(*, target_user: Users) -> ErasureCounts:
     committed), including in UTubs they no longer belong to; those UTubs are locked
     in the same ascending-id pass. A UTub deleted before its lock is skipped and
     not counted. The count lands in ``ErasureCounts.invite_links_revoked``; the
-    caller emits the ``INVITE_LINK_REVOKED`` events.
+    caller emits the ``INVITE_LINK_REVOKED`` events only after its own commit
+    succeeds (``emit_role_change_revokes``), so a failed commit never over-counts.
     """
     target_user_id: int = target_user.id
 
@@ -342,10 +344,7 @@ def erase_user(*, actor_id: int, target_user_id: int, reason: str) -> FlaskRespo
         metadata=metadata,
     )
     db.session.commit()
-    for _ in range(counts.invite_links_revoked):
-        record_event(
-            EventName.INVITE_LINK_REVOKED, dimensions={"reason": "role_change"}
-        )
+    emit_role_change_revokes(counts.invite_links_revoked)
     return AdminActionResponseSchema(
         status=STD_JSON.SUCCESS,
         message=ADMIN_ACTION_STRINGS.ACCOUNT_ERASE_SUCCESS,

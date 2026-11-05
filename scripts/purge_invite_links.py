@@ -40,6 +40,9 @@ CONTAINER_ENVIRONMENT_FILE: str = "/app/container_environment"
 
 INVITE_LINK_PURGE_RETENTION_DAYS: int = 30
 
+# Bounds how long ``psycopg2.connect`` waits, so a hung database names its step.
+CONNECT_TIMEOUT_SECONDS: int = 10
+
 # Bounds how long the DELETE waits on a row lock held by another transaction.
 LOCK_TIMEOUT_MS: int = 30_000
 
@@ -114,9 +117,9 @@ def _load_env_from_container_dump(path: str = CONTAINER_ENVIRONMENT_FILE) -> Non
 
 
 def _build_pg_conn_from_env() -> psycopg2.extensions.connection:
-    pg_user = os.environ.get("POSTGRES_USER")
-    pg_password = os.environ.get("POSTGRES_PASSWORD")
-    pg_db = os.environ.get("POSTGRES_DB")
+    pg_user: str | None = os.environ.get("POSTGRES_USER")
+    pg_password: str | None = os.environ.get("POSTGRES_PASSWORD")
+    pg_db: str | None = os.environ.get("POSTGRES_DB")
     if not pg_user or not pg_password or not pg_db:
         _load_env_from_container_dump()
         pg_user = os.environ.get("POSTGRES_USER")
@@ -126,24 +129,28 @@ def _build_pg_conn_from_env() -> psycopg2.extensions.connection:
         raise RuntimeError(
             "POSTGRES_USER, POSTGRES_PASSWORD, and POSTGRES_DB are required"
         )
-    pg_host = os.environ.get("POSTGRES_HOST", "db")
-    pg_port = int(os.environ.get("POSTGRES_PORT", "5432"))
+    pg_host: str = os.environ.get("POSTGRES_HOST", "db")
+    pg_port: int = int(os.environ.get("POSTGRES_PORT", "5432"))
     return psycopg2.connect(
         host=pg_host,
         port=pg_port,
         user=pg_user,
         password=pg_password,
         dbname=pg_db,
+        connect_timeout=CONNECT_TIMEOUT_SECONDS,
     )
 
 
 if __name__ == "__main__":
-    started_at = time.time()
+    started_at: float = time.time()
+    logger.info(
+        "invite link purge starting retention_days=%d", INVITE_LINK_PURGE_RETENTION_DAYS
+    )
     pg_conn_main: psycopg2.extensions.connection | None = None
     try:
         pg_conn_main = _build_pg_conn_from_env()
-        purged_count = run_purge(pg_conn=pg_conn_main)
-        elapsed_ms = int((time.time() - started_at) * 1000)
+        purged_count: int = run_purge(pg_conn=pg_conn_main)
+        elapsed_ms: int = int((time.time() - started_at) * 1000)
         logger.info(
             "purged=%d retention_days=%d elapsed_ms=%d",
             purged_count,

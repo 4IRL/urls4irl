@@ -480,12 +480,12 @@ def test_admin_erase_user_idempotent_noop(
 # ---------------------------------------------------------------------------
 
 
-def _seed_shared_utub_with_target(app: Flask, creator_id: int, target_id: int) -> int:
+def _seed_shared_utub_with_target(
+    app: Flask, creator_id: int, target_id: int, name: str = "InviteShared"
+) -> int:
     """Create a UTub owned by ``creator_id`` with ``target_id`` as a co-creator."""
     with app.app_context():
-        shared = Utubs(
-            name="InviteShared", utub_creator=creator_id, utub_description=""
-        )
+        shared = Utubs(name=name, utub_creator=creator_id, utub_description="")
         db.session.add(shared)
         db.session.flush()
         db.session.add_all(
@@ -551,6 +551,40 @@ def test_admin_erase_user_revokes_link_with_audit_and_metric(
     assert sum_counter_values(provide_metrics_redis, EventName.INVITE_LINK_REVOKED) == 1
 
 
+def test_admin_erase_user_with_links_in_two_utubs_emits_one_event_per_link(
+    metrics_enabled_app: Flask,
+    provide_metrics_redis: Redis | None,
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN a target who created a live invite link in each of two UTubs
+    WHEN POST /admin/users/<id>/erase
+    THEN both links are revoked, audit metadata carries invite_links_revoked=2 and
+         the summed INVITE_LINK_REVOKED metric equals 2.
+    """
+    if provide_metrics_redis is None:
+        pytest.skip("metrics Redis is unavailable in this environment")
+    client, csrf, admin_user, app = login_admin_user_with_register
+    target = _seed_target_user_with_password(app)
+    first_utub_id = _seed_shared_utub_with_target(app, admin_user.id, target.id)
+    second_utub_id = _seed_shared_utub_with_target(
+        app, admin_user.id, target.id, name="InviteSharedTwo"
+    )
+    link_ids = [
+        add_invite_link(app, first_utub_id, target.id),
+        add_invite_link(app, second_utub_id, target.id),
+    ]
+
+    response = _post_account(client, _ERASE_URL.format(target_user_id=target.id), csrf)
+
+    assert response.status_code == 200
+    with app.app_context():
+        for link_id in link_ids:
+            assert Utub_Invite_Links.query.get(link_id).revoked_at is not None
+        assert AuditLog.query.first().log_metadata.get("invite_links_revoked") == 2
+    assert sum_counter_values(provide_metrics_redis, EventName.INVITE_LINK_REVOKED) == 2
+
+
 def test_admin_erase_user_commit_failure_emits_nothing_and_rolls_back_revoke(
     login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
 ) -> None:
@@ -577,7 +611,7 @@ def test_admin_erase_user_commit_failure_emits_nothing_and_rolls_back_revoke(
             "backend.invite_links.services.lifecycle.revoke_invite_row",
             side_effect=revoke_and_record,
         ) as revoke_spy,
-        patch("backend.admin.account_data_service.record_event") as emit,
+        patch("backend.invite_links.services.lifecycle.record_event") as emit,
     ):
         response = _post_account(
             client, _ERASE_URL.format(target_user_id=target.id), csrf
