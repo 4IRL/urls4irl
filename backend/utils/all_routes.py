@@ -440,6 +440,9 @@ INDIRECT_JS_ENDPOINTS: dict[str, IndirectJsSource] = {
     "splash.reset_password": IndirectJsSource.PAGE_SELF_URL,
     # The public invite page's own URL: no template url_for targets the GET.
     INVITE_LINK_ROUTES.INVITE_PAGE: IndirectJsSource.PAGE_SELF_URL,
+    # The invite page's Join form action is built server-side (page_response view),
+    # not via a template url_for.
+    INVITE_LINK_ROUTES.JOIN_INVITE_PAGE: IndirectJsSource.SERVER_BUILT_URL,
     # frontend/settings/connected-accounts.ts reads a `data-action-url` whose
     # per-provider URL is built server-side (linking_service.py) into the
     # settings page's template context, not via a literal template url_for.

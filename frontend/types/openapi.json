@@ -5413,6 +5413,80 @@
         }
       }
     },
+    "/invite/{token}/join": {
+      "post": {
+        "operationId": "joinInvitePage",
+        "tags": ["members"],
+        "security": [
+          {
+            "csrfToken": []
+          }
+        ],
+        "description": "Join the UTub an invite link belongs to from the public invite page's plain form (CSRF-protected). Redirects into the UTub (302); a dead, unknown or malformed token is the uniform 404 page, an unconfirmed email the Confirm-your-email page (403), and a logged-out visitor the log-in page (401).",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Documents an HTML page render (not a JSON body) returned for an\n    error/reject state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HtmlErrorPageSchema"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HtmlErrorPageSchema"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HtmlErrorPageSchema"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HtmlErrorPageSchema"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/utubs/{utub_id}/invite-link": {
       "get": {
         "operationId": "getInviteLink",

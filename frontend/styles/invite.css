@@ -30,13 +30,8 @@ button.splash-button {
     font-size: var(--fs-sm);
 }
 
-.invite-back-link {
-    color: var(--UTubDescriptionColor);
-}
-
 .short-link-panel .splash-button:focus-visible,
-.short-link-panel .short-link-secondary:focus-visible,
-.invite-back-link:focus-visible {
+.short-link-panel .short-link-secondary:focus-visible {
     outline: 3px solid var(--deckSelectionGreen);
     outline-offset: 2px;
 }

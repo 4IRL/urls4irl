@@ -223,7 +223,7 @@ def test_state_one_renders_for_a_validated_non_member(
     """
     GIVEN a live link and a validated non-member
     WHEN they open it
-    THEN 200 with the inviter, UTub name, a Not now link to /home and no Join form yet
+    THEN 200 with the inviter, UTub name, a Not now link to /home and the Join form
     """
     token = _live_token(app)
     with app.app_context():
@@ -237,7 +237,14 @@ def test_state_one_renders_for_a_validated_non_member(
     assert INVITE_LINK_PAGE.EYEBROW_TEMPLATE.format(inviter=inviter) in body
     assert utub_name in body
     assert 'href="/home">Not now</a>' in _main_of(response)
-    assert "<form" not in _main_of(response)
+    main = _main_of(response)
+    assert (
+        f'<form id="inviteJoinForm" method="post" action="/invite/{token}/join">'
+        in main
+    )
+    assert 'name="csrf_token"' in main
+    assert 'id="inviteJoinBtn"' in main
+    assert 'id="inviteJoinStatus"' in main
 
 
 def test_state_two_hrefs_follow_the_splash_contract(

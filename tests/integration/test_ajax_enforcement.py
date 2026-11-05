@@ -421,6 +421,14 @@ def test_ajax_required_routes_reject_non_ajax(
             id="invite_page",
         ),
         pytest.param(
+            "join_invite_page",
+            "POST",
+            ROUTES.INVITE_LINKS.JOIN_INVITE_PAGE,
+            {"token": "Zzzzzzzzzzzzzzzzzzzzzz"},
+            None,
+            id="join_invite_page",
+        ),
+        pytest.param(
             "health",
             "GET",
             SYSTEM_ROUTES.HEALTH,

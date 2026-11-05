@@ -48,6 +48,7 @@ class INVITE_LINK_PAGE:
     RATE_LIMIT_HEADING = "Too many attempts"
     RATE_LIMIT_MESSAGE = "Wait a minute, then reload this invite link and try again."
     BACK_TO_INVITE = "Back to the invite"
+    JOINING_LABEL = "Joining..."
     TITLE_JOIN = "Join a UTub - URLS4IRL"
     TITLE_UNVALIDATED = "Confirm your email - URLS4IRL"
     TITLE_DEAD = "Invite unavailable - URLS4IRL"

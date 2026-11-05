@@ -949,6 +949,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/invite/{token}/join": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** @description Join the UTub an invite link belongs to from the public invite page's plain form (CSRF-protected). Redirects into the UTub (302); a dead, unknown or malformed token is the uniform 404 page, an unconfirmed email the Confirm-your-email page (403), and a logged-out visitor the log-in page (401). */
+    post: operations["joinInvitePage"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/utubs/{utub_id}/invite-link": {
     parameters: {
       query?: never;
@@ -8689,6 +8706,67 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["SuccessEnvelope"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HtmlErrorPageSchema"];
+        };
+      };
+      /** @description Too many requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HtmlErrorPageSchema"];
+        };
+      };
+    };
+  };
+  joinInvitePage: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        token: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /**
+       * @description Documents an HTML page render (not a JSON body) returned for an
+       *         error/reject state.
+       */
+      302: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HtmlErrorPageSchema"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HtmlErrorPageSchema"];
         };
       };
       /** @description Not found */

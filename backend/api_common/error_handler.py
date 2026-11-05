@@ -4,8 +4,9 @@ from flask_wtf.csrf import CSRFError
 from werkzeug.exceptions import NotFound
 
 from backend.app_logger import warning_log
+from backend.invite_links.page_response import build_join_error_view, render_invite_page
 from backend.schemas.errors import build_message_error_response
-from backend.utils.all_routes import BUILDER_JSON_429_ENDPOINTS
+from backend.utils.all_routes import BUILDER_JSON_429_ENDPOINTS, INVITE_LINK_ROUTES
 from backend.utils.constants import build_frontend_config
 from backend.utils.strings.api_auth_strs import API_V1_URL_PREFIX
 from backend.utils.strings.html_identifiers import IDENTIFIERS
@@ -57,12 +58,29 @@ def _is_reload_safe_request() -> bool:
     )
 
 
+def _is_invite_join_post() -> bool:
+    """True for the invite page's plain-form join POST (its errors render in place)."""
+    return (
+        request.endpoint == INVITE_LINK_ROUTES.JOIN_INVITE_PAGE
+        and request.method == "POST"
+    )
+
+
 def handle_403_response_from_csrf(csrf_error: CSRFError):
+    """Render the CSRF failure page.
+
+    The invite join POST gets an invite-scoped page with a ``Back to the invite``
+    link and no invite details; every other endpoint keeps the global 403 page.
+    """
     user_id = -1 if not current_user.is_authenticated else current_user.id
     warning_log(f"CSRF validation failed for User={user_id}: {csrf_error.description}")
     if _is_api_v1_request():
         return build_message_error_response(
             message=FAILURE_GENERAL.NOT_AUTHORIZED, status_code=403
+        )
+    if _is_invite_join_post():
+        return render_invite_page(
+            page=build_join_error_view(status_code=403), status_code=403
         )
     return _render_error_page(error_code=403, header=IDENTIFIERS.HTML_403)
 
@@ -80,6 +98,11 @@ def handle_404_response(_: NotFound):
 
 
 def handle_429_response_default_ratelimit(_):
+    """Render the rate-limit response.
+
+    The invite join POST gets an invite-scoped 429 page (no invite details, a
+    `Back to the invite` link); every other endpoint keeps the global page.
+    """
     # /api/v1 (bearer-token) clients get a JSON 429, as do XHR calls to the
     # metric flow builder endpoints (BUILDER_JSON_429_ENDPOINTS), which show an
     # inline rate-limit error. All other web AJAX requests deliberately receive
@@ -95,5 +118,9 @@ def handle_429_response_default_ratelimit(_):
     ):
         return build_message_error_response(
             message=STD_JSON_RESPONSE.TOO_MANY_REQUESTS, status_code=429
+        )
+    if _is_invite_join_post():
+        return render_invite_page(
+            page=build_join_error_view(status_code=429), status_code=429
         )
     return _render_error_page(error_code=429, header=IDENTIFIERS.HTML_429)

@@ -9,9 +9,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Literal
-from urllib.parse import urlencode
+from urllib.parse import quote, urlencode
 
-from flask import Response, make_response, redirect, render_template
+from flask import Response, make_response, redirect, render_template, request
 
 from backend.utils.constants import provide_config_for_constants
 from backend.utils.strings.config_strs import CONFIG_ENVS
@@ -78,6 +78,38 @@ def render_invite_page(*, page: InvitePageView, status_code: int) -> Response:
 def invite_redirect(location: str) -> Response:
     """A 302 to ``location`` carrying the same privacy headers as the page."""
     return _stamp_privacy_headers(redirect(location, code=302))
+
+
+def back_to_invite_url() -> str:
+    """The invite page URL for the current join request: its path minus ``/join``.
+
+    Derived from the request path only (never ``view_args``), so it is the viewer's
+    own URL and never a link to ``/``.
+    """
+    return quote(request.path.removesuffix("/join"), safe="/")
+
+
+def build_join_error_view(*, status_code: int) -> InvitePageView:
+    """The invite-scoped CSRF (403) or rate-limit (429) page: no invite details.
+
+    Args:
+        status_code (int): 403 for a CSRF failure; anything else is the 429 page.
+    """
+    is_csrf = status_code == 403
+    return InvitePageView(
+        kind="error",
+        page_title=INVITE_LINK_PAGE.TITLE_CSRF
+        if is_csrf
+        else INVITE_LINK_PAGE.TITLE_RATE_LIMIT,
+        heading=INVITE_LINK_PAGE.CSRF_HEADING
+        if is_csrf
+        else INVITE_LINK_PAGE.RATE_LIMIT_HEADING,
+        message=INVITE_LINK_PAGE.CSRF_MESSAGE
+        if is_csrf
+        else INVITE_LINK_PAGE.RATE_LIMIT_MESSAGE,
+        message_role="alert",
+        back_url=back_to_invite_url(),
+    )
 
 
 def build_invite_splash_urls(token: str) -> tuple[str, str]:
