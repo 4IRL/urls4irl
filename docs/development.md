@@ -45,6 +45,7 @@ Common tasks (see central Makefile-First Command Policy for the general rule):
 | `make test-playwright-lifecycle` | Build the derived Playwright image and run its idle-reap / restart E2E harness in throwaway containers (~7 min) |
 | `make vite-build` | Vite build verification |
 | `make addmock` | Seed dev DB with all mock data |
+| `make invite-token s=<label>` | Print the `/invite/<token>` path of a seeded sample invite link (local dev only; labels: live_unlimited, live_limited, expired, used_up, revoked) |
 | `make generate-types` | Regenerate TypeScript API types from OpenAPI spec + per-event dim shapes (metrics-dimensions.d.ts, metrics-dim-values.ts, metrics-events.ts) |
 | `make generate-endpoints` | Regenerate `docs/endpoints/endpoint-registry.json` + `ENDPOINT_REGISTRY.md` from the live url_map (needs `web` up) |
 | `make audit-endpoints` | Audit the committed endpoint registry against the live app: drift, `@api_route` JS linkage, stale `NO_JS_ENDPOINTS`/`INDIRECT_JS_ENDPOINTS` entries, markdown freshness (exits 1 on any finding; needs `web` up) |

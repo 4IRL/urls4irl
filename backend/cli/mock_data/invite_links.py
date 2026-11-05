@@ -53,6 +53,31 @@ def generate_mock_invite_links(db: SQLAlchemy) -> None:
     db.session.commit()
 
 
+def get_mock_invite_token(label: str) -> str | None:
+    """Return the token of the seeded invite for state ``label``, or None.
+
+    Resolves the lowest-id ``MockUTub_<index + 1>`` for the label's position in
+    ``MOCK_INVITE_LINK_STATES`` and returns its latest invite row's token. None
+    when the label is unknown, or the UTub or its invite row is missing.
+    Requires an app context.
+    """
+    labels: list[str] = [state.label for state in MOCK_INVITE_LINK_STATES]
+    if label not in labels:
+        return None
+    utub_name = f"{MOCK_UTUB_NAME_BASE}{labels.index(label) + 1}"
+    utub: Utubs | None = (
+        Utubs.query.filter(Utubs.name == utub_name).order_by(Utubs.id).first()
+    )
+    if utub is None:
+        return None
+    invite_link: Utub_Invite_Links | None = (
+        Utub_Invite_Links.query.filter_by(utub_id=utub.id)
+        .order_by(Utub_Invite_Links.id.desc())
+        .first()
+    )
+    return None if invite_link is None else invite_link.token
+
+
 def _add_mock_acceptances(
     db: SQLAlchemy, invite_link: Utub_Invite_Links, count: int
 ) -> None:

@@ -9,12 +9,16 @@ from sqlalchemy import MetaData, func
 from sqlalchemy.exc import ProgrammingError
 
 from backend.cli.mock_constants import (
+    MOCK_INVITE_LINK_STATES,
     MOCK_METRIC_FLOW_PAYLOADS,
     MOCK_TRACKING_SEED_URL_PAIRS,
     TEST_USER_COUNT,
 )
 from backend.cli.mock_data.admin import generate_mock_admin
-from backend.cli.mock_data.invite_links import generate_mock_invite_links
+from backend.cli.mock_data.invite_links import (
+    generate_mock_invite_links,
+    get_mock_invite_token,
+)
 from backend.cli.mock_data.tags import generate_mock_tags
 from backend.cli.mock_data.urls import generate_custom_mock_url, generate_mock_urls
 from backend.cli.mock_data.users import generate_mock_users
@@ -41,6 +45,7 @@ from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
 from backend.utils.datetime_utils import utc_now
 from backend.utils.db_table_names import TABLE_NAMES
+from backend.utils.strings.config_strs import CONFIG_ENVS
 
 SEED_TEST_DATA_HOUR_OFFSETS: tuple[int, ...] = (0, 1, 2)
 
@@ -213,6 +218,34 @@ def mock_admin():
     print("\n\n--- Adding dedicated admin mock user (u4i_admin1) ---\n")
     generate_mock_admin(db)
     print("\n--- Finished adding dedicated admin mock user ---\n\n")
+
+
+@mocks_cli.command(
+    "invite-token",
+    help=(
+        "Print the /invite/<token> path of a seeded sample invite link, to try "
+        "each invite page state locally. Local dev only: refuses under PRODUCTION or DEV_SERVER."
+    ),
+)
+@click.argument(
+    "label", type=click.Choice([state.label for state in MOCK_INVITE_LINK_STATES])
+)
+@with_appcontext
+def mock_invite_token(label: str) -> None:
+    # Fail closed: refuse on any deployed environment (prod or the remote dev server).
+    if current_app.config.get(CONFIG_ENVS.PRODUCTION, False) or current_app.config.get(
+        CONFIG_ENVS.DEV_SERVER, False
+    ):
+        raise click.ClickException(
+            "Cannot print invite tokens in production or on the dev server"
+        )
+
+    token = get_mock_invite_token(label)
+    if token is None:
+        raise click.ClickException(
+            f"No seeded invite link for '{label}'; run 'flask addmock all' first"
+        )
+    click.echo(f"/invite/{token}")
 
 
 def _add_all(db: SQLAlchemy, no_dupes: bool):
