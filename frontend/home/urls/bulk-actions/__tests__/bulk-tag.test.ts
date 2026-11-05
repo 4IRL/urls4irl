@@ -13,7 +13,7 @@ import { AppEvents, emit } from "../../../../lib/event-bus.js";
 import { mergeAppliedTagsIntoStore } from "../../tags/combobox-state.js";
 import { createTagBadgeInURL } from "../../tags/tags.js";
 import { buildTagFilterInDeck } from "../../../tags/tags.js";
-import { isTagInUTubTagDeck } from "../../../tags/utils.js";
+import { isTagInUTubTagDeck, readTagCount } from "../../../tags/utils.js";
 import { updateVisibleURLsForTagCount } from "../../cards/filtering.js";
 import { createMockJqXHR } from "../../../../__tests__/helpers/mock-jquery.js";
 
@@ -102,12 +102,14 @@ vi.mock("../../tags/tags.js", () => ({
 }));
 
 vi.mock("../../../tags/tags.js", () => ({
+  syncTagCapState: vi.fn(),
   buildTagFilterInDeck: vi.fn(() =>
     window.jQuery('<div class="tagFilter"></div>'),
   ),
 }));
 
-vi.mock("../../../tags/utils.js", () => ({
+vi.mock("../../../tags/utils.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../../tags/utils.js")>()),
   isTagInUTubTagDeck: vi.fn(() => false),
 }));
 
@@ -136,6 +138,13 @@ const storeState: { activeUTubID: number | null; urls: StoreUrl[] } = {
   activeUTubID: 1,
   urls: [],
 };
+vi.mock("../../../tags/display-settings.js", () => ({
+  effectiveTagDisplaySettings: vi.fn(() => ({
+    tagSort: "most_in_view",
+    tagMatchMode: "all",
+  })),
+}));
+
 vi.mock("../../../../store/app-store.js", () => ({
   getState: vi.fn(() => storeState),
   setState: vi.fn((partial: Partial<typeof storeState>) => {
@@ -1006,7 +1015,11 @@ describe("once-per-distinct-tag deck sync (DD-23)", () => {
     // "2 / 9" assertion below genuinely discriminates the direct-set-once path.
     $("#listTags").html(
       '<div class="tagFilter" data-utub-tag-id="5">' +
-        '<span class="tagAppliedToUrlsCount">2 / 4</span>' +
+        '<span class="tagAppliedToUrlsCount">' +
+        '<span class="tagCountInView">2</span>' +
+        '<span class="tagCountSep"> / </span>' +
+        '<span class="tagCountTotal">4</span>' +
+        "</span>" +
         "</div>",
     );
     vi.mocked(isTagInUTubTagDeck).mockImplementation((tagId) => tagId === 5);
@@ -1039,9 +1052,10 @@ describe("once-per-distinct-tag deck sync (DD-23)", () => {
     // Total digit set directly to the authoritative UTub-wide count (9), ONCE —
     // not the two base+1 increments (which would land on "2 / 6") a per-card
     // deck-sync path would have produced.
-    expect(
-      $('.tagFilter[data-utub-tag-id="5"] .tagAppliedToUrlsCount').text(),
-    ).toBe("2 / 9");
+    expect(readTagCount($('.tagFilter[data-utub-tag-id="5"]'))).toEqual({
+      inView: 2,
+      total: 9,
+    });
     // Already-in-deck → no new deck filter built; a single visible-count recompute.
     expect(vi.mocked(buildTagFilterInDeck)).not.toHaveBeenCalled();
     expect(vi.mocked(updateVisibleURLsForTagCount)).toHaveBeenCalledTimes(1);

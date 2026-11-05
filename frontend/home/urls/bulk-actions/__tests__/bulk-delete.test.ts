@@ -5,6 +5,7 @@ import { setPickerOpen } from "../picker-guard.js";
 import { APP_CONFIG } from "../../../../lib/config.js";
 import { ajaxCall, is429Handled } from "../../../../lib/ajax.js";
 import { updateVisibleURLsForTagCount } from "../../cards/filtering.js";
+import { readTagCount } from "../../../tags/utils.js";
 import {
   showURLDeletedToast,
   showURLDeletionFailedToast,
@@ -88,6 +89,13 @@ const storeState: {
 };
 vi.mock("../../../utubs/row-counts.js", () => ({
   applyRowCountDelta: vi.fn(),
+}));
+
+vi.mock("../../../tags/display-settings.js", () => ({
+  effectiveTagDisplaySettings: vi.fn(() => ({
+    tagSort: "most_in_view",
+    tagMatchMode: "all",
+  })),
 }));
 
 vi.mock("../../../../store/app-store.js", () => ({
@@ -412,7 +420,11 @@ describe("submit + success (active-deck mutation)", () => {
     // (the numerator recompute is stubbed, so it can't have moved the digit).
     $("#URLDeck").append(
       '<div class="tagFilter" data-utub-tag-id="5">' +
-        '<span class="tagAppliedToUrlsCount">2 / 4</span>' +
+        '<span class="tagAppliedToUrlsCount">' +
+        '<span class="tagCountInView">2</span>' +
+        '<span class="tagCountSep"> / </span>' +
+        '<span class="tagCountTotal">4</span>' +
+        "</span>" +
         "</div>",
     );
     const deferred = activateAndPend(
@@ -428,9 +440,10 @@ describe("submit + success (active-deck mutation)", () => {
 
     // Denominator half set directly to the authoritative server count (7); the
     // numerator half ("2") is left untouched for the (stubbed) later recompute.
-    expect(
-      $('.tagFilter[data-utub-tag-id="5"] .tagAppliedToUrlsCount').text(),
-    ).toBe("2 / 7");
+    expect(readTagCount($('.tagFilter[data-utub-tag-id="5"]'))).toEqual({
+      inView: 2,
+      total: 7,
+    });
   });
 
   it("partial (skip + filter-hidden) → toast carries the skipped and hidden counts, amber cue on the survivor", () => {

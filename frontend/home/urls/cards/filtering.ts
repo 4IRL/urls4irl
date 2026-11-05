@@ -2,8 +2,16 @@ import { $ } from "../../../lib/globals.js";
 import { APP_CONFIG } from "../../../lib/config.js";
 import { getState, setState } from "../../../store/app-store.js";
 import { on, emit, AppEvents } from "../../../lib/event-bus.js";
-import { currentTagDeckIDs, isATagSelected } from "../../tags/utils.js";
 import {
+  currentTagDeckIDs,
+  isATagSelected,
+  readTagCount,
+  writeTagCount,
+} from "../../tags/utils.js";
+import { effectiveTagDisplaySettings } from "../../tags/display-settings.js";
+import { applyAlternatingTagBackground } from "../../tags/search.js";
+import {
+  compareTags,
   computeURLVisibility,
   computeVisibleTagCounts,
   sortTagsByCount,
@@ -59,7 +67,11 @@ export function updateURLsAndTagSubheaderWhenTagSelected({
     urlId: url.utubUrlID,
     tagIDs: url.utubUrlTagIDs,
   }));
-  const visibility = computeURLVisibility(selectedTagIDs, urlsWithTagIDs);
+  const visibility = computeURLVisibility({
+    selectedTagIDs,
+    urlsWithTagIDs,
+    mode: effectiveTagDisplaySettings().tagMatchMode,
+  });
   applyURLVisibilityToDOM(visibility);
   // A card still mid-fadeOut after a removal is in the DOM but not in `urls`:
   // never count it as visible.
@@ -86,7 +98,7 @@ export function updateURLsAndTagSubheaderWhenTagSelected({
   reapplyAlternatingURLCardBackgroundAfterFilter();
   emit(AppEvents.TAG_FILTER_CHANGED, { selectedTagIDs });
   updateVisibleURLsForTagCount();
-  sortTagFiltersInPlace();
+  applyTagSort();
 }
 
 export function updateVisibleURLsForTagCount(): void {
@@ -104,26 +116,24 @@ export function updateVisibleURLsForTagCount(): void {
     currentTagIDs,
   );
 
-  let tagCountElem: JQuery;
-  let tagCountText: string[];
   for (let tagIndex = 0; tagIndex < currentTagIDs.length; tagIndex++) {
     const tagID = currentTagIDs[tagIndex];
-    tagCountElem = $(
-      `.tagFilter[data-utub-tag-id=${tagID}]` + " .tagAppliedToUrlsCount",
-    );
-    tagCountText = tagCountElem.text().split(" / ");
-    if (!tagCountText || tagCountText.length !== 2) continue;
-    tagCountElem.text(
-      `${tagCounts.get(`${tagID}`)}` + " / " + `${tagCountText[1]}`,
-    );
+    const chip = $(`.tagFilter[data-utub-tag-id=${tagID}]`);
+    const current = readTagCount(chip);
+    if (!current) continue;
+    writeTagCount({
+      chip,
+      inView: tagCounts.get(`${tagID}`) ?? 0,
+      total: current.total,
+    });
   }
 }
 
-// Write only the authoritative UTub-wide total (the right-hand/denominator digit
-// of the `X / Y` count on a tag-filter chip) directly from server data, leaving
-// the visible/numerator half untouched (it is recomputed in a single later pass
-// by updateVisibleURLsForTagCount). Guards on the `X / Y` split so a malformed or
-// missing chip label is left as-is. Shared by bulk-tag and bulk-delete.
+// Write only the authoritative UTub-wide total (the `.tagCountTotal` span of a
+// tag-filter chip) directly from server data, leaving the in-view half untouched
+// (it is recomputed in a single later pass by updateVisibleURLsForTagCount).
+// A chip with a missing or malformed count is left as-is. Shared by bulk-tag
+// and bulk-delete.
 export function writeTagChipDenominator({
   tagId,
   count,
@@ -131,12 +141,11 @@ export function writeTagChipDenominator({
   tagId: number | string;
   count: number;
 }): void {
-  const tagCountElem = $(
-    `.tagFilter[data-utub-tag-id="${tagId}"] .tagAppliedToUrlsCount`,
-  );
-  const tagCountText = tagCountElem.text().split(" / ");
-  if (tagCountText.length !== 2) return;
-  tagCountElem.text(`${tagCountText[0]} / ${count}`);
+  const chip = $(`.tagFilter[data-utub-tag-id="${tagId}"]`);
+  const current = readTagCount(chip);
+  if (!current) return;
+  writeTagCount({ chip, inView: current.inView, total: count });
+  reapplyTagSortForNonDefault();
 }
 
 export function updateTagFilterCount(
@@ -153,13 +162,12 @@ export function updateTagFilterCount(
     tagCount,
   });
 
-  const tagCountElem = $(
-    `.tagFilter[data-utub-tag-id="${utubTagID}"]` + " .tagAppliedToUrlsCount",
-  );
+  const chip = $(`.tagFilter[data-utub-tag-id="${utubTagID}"]`);
 
-  const tagCountText = tagCountElem.text().split(" / ");
-  if (!tagCountText || tagCountText.length !== 2) {
-    tagCountElem.text(`${tagCount}` + " / " + `${tagCount}`);
+  const current = readTagCount(chip);
+  if (!current) {
+    writeTagCount({ chip, inView: tagCount, total: tagCount });
+    reapplyTagSortForNonDefault();
     return;
   }
 
@@ -172,9 +180,8 @@ export function updateTagFilterCount(
       delta = 1;
   }
 
-  tagCountElem.text(
-    `${parseInt(tagCountText[0]) + delta}` + " / " + `${tagCount}`,
-  );
+  writeTagCount({ chip, inView: current.inView + delta, total: tagCount });
+  reapplyTagSortForNonDefault();
 }
 
 export function reapplyAlternatingURLCardBackgroundAfterFilter(): void {
@@ -189,22 +196,97 @@ export function reapplyAlternatingURLCardBackgroundAfterFilter(): void {
   });
 }
 
-function sortTagFiltersInPlace(): void {
+const TAG_DRAGGING_SELECTOR = "#listTags .tagDragging";
+
+function isTagDragActive(): boolean {
+  return $(TAG_DRAGGING_SELECTOR).length > 0;
+}
+
+let sortDeferredUntilDragEnds = false;
+
+function runSortAfterDragEnds(): void {
+  document.removeEventListener("dragend", runSortAfterDragEnds);
+  document.removeEventListener("drop", runSortAfterDragEnds);
+  if (!sortDeferredUntilDragEnds) return;
+  sortDeferredUntilDragEnds = false;
+  applyTagSort();
+}
+
+/**
+ * Reorders `#listTags` by the resolved sort, re-stripes, and keeps keyboard
+ * focus on the same chip (by `data-utub-tag-id`). While a tag drag is active the
+ * reorder is deferred until it ends. "Most in view" keeps the stable count-only
+ * sort (no tie-break), exactly as before; every other order uses `compareTags`.
+ */
+export function applyTagSort(): void {
+  if (isTagDragActive()) {
+    if (!sortDeferredUntilDragEnds) {
+      sortDeferredUntilDragEnds = true;
+      document.addEventListener("dragend", runSortAfterDragEnds);
+      document.addEventListener("drop", runSortAfterDragEnds);
+    }
+    return;
+  }
+
+  const { tagSort } = effectiveTagDisplaySettings();
   const container = $("#listTags");
   const tagFilterElems = container.children(".tagFilter").get();
+  // Detaching a node drops its focus, so remember the focused element and the
+  // chip it sits in (by `data-utub-tag-id`) and restore focus afterwards.
+  const focusedElement = document.activeElement as HTMLElement | null;
+  const focusedChipID =
+    focusedElement && container[0]?.contains(focusedElement)
+      ? $(focusedElement).closest(".tagFilter").attr("data-utub-tag-id")
+      : undefined;
 
   const tags = tagFilterElems.map((el) => {
-    const textParts = $(el)
-      .find(".tagAppliedToUrlsCount")
-      .text()
-      .trim()
-      .split(" / ");
-    return { el, visibleCount: parseInt(textParts[0]) || 0 };
+    const count = readTagCount($(el));
+    return {
+      el,
+      visibleCount: count?.inView ?? 0,
+      sortable: {
+        id: Number($(el).attr("data-utub-tag-id")),
+        name: $(el).find("span").first().text(),
+        total: count?.total ?? 0,
+        inView: count?.inView ?? 0,
+      },
+    };
   });
 
-  const sorted = sortTagsByCount(tags);
+  const sorted =
+    tagSort === "most_in_view"
+      ? sortTagsByCount(tags)
+      : [...tags].sort((left, right) =>
+          compareTags({
+            left: left.sortable,
+            right: right.sortable,
+            sort: tagSort,
+          }),
+        );
   const detachedElements = sorted.map(({ el }) => $(el).detach());
   detachedElements.forEach((el) => container.append(el));
+
+  applyAlternatingTagBackground();
+  if (
+    focusedChipID !== undefined &&
+    document.activeElement !== focusedElement
+  ) {
+    const chip = container.children(
+      `.tagFilter[data-utub-tag-id="${focusedChipID}"]`,
+    )[0];
+    const target = focusedElement?.isConnected ? focusedElement : chip;
+    target?.focus();
+  }
+}
+
+/**
+ * The extra re-sort triggers (tag create, delete, stale-data refresh, count
+ * change) that apply only to the non-default orders. Under "Most in view" the
+ * deck keeps re-sorting only after a filter change, as before.
+ */
+export function reapplyTagSortForNonDefault(): void {
+  if (effectiveTagDisplaySettings().tagSort === "most_in_view") return;
+  applyTagSort();
 }
 
 export function isURLCurrentlyVisibleInURLDeck(urlString: string): boolean {
@@ -226,6 +308,8 @@ export function updateTagFilteringOnURLOrURLTagDeletion({
     return;
   }
   reapplyAlternatingURLCardBackgroundAfterFilter();
+  // Non-default sorts follow stale-data refreshes (tags added, counts changed).
+  reapplyTagSortForNonDefault();
   // The no-tag-selected branch is reachable *from* a filtered state: the
   // STALE_DATA_DETECTED handler below prunes selectedTagIDs of tags another
   // session deleted, and pruning the last one lands here. Only
