@@ -1880,6 +1880,30 @@ def test_worktree_targets_are_documented_and_phony(make_target: str) -> None:
     assert make_target in phony_lines[0].split()
 
 
+@pytest.mark.parametrize("make_target", ["test-workflow-image", "purge-invite-links"])
+def test_invite_link_purge_targets_are_documented_and_phony(make_target: str) -> None:
+    # Structure only: one `target:` line, a `## ` description for `make help`, and a single .PHONY line naming it.
+    makefile_lines = MAKEFILE.read_text().splitlines()
+    target_lines = [
+        line for line in makefile_lines if line.startswith(f"{make_target}:")
+    ]
+    assert len(target_lines) == 1, target_lines
+    assert "## " in target_lines[0], target_lines[0]
+    phony_lines = [line for line in makefile_lines if line.startswith(".PHONY:")]
+    assert len(phony_lines) == 1, phony_lines
+    assert make_target in phony_lines[0].split()
+
+
+def test_workflow_image_check_builds_the_image_exactly_once() -> None:
+    output = _successful_dry_run("test-workflow-image")
+    build_lines = [
+        line for line in output.splitlines() if line.startswith("docker build ")
+    ]
+    assert len(build_lines) == 1, build_lines
+    assert "docker/Dockerfile.Workflow" in build_lines[0]
+    assert "token_budget.py" not in output
+
+
 def test_worktree_new_single_quotes_and_escapes_its_arguments() -> None:
     # A ' is accepted and escaped as '\'' (not refused), so it cannot break out of the single-quoted shell word.
     output = _successful_dry_run("worktree-new", "name=a'b", "b=x y", "from=o'k")

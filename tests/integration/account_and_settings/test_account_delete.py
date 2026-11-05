@@ -33,6 +33,7 @@ from backend.metrics.events import EventName
 from backend.models.api_refresh_tokens import ApiRefreshTokens
 from backend.models.audit_log import AuditLog
 from backend.models.users import User_Role, Users
+from backend.models.utub_invite_links import Utub_Invite_Links
 from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utubs import Utubs
 from backend.schemas.users import AccountRemovalResponseSchema
@@ -51,10 +52,15 @@ from backend.utils.strings.user_strs import (
     USER_FAILURE,
 )
 from tests.conftest import AjaxFlaskLoginClient
-from tests.integration.system.metrics_helpers import count_counter_keys
+from tests.integration.system.metrics_helpers import (
+    count_counter_keys,
+    find_counter_keys,
+    parse_dims,
+    sum_counter_values,
+)
 from tests.integration.utils import assert_response_conforms_to_schema
 from tests.models_for_test import valid_user_1
-from tests.utils_for_test import get_csrf_token
+from tests.utils_for_test import add_invite_link, get_csrf_token
 
 pytestmark = pytest.mark.account_and_support
 
@@ -589,3 +595,78 @@ def test_delete_records_account_deleted_metric(
         assert response.status_code == 200
 
     assert count_counter_keys(provide_metrics_redis, EventName.ACCOUNT_DELETED) == 1
+
+
+def test_delete_revokes_created_invite_link_with_audit_and_metric(
+    metrics_enabled_app: Flask,
+    provide_metrics_redis: Redis | None,
+    register_first_user,
+) -> None:
+    """Self-delete revokes the erased user's live invite link in a shared UTub,
+    records ``invite_links_revoked`` in the audit metadata and emits one
+    ``INVITE_LINK_REVOKED`` (role_change) event."""
+    if provide_metrics_redis is None:
+        pytest.skip("metrics Redis is unavailable in this environment")
+
+    app = metrics_enabled_app
+    app.test_client_class = AjaxFlaskLoginClient
+    with app.app_context():
+        target: Users = Users.query.get(1)
+        user_id = target.id
+        username = target.username
+        other = Users(
+            username="invite_other",
+            email="invite_other@test.com",
+            plaintext_password="x",
+        )
+        other.email_validated = True
+        db.session.add(other)
+        db.session.flush()
+        shared = Utubs(name="InviteShared", utub_creator=other.id, utub_description="")
+        db.session.add(shared)
+        db.session.flush()
+        db.session.add_all(
+            [
+                Utub_Members(
+                    utub_id=shared.id,
+                    user_id=other.id,
+                    member_role=Member_Role.CREATOR,
+                ),
+                Utub_Members(
+                    utub_id=shared.id,
+                    user_id=user_id,
+                    member_role=Member_Role.CO_CREATOR,
+                ),
+            ]
+        )
+        db.session.commit()
+        shared_id: int = shared.id
+    link_id = add_invite_link(app, shared_id, user_id)
+
+    with app.app_context():
+        user_to_login: Users = Users.query.get(user_id)
+
+    with app.test_client(user=user_to_login) as logged_in_client:
+        home_response = logged_in_client.get("/home")
+        csrf_token = get_csrf_token(home_response.get_data(), meta_tag=True)
+        response = logged_in_client.delete(
+            url_for(ROUTES.USERS.DELETE_ACCOUNT, user_id=user_id),
+            json=_delete_payload(confirm_username=username),
+            headers={"X-CSRFToken": csrf_token},
+        )
+        assert response.status_code == 200
+
+    with app.app_context():
+        link = Utub_Invite_Links.query.get(link_id)
+        assert link.revoked_at is not None
+        audit_row = AuditLog.query.filter_by(
+            action=ACCOUNT_AUDIT_ACTIONS.SELF_ACCOUNT_ERASE
+        ).first()
+        assert audit_row.log_metadata.get("invite_links_revoked") == 1
+    assert sum_counter_values(provide_metrics_redis, EventName.INVITE_LINK_REVOKED) == 1
+    assert [
+        parse_dims(key)["reason"]
+        for key in find_counter_keys(
+            provide_metrics_redis, EventName.INVITE_LINK_REVOKED
+        )
+    ] == ["role_change"]

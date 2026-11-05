@@ -20,13 +20,16 @@ from typing import Any, Tuple
 import pytest
 from flask import Flask, url_for
 from flask.testing import FlaskClient
+from redis import Redis
 from sqlalchemy import event
 from sqlalchemy.engine import Engine
 
 from backend import db
+from backend.metrics.events import EventName
 from backend.models.audit_log import AuditLog
 from backend.models.urls import Urls
 from backend.models.users import User_Role, Users
+from backend.models.utub_invite_links import Utub_Invite_Links
 from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utub_tags import Utub_Tags
 from backend.models.utub_url_tags import Utub_Url_Tags
@@ -41,8 +44,13 @@ from backend.utils.strings.form_strs import ADD_USER_FORM, TAG_FORM, URL_FORM
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.utub_strs import UTUB_FAILURE
 from tests.conftest import AjaxFlaskLoginClient
+from tests.integration.system.metrics_helpers import (
+    find_counter_keys,
+    parse_dims,
+    sum_counter_values,
+)
 from tests.models_for_test import valid_url_strings
-from tests.utils_for_test import get_csrf_token
+from tests.utils_for_test import add_invite_link, get_csrf_token
 
 pytestmark = pytest.mark.admin
 
@@ -520,6 +528,140 @@ def test_admin_mod_remove_sole_creator_deletes_utub(
         audit_row: AuditLog | None = AuditLog.query.first()
     assert audit_row is not None
     assert audit_row.log_metadata.get("utub_deleted") is True
+
+
+# ---------------------------------------------------------------------------
+# remove_member_admin: eager invite link revoke
+# ---------------------------------------------------------------------------
+
+
+def _link_revoked(app: Flask, link_id: int) -> bool:
+    with app.app_context():
+        db.session.expire_all()
+        return Utub_Invite_Links.query.get(link_id).revoked_at is not None
+
+
+def _revoke_reasons(redis_client: Redis) -> list[str]:
+    return [
+        parse_dims(key)["reason"]
+        for key in find_counter_keys(redis_client, EventName.INVITE_LINK_REVOKED)
+    ]
+
+
+def test_admin_mod_remove_member_revokes_their_link_and_emits(
+    metrics_enabled_app: Flask,
+    provide_metrics_redis: Redis | None,
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """Branch (a): the removed non-creator's live link is revoked, one event."""
+    if provide_metrics_redis is None:
+        pytest.skip("metrics Redis is unavailable in this environment")
+    client, csrf, admin_user, app = login_admin_user_with_register
+    utub = _seed_utub(app, admin_user.id)
+    member_id = _seed_member(app, utub.id, "mod_link_member", Member_Role.CO_CREATOR)
+    link_id = add_invite_link(app, utub.id, member_id)
+
+    response = _post_mod(
+        client, _MOD_MEMBER_REMOVE_URL.format(utub_id=utub.id, user_id=member_id), csrf
+    )
+
+    assert response.status_code == 200
+    assert _link_revoked(app, link_id)
+    assert sum_counter_values(provide_metrics_redis, EventName.INVITE_LINK_REVOKED) == 1
+    assert _revoke_reasons(provide_metrics_redis) == ["role_change"]
+
+
+def test_admin_mod_remove_member_without_link_leaves_other_link(
+    metrics_enabled_app: Flask,
+    provide_metrics_redis: Redis | None,
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """Removing a member who created no link leaves the creator's link and emits nothing."""
+    if provide_metrics_redis is None:
+        pytest.skip("metrics Redis is unavailable in this environment")
+    client, csrf, admin_user, app = login_admin_user_with_register
+    utub = _seed_utub(app, admin_user.id)
+    member_id = _seed_member(app, utub.id, "mod_nolink_member", Member_Role.MEMBER)
+    link_id = add_invite_link(app, utub.id, admin_user.id)
+
+    response = _post_mod(
+        client, _MOD_MEMBER_REMOVE_URL.format(utub_id=utub.id, user_id=member_id), csrf
+    )
+
+    assert response.status_code == 200
+    assert not _link_revoked(app, link_id)
+    assert sum_counter_values(provide_metrics_redis, EventName.INVITE_LINK_REVOKED) == 0
+
+
+def test_admin_mod_remove_creator_revokes_creators_link(
+    metrics_enabled_app: Flask,
+    provide_metrics_redis: Redis | None,
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """Branch (b)(i): the removed creator holds the live link; it is revoked."""
+    if provide_metrics_redis is None:
+        pytest.skip("metrics Redis is unavailable in this environment")
+    client, csrf, admin_user, app = login_admin_user_with_register
+    utub = _seed_utub(app, admin_user.id)
+    _seed_member(app, utub.id, "mod_succ_a", Member_Role.CO_CREATOR)
+    link_id = add_invite_link(app, utub.id, admin_user.id)
+
+    response = _post_mod(
+        client,
+        _MOD_MEMBER_REMOVE_URL.format(utub_id=utub.id, user_id=admin_user.id),
+        csrf,
+    )
+
+    assert response.status_code == 200
+    assert _link_revoked(app, link_id)
+    assert sum_counter_values(provide_metrics_redis, EventName.INVITE_LINK_REVOKED) == 1
+    assert _revoke_reasons(provide_metrics_redis) == ["role_change"]
+
+
+def test_admin_mod_remove_creator_with_revoked_own_link_keeps_successor_link(
+    metrics_enabled_app: Flask,
+    provide_metrics_redis: Redis | None,
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """Branch (b)(ii): the creator's own row is already revoked and the successor holds
+    the live link; the successor's link stays unrevoked and nothing is emitted."""
+    if provide_metrics_redis is None:
+        pytest.skip("metrics Redis is unavailable in this environment")
+    client, csrf, admin_user, app = login_admin_user_with_register
+    utub = _seed_utub(app, admin_user.id)
+    successor_id = _seed_member(app, utub.id, "mod_succ_b", Member_Role.CO_CREATOR)
+    add_invite_link(app, utub.id, admin_user.id, revoked=True)
+    successor_link_id = add_invite_link(app, utub.id, successor_id)
+
+    response = _post_mod(
+        client,
+        _MOD_MEMBER_REMOVE_URL.format(utub_id=utub.id, user_id=admin_user.id),
+        csrf,
+    )
+
+    assert response.status_code == 200
+    assert not _link_revoked(app, successor_link_id)
+    assert sum_counter_values(provide_metrics_redis, EventName.INVITE_LINK_REVOKED) == 0
+
+
+def test_admin_mod_remove_sole_creator_link_rows_deleted_with_utub(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """Branch (c): the link rows cascade away with the deleted UTub."""
+    client, csrf, admin_user, app = login_admin_user_with_register
+    utub = _seed_utub(app, admin_user.id)
+    utub_id = utub.id
+    link_id = add_invite_link(app, utub_id, admin_user.id)
+
+    response = _post_mod(
+        client,
+        _MOD_MEMBER_REMOVE_URL.format(utub_id=utub_id, user_id=admin_user.id),
+        csrf,
+    )
+
+    assert response.status_code == 200
+    with app.app_context():
+        assert Utub_Invite_Links.query.get(link_id) is None
 
 
 def test_admin_mod_delete_url_in_utub_happy_path(

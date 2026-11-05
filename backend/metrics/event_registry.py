@@ -157,7 +157,7 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
         dimensions={"has_use_limit": INVITE_LINK_METRIC_HAS_USE_LIMIT_VALUES},
     ),
     EventName.INVITE_LINK_REVOKED: EventRegistryEntry(
-        description="UTub invite link revoked (manually, replaced, or a dead link cleared on create)",
+        description="UTub invite link revoked (manually, replaced, a dead link cleared on create, or its creator removed, left or demoted)",
         category=EventCategory.DOMAIN,
         dimensions={"reason": INVITE_LINK_METRIC_REVOKE_REASONS},
     ),

@@ -61,21 +61,23 @@ def stash_removal_intent(
 
 def execute_removal_intent(
     *, intent: dict[str, Any], provider: Provider, subject: str
-) -> bool:
+) -> int | None:
     """Execute a stashed removal intent once its OAuth-proof round-trip returns.
 
     Thin dispatcher for the authenticated OAuth callback (DD-20): it first
     re-verifies the returned ``subject`` matches a ``UserOAuthIdentity`` already
     on ``current_user`` (the same proof check the link PROOF branch performs,
     reimplemented here so this neutral module need not import
-    ``linking_service``). On mismatch it performs **no** mutation and returns
-    ``False``. Otherwise it dispatches on ``intent["action"]`` — an irreversible
-    GDPR erasure (recording the same self-actor audit trail the password-path
-    delete records, DD-4) — and returns ``True``.
+    ``linking_service``). On mismatch (or an unknown action) it performs **no**
+    mutation and returns ``None``. Otherwise it dispatches on ``intent["action"]``
+    — an irreversible GDPR erasure (recording the same self-actor audit trail the
+    password-path delete records, DD-4) — and returns the number of invite links
+    revoked (0 is success).
 
-    Like ``erase_user_core`` it does **not** commit: the OAuth-callback caller
-    owns the commit, logout, and redirect (Flask-response/session concerns stay
-    in ``linking_service``).
+    Like ``erase_user_core`` it does **not** commit, and it does not emit
+    ``INVITE_LINK_REVOKED``: the OAuth-callback caller owns the commit, the
+    post-commit revoke emit, logout, and redirect (Flask-response/session
+    concerns stay in ``linking_service``).
     """
     proof_identity: UserOAuthIdentity | None = UserOAuthIdentity.query.filter_by(
         user_id=current_user.id,
@@ -83,7 +85,7 @@ def execute_removal_intent(
         provider_subject=subject,
     ).first()
     if proof_identity is None:
-        return False
+        return None
 
     intent_action = intent.get("action")
     if intent_action == REMOVAL_INTENT_ACTION_DELETE:
@@ -99,6 +101,6 @@ def execute_removal_intent(
             metadata=asdict(counts),
         )
         record_event(EventName.ACCOUNT_DELETED)
-        return True
+        return counts.invite_links_revoked
 
-    return False
+    return None

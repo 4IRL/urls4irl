@@ -15,6 +15,7 @@ from backend.api_v1.services.tokens import mark_all_refresh_tokens_revoked_for_u
 from backend.extensions import audit
 from backend.extensions.extension_utils import safe_get_email_sender
 from backend.extensions.metrics.writer import record_event
+from backend.invite_links.services.lifecycle import emit_role_change_revokes
 from backend.metrics.events import EventName
 from backend.models.users import User_Role, Users
 from backend.schemas.errors import (
@@ -713,6 +714,7 @@ def apply_account_deletion(
     )
     record_event(EventName.ACCOUNT_DELETED)
     db.session.commit()
+    emit_role_change_revokes(counts.invite_links_revoked)
     logout_user()
     if EMAILS.EMAIL_VALIDATED_SESS_KEY in session.keys():
         session.pop(EMAILS.EMAIL_VALIDATED_SESS_KEY)
