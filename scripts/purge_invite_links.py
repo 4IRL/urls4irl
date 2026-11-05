@@ -46,7 +46,7 @@ LOCK_TIMEOUT_MS: int = 30_000
 SET_LOCK_TIMEOUT_SQL: str = "SET LOCAL lock_timeout = %s"
 
 # ``now()`` is fixed for the whole transaction.
-_CUTOFF: str = "now() - %s * INTERVAL '1 day'"
+_CUTOFF: str = "now() - %(days)s * INTERVAL '1 day'"
 
 PURGE_DEAD_INVITE_LINKS_SQL: str = (
     'DELETE FROM "UtubInviteLinks" l '
@@ -73,9 +73,7 @@ def run_purge(
     try:
         with pg_conn.cursor() as cursor:
             cursor.execute(SET_LOCK_TIMEOUT_SQL, (LOCK_TIMEOUT_MS,))
-            cursor.execute(
-                PURGE_DEAD_INVITE_LINKS_SQL, (retention_days, retention_days)
-            )
+            cursor.execute(PURGE_DEAD_INVITE_LINKS_SQL, {"days": retention_days})
             purged: int = cursor.rowcount
         pg_conn.commit()
     except Exception:
@@ -160,5 +158,5 @@ if __name__ == "__main__":
         if pg_conn_main is not None:
             try:
                 pg_conn_main.close()
-            except Exception:
-                pass
+            except Exception as close_error:
+                logger.warning("connection close failed: %s", close_error)

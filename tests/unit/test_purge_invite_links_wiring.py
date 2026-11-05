@@ -26,7 +26,7 @@ def _active_lines(path: Path) -> list[str]:
     ]
 
 
-def test_dockerfile_copies_the_purge_script():
+def test_dockerfile_copies_the_purge_script() -> None:
     """
     GIVEN docker/Dockerfile.Workflow
     WHEN its active lines are scanned
@@ -40,7 +40,7 @@ def test_dockerfile_copies_the_purge_script():
     )
 
 
-def test_dockerfile_marks_the_purge_script_executable():
+def test_dockerfile_marks_the_purge_script_executable() -> None:
     """
     GIVEN docker/Dockerfile.Workflow
     WHEN its active lines are scanned
@@ -51,7 +51,7 @@ def test_dockerfile_marks_the_purge_script_executable():
     )
 
 
-def test_crontab_runs_the_purge_script_daily_at_five_am():
+def test_crontab_runs_the_purge_script_daily_at_five_am() -> None:
     """
     GIVEN docker/crontab.workflow
     WHEN its non-comment lines are scanned

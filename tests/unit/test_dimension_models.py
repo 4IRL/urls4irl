@@ -482,7 +482,9 @@ def test_invite_link_created_rejects_invalid_dims(bad_dims: dict):
         model_class.model_validate(bad_dims)
 
 
-@pytest.mark.parametrize("reason", ["manual", "replaced", "dead_on_create"])
+@pytest.mark.parametrize(
+    "reason", ["manual", "replaced", "dead_on_create", "role_change"]
+)
 def test_invite_link_revoked_accepts_each_reason(reason: str):
     model_class = DIMENSION_MODELS[EventName.INVITE_LINK_REVOKED]
     assert model_class is not None
