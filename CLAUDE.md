@@ -35,6 +35,7 @@ The keys Plans store, Bot identity, Bot push script, Token generator, GitHub pro
   | Affected tests (diff-scoped) | `make test-affected` (agent tier: `make test-agent`; preview: `make affected-markers`) |
   | Build | `make vite-build` |
   | Lint / format | `make lint` · `make format-check` · `make typecheck` (fix: `make format`); onboard a clone/worktree with `make setup` (worktree-init `.env`/secrets links + toolchain + hook + capacity). The pre-commit hook runs these automatically **only if the hook is installed** (`make setup`, or `make hooks` alone; check with `make hooks-check`) |
+  | Workflow image wiring check | `make test-workflow-image` |
   | Regenerate types | `make generate-types` |
   | Regenerate endpoint registry | `make generate-endpoints` (check: `make audit-endpoints`) |
   | Inspect UI failures | `make test-artifacts` (latest run's failure index + evidence paths; `run=<id>` for an older run) |

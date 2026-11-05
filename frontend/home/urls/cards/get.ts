@@ -58,7 +58,7 @@ function updateURLBasedOnGetData(
 ): void {
   const urlTitleElem = urlCard.find(".urlTitle");
   const urlStringElem = urlCard.find(".urlString");
-  const urlTags = urlCard.find(".tagBadge");
+  const urlTags = urlCard.find(".tagBadge:not(.tagBadgeMore)");
 
   if (urlTitleElem.text() !== urlUpdateResponse.urlTitle) {
     urlTitleElem.text(urlUpdateResponse.urlTitle);

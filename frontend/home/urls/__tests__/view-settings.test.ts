@@ -1,4 +1,5 @@
 import { resetStore, setState } from "../../../store/app-store.js";
+import { TAG_DISPLAY_PREFERENCE_DEFAULTS } from "../../../__tests__/helpers/tag-display.js";
 import { EMPTY_MEMBER_SETTINGS } from "../../../types/settings.js";
 import {
   effectiveDensity,
@@ -9,7 +10,10 @@ import {
 } from "../view-settings.js";
 
 function memberUrls(overrides: Partial<typeof EMPTY_MEMBER_SETTINGS.urls>) {
-  return { urls: { ...EMPTY_MEMBER_SETTINGS.urls, ...overrides } };
+  return {
+    ...EMPTY_MEMBER_SETTINGS,
+    urls: { ...EMPTY_MEMBER_SETTINGS.urls, ...overrides },
+  };
 }
 
 describe("view-settings effective helpers", () => {
@@ -26,6 +30,7 @@ describe("view-settings effective helpers", () => {
         memberSort: "name_az",
         showRowCounts: false,
         showListTotals: true,
+        ...TAG_DISPLAY_PREFERENCE_DEFAULTS,
       },
     });
   });
@@ -106,6 +111,7 @@ describe("view-settings effective helpers", () => {
         memberSort: "name_az",
         showRowCounts: false,
         showListTotals: true,
+        ...TAG_DISPLAY_PREFERENCE_DEFAULTS,
       },
     });
 

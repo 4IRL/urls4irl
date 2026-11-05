@@ -260,16 +260,17 @@ def apply_tag_filter_by_id_and_get_shown_urls(
 def get_visible_urls_and_urls_with_tag_text_by_tag_id(
     *, page: Page, tag_id: int
 ) -> tuple[int, int]:
-    utub_tag_selector = (
-        f'{HPL.TAG_FILTERS}[{HPL.TAG_BADGE_ID_ATTRIB}="{tag_id}"] {HPL.TAG_COUNT}'
+    chip_selector = f'{HPL.TAG_FILTERS}[{HPL.TAG_BADGE_ID_ATTRIB}="{tag_id}"]'
+    # Presence, not visibility, and text_content, not inner_text: the in-view span
+    # is display:none (but still current) under the total-only and hidden styles.
+    in_view_elem = wait_for_element_presence(
+        page=page, css_selector=f"{chip_selector} {HPL.TAG_COUNT_IN_VIEW}"
     )
-    tag_filter_count_elem = wait_then_get_element(
-        page=page, css_selector=utub_tag_selector
+    total_elem = wait_for_element_presence(
+        page=page, css_selector=f"{chip_selector} {HPL.TAG_COUNT_TOTAL}"
     )
-    assert tag_filter_count_elem
-    count_text = tag_filter_count_elem.inner_text()
-    visible, total = count_text.split(" / ")
-    return int(visible), int(total)
+    assert in_view_elem and total_elem
+    return int(in_view_elem.text_content() or ""), int(total_elem.text_content() or "")
 
 
 def click_open_update_utub_tags_btn(*, page: Page) -> None:

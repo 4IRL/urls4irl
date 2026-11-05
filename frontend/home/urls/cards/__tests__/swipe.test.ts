@@ -203,6 +203,7 @@ describe("swipe gesture", () => {
       setState({
         activeUTubID: UTUB_ID,
         memberSettings: {
+          ...EMPTY_MEMBER_SETTINGS,
           urls: {
             ...EMPTY_MEMBER_SETTINGS.urls,
             disable_swipe_delete: disabled,

@@ -231,6 +231,25 @@
     padding: 20px 0 15px 0;
 }
 
+/* Optional tags on collapsed rows (#URLDeck[data-collapsed-tags], written by
+   collapsed-tags.ts). Collapsed rows only, and never in the line view modes.
+   "one_line" relies on JS to hide the badges that wrap (.tagBadgeOverflow). */
+body:not([data-view="title_line"]):not([data-view="url_line"]) #URLDeck:is([data-collapsed-tags="one_line"], [data-collapsed-tags="all"]) .urlRow:not([urlSelected="true"]) .urlTags {
+    height: auto;
+    opacity: 1;
+    padding: var(--space-1, 4px) 0 0 0;
+}
+
+.tagBadgeOverflow {
+    display: none !important;
+}
+
+.urlTagsContainer > .tagBadge.tagBadgeMore {
+    border-style: dashed;
+    background: transparent;
+    cursor: default;
+}
+
 /* While a URL edit hides the tags, drop the row padding so no empty band is left
    (the :not(:has(.tagBadge)) override below ignores a hidden container that still
    holds badges). Higher specificity than the base rule above. */
@@ -1353,6 +1372,17 @@ a.urlString {
         block-size: 100%;
         box-sizing: border-box;
         overflow: hidden;
+    }
+
+    /* "All" collapsed tags: the row grows to fit instead of the fixed 152px. */
+    [data-view="cards"] #URLDeck:is([data-collapsed-tags="all"], [data-collapsed-tags="one_line"]) #listURLs .urlRow:not([urlSelected="true"]) {
+        block-size: auto;
+        min-block-size: 152px;
+    }
+
+    [data-view="cards"] #URLDeck:is([data-collapsed-tags="all"], [data-collapsed-tags="one_line"]) #listURLs .urlRow:not([urlSelected="true"]) .urlRowContent {
+        block-size: auto;
+        overflow: visible;
     }
 
     :where([data-view="cards"]) #listURLs .urlRow:not([urlSelected="true"]) .urlTitleRow > :first-child,

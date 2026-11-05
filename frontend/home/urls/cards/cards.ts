@@ -78,7 +78,7 @@ export function updateURLAfterFindingStaleData(
     canRevoke: newUrl.canRevokeShortLink,
   });
 
-  const currentURLTags = urlCard.find(".tagBadge");
+  const currentURLTags = urlCard.find(".tagBadge:not(.tagBadgeMore)");
   const currentURLTagIDs = $.map(currentURLTags.toArray(), (tag: HTMLElement) =>
     parseInt($(tag).attr("data-utub-tag-id")!),
   );

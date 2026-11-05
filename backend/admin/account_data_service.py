@@ -23,10 +23,15 @@ from backend.api_common.responses import FlaskResponse
 from backend.api_v1.services.tokens import mark_all_refresh_tokens_revoked_for_user
 from backend.extensions import audit
 from backend.extensions.extension_utils import safe_get_email_sender
+from backend.invite_links.services.lifecycle import (
+    emit_role_change_revokes,
+    revoke_invite_link_created_by,
+)
 from backend.models.contact_form_entries import ContactFormEntries
 from backend.models.email_validations import Email_Validations
 from backend.models.user_oauth_identities import UserOAuthIdentity
 from backend.models.users import Users
+from backend.models.utub_invite_links import Utub_Invite_Links
 from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utubs import Utubs
 from backend.schemas.admin_actions import AdminActionResponseSchema
@@ -87,6 +92,7 @@ class ErasureCounts:
     memberships_removed: int
     contact_entries_deleted: int
     api_tokens_revoked: int
+    invite_links_revoked: int
 
 
 def erase_user_core(*, target_user: Users) -> ErasureCounts:
@@ -114,6 +120,13 @@ def erase_user_core(*, target_user: Users) -> ErasureCounts:
       removed.
     - **non-creator membership**: the membership row is removed; contributed
       URLs/tags stay under the tombstone identity.
+
+    Invite links: every unrevoked link the user created is revoked (flushed, not
+    committed), including in UTubs they no longer belong to; those UTubs are locked
+    in the same ascending-id pass. A UTub deleted before its lock is skipped and
+    not counted. The count lands in ``ErasureCounts.invite_links_revoked``; the
+    caller emits the ``INVITE_LINK_REVOKED`` events only after its own commit
+    succeeds (``emit_role_change_revokes``), so a failed commit never over-counts.
     """
     target_user_id: int = target_user.id
 
@@ -122,18 +135,34 @@ def erase_user_core(*, target_user: Users) -> ErasureCounts:
     memberships_removed_count: int = 0
 
     # Lock every affected UTub first, in ascending id, so concurrent multi-UTub
-    # erasures cannot deadlock and no owner/role writer can interleave.
+    # erasures cannot deadlock and no owner/role writer can interleave. The set is
+    # the union of the user's membership UTubs and the UTubs holding an unrevoked
+    # invite link they created (they may no longer be a member there).
+    link_utub_ids: set[int] = {
+        utub_id
+        for (utub_id,) in db.session.query(Utub_Invite_Links.utub_id)
+        .filter(
+            Utub_Invite_Links.created_by == target_user_id,
+            Utub_Invite_Links.revoked_at.is_(None),
+        )
+        .all()
+    }
     utub_ids: list[int] = sorted(
         {membership.utub_id for membership in target_user.utubs_is_member_of}
+        | link_utub_ids
     )
+    deleted_utub_ids: set[int] = set()
     for utub_id in utub_ids:
-        lock_utub_for_update(utub_id=utub_id)
+        if lock_utub_for_update(utub_id=utub_id) is None:
+            deleted_utub_ids.add(utub_id)
     locked_utub_ids: set[int] = set(utub_ids)
+    invite_links_revoked_count: int = 0
 
     # Re-snapshot after locking (committed membership changes are now visible).
     # Deleting UTubs/memberships mutates the relationship in-place.
     db.session.expire(target_user, ["utubs_is_member_of"])
     memberships: list[Utub_Members] = list(target_user.utubs_is_member_of)
+    member_utub_ids: set[int] = {membership.utub_id for membership in memberships}
     for membership in memberships:
         if membership.utub_id not in locked_utub_ids:
             # Membership added between the first read and the lock. Residual
@@ -160,6 +189,13 @@ def erase_user_core(*, target_user: Users) -> ErasureCounts:
             utubs_deleted_count += 1
             continue
 
+        # Revoke the erased user's link before touching the membership (the
+        # Utubs lock is held; the helper takes the invite row lock).
+        if revoke_invite_link_created_by(
+            utub_id=membership.utub_id, creator_id=target_user_id
+        ):
+            invite_links_revoked_count += 1
+
         if containing_utub.utub_creator == target_user_id:
             new_owner_membership: Utub_Members = select_ownership_transfer_target(
                 other_members=other_members
@@ -176,6 +212,14 @@ def erase_user_core(*, target_user: Users) -> ErasureCounts:
             db.session.delete(membership)
         containing_utub.set_last_updated()
         memberships_removed_count += 1
+
+    # Link-only UTubs (user no longer a member): revoke under the locks already
+    # held, in ascending order. UTubs deleted before their lock are skipped.
+    for link_utub_id in sorted(link_utub_ids - member_utub_ids - deleted_utub_ids):
+        if revoke_invite_link_created_by(
+            utub_id=link_utub_id, creator_id=target_user_id
+        ):
+            invite_links_revoked_count += 1
 
     # PII-bearing child rows.
     if target_user.email_confirm is not None:
@@ -210,6 +254,7 @@ def erase_user_core(*, target_user: Users) -> ErasureCounts:
         memberships_removed=memberships_removed_count,
         contact_entries_deleted=contact_entries_deleted_count,
         api_tokens_revoked=api_tokens_revoked_count,
+        invite_links_revoked=invite_links_revoked_count,
     )
 
 
@@ -299,6 +344,7 @@ def erase_user(*, actor_id: int, target_user_id: int, reason: str) -> FlaskRespo
         metadata=metadata,
     )
     db.session.commit()
+    emit_role_change_revokes(counts.invite_links_revoked)
     return AdminActionResponseSchema(
         status=STD_JSON.SUCCESS,
         message=ADMIN_ACTION_STRINGS.ACCOUNT_ERASE_SUCCESS,

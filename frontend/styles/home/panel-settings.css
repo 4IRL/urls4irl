@@ -63,8 +63,8 @@
     position: fixed;
     width: 340px;
     max-width: calc(100vw - 16px);
-    /* 112px = header band bottom (~93px under the navbar) + gear gap + bottom margin,
-       so the card still fits when positioned directly under a top-deck gear. */
+    /* Fallback only: positionPopover sets an inline max-height from the room
+       beside the gear whenever the card would otherwise cover it. */
     max-height: calc(100dvh - 112px);
     overflow-y: auto;
     padding: 4px 16px;
@@ -583,6 +583,74 @@ h3.panelSettingsRowTitle {
 
 .urlsSettingsHint[hidden] {
     display: none;
+}
+
+/* "Your tags" rows: the account default, then either the reveal link or the
+   per-UTub override (always labelled "This UTub only", never colour alone). */
+.tagsSettingsRow > .tagsSettingsControls {
+    flex: 0 0 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.tagsSettingsRow--nested {
+    margin-left: 0.9rem;
+    padding-left: 0.75rem;
+    border-left: 2px solid var(--borderColor);
+}
+
+.tagsSettingsGroup {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem 0.75rem;
+}
+
+.tagsSettingsGroup[hidden] {
+    display: none;
+}
+
+.tagsSettingsGroup > .panelSettingsSelectWrap {
+    flex: 1 1 100%;
+}
+
+.tagsSettingsScope {
+    flex: 1 1 100%;
+    color: var(--cardURLTextColor);
+    font-size: 0.78rem;
+}
+
+.tagsSettingsScope--override {
+    color: var(--textPrimary);
+    font-weight: 700;
+}
+
+.tagsSettingsLink {
+    align-self: flex-start;
+    min-height: 2.75rem;
+    padding: 0;
+    background: none;
+    border: none;
+    color: var(--deckSelectionGreen);
+    font-size: 0.85rem;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.tagsSettingsLink[hidden] {
+    display: none;
+}
+
+.tagsSettingsLink[aria-disabled="true"] {
+    opacity: 0.5;
+    cursor: default;
+    pointer-events: none;
+}
+
+.tagsSettingsLink:focus-visible {
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: 2px;
 }
 
 /* Inline status slot: saving muted, saved green, error red (each also carries text).

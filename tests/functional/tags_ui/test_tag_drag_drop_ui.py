@@ -29,12 +29,14 @@ import pytest
 from flask import Flask
 from playwright.sync_api import Locator, Page, expect
 
+from backend.models.user_preferences import TagMatchMode
 from backend.utils.constants import STRINGS, TAG_CONSTANTS
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.db_utils import (
     count_urls_with_tag_applied_by_tag_string,
     get_other_utub_this_user_is_member_of,
     get_utub_this_user_created,
+    set_tag_display_defaults,
     set_utub_locked_state,
 )
 from tests.functional.locators import HomePageLocators as HPL
@@ -241,11 +243,9 @@ def test_drop_on_unselected_card_adds_tag_selects_card_and_shows_banner(
             tag=DRAG_TAG, title=get_url_title(app=app, utub_url_id=url_id)
         ),
     )
-    expect(
-        page.locator(
-            f"{HPL.TAG_FILTERS}[{HPL.TAG_BADGE_ID_ATTRIB}='{scene.tag_id}'] {HPL.TAG_COUNT}"
-        )
-    ).to_have_text("1 / 1")
+    chip_selector = f"{HPL.TAG_FILTERS}[{HPL.TAG_BADGE_ID_ATTRIB}='{scene.tag_id}']"
+    expect(page.locator(f"{chip_selector} {HPL.TAG_COUNT_IN_VIEW}")).to_have_text("1")
+    expect(page.locator(f"{chip_selector} {HPL.TAG_COUNT_TOTAL}")).to_have_text("1")
     assert (
         count_urls_with_tag_applied_by_tag_string(
             app=app, utub_id=scene.utub_id, tag_text=DRAG_TAG
@@ -747,6 +747,36 @@ def test_chip_is_draggable_while_twenty_filters_are_selected(
     expect(chip).to_have_class(re.compile(r"(^|\s)tagDragging(\s|$)"))
 
 
+def test_chip_is_not_disabled_with_twenty_filters_selected_in_any_mode(
+    page: Page, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN "any" as the match mode and 20 selected tag filters
+    WHEN the page is inspected
+    THEN the unselected chip is not `disabled` (the 20-tag cap is all-mode only),
+        stays draggable, and one more filter can still be selected.
+    """
+    app = provide_app
+    scene = _seed_scene(app)
+    limit_tag_ids = fill_url_to_tag_limit(
+        app=app,
+        utub_id=scene.utub_id,
+        user_id=USER_ID_FOR_TEST,
+        utub_url_id=scene.url_ids[0],
+    )
+    set_tag_display_defaults(app, USER_ID_FOR_TEST, tag_match_mode=TagMatchMode.ANY)
+    _login(app=app, page=page)
+    for limit_tag_id in limit_tag_ids:
+        apply_tag_filter_based_on_id(page=page, utub_tag_id=limit_tag_id)
+    chip = page.locator(get_utub_tag_filter_selector(utub_tag_id=scene.tag_id))
+
+    expect(chip).not_to_have_class(re.compile(r"(^|\s)disabled(\s|$)"))
+    expect(chip).to_have_attribute("draggable", "true")
+
+    apply_tag_filter_based_on_id(page=page, utub_tag_id=scene.tag_id)
+    expect(chip).to_have_class(re.compile(r"(^|\s)selected(\s|$)"))
+
+
 def test_chips_are_not_draggable_in_edit_all_tags_mode(
     page: Page, create_test_urls, provide_app: Flask
 ):
@@ -996,8 +1026,8 @@ def test_message_400_after_combobox_opened_mid_drop_uses_banner_not_combobox(
     GIVEN a drop on a selected card whose POST is held, and the user then opens
         the Add Tag combobox on that card
     WHEN a message-only 400 is released
-    THEN the deck banner shows, `.urlTagComboboxMsg` stays empty and the
-        combobox stays open.
+    THEN the deck banner shows, `.urlTagComboboxMsg` keeps its own match-count
+        announcement without the 400 message and the combobox stays open.
     """
     app = provide_app
     scene = _seed_scene(app)
@@ -1006,11 +1036,18 @@ def test_message_400_after_combobox_opened_mid_drop_uses_banner_not_combobox(
     route = TagBatchRoute(page=page, hold=True)
     _drop_hold_and_open_combobox(page=page, scene=scene, url_id=url_id, route=route)
 
+    # Typing schedules a debounced filter render that announces the match count.
+    # Let it land before the release, so it cannot race the 400 handling.
+    card_selector = get_url_card_selector(utub_url_id=url_id)
+    combobox_msg = page.locator(f"{card_selector} {HPL.TAG_COMBOBOX_MSG}")
+    expect(combobox_msg).not_to_have_text("")
+    announced_before_release = combobox_msg.inner_text()
+
     route.release(status=400, body={"message": "Held message-only 400"})
 
     _expect_error_banner(page=page, message="Held message-only 400")
-    card_selector = get_url_card_selector(utub_url_id=url_id)
-    expect(page.locator(f"{card_selector} {HPL.TAG_COMBOBOX_MSG}")).to_have_text("")
+    expect(combobox_msg).to_have_text(announced_before_release)
+    expect(combobox_msg).not_to_contain_text("Held message-only 400")
     expect(page.locator(f"{card_selector} {HPL.INPUT_TAG_COMBOBOX}")).to_be_visible()
 
 

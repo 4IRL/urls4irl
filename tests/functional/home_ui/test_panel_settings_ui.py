@@ -60,7 +60,10 @@ _TAG_SHEET_PEEK_Z_INDEX = 30
 _LOWEST_BULK_ACTIONS_OVERLAY_Z_INDEX = 1036
 
 
-_GEARS_WITHOUT_SECTION: tuple[str, ...] = (HPL.BUTTON_TAG_SETTINGS_GEAR,)
+# Every deck's panel now registers a section (Tags gained "Your tags" with the
+# panel-settings-tags plan), so no gear is permanently hidden any more. The name
+# and the loops over it are kept so a future section-less panel only needs adding.
+_GEARS_WITHOUT_SECTION: tuple[str, ...] = ()
 
 
 def _assert_only_utubs_gear_visible(page: Page) -> None:
@@ -329,6 +332,7 @@ def test_gear_markup_invariants(
         HPL.BUTTON_UTUB_SETTINGS_GEAR,
         HPL.BUTTON_URL_SETTINGS_GEAR,
         HPL.BUTTON_MEMBER_SETTINGS_GEAR,
+        HPL.BUTTON_TAG_SETTINGS_GEAR,
     ):
         expect(page.locator(gear_selector)).not_to_have_class(_HIDDEN_CLASS_RE)
     expect(page.locator(HPL.PANEL_SETTINGS_POPOVER)).to_have_class(_HIDDEN_CLASS_RE)
@@ -603,6 +607,64 @@ def test_revealed_gears_do_not_overflow_or_wrap_headers_at_left_panel_minimum(
         assert metrics["visibleButtons"] >= 3, metrics
         assert left_panel_width == 350, left_panel_width
         assert metrics["distinctTops"] == 1, metrics
+
+
+@pytest.mark.parametrize(
+    "gear_selector",
+    [
+        HPL.BUTTON_UTUB_SETTINGS_GEAR,
+        HPL.BUTTON_MEMBER_SETTINGS_GEAR,
+        HPL.BUTTON_TAG_SETTINGS_GEAR,
+    ],
+)
+def test_opened_popover_never_covers_its_gear_and_stays_in_viewport(
+    page: Page,
+    create_test_utubmembers,
+    provide_app: Flask,
+    gear_selector: str,
+):
+    """
+    GIVEN an owned UTub at a 1280x900 desktop viewport
+    WHEN a deck's gear is clicked to open the popover
+    THEN the popover's box does not intersect the gear's box and lies inside the
+        viewport (top-deck gears open below, the low Tags gear flips above)
+    """
+    page.set_viewport_size({"width": 1280, "height": 900})
+    _login_and_select_owned_utub(provide_app, page)
+
+    wait_then_click_element(page=page, css_selector=gear_selector)
+    expect(page.locator(HPL.PANEL_SETTINGS_POPOVER)).to_be_visible()
+
+    geometry = page.evaluate(
+        """({ gearSelector, popoverSelector }) => {
+            const gear = document.querySelector(gearSelector).getBoundingClientRect();
+            const popover = document.querySelector(popoverSelector).getBoundingClientRect();
+            return {
+                gear: { top: gear.top, bottom: gear.bottom, left: gear.left, right: gear.right },
+                popover: {
+                    top: popover.top, bottom: popover.bottom,
+                    left: popover.left, right: popover.right,
+                },
+                innerWidth: window.innerWidth,
+                innerHeight: window.innerHeight,
+            };
+        }""",
+        {
+            "gearSelector": gear_selector,
+            "popoverSelector": HPL.PANEL_SETTINGS_POPOVER,
+        },
+    )
+    gear, popover = geometry["gear"], geometry["popover"]
+    intersects = (
+        popover["left"] < gear["right"]
+        and popover["right"] > gear["left"]
+        and popover["top"] < gear["bottom"]
+        and popover["bottom"] > gear["top"]
+    )
+    assert not intersects, geometry
+    assert popover["top"] >= 0 and popover["left"] >= 0, geometry
+    assert popover["bottom"] <= geometry["innerHeight"], geometry
+    assert popover["right"] <= geometry["innerWidth"], geometry
 
 
 def test_popover_placed_by_test_stays_in_viewport_scrolls_and_layers_correctly(
