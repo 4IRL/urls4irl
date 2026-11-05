@@ -60,3 +60,6 @@ MAILTO=""
 
 # Expired short-link purge — daily at 4 AM, hard-deletes ShortLinks rows whose expiresAt has passed, skipping no UTub (uses the set -a env pattern above)
 0 4 * * * set -a && . /app/container_environment && set +a && /opt/metrics-venv/bin/python /app/purge_short_links.py >> /app/workflow_logs/short-link-purge.log 2>&1
+
+# Invite-link purge — daily at 5 AM, hard-deletes UtubInviteLinks rows revoked or expired more than 30 days ago, never one with acceptances (uses the set -a env pattern above)
+0 5 * * * set -a && . /app/container_environment && set +a && /opt/metrics-venv/bin/python /app/purge_invite_links.py >> /app/workflow_logs/invite-link-purge.log 2>&1

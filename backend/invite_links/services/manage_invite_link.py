@@ -101,7 +101,9 @@ def lock_manager_and_reauthorize(current_utub: Utubs) -> FlaskResponse | None:
 def revoke_invite_row(invite: Utub_Invite_Links) -> None:
     """Mark one invite row revoked and flush. Takes no locks and never commits.
 
-    The caller must already hold the ``Utubs`` lock and the row lock.
+    The caller must already hold the ``Utubs`` lock and the row lock. Callers: the
+    manual, replace and create-over-dead paths here, and
+    ``revoke_invite_link_created_by`` (member removal, leave and demotion).
     """
     invite.revoked_at = utc_now()
     db.session.flush()

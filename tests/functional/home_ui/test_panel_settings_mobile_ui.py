@@ -15,6 +15,7 @@ from backend.utils.strings.utub_strs import (
 )
 from tests.functional.db_utils import (
     add_mock_urls,
+    get_member_settings_section,
     get_url_in_utub,
     get_utub_this_user_created,
     get_utub_this_user_did_not_create,
@@ -79,8 +80,8 @@ _SHEET_OPEN_CLASS_RE = re.compile(r"(^|\s)panelSettingsSheet--open(\s|$)")
 # sheet-history.test.ts). The gear tests below use the DOM-only reveal for the
 # decks with no section; the URLs deck has the real "New URLs" section, so the
 # sheet acceptance and mobile flows at the end of this module run in a real
-# browser. The sheet stacked over the Tag sheet is not reachable here (the Tag
-# sheet makes #mainPanel inert and the Tags gear has no section until phase 7).
+# browser. The settings sheet stacked over the Tag sheet (Tags gear, "Your tags"
+# section) is covered by the stacking tests at the end of this module.
 
 # Markers on the live DOM nodes: a UTub rebuild replaces the URL cards and so
 # drops every expando, which is how an unwanted rebuild is detected.
@@ -170,11 +171,11 @@ def test_urls_and_utubs_gears_rendered_on_phone(
 ):
     """
     GIVEN a phone viewport with an owned UTub selected
-    WHEN only the UTubs, URLs and Members panels have a registered settings section
+    WHEN every panel has a registered settings section
     THEN the URLs gear renders on the URL deck, the UTubs gear (registered, but in
         the #leftPanel that selecting a UTub hides on a phone) renders once the
         UTubs deck is reopened from the navbar, the Members gear renders on the
-        Members deck, and the Tags gear (on the open Tag sheet) stays hidden
+        Members deck, and the Tags gear renders on the open Tag sheet
     """
     page = page_mobile_portrait
     _select_owned_utub_on_phone(provide_app, page)
@@ -189,6 +190,7 @@ def test_urls_and_utubs_gears_rendered_on_phone(
     _open_tag_sheet(page)
     for gear_selector in _GEARS_WITHOUT_SECTION:
         expect(page.locator(gear_selector)).to_be_hidden()
+    expect(page.locator(HPL.BUTTON_TAG_SETTINGS_GEAR)).to_be_visible()
 
     # Reopening the UTubs deck from the navbar shows #leftPanel, and its gear.
     _go_to_deck_via_navbar(page, HPL.NAVBAR_UTUB_DECK)
@@ -933,3 +935,164 @@ def test_reopened_sheet_starts_at_default_height(
         _SHEET_EXPANDED_CLASS_RE
     )
     assert _sheet_height(page) == pytest.approx(default_height, abs=1)
+
+
+# ---------------------------------------------------------------------------
+# Tags gear: the "Your tags" sheet stacked over the Tag sheet
+# ---------------------------------------------------------------------------
+
+_SELECTED_TAG_CHIPS = f"{HPL.LIST_TAGS} {HPL.TAG_FILTERS}.selected"
+
+
+def _select_tag_filters_then_open_tags_sheet(
+    page: Page, *, filter_count: int = 1
+) -> None:
+    """Open the Tag sheet, select the first `filter_count` tag chips as filters, then
+    tap the Tags gear."""
+    expect(page.locator(HPL.TAG_FILTERS).first).to_be_attached()
+    _open_tag_sheet(page)
+    for index in range(filter_count):
+        page.locator(f"{HPL.LIST_TAGS} {HPL.TAG_FILTERS}").nth(index).tap()
+        expect(page.locator(_SELECTED_TAG_CHIPS)).to_have_count(index + 1)
+    _open_tags_settings_sheet(page)
+
+
+def _open_tags_settings_sheet(page: Page) -> None:
+    gear = page.locator(HPL.BUTTON_TAG_SETTINGS_GEAR)
+    expect(gear).to_be_visible()
+    gear.tap()
+    expect(page.locator(HPL.PANEL_SETTINGS_SHEET)).to_have_class(_SHEET_OPEN_CLASS_RE)
+    expect(page.locator(HPL.TAGS_PERSONAL_SORT_DEFAULT)).to_be_visible()
+    wait_for_css_transitions_to_finish(locator=page.locator(HPL.PANEL_SETTINGS_SHEET))
+    _wait_sheet_history_entry(page, keyed=True)
+
+
+def _press_escape(page: Page) -> None:
+    page.keyboard.press("Escape")
+
+
+def _close_settings_sheet_only(page: Page, close_step) -> None:
+    """`close_step` (Back or Escape) closes only the settings sheet: the Tag sheet
+    stays open, the UTub DOM is not rebuilt and the tag filter is still selected."""
+    close_step(page)
+    _expect_sheet_closed(page)
+    _wait_sheet_history_entry(page, keyed=False)
+    wait_until_tag_sheet_open(page=page)
+    assert _utub_dom_survived(page)
+    expect(page.locator(_SELECTED_TAG_CHIPS)).to_have_count(1)
+
+
+def test_back_closes_only_the_settings_sheet_then_the_tag_sheet(
+    page_mobile_portrait: Page, create_test_tags, provide_app: Flask
+):
+    """
+    GIVEN a tag filter active, the Tag sheet open and the settings sheet opened from
+        the Tags gear
+    WHEN browser Back is pressed twice
+    THEN the first Back closes only the settings sheet (the Tag sheet stays open, the
+        UTub is not rebuilt and the filter is still selected), the second closes the
+        Tag sheet. (A Back out of the Tag sheet is a history navigation that
+        rebuilds the UTub, which is the Tag sheet's own existing behavior, so the
+        filter is only asserted after the first Back.)
+    """
+    page = page_mobile_portrait
+    _login_and_select_owned_utub_on_phone(provide_app, page)
+    _mark_utub_dom(page)
+    _select_tag_filters_then_open_tags_sheet(page)
+
+    _close_settings_sheet_only(page, go_back)
+
+    go_back(page)
+    wait_until_tag_sheet_collapsed(page=page)
+    _expect_sheet_closed(page)
+
+
+def test_escape_closes_only_the_settings_sheet_then_the_tag_sheet(
+    page_mobile_portrait: Page, create_test_tags, provide_app: Flask
+):
+    """
+    GIVEN a tag filter active, the Tag sheet open and the settings sheet opened from
+        the Tags gear
+    WHEN Escape is pressed twice
+    THEN the first Escape closes only the settings sheet (the Tag sheet stays open
+        and the filter is still selected), the second closes the Tag sheet and the
+        filter survives that too
+    """
+    page = page_mobile_portrait
+    _login_and_select_owned_utub_on_phone(provide_app, page)
+    _mark_utub_dom(page)
+    _select_tag_filters_then_open_tags_sheet(page)
+
+    _close_settings_sheet_only(page, _press_escape)
+
+    _press_escape(page)
+    wait_until_tag_sheet_collapsed(page=page)
+    assert _utub_dom_survived(page)
+    expect(page.locator(_SELECTED_TAG_CHIPS)).to_have_count(1)
+
+
+def test_tags_sheet_rows_are_touch_targets_and_an_override_saves(
+    page_mobile_portrait: Page, create_test_tags, provide_app: Flask
+):
+    """
+    GIVEN the "Your tags" settings sheet on a phone
+    WHEN the row controls are measured and a this-UTub count style override is
+        revealed and set
+    THEN every select and switch is at least 44px tall, "Saved" is announced and
+        the override is stored on the membership
+    """
+    app = provide_app
+    page = page_mobile_portrait
+    utub_id = _login_and_select_owned_utub_on_phone(app, page)
+    expect(page.locator(HPL.TAG_FILTERS).first).to_be_attached()
+    _open_tag_sheet(page)
+    _open_tags_settings_sheet(page)
+
+    for selector in (
+        HPL.TAGS_PERSONAL_SORT_DEFAULT,
+        HPL.TAGS_PERSONAL_MATCH_DEFAULT,
+        HPL.TAGS_PERSONAL_COUNT_DEFAULT,
+        HPL.TAGS_PERSONAL_COLLAPSED_DEFAULT,
+        HPL.TAGS_PERSONAL_DROP_DEFAULT,
+    ):
+        assert _box(page, selector)["height"] >= _MIN_TOUCH_TARGET_PX, selector
+
+    page.locator(HPL.TAGS_PERSONAL_COUNT_REVEAL).tap()
+    expect(page.locator(HPL.TAGS_PERSONAL_COUNT_OVERRIDE)).to_be_visible()
+    assert _box(page, HPL.TAGS_PERSONAL_COUNT_OVERRIDE)["height"] >= (
+        _MIN_TOUCH_TARGET_PX
+    )
+    page.locator(HPL.TAGS_PERSONAL_COUNT_OVERRIDE).select_option("hidden")
+
+    expect(page.locator(HPL.PANEL_SETTINGS_ANNOUNCEMENT)).to_contain_text(
+        PANEL_SETTINGS_SAVED
+    )
+    assert get_member_settings_section(app, utub_id, USER_ID_FOR_TEST, "tags") == {
+        "tag_count_style": "hidden"
+    }
+    expect(page.locator(HPL.TAG_DECK)).to_have_attribute(
+        "data-tag-count-style", "hidden"
+    )
+
+
+def test_match_mode_applies_live_from_the_sheet_and_announces_the_result(
+    page_mobile_portrait: Page, create_test_tags, provide_app: Flask
+):
+    """
+    GIVEN a tag filter active and the "Your tags" sheet open on a phone
+    WHEN the match mode is switched to "any" in the sheet
+    THEN the filter-result sentence is announced in the settings live region, and
+        the deck's own announcement region is left unchanged
+    """
+    page = page_mobile_portrait
+    _login_and_select_owned_utub_on_phone(provide_app, page)
+    _select_tag_filters_then_open_tags_sheet(page, filter_count=2)
+    deck_announcement = page.locator(HPL.TAG_FILTER_ANNOUNCEMENT).text_content()
+
+    page.locator(HPL.TAGS_PERSONAL_MATCH_DEFAULT).select_option("any")
+
+    expect(page.locator(HPL.PANEL_SETTINGS_ANNOUNCEMENT)).to_contain_text(
+        re.compile(r"\d+ URLs? shown, matching any selected tags")
+    )
+    expect(page.locator(HPL.TAG_FILTER_ANNOUNCEMENT)).to_have_text(deck_announcement)
+    expect(page.locator(_SELECTED_TAG_CHIPS)).to_have_count(2)

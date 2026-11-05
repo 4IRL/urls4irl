@@ -4,7 +4,11 @@ import type { UtubDetail } from "../../types/utub.js";
 import { $ } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { is429Handled } from "../../lib/ajax.js";
-import { getState, setState } from "../../store/app-store.js";
+import {
+  getState,
+  setState,
+  type UserPreferences,
+} from "../../store/app-store.js";
 import {
   resolveMemberSettings,
   resolveUtubSettings,
@@ -15,7 +19,13 @@ import { showNewPageOnAJAXHTMLResponse } from "../../lib/page-utils.js";
 import { emit, AppEvents } from "../../lib/event-bus.js";
 import { emit as recordUIEvent } from "../../lib/metrics-client.js";
 import { UI_EVENTS } from "../../types/metrics-events.js";
-import { isMemberSortValue } from "../../types/preferences.js";
+import {
+  isCollapsedTagsStyleValue,
+  isMemberSortValue,
+  isTagCountStyleValue,
+  isTagMatchModeValue,
+  isTagSortValue,
+} from "../../types/preferences.js";
 import {
   showUTubLoadingIconAndSetTimeout,
   hideUTubLoadingIconAndClearTimeout,
@@ -140,6 +150,7 @@ export interface CapturedSettingsVersions {
   settingsVersion: number;
   memberSettingsVersion: number;
   memberSortVersion: number;
+  tagDisplayVersion: number;
   policyLearnedVersion: number;
 }
 
@@ -150,12 +161,14 @@ export function captureSettingsVersions(): CapturedSettingsVersions {
     settingsVersion,
     memberSettingsVersion,
     memberSortVersion,
+    tagDisplayVersion,
     policyLearnedVersion,
   } = getState();
   return {
     settingsVersion,
     memberSettingsVersion,
     memberSortVersion,
+    tagDisplayVersion,
     policyLearnedVersion,
   };
 }
@@ -169,6 +182,9 @@ export interface SettingsWriteDecision {
   // The member sort was edited or saved in flight: keep the store's value. It is
   // a global preference, so this holds whichever UTub the response belongs to.
   keepMemberSort: boolean;
+  // A tag display default was edited or saved in flight: keep the store's six
+  // values. Global like the member sort, whichever UTub the response belongs to.
+  keepTagDisplay: boolean;
   // A short-link policy 403 was learned in flight: an incoming
   // `allow_short_links: true` predates it and must be applied as false.
   forceShortLinksOff: boolean;
@@ -190,6 +206,7 @@ export function shouldKeepSettings({
       isSameUTub &&
       state.memberSettingsVersion !== captured.memberSettingsVersion,
     keepMemberSort: state.memberSortVersion !== captured.memberSortVersion,
+    keepTagDisplay: state.tagDisplayVersion !== captured.tagDisplayVersion,
     forceShortLinksOff:
       isSameUTub &&
       state.policyLearnedVersion !== captured.policyLearnedVersion,
@@ -210,19 +227,71 @@ export function resolveIncomingSettings({
   return { ...resolved, urls: { ...resolved.urls, allow_short_links: false } };
 }
 
+export type TagDisplayDefaults = Pick<
+  UserPreferences,
+  | "tagSort"
+  | "tagMatchMode"
+  | "tagCountStyle"
+  | "showTagsOnCollapsed"
+  | "collapsedTagsStyle"
+  | "tagDropOpensUrl"
+>;
+
+// The payload's six tag display defaults, or null unless every one passes its
+// guard: a partly invalid object must write nothing.
+export function readTagDisplayDefaults(
+  value: unknown,
+): TagDisplayDefaults | null {
+  if (typeof value !== "object" || value === null) return null;
+  const {
+    tagSort,
+    tagMatchMode,
+    tagCountStyle,
+    showTagsOnCollapsed,
+    collapsedTagsStyle,
+    tagDropOpensUrl,
+  } = value as Record<string, unknown>;
+  if (!isTagSortValue(tagSort)) return null;
+  if (!isTagMatchModeValue(tagMatchMode)) return null;
+  if (!isTagCountStyleValue(tagCountStyle)) return null;
+  if (typeof showTagsOnCollapsed !== "boolean") return null;
+  if (!isCollapsedTagsStyleValue(collapsedTagsStyle)) return null;
+  if (typeof tagDropOpensUrl !== "boolean") return null;
+  return {
+    tagSort,
+    tagMatchMode,
+    tagCountStyle,
+    showTagsOnCollapsed,
+    collapsedTagsStyle,
+    tagDropOpensUrl,
+  };
+}
+
 export function buildSelectedUTub({
   selectedUTub,
   keepSettings = false,
   keepMemberSettings = false,
   keepMemberSort = false,
+  keepTagDisplay = false,
   forceShortLinksOff = false,
 }: {
   selectedUTub: UtubDetail;
   keepSettings?: boolean;
   keepMemberSettings?: boolean;
   keepMemberSort?: boolean;
+  keepTagDisplay?: boolean;
   forceShortLinksOff?: boolean;
 }): void {
+  // One preferences object built from the store at write time, so the member
+  // sort and the tag defaults never overwrite each other. Invalid or kept
+  // values leave the store's preferences untouched.
+  const incomingTagDisplay = keepTagDisplay
+    ? null
+    : readTagDisplayDefaults(selectedUTub.tagDisplayDefaults);
+  const incomingMemberSort =
+    !keepMemberSort && isMemberSortValue(selectedUTub.memberSort)
+      ? selectedUTub.memberSort
+      : null;
   log(
     "buildSelectedUTub — applying full UTub payload to store + emitting UTUB_SELECTED",
     {
@@ -259,12 +328,14 @@ export function buildSelectedUTub({
     ...(keepMemberSettings
       ? {}
       : { memberSettings: resolveMemberSettings(selectedUTub.memberSettings) }),
-    // An invalid or kept sort leaves the store's preferences untouched.
-    ...(!keepMemberSort && isMemberSortValue(selectedUTub.memberSort)
+    ...(incomingMemberSort !== null || incomingTagDisplay !== null
       ? {
           preferences: {
             ...getState().preferences,
-            memberSort: selectedUTub.memberSort,
+            ...(incomingMemberSort !== null
+              ? { memberSort: incomingMemberSort }
+              : {}),
+            ...incomingTagDisplay,
           },
         }
       : {}),

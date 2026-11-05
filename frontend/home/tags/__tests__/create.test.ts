@@ -69,12 +69,20 @@ vi.mock("../../utubs/utils.js", () => ({
 }));
 
 vi.mock("../tags.js", () => ({
+  syncTagCapState: vi.fn(),
   buildTagFilterInDeck: vi.fn(() => window.jQuery("<div></div>")),
 }));
 
 vi.mock("./search.js", () => ({
   closeTagNameFilter: vi.fn(),
   reapplyTagFilter: vi.fn(),
+}));
+
+vi.mock("../display-settings.js", () => ({
+  effectiveTagDisplaySettings: vi.fn(() => ({
+    tagSort: "most_in_view",
+    tagMatchMode: "all",
+  })),
 }));
 
 vi.mock("../../../store/app-store.js", () => ({

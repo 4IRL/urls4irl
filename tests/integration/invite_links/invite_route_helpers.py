@@ -10,6 +10,7 @@ from flask import Flask, url_for
 from flask.wrappers import Response
 
 from backend import db, limiter
+from backend.invite_links.validity import InviteState, evaluate_invite
 from backend.models.utub_invite_links import Utub_Invite_Links
 from backend.utils.datetime_utils import utc_now
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
@@ -42,6 +43,21 @@ def rows(app: Flask, utub_id: int = FIRST_UTUB_ID) -> list[Utub_Invite_Links]:
 
 def unrevoked(app: Flask, utub_id: int = FIRST_UTUB_ID) -> list[Utub_Invite_Links]:
     return [row for row in rows(app, utub_id) if row.revoked_at is None]
+
+
+def state_of_current(app: Flask, utub_id: int = FIRST_UTUB_ID) -> InviteState:
+    """The validity state of the UTub's single unrevoked row (raises if none)."""
+    with app.app_context():
+        db.session.expire_all()
+        invite = (
+            db.session.query(Utub_Invite_Links)
+            .filter(
+                Utub_Invite_Links.utub_id == utub_id,
+                Utub_Invite_Links.revoked_at.is_(None),
+            )
+            .one()
+        )
+        return evaluate_invite(invite)
 
 
 def seed_dead(app: Flask, state: str, use_count_when_used_up: int = 1) -> int:

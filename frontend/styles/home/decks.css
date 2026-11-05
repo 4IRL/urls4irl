@@ -195,6 +195,34 @@
 .deck#TagDeck.collapsed #TagDeckFilterPill.filtering {
     display: inline-flex;
     align-items: center;
+    /* Right-align regardless of the (invisible) button container ahead of it. */
+    margin-left: auto;
+}
+
+/* The collapsed container is invisible (opacity 0 + visibility hidden) but still
+   reserved its full button-row width, pushing the pill past the panel's right
+   edge ("2 filt..."). Take it out of flow while collapsed so the pill sits
+   against the right padding edge. */
+.deck#TagDeck.collapsed #utubTagStandardBtns,
+.deck#TagDeck.collapsed #utubTagCloseUpdateTagBtnContainer {
+    position: absolute;
+}
+
+/* Match-mode cue (#TagMatchModeCue): small muted text on its own full-width row
+   under the Tag deck header band (a direct child of the flex-column deck, NOT
+   of the non-wrapping header row), shown (by JS, via the .hidden class) only
+   under "any" with 2+ tags selected. Hidden while the deck is collapsed (the
+   filter pill carries the signal there). */
+#TagMatchModeCue {
+    flex: 0 0 auto;
+    padding: 0 15px 4px;
+    font-size: 0.8rem;
+    opacity: 0.8;
+}
+
+#TagMatchModeCue.hidden,
+.deck#TagDeck.collapsed #TagMatchModeCue {
+    display: none;
 }
 
 /* Locked-minimized state (desktop, no UTub selected): the Member/Tag decks can't

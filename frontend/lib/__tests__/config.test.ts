@@ -13,6 +13,7 @@ describe("APP_CONFIG shape", () => {
       "logout",
       "updateUtubListPreferences",
       "updateMemberListPreferences",
+      "updateTagDisplayPreferences",
       "createUTub",
       "getUTubs",
       "contactUs",

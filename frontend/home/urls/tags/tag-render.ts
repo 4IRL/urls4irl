@@ -1,12 +1,11 @@
 import type { UtubTag } from "../../../types/url.js";
 
 import { $ } from "../../../lib/globals.js";
-import { APP_CONFIG } from "../../../lib/config.js";
 import { mergeAppliedTagsIntoStore } from "./combobox-state.js";
 import { createTagBadgeInURL } from "./tags.js";
 import { isTagInUTubTagDeck } from "../../tags/utils.js";
 import { reapplyTagFilter } from "../../tags/search.js";
-import { buildTagFilterInDeck } from "../../tags/tags.js";
+import { buildTagFilterInDeck, syncTagCapState } from "../../tags/tags.js";
 import { refreshTagDeckTagCount } from "../../tags/deck.js";
 import { updateTagFilterCount, TagCountOperation } from "../cards/filtering.js";
 
@@ -65,13 +64,9 @@ export function renderAppliedTagsForUrl({
         appliedTag.tagString,
         appliedTag.tagApplied,
       );
-      if (
-        $(".tagFilter.selected").length ===
-        APP_CONFIG.constants.TAGS_MAX_ON_URLS
-      ) {
-        newTag.addClass("disabled").off(".tagFilterSelected");
-      }
       $("#listTags").append(newTag);
+      // Disables the new chip when the "all" selection cap is already reached.
+      syncTagCapState();
       reapplyTagFilter();
       builtNewDeckFilter = true;
     } else {

@@ -19,7 +19,12 @@ vi.mock("../../urls/cards/filtering.js", () => ({
 }));
 
 vi.mock("../../../store/app-store.js", () => ({
+  getState: vi.fn(() => ({ selectedTagIDs: [] })),
   setState: vi.fn(),
+}));
+
+vi.mock("../display-settings.js", () => ({
+  effectiveTagDisplaySettings: vi.fn(() => ({ tagMatchMode: "all" })),
 }));
 
 const $ = window.jQuery;

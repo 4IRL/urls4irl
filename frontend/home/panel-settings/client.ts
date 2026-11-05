@@ -1,9 +1,20 @@
 import type { SuccessResponse } from "../../types/api-helpers.d.ts";
 import type {
+  CollapsedTagsStyleValue,
   MemberSortValue,
+  TagCountStyleValue,
+  TagMatchModeValue,
+  TagSortValue,
   UtubSortValue,
 } from "../../types/preferences.js";
-import { isMemberSortValue, isUtubSortValue } from "../../types/preferences.js";
+import {
+  isCollapsedTagsStyleValue,
+  isMemberSortValue,
+  isTagCountStyleValue,
+  isTagMatchModeValue,
+  isTagSortValue,
+  isUtubSortValue,
+} from "../../types/preferences.js";
 import type { PanelId } from "../../types/settings.js";
 import {
   resolveMemberSettings,
@@ -370,6 +381,98 @@ export function patchMemberListPreferences({
       const preferences = readEchoedMemberListPreferences(response);
       if (preferences === null) {
         log("patchMemberListPreferences — malformed 200 body");
+        resolve({
+          outcome: "failed",
+          result: { outcome: "error" },
+          timedOut: false,
+        });
+        return;
+      }
+      resolve({ outcome: "ok", preferences });
+    });
+
+    request.fail((xhr: JQuery.jqXHR) => {
+      resolve({
+        outcome: "failed",
+        result: mapXhrToSaveOutcome(xhr),
+        timedOut: xhr.status === 0,
+      });
+    });
+  });
+}
+
+type UpdateTagDisplayPreferencesResponse =
+  SuccessResponse<"updateTagDisplayPreferences">;
+
+/** The six saved tag display defaults, as the endpoint echoes them. */
+export interface EchoedTagDisplayPreferences {
+  tagSort: TagSortValue;
+  tagMatchMode: TagMatchModeValue;
+  tagCountStyle: TagCountStyleValue;
+  showTagsOnCollapsed: boolean;
+  collapsedTagsStyle: CollapsedTagsStyleValue;
+  tagDropOpensUrl: boolean;
+}
+
+/** A tag display preferences save outcome (same shape as the member-list one). */
+export type TagDisplayPreferencesSaveResult =
+  | { outcome: "ok"; preferences: EchoedTagDisplayPreferences }
+  | { outcome: "failed"; result: FailedSaveResult; timedOut: boolean };
+
+function readEchoedTagDisplayPreferences(
+  response: unknown,
+): EchoedTagDisplayPreferences | null {
+  if (typeof response !== "object" || response === null) return null;
+  const body = response as Record<string, unknown>;
+  const {
+    status,
+    tagSort,
+    tagMatchMode,
+    tagCountStyle,
+    showTagsOnCollapsed,
+    collapsedTagsStyle,
+    tagDropOpensUrl,
+  } = body;
+  if (status !== "Success" && status !== "No change") return null;
+  if (!isTagSortValue(tagSort)) return null;
+  if (!isTagMatchModeValue(tagMatchMode)) return null;
+  if (!isTagCountStyleValue(tagCountStyle)) return null;
+  if (typeof showTagsOnCollapsed !== "boolean") return null;
+  if (!isCollapsedTagsStyleValue(collapsedTagsStyle)) return null;
+  if (typeof tagDropOpensUrl !== "boolean") return null;
+  return {
+    tagSort,
+    tagMatchMode,
+    tagCountStyle,
+    showTagsOnCollapsed,
+    collapsedTagsStyle,
+    tagDropOpensUrl,
+  };
+}
+
+/**
+ * PATCHes only the given fields of the caller's tag display defaults. Acts on
+ * the logged-in user (no UTub in the path), so it has no active-UTub stale
+ * guard and never runs the UTub-gone handling. A 200 that is not the app's
+ * JSON, or whose echo is malformed, is an error. Writes no store.
+ */
+export function patchTagDisplayPreferences({
+  patch,
+}: {
+  patch: SectionPatch;
+}): Promise<TagDisplayPreferencesSaveResult> {
+  return new Promise<TagDisplayPreferencesSaveResult>((resolve) => {
+    const request = ajaxCall(
+      "patch",
+      APP_CONFIG.routes.updateTagDisplayPreferences,
+      patch,
+      PATCH_TIMEOUT_MS,
+    );
+
+    request.done((response: UpdateTagDisplayPreferencesResponse) => {
+      const preferences = readEchoedTagDisplayPreferences(response);
+      if (preferences === null) {
+        log("patchTagDisplayPreferences — malformed 200 body");
         resolve({
           outcome: "failed",
           result: { outcome: "error" },

@@ -58,6 +58,7 @@ from tests.functional.playwright_utils import (
     get_url_row_by_id,
     invalidate_csrf_token_on_page,
     open_update_url_title,
+    wait_for_page_complete_and_dom_stable,
     wait_then_click_element,
     wait_then_get_element,
     wait_until_hidden,
@@ -1016,6 +1017,9 @@ def test_update_url_string_credentials_url(
     get_selected_url(page=page)
     update_url_string(page=page, url_string=invalid_url)
 
+    # The update form's open animation must be done before the click, or it can
+    # hang while the page is still busy.
+    wait_for_page_complete_and_dom_stable(page=page)
     wait_then_click_element(
         page=page,
         css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_SUBMIT_UPDATE}",

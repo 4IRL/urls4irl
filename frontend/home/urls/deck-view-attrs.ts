@@ -8,6 +8,11 @@ import {
   syncAllUrlTooltips,
 } from "./cards/url-tooltips.js";
 import {
+  applyCollapsedTagsAttr,
+  initCollapsedTagOverflow,
+  refreshCollapsedTagOverflow,
+} from "./collapsed-tags.js";
+import {
   effectiveDensity,
   effectiveHideDateAdded,
   effectiveViewMode,
@@ -107,6 +112,8 @@ export function applyUrlDeckViewSettings(): void {
   document.body.dataset.view = effectiveViewMode();
   document.body.dataset.density = effectiveDensity();
   syncAllUrlTooltips();
+  applyCollapsedTagsAttr();
+  refreshCollapsedTagOverflow();
 }
 
 /**
@@ -142,8 +149,9 @@ export function initUrlDeckPolicyAttrs(): () => void {
   bindWideViewportTooltipSync();
   applyUrlDeckPolicyAttrs();
   applyUrlDeckViewSettings();
+  const stopCollapsedTagOverflow = initCollapsedTagOverflow();
   let renderedHideDate = effectiveHideDateAdded();
-  return subscribe((changedKeys) => {
+  const unsubscribe = subscribe((changedKeys) => {
     if (
       changedKeys.includes("settings") ||
       changedKeys.includes("activeUTubID")
@@ -163,4 +171,8 @@ export function initUrlDeckPolicyAttrs(): () => void {
       }
     }
   });
+  return () => {
+    unsubscribe();
+    stopCollapsedTagOverflow();
+  };
 }

@@ -18,6 +18,7 @@ vi.mock("../../utubs/utils.js", () => ({
 }));
 
 vi.mock("../tags.js", () => ({
+  syncTagCapState: vi.fn(),
   buildTagFilterInDeck: vi.fn(() => window.jQuery("<div></div>")),
 }));
 

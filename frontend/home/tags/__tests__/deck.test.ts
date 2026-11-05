@@ -8,7 +8,8 @@ import {
   updateTagDeck,
 } from "../deck.js";
 import { emit, AppEvents } from "../../../lib/event-bus.js";
-import { resetStore, setState } from "../../../store/app-store.js";
+import { getState, resetStore, setState } from "../../../store/app-store.js";
+import { EMPTY_MEMBER_SETTINGS } from "../../../types/settings.js";
 import { applyDeckDiff } from "../../../logic/apply-deck-diff.js";
 import { bootstrap } from "../../../lib/globals.js";
 
@@ -56,6 +57,7 @@ vi.mock("../search.js", () => ({
 }));
 
 vi.mock("../tags.js", () => ({
+  syncTagCapState: vi.fn(),
   buildTagFilterInDeck: vi.fn((_utubID, tagID, tagString) =>
     window.jQuery(
       `<div class="tagFilter" data-utub-tag-id="${tagID}">${tagString}</div>`,
@@ -491,5 +493,105 @@ describe("Collapsed-state tag-filter pill", () => {
     expect(isFiltering()).toBe(false);
     expect(pillLabel()).toBe("");
     expect(announcement()).toBe("");
+  });
+});
+
+describe("Tag match-mode cue", () => {
+  const TAG_DECK_HTML = `
+    <div id="TagDeck" class="deck">
+      <div class="titleElement">
+        <span id="TagDeckFilterPill"><span id="TagDeckFilterPillLabel"></span></span>
+        <span id="TagDeckCollapsedFilterAnnouncement" class="visually-hidden" aria-live="polite"></span>
+      </div>
+      <div id="TagMatchModeCue" class="hidden"></div>
+    </div>
+  `;
+
+  const isCueHidden = (): boolean =>
+    window.jQuery("#TagMatchModeCue").hasClass("hidden");
+  const setMode = (mode: "any" | "all"): void => {
+    setState({
+      preferences: { ...getState().preferences, tagMatchMode: mode },
+    });
+  };
+
+  beforeEach(() => {
+    resetStore();
+    document.body.innerHTML = TAG_DECK_HTML;
+  });
+
+  it("shows the cue under match mode any with 2+ tags selected", () => {
+    setMode("any");
+
+    emit(AppEvents.TAG_FILTER_CHANGED, { selectedTagIDs: [1, 2] });
+
+    expect(isCueHidden()).toBe(false);
+  });
+
+  it("keeps the cue hidden under match mode any with a single tag", () => {
+    setMode("any");
+
+    emit(AppEvents.TAG_FILTER_CHANGED, { selectedTagIDs: [1] });
+
+    expect(isCueHidden()).toBe(true);
+  });
+
+  it("keeps the cue hidden under match mode all", () => {
+    setMode("all");
+
+    emit(AppEvents.TAG_FILTER_CHANGED, { selectedTagIDs: [1, 2, 3] });
+
+    expect(isCueHidden()).toBe(true);
+  });
+
+  it("hides the cue again when the deck is reset", () => {
+    setMode("any");
+    emit(AppEvents.TAG_FILTER_CHANGED, { selectedTagIDs: [1, 2] });
+    expect(isCueHidden()).toBe(false);
+
+    resetTagDeckIfNoUTubSelected();
+
+    expect(isCueHidden()).toBe(true);
+  });
+});
+
+describe("#TagDeck[data-tag-count-style]", () => {
+  beforeEach(() => {
+    resetStore();
+    document.body.innerHTML = `<div id="TagDeck"><div id="listTags"></div></div>`;
+  });
+
+  function countStyleAfterSelect(): string | undefined {
+    setTagDeckOnUTubSelected([], 42);
+    return $("#TagDeck").attr("data-tag-count-style");
+  }
+
+  it("is in_view_total by default on UTub select", () => {
+    expect(countStyleAfterSelect()).toBe("in_view_total");
+  });
+
+  it("is total_only when the account default says so", () => {
+    setState({
+      preferences: { ...getState().preferences, tagCountStyle: "total_only" },
+    });
+    expect(countStyleAfterSelect()).toBe("total_only");
+  });
+
+  it("is hidden when the account default says so", () => {
+    setState({
+      preferences: { ...getState().preferences, tagCountStyle: "hidden" },
+    });
+    expect(countStyleAfterSelect()).toBe("hidden");
+  });
+
+  it("lets this UTub's override win over the account default", () => {
+    setState({
+      preferences: { ...getState().preferences, tagCountStyle: "hidden" },
+      memberSettings: {
+        ...EMPTY_MEMBER_SETTINGS,
+        tags: { ...EMPTY_MEMBER_SETTINGS.tags, tag_count_style: "total_only" },
+      },
+    });
+    expect(countStyleAfterSelect()).toBe("total_only");
   });
 });

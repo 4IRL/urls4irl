@@ -156,6 +156,28 @@ class HomePageLocators(GenericPageLocator):
     URLS_PERSONAL_HIDE_SHORT_LINK_SWITCH = "#urlsPersonalHideShortLinkSwitch"
     URLS_PERSONAL_HIDE_DATE_SWITCH = "#urlsPersonalHideDateSwitch"
     URLS_PERSONAL_DISABLE_SWIPE_SWITCH = "#urlsPersonalDisableSwipeSwitch"
+    # "Your tags" (per-user default + optional per-UTub override) controls on the
+    # Tags gear, one row per setting: the all-UTubs control, the reveal link, the
+    # per-UTub override control and its "use my default" link.
+    TAGS_PERSONAL_SORT_DEFAULT = "#tagsPersonalSortDefaultControl"
+    TAGS_PERSONAL_SORT_OVERRIDE = "#tagsPersonalSortOverrideControl"
+    TAGS_PERSONAL_SORT_REVEAL = "#tagsPersonalSortRevealLink"
+    TAGS_PERSONAL_SORT_USE_DEFAULT = "#tagsPersonalSortUseDefault"
+    TAGS_PERSONAL_MATCH_DEFAULT = "#tagsPersonalMatchDefaultControl"
+    TAGS_PERSONAL_MATCH_OVERRIDE = "#tagsPersonalMatchOverrideControl"
+    TAGS_PERSONAL_MATCH_REVEAL = "#tagsPersonalMatchRevealLink"
+    TAGS_PERSONAL_COUNT_DEFAULT = "#tagsPersonalCountDefaultControl"
+    TAGS_PERSONAL_COUNT_OVERRIDE = "#tagsPersonalCountOverrideControl"
+    TAGS_PERSONAL_COUNT_REVEAL = "#tagsPersonalCountRevealLink"
+    TAGS_PERSONAL_COUNT_USE_DEFAULT = "#tagsPersonalCountUseDefault"
+    TAGS_PERSONAL_COLLAPSED_DEFAULT = "#tagsPersonalCollapsedDefaultControl"
+    TAGS_PERSONAL_COLLAPSED_STYLE_DEFAULT = "#tagsPersonalCollapsedStyleDefaultControl"
+    TAGS_PERSONAL_DROP_DEFAULT = "#tagsPersonalDropDefaultControl"
+    TAGS_PERSONAL_DROP_OVERRIDE = "#tagsPersonalDropOverrideControl"
+    TAGS_PERSONAL_DROP_REVEAL = "#tagsPersonalDropRevealLink"
+    TAG_MATCH_MODE_CUE = "#TagMatchModeCue"
+    TAG_MORE_BADGE = ".urlRow .tagBadge.tagBadgeMore"
+    TAG_BADGE_OVERFLOW = ".tagBadgeOverflow"
     # Collapsible settings sections (shell-owned subheaders): the title toggle
     # button, keyed by the registered section id. A section that is the only one
     # in its scope group renders no heading (the toggle stays in the DOM, hidden),
@@ -285,6 +307,9 @@ class HomePageLocators(GenericPageLocator):
     # Zero-tags empty state shown when a selected UTub has no tags.
     TAG_DECK_EMPTY_STATE = "#noTagsEmptyState"
     TAG_COUNT = ".tagAppliedToUrlsCount"
+    TAG_COUNT_IN_VIEW = f"{TAG_COUNT} .tagCountInView"
+    TAG_COUNT_SEP = f"{TAG_COUNT} .tagCountSep"
+    TAG_COUNT_TOTAL = f"{TAG_COUNT} .tagCountTotal"
     BUTTON_UNSELECT_ALL = "#unselectAllTagFilters"
     BUTTON_UTUB_TAG_CREATE = "#utubTagBtnCreate"
     INPUT_UTUB_TAG_CREATE = "#utubTagCreate"

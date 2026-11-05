@@ -21,7 +21,7 @@ import {
   updateVisibleURLsForTagCount,
   writeTagChipDenominator,
 } from "../cards/filtering.js";
-import { buildTagFilterInDeck } from "../../tags/tags.js";
+import { buildTagFilterInDeck, syncTagCapState } from "../../tags/tags.js";
 import { refreshTagDeckTagCount } from "../../tags/deck.js";
 import { isTagInUTubTagDeck } from "../../tags/utils.js";
 import { reapplyTagFilter } from "../../tags/search.js";
@@ -566,13 +566,9 @@ function renderBulkAppliedTags({
         appliedTag.tagString,
         appliedTag.tagApplied,
       );
-      if (
-        $(".tagFilter.selected").length ===
-        APP_CONFIG.constants.TAGS_MAX_ON_URLS
-      ) {
-        newTag.addClass("disabled").off(".tagFilterSelected");
-      }
       $("#listTags").append(newTag);
+      // Disables the new chip when the "all" selection cap is already reached.
+      syncTagCapState();
       reapplyTagFilter();
       builtNewDeckFilter = true;
     } else {
