@@ -1026,8 +1026,8 @@ def test_message_400_after_combobox_opened_mid_drop_uses_banner_not_combobox(
     GIVEN a drop on a selected card whose POST is held, and the user then opens
         the Add Tag combobox on that card
     WHEN a message-only 400 is released
-    THEN the deck banner shows, `.urlTagComboboxMsg` stays empty and the
-        combobox stays open.
+    THEN the deck banner shows, `.urlTagComboboxMsg` keeps its own match-count
+        announcement without the 400 message and the combobox stays open.
     """
     app = provide_app
     scene = _seed_scene(app)
@@ -1036,11 +1036,18 @@ def test_message_400_after_combobox_opened_mid_drop_uses_banner_not_combobox(
     route = TagBatchRoute(page=page, hold=True)
     _drop_hold_and_open_combobox(page=page, scene=scene, url_id=url_id, route=route)
 
+    # Typing schedules a debounced filter render that announces the match count.
+    # Let it land before the release, so it cannot race the 400 handling.
+    card_selector = get_url_card_selector(utub_url_id=url_id)
+    combobox_msg = page.locator(f"{card_selector} {HPL.TAG_COMBOBOX_MSG}")
+    expect(combobox_msg).not_to_have_text("")
+    announced_before_release = combobox_msg.inner_text()
+
     route.release(status=400, body={"message": "Held message-only 400"})
 
     _expect_error_banner(page=page, message="Held message-only 400")
-    card_selector = get_url_card_selector(utub_url_id=url_id)
-    expect(page.locator(f"{card_selector} {HPL.TAG_COMBOBOX_MSG}")).to_have_text("")
+    expect(combobox_msg).to_have_text(announced_before_release)
+    expect(combobox_msg).not_to_contain_text("Held message-only 400")
     expect(page.locator(f"{card_selector} {HPL.INPUT_TAG_COMBOBOX}")).to_be_visible()
 
 

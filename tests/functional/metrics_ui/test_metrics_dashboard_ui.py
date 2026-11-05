@@ -38,7 +38,9 @@ from tests.functional.metrics_ui.playwright_utils import (
     login_admin_and_open_metrics_dashboard,
     one_step_definition,
     open_flows_tab,
+    peak_loading_flow_cards,
     removed_event_definition,
+    track_peak_loading_flow_cards,
 )
 from tests.functional.playwright_utils import (
     wait_for_element_presence,
@@ -1426,6 +1428,10 @@ def test_flows_grid_shows_loading_skeletons_for_queued_cards(
     )
     held = HeldFlowQueries()
     page.route(FLOW_QUERY_URL_RE, held.handle)
+    # A held request times out client-side after 5s, so under load the cards can
+    # already be settling by the time a Python-side poll runs. The in-page peak
+    # is recorded the moment the cards render, independent of test latency.
+    track_peak_loading_flow_cards(page)
     open_flows_tab(
         page=page,
         app=provide_app,
@@ -1436,7 +1442,7 @@ def test_flows_grid_shows_loading_skeletons_for_queued_cards(
 
     total = EXPECTED_FLOW_CARD_COUNT + custom_count
     expect(page.locator(MDL.FLOWS_CARD)).to_have_count(total)
-    expect(page.locator(MDL.FLOWS_CARD_LOADING)).to_have_count(total)
+    assert peak_loading_flow_cards(page) == total
 
     held.release()
 
