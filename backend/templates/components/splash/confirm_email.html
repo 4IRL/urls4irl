@@ -8,7 +8,11 @@
         <div class="confirm-email-icon" aria-hidden="true">&#9993;</div>
         <p class="confirm-email-lead mb-0">Your account isn't confirmed yet. <strong>Check your inbox</strong> for the link we sent when you signed up &mdash; opening it logs you in.</p>
     </div>
+    {% if expired_token_message %}
+    <div id="SplashModalAlertBanner" class="alert alert-danger alert-banner-splash-modal-display mt-3">{{ expired_token_message }}</div>
+    {% else %}
     <div id="SplashModalAlertBanner" class="alert alert-banner-splash-modal-hide mt-3"></div>
+    {% endif %}
     <p class="confirm-email-hint text-muted mt-3 mb-0"><small>Nothing after a few minutes? Log in again to get a fresh link.</small></p>
     <div id="ConfirmEmailStatus" class="visually-hidden" role="status" aria-live="polite"></div>
 </div>

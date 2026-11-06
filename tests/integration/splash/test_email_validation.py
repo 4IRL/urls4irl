@@ -15,7 +15,7 @@ from backend.models.users import Users
 from backend.models.utils import VerifyTokenResponse
 from backend.schemas.errors import LoginEmailNotValidatedErrorResponse
 from backend.splash.constants import LoginErrorCodes
-from backend.splash.utils import verify_token
+from backend.splash.utils import decode_resend_validation_token, verify_token
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings.email_validation_strs import (
     EMAILS,
@@ -359,3 +359,74 @@ def test_expired_token_accessed_shows_error_to_user(
     )
 
     assert EMAILS.TOKEN_EXPIRED.encode() in response.data
+
+    # Visiting the expired link creates no session
+    home_response = client.get(url_for(ROUTES.UTUBS.HOME))
+    assert home_response.status_code == 302
+    assert urlparse(home_response.location).path == url_for(ROUTES.SPLASH.SPLASH_PAGE)
+
+    # The page carries a resend token that resolves to the link's owner, and
+    # the dismiss button is labelled "Close" (no login modal to go back to)
+    page = response.get_data(as_text=True)
+    resend_token = page.split('data-resend-token="', 1)[1].split('"', 1)[0]
+    with app.app_context():
+        resend_user = decode_resend_validation_token(resend_token)
+        assert resend_user is not None
+        assert resend_user.email == registered_user[REGISTER_FORM.EMAIL].lower()
+    assert 'id="BackToLoginFromConfirmEmail"' in page
+    assert ">Close</button>" in page
+
+
+def test_expired_token_second_visit_returns_404(
+    app, register_first_user_without_email_validation, load_register_page
+):
+    """
+    GIVEN an expired validation token that was already used once on /validate/expired
+    WHEN the same expired token is presented again
+    THEN ensure a 404 is returned, because the first visit re-minted the token
+    """
+    registered_user, _ = register_first_user_without_email_validation
+    client, _ = load_register_page
+
+    with app.app_context():
+        user: Users = Users.query.filter(
+            Users.email == registered_user[REGISTER_FORM.EMAIL].lower()
+        ).first()
+        quick_expiring_token = user.get_email_validation_token(expires_in=0)
+        user.email_confirm = Email_Validations(validation_token=quick_expiring_token)
+        db.session.commit()
+
+    expired_url = url_for("splash.validate_email_expired", token=quick_expiring_token)
+    first_response = client.get(expired_url)
+    assert first_response.status_code == 200
+
+    second_response = client.get(expired_url)
+    assert second_response.status_code == 404
+
+
+def test_authenticated_user_on_expired_page_redirects_home_without_remint(
+    login_first_user_with_register,
+):
+    """
+    GIVEN a logged-in user
+    WHEN they request /validate/expired with an expired token
+    THEN ensure they are redirected to HOME and the stored token is not re-minted
+    """
+    client, _, logged_in_user, app = login_first_user_with_register
+
+    with app.app_context():
+        user: Users = Users.query.get(logged_in_user.id)
+        quick_expiring_token = user.get_email_validation_token(expires_in=0)
+        user.email_confirm = Email_Validations(validation_token=quick_expiring_token)
+        db.session.commit()
+
+    response = client.get(
+        url_for("splash.validate_email_expired", token=quick_expiring_token)
+    )
+
+    assert response.status_code == 302
+    assert urlparse(response.location).path == url_for(ROUTES.UTUBS.HOME)
+
+    with app.app_context():
+        user = Users.query.get(logged_in_user.id)
+        assert user.email_confirm.validation_token == quick_expiring_token

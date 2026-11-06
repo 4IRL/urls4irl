@@ -1,4 +1,4 @@
-import { $ } from "../lib/globals.js";
+import { $, bootstrap } from "../lib/globals.js";
 import { APP_CONFIG } from "../lib/config.js";
 import { ajaxCall, is429Handled } from "../lib/ajax.js";
 import { emit } from "../lib/metrics-client.js";
@@ -34,7 +34,8 @@ let openCounter = 0;
 /**
  * Initialize the "Confirm your email" modal. Binding uses offAndOn, so a
  * repeat init is idempotent. `inline` returns to #LoginModal on dismissal;
- * `expired` (step 3's shell, which has no login modal) reloads the splash page.
+ * `expired` (the static shell, which has no login modal) reloads the splash page
+ * on any hide.
  */
 export function initConfirmEmailForm(
   $modal: JQuery,
@@ -50,7 +51,8 @@ export function initConfirmEmailForm(
 
   $modal.find("#BackToLoginFromConfirmEmail").offAndOn("click", () => {
     if (mode === "expired") {
-      window.location.replace("/");
+      // The shell has no login modal; hiding it triggers the reload below.
+      bootstrap.Modal.getOrCreateInstance($modal[0]).hide();
       return;
     }
     $modal.data("switching", true);
@@ -70,6 +72,11 @@ export function initConfirmEmailForm(
   });
 
   $modal.offAndOn("hidden.bs.modal", () => handleHidden($modal));
+
+  // Covers X, Close, Esc and backdrop. No /logout: the expired page has no session.
+  if (mode === "expired") {
+    $modal.offAndOn("hide.bs.modal", () => window.location.replace("/"));
+  }
 
   log("initConfirmEmailForm bound", { mode });
 }
@@ -149,7 +156,7 @@ function applyCooldownState($modal: JQuery): void {
 
 // Persistent visually-hidden live region: cleared then written on a later tick
 // so identical consecutive text is re-announced.
-function announce({
+export function announce({
   $modal,
   text,
   isError,

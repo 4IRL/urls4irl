@@ -9,13 +9,10 @@ import { registerJQueryPlugins } from "./lib/jquery-plugins.js";
 import { initCookieBanner } from "./lib/cookie-banner.js";
 import { initMetricsClient } from "./lib/metrics-client.js";
 import { initNavbar } from "./splash/navbar.js";
-import { initSplash, createLogoutOnExit } from "./splash/init.js";
+import { initSplash } from "./splash/init.js";
 import { initResetPasswordForm } from "./splash/reset-password-form.js";
 import { initConfirmLinkForm } from "./splash/confirm-link-form.js";
-import {
-  initEmailValidationForm,
-  SKIP_INITIAL_EMAIL,
-} from "./splash/email-validation-form.js";
+import { announce, initConfirmEmailForm } from "./splash/confirm-email-form.js";
 
 // Register jQuery plugins globally
 registerJQueryPlugins();
@@ -35,14 +32,25 @@ function initResetPasswordIfPresent(): void {
   }
 }
 
-function initEmailValidationIfPresent(): void {
-  const modalForm = $("#ModalForm[data-modal-context='expired-token']");
-  if (modalForm.length) {
-    bootstrap.Modal.getOrCreateInstance("#SplashModal").show();
-    initEmailValidationForm($("#SplashModal"), SKIP_INITIAL_EMAIL);
-    const logoutOnExit = createLogoutOnExit();
-    $("#SplashModal").one("hide.bs.modal", logoutOnExit);
-  }
+// The expired-link page renders a static #ConfirmEmailModal shell (no
+// #LoginModal), so initSplash does not bind it and it is bound exactly once here.
+export function initExpiredConfirmEmailIfPresent(): void {
+  const $shell = $("#ConfirmEmailModal[data-resend-token]");
+  if (!$shell.length) return;
+
+  $shell.data("resendToken", String($shell.data("resendToken") ?? ""));
+  $shell.data("cooldownKey", "expired");
+  initConfirmEmailForm($shell, { mode: "expired" });
+
+  bootstrap.Modal.getOrCreateInstance($shell[0]).show();
+  document.getElementById("ConfirmEmailModalLabel")?.focus();
+
+  // The pre-filled banner is the visual cue; the status node announces it.
+  announce({
+    $modal: $shell,
+    text: $shell.find("#SplashModalAlertBanner").text().trim(),
+    isError: false,
+  });
 }
 
 export function initOAuthRejectIfPresent(): void {
@@ -69,8 +77,8 @@ $(document).ready(function () {
   // Check if reset password modal is present and initialize it
   initResetPasswordIfPresent();
 
-  // Check if email validation modal is present and initialize it
-  initEmailValidationIfPresent();
+  // Check if the expired-link confirm-email shell is present and initialize it
+  initExpiredConfirmEmailIfPresent();
 
   // Check if OAuth reject modal is present and initialize it
   initOAuthRejectIfPresent();

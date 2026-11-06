@@ -402,7 +402,7 @@ Exactly one of `email` or `resendToken` (an empty `resendToken` counts as absent
 </details>
 
 <details>
- <summary><code>GET</code> <code><b>/validate/expired</b></code> <code>(resets an expired email validation token and logs the user in)</code></summary>
+ <summary><code>GET</code> <code><b>/validate/expired</b></code> <code>(resets an expired email validation token and renders the "Confirm your email" modal; creates no session)</code></summary>
 
 ##### Parameters
 
@@ -414,7 +414,8 @@ Exactly one of `email` or `resendToken` (an empty `resendToken` counts as absent
 
 > | http code     | content-type                      | response  | details |
 > |---------------|-----------------------------------|-----------|---------------------------------------------------------|
-> | `200`         | `text/html;charset=utf−8`         | `Renders splash page with expired-token modal.` | Token found, reset, and user logged in. Splash page is rendered with a modal notifying the user that a new validation email has been sent. |
+> | `200`         | `text/html;charset=utf−8`         | `Renders splash page with expired-token modal.` | Token found and reset; no session is created. Splash page is rendered with the "Confirm your email" modal, an expired-link banner, and a short-lived resend token that drives `/resend-registration-email`. |
+> | `302`         | `text/html;charset=utf−8`         | None | The caller is already authenticated; redirected to `HOME` without resetting the token. |
 > | `404`         | `text/html;charset=utf−8`         | None | `token` query parameter is absent, or no email validation record exists for the given token. |
 > | `405`         | `text/html;charset=utf−8`         | None | Invalid HTTP method. |
 

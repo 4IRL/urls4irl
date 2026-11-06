@@ -3,7 +3,11 @@ import {
   initConfirmEmailForm,
   openConfirmEmailModal,
 } from "../confirm-email-form.js";
-import { switchModal, showSplashModalAlertBanner } from "../init.js";
+import {
+  resetModalFormState,
+  switchModal,
+  showSplashModalAlertBanner,
+} from "../init.js";
 
 vi.mock("../init.js", () => ({
   switchModal: vi.fn(),
@@ -311,16 +315,60 @@ describe("confirm-email-form", () => {
   });
 
   describe("expired mode", () => {
-    it("Back to login replaces the location with the splash root", () => {
+    it("the Close button hides the modal instead of switching to login", () => {
+      const replaceSpy = vi.fn();
+      vi.stubGlobal("location", { replace: replaceSpy });
+      initConfirmEmailForm($("#ConfirmEmailModal"), { mode: "expired" });
+      const { $modal } = openModal();
+      const hide = vi.fn(() => $modal.trigger("hide.bs.modal"));
+      vi.spyOn(window.bootstrap.Modal, "getOrCreateInstance").mockReturnValue({
+        hide,
+      } as unknown as bootstrap.Modal);
+
+      $modal.find("#BackToLoginFromConfirmEmail").trigger("click");
+
+      expect(hide).toHaveBeenCalledTimes(1);
+      expect(replaceSpy).toHaveBeenCalledWith("/");
+      expect(switchModal).not.toHaveBeenCalledWith($modal, "#LoginModal");
+    });
+
+    it("hide.bs.modal replaces the location with the splash root", () => {
       const replaceSpy = vi.fn();
       vi.stubGlobal("location", { replace: replaceSpy });
       initConfirmEmailForm($("#ConfirmEmailModal"), { mode: "expired" });
       const { $modal } = openModal();
 
-      $modal.find("#BackToLoginFromConfirmEmail").trigger("click");
+      $modal.trigger("hide.bs.modal");
 
+      expect(replaceSpy).toHaveBeenCalledTimes(1);
       expect(replaceSpy).toHaveBeenCalledWith("/");
-      expect(switchModal).not.toHaveBeenCalledWith($modal, "#LoginModal");
+    });
+
+    it("inline mode never reloads on hide", () => {
+      const replaceSpy = vi.fn();
+      vi.stubGlobal("location", { replace: replaceSpy });
+      const { $modal } = openModal();
+
+      $modal.trigger("hide.bs.modal");
+
+      expect(replaceSpy).not.toHaveBeenCalled();
+    });
+
+    it("show.bs.modal does not reset the pre-filled banner", () => {
+      initConfirmEmailForm($("#ConfirmEmailModal"), { mode: "expired" });
+      const { $modal } = openModal();
+
+      $modal.trigger("show.bs.modal");
+
+      expect(resetModalFormState).not.toHaveBeenCalled();
+    });
+
+    it("inline mode resets the form state on show", () => {
+      const { $modal } = openModal();
+
+      $modal.trigger("show.bs.modal");
+
+      expect(resetModalFormState).toHaveBeenCalled();
     });
 
     it("uses the shared 'expired' cooldown key", () => {

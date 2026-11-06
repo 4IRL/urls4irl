@@ -6,7 +6,7 @@ from flask import (
     request,
     url_for,
 )
-from flask_login import current_user, login_user
+from flask_login import current_user
 from werkzeug import Response as WerkzeugResponse
 
 from backend import csrf, db, limiter
@@ -260,6 +260,11 @@ def resend_registration_email(
 
 @splash.route("/validate/expired", methods=["GET"])
 def validate_email_expired():
+    # The resend route and splash.ts are anonymous-only, so an authenticated
+    # visitor would get a dead shell (and a pointless re-mint).
+    if current_user.is_authenticated:
+        return redirect(url_for(ROUTES.UTUBS.HOME))
+
     expired_token = request.args.get("token", None)
     if expired_token is None:
         warning_log("No token provided")
@@ -274,7 +279,6 @@ def validate_email_expired():
     invalid_email.validation_token = new_token
     invalid_email.reset_attempts()
     db.session.commit()
-    login_user(user_with_expired_token)
 
     safe_add_log(f"User={user_with_expired_token.id} email validation token reset")
     return (
@@ -282,8 +286,11 @@ def validate_email_expired():
             "pages/splash.html",
             email_token_is_expired=True,
             expired_token_message=EMAILS.TOKEN_EXPIRED,
+            expired_resend_token=user_with_expired_token.get_resend_validation_token(),
         ),
         200,
+        # The page embeds a resend token; keep it out of shared caches.
+        {"Cache-Control": "no-store"},
     )
 
 

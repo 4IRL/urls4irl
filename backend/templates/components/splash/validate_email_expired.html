@@ -1,34 +1,10 @@
-<div class="modal fade show" id="SplashModal" tabindex="-1" aria-labelledby="FormModal" style="display: block;"
-    aria-modal="true" role="dialog">
-    <div class="modal-dialog" role="document">
+{# Static shown shell for an expired confirmation link; splash.ts shows it via Bootstrap and binds it. #}
+{% set confirm_email_back_label = "Close" %}
+<div class="modal fade show" id="ConfirmEmailModal" tabindex="-1" aria-labelledby="ConfirmEmailModalLabel" style="display: block;"
+    aria-modal="true" role="dialog" data-resend-token="{{ expired_resend_token }}">
+    <div class="modal-dialog modal-dialog-centered" role="document">
         <div class="modal-content">
-            <form id="ModalForm" method="POST" class="login-register-form validate-email-form" data-modal-context="expired-token" action="" novalidate>
-                <div class="modal-header">
-                    <div class="email-container">
-                        <div id="ValidateEmailIcon">✉️</div>
-                        <h1 class="modal-title validate-email-text validate-email-title">{{CONSTANTS.STRINGS.VALIDATE_YOUR_EMAIL}}</h1>
-                        <button type="button" class="btn-close close-modal" data-bs-dismiss="modal" aria-label="close">
-                        </button>
-                    </div>
-                </div>
-                <div class="modal-body">
-                    <p id="ValidateEmailText" class="validate-email-text">Your email address has not been validated. To
-                        complete
-                        your registration, <strong>check your inbox</strong> and click on the link we sent in the email.
-                        If you have not received
-                        the email for some time, click the button below to resend a validation email.</p>
-                    <div id="SplashModalAlertBanner" class="alert alert-danger alert-banner-splash-modal-display"
-                        role="alert">
-                        {{ expired_token_message }}
-                    </div>
-                </div>
-                <div class="modal-footer" id="EmailValidationFooter">
-                    <button type="button"
-                        class="btn btn-warning close-modal login-register-form-group center-block col-4"
-                        data-bs-dismiss="modal">Close</button>
-                    <button type="submit" id="submit" class="btn btn-success login-register-form-group login-register-buttons center-block col-8">Resend Validation Email</button>
-                </div>
-            </form>
+            {% include 'components/splash/confirm_email.html' %}
         </div>
     </div>
 </div>
