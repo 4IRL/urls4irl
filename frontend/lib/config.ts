@@ -7,7 +7,6 @@ export type RouteId =
   | "home"
   | "login"
   | "register"
-  | "confirmEmailAfterRegister"
   | "sendValidationEmail"
   | "resendRegistrationEmail"
   | "forgotPassword"
@@ -35,7 +34,6 @@ export interface AppRoutes {
   copyURLsToUtubs: string;
   login: string;
   register: string;
-  confirmEmailAfterRegister: string;
   sendValidationEmail: string;
   resendRegistrationEmail: string;
   forgotPassword: string;
@@ -192,7 +190,6 @@ export const APP_CONFIG: AppConfig = Object.freeze({
     copyURLsToUtubs: rawConfig.routes.copyURLsToUtubs,
     login: rawConfig.routes.login,
     register: rawConfig.routes.register,
-    confirmEmailAfterRegister: rawConfig.routes.confirmEmailAfterRegister,
     sendValidationEmail: rawConfig.routes.sendValidationEmail,
     resendRegistrationEmail: rawConfig.routes.resendRegistrationEmail,
     forgotPassword: rawConfig.routes.forgotPassword,

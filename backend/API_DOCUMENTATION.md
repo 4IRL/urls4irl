@@ -251,28 +251,6 @@ Invalid form data sent with the request.
 </details>
 
 <details>
- <summary><code>GET</code> <code><b>/confirm-email</b></code> <code>(renders email confirmation modal)</code></summary>
-
-##### Responses
-
-> | http code     | content-type                      | response  | details |
-> |---------------|-----------------------------------|-----------|---------------------------------------------------------|
-> | `200`         | `text/html;charset=utf−8`         | `Renders HTML for email validation modal.` | Renders the modal to email validate, if user is logged in but not email validated. |
-> | `302`         | `text/html;charset=utf−8`         | `Redirects and renders HTML for splash page.` | User has not made an account to confirm an email for. |
-> | `302`         | `text/html;charset=utf−8`         | `Redirects user to the /home page.` | User already logged in and email validated. Redirects user to /home page and renders it. |
-> | `405`         | `text/html;charset=utf−8`         | None | Invalid HTTP method. |
-
-##### Example cURL
-
-> ```bash
-> curl -X GET \
->  https://urls.4irl.app/confirm-email \
->  -H 'Cookie: YOUR_COOKIE'
-> ```
-
-</details>
-
-<details>
  <summary><code>POST</code> <code><b>/resend-registration-email</b></code> <code>(resends the confirmation email, opaque)</code></summary>
 
 ##### Request Payload

@@ -120,7 +120,7 @@ def splash_page() -> WerkzeugResponse | str:
     # DD-9: an already-logged-in browser is redirected to HOME before any banner
     # renders here, so forward the confirm-outcome code so HOME can surface it.
     email_change_status = request.args.get(EMAIL_CHANGE_STATUS_QUERY_PARAM, "")
-    if current_user.is_authenticated and current_user.email_validated:
+    if current_user.is_authenticated:
         safe_add_log(f"User={current_user} already logged in")
         return redirect(
             url_for(
@@ -132,18 +132,14 @@ def splash_page() -> WerkzeugResponse | str:
                 ),
             )
         )
-    show_email_validation = (
-        current_user.is_authenticated and not current_user.email_validated
-    )
-    # DD-1/DD-15: this call site is reached only when the requester is NOT both
-    # authenticated and email-validated, so the splash-path banner keeps the
-    # "log in as usual" clause (authenticated=False).
+    # DD-1/DD-15: this call site is reached only by anonymous requesters (an
+    # authenticated user was redirected above), so the splash-path banner keeps
+    # the "log in as usual" clause (authenticated=False).
     email_change_banner = build_email_change_banner(
         email_change_status, authenticated=False
     )
     return render_template(
         "pages/splash.html",
-        show_email_validation=show_email_validation,
         email_change_banner=email_change_banner,
     )
 
@@ -195,17 +191,6 @@ def register_user(register_request: RegisterRequest) -> FlaskResponse:
 def login(login_request: LoginRequest) -> FlaskResponse:
     """Handles login form submission."""
     return login_user_to_u4i(login_request.username, login_request.password)
-
-
-@splash.route("/confirm-email", methods=["GET"])
-def confirm_email_after_register() -> WerkzeugResponse:
-    if current_user.is_anonymous:
-        safe_add_log("No user logged in")
-        return redirect(url_for(ROUTES.SPLASH.SPLASH_PAGE))
-    if current_user.email_validated:
-        warning_log(f"User={current_user.id} already logged in")
-        return redirect(url_for(ROUTES.UTUBS.HOME))
-    return redirect(url_for(ROUTES.SPLASH.SPLASH_PAGE))
 
 
 @splash.route("/send-validation-email", methods=["POST"])

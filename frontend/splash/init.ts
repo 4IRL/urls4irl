@@ -19,7 +19,6 @@ import { initScrollReveal } from "./scroll-reveal.js";
 import { debug } from "../lib/debug.js";
 
 const log = debug("splash");
-const logEmail = debug("splash:email");
 
 type ErrorResponse = Schema<"ErrorResponse">;
 
@@ -56,20 +55,7 @@ export function initSplash(): void {
     initConfirmEmailForm($("#ConfirmEmailModal"), { mode: "inline" });
   }
   initForgotPasswordForm($("#ForgotPasswordModal"));
-
-  // Auto-show email validation modal for authenticated-but-not-validated users
-  const splashConfig: HTMLElement | null =
-    document.getElementById("splashConfig");
-  log("initSplash invoked", {
-    showEmailValidation: splashConfig?.dataset.showEmailValidation === "true",
-  });
-  if (splashConfig && splashConfig.dataset.showEmailValidation === "true") {
-    logEmail("auto-opening EmailValidationModal for unvalidated user");
-    bootstrap.Modal.getOrCreateInstance("#EmailValidationModal").show();
-    initEmailValidationForm($("#EmailValidationModal"), SEND_INITIAL_EMAIL);
-    const logoutOnExit = createLogoutOnExit();
-    $("#EmailValidationModal").one("hide.bs.modal", logoutOnExit);
-  }
+  log("initSplash invoked");
 }
 
 function setToRegisterButton(): void {

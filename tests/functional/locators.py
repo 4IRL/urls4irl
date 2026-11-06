@@ -888,13 +888,11 @@ class SplashPageLocators(GenericPageLocator):
     LOGIN_X_MODAL_DISMISS = f"{LOGIN_MODAL} .close-register-login-modal"
     REGISTER_X_MODAL_DISMISS = f"{REGISTER_MODAL} .close-register-login-modal"
 
-    # Anonymous-splash readiness signal. #splashConfig carries
-    # data-show-email-validation, which the route sets to "true" only for an
-    # authenticated-but-unvalidated user (email-validation modal auto-shows) and
-    # "false" for an anonymous visitor. After logout + redirect, the reloaded
-    # splash renders this with "false" — a deterministic positive signal that the
-    # session is now anonymous, used in place of a stale-element race.
-    SPLASH_CONFIG_ANONYMOUS = '#splashConfig[data-show-email-validation="false"]'
+    # Anonymous-splash readiness signal. splashModals.html (and so #splashConfig)
+    # is included by the layout only for unauthenticated visitors, so its
+    # presence is a deterministic positive signal that the page is the anonymous
+    # splash, used in place of a stale-element race.
+    SPLASH_CONFIG_ANONYMOUS = "#splashConfig"
 
     # Hero section
     WELCOME_TEXT = "#splash-major-text"

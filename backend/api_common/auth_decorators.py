@@ -29,11 +29,6 @@ def no_authenticated_users_allowed(func: Callable) -> Callable:
     @wraps(func)
     def decorated_view(*args, **kwargs) -> Callable:
         if current_user.is_authenticated:
-            if not current_user.email_validated:
-                warning_log(
-                    f"User={current_user.id} registered but not email validated"
-                )
-                return redirect(url_for(ROUTES.SPLASH.CONFIRM_EMAIL))
             warning_log(f"User={current_user.id} already logged in")
             return redirect(url_for(ROUTES.UTUBS.HOME))
 
@@ -68,9 +63,11 @@ def session_required(func: Callable) -> Callable:
     Flask-Login's ``login_required`` with nothing layered on top, so a validated
     email is not required (unlike ``email_validation_required``). Used by the
     "log out everywhere" endpoint: signing out of every device must not itself
-    require a validated email. Stashes ``_auth_decorator`` like every sibling in
-    this file so the OpenAPI generator (``backend/cli/openapi.py``) records the
-    session-auth requirement via ``SESSION_AUTH_DECORATORS``.
+    require a validated email. Unconfirmed accounts can no longer hold a session
+    (``load_user`` fails closed), so in practice this is confirmed-only.
+    Stashes ``_auth_decorator`` like every sibling in this file so the OpenAPI
+    generator (``backend/cli/openapi.py``) records the session-auth requirement
+    via ``SESSION_AUTH_DECORATORS``.
     """
 
     @wraps(func)

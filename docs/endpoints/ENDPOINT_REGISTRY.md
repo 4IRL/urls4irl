@@ -941,15 +941,6 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Template:** `pages/splash.html`
 - **JS:** template url_for: `email_templates/email_validation_email.html`, `email_templates/oauth_provider_hint_email.html`, `email_templates/reset_password_email.html`
 
-### `GET /confirm-email` — `splash.confirm_email_after_register`
-
-- **Handler:** `backend/splash/routes.py:confirm_email_after_register`
-- **Decorators:** —
-- **Service:** —
-- **Schema:** —
-- **Template:** —
-- **JS:** keys: `confirmEmailAfterRegister`
-
 ### `GET /confirm-email-change/<string:token>` — `splash.confirm_email_change`
 
 - **Handler:** `backend/splash/routes.py:confirm_email_change`

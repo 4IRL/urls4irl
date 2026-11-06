@@ -3,7 +3,7 @@ from unittest import mock
 from urllib.parse import urlparse
 
 import pytest
-from flask import url_for
+from flask import session, url_for
 from flask_login import current_user
 from requests import Response
 
@@ -246,6 +246,7 @@ def test_token_validates_user(
     # Ensure user logged in
     assert current_user.get_id() == user.get_id()
     assert current_user == user
+    assert session[EMAILS.EMAIL_VALIDATED_SESS_KEY] is True
 
     with app.app_context():
         user: Users = Users.query.filter(

@@ -71,14 +71,14 @@ def logged_out_app(app_with_server_name: Flask) -> Generator[Flask, None, None]:
 
 
 @pytest.fixture
-def login_unvalidated_user(
+def stale_session_unvalidated_user(
     app: Flask, register_first_user
 ) -> Generator[Tuple[FlaskClient, Users, Flask], None, None]:
     """
     Registers the user with ID == 1, flips ``email_validated`` to ``False``,
-    then logs them in via flask_login. Used to exercise the
-    ``email_validation_required`` gate's redirect for authenticated-but-
-    unvalidated users.
+    then installs a session cookie for them. The session is effectively
+    anonymous: ``load_user`` fails closed for unvalidated users, so requests
+    are answered by the login_manager unauthorized handler.
     """
     app.test_client_class = AjaxFlaskLoginClient
     with app.app_context():
