@@ -1382,10 +1382,10 @@ def test_invite_token_requires_a_label() -> None:
 
 
 @pytest.mark.parametrize("bad_label", ["a'b", 'a"b', "a`b", "a\\b", "a$$b"])
-def test_invite_token_refuses_shell_metacharacters(bad_label: str) -> None:
+def test_invite_token_refuses_labels_outside_the_allowlist(bad_label: str) -> None:
     result = _dry_run("invite-token", f"s={bad_label}")
     assert result.returncode != 0
-    assert "s must be a plain label" in result.stderr
+    assert "s must be one of:" in result.stderr
 
 
 def test_test_artifacts_reads_the_latest_run_by_default() -> None:
