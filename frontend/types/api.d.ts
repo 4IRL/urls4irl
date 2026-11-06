@@ -932,6 +932,40 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/invite/{token}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** @description Public invite-link landing page. Shows who invited the visitor to which UTub (200) for a live link, a Confirm-your-email page (200) for an unconfirmed viewer, and redirects a member into the UTub (302). Every dead, unknown or malformed token returns the same 404 page. */
+    get: operations["invitePage"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/invite/{token}/join": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** @description Join the UTub an invite link belongs to from the public invite page's plain form (CSRF-protected). Redirects into the UTub (302); a dead, unknown or malformed token is the uniform 404 page, an unconfirmed email the Confirm-your-email page (403), and a logged-out visitor the log-in page (401). */
+    post: operations["joinInvitePage"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/utubs/{utub_id}/invite-link": {
     parameters: {
       query?: never;
@@ -3228,6 +3262,11 @@ export interface components {
      */
     ContactErrorCodes: 1;
     /**
+     * @description Documents an HTML page render (not a JSON body) returned for an
+     *     error/reject state.
+     */
+    HtmlErrorPageSchema: Record<string, never>;
+    /**
      * @description One UI metrics event submitted by the browser.
      *
      *     Per-event dimension validation lives at the route layer
@@ -3754,11 +3793,6 @@ export interface components {
       /** @description Zero-filled per-bucket percentile series in chronological order. */
       buckets: components["schemas"]["LatencyTimeseriesBucket"][];
     };
-    /**
-     * @description Documents an HTML page render (not a JSON body) returned for an
-     *     error/reject state.
-     */
-    HtmlErrorPageSchema: Record<string, never>;
     RegisterRequest: {
       /**
        * @description Username for the new account
@@ -8639,6 +8673,122 @@ export interface operations {
       };
     };
   };
+  invitePage: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        token: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /**
+       * @description Documents an HTML page render (not a JSON body) returned for an
+       *         error/reject state.
+       */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"];
+        };
+      };
+      /**
+       * @description Documents an HTML page render (not a JSON body) returned for an
+       *         error/reject state.
+       */
+      302: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HtmlErrorPageSchema"];
+        };
+      };
+      /** @description Too many requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HtmlErrorPageSchema"];
+        };
+      };
+    };
+  };
+  joinInvitePage: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        token: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /**
+       * @description Documents an HTML page render (not a JSON body) returned for an
+       *         error/reject state.
+       */
+      302: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HtmlErrorPageSchema"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HtmlErrorPageSchema"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HtmlErrorPageSchema"];
+        };
+      };
+      /** @description Too many requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HtmlErrorPageSchema"];
+        };
+      };
+    };
+  };
   getInviteLink: {
     parameters: {
       query?: never;
@@ -9324,6 +9474,7 @@ export interface operations {
           | "email_verified"
           | "invite_link_created"
           | "invite_link_revoked"
+          | "invite_link_viewed"
           | "login_failure"
           | "login_success"
           | "member_added"
@@ -9577,6 +9728,7 @@ export interface operations {
           | "email_verified"
           | "invite_link_created"
           | "invite_link_revoked"
+          | "invite_link_viewed"
           | "login_failure"
           | "login_success"
           | "member_added"

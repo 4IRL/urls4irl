@@ -1,8 +1,15 @@
 {# is_short_link_page forces the neutral anonymous shell for every viewer #}
-{% set authed_shell = current_user.is_authenticated and current_user.email_validated and not is_short_link_page %}
+{# is_invite_page does too, except a logged-in viewer gets no nav items or dropdown, and an
+   unvalidated one gets a non-link brand so no a[href='/'] exists on the page #}
+{% set authed_shell = current_user.is_authenticated and current_user.email_validated and not (is_short_link_page or is_invite_page) %}
+{% set invite_authed = is_invite_page and current_user.is_authenticated %}
+{% set plain_brand = invite_authed and not current_user.email_validated %}
 {% if authed_shell %}
 <nav id="mainNavbar" class="navbar navbar-expand-none navbar-dark bg-dark py-0">
     <a class="navbar-brand navbar-start" href="/home">
+{% elif plain_brand %}
+<nav id="mainNavbar" class="navbar navbar-expand-md navbar-dark bg-dark py-0">
+    <span class="navbar-brand navbar-start">
 {% else %}
 <nav id="mainNavbar" class="navbar navbar-expand-md navbar-dark bg-dark py-0">
     <a class="navbar-brand navbar-start" href="/">
@@ -11,7 +18,7 @@
         <div id="iconContainer">
             <img id="u4iFavicon" src="/static/favicon/android-chrome-192x192.png" alt="" />
         </div>
-    </a>
+    {% if plain_brand %}</span>{% else %}</a>{% endif %}
     {% if authed_shell %}
     {% include 'components/nav/logged_in_as_inline.html' %}
     {% endif %}
@@ -44,18 +51,22 @@
         </span>
     </button>
     {% endif %}
+    {% if not invite_authed %}
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#NavbarNavDropdown"
         aria-controls="NavbarNavDropdown" aria-expanded="false" aria-label="Toggle navigation">
         <span class="navbar-toggler-icon"></span>
     </button>
+    {% endif %}
     {% if authed_shell %}
     <div class="navbar-collapse collapse bg-dark home" id="NavbarNavDropdown">
         {% include 'components/nav/nav_home_items.html' %}
     </div>
-    {% else %}
+    {% elif not invite_authed %}
     <div class="navbar-collapse collapse bg-dark splash" id="NavbarNavDropdown">
         {% include 'components/nav/nav_splash_items.html' %}
     {% endif %}
+    {% if not invite_authed %}
     </div>
+    {% endif %}
     <span id="MobilePanelAnnouncement" class="visually-hidden" aria-live="polite"></span>
 </nav>

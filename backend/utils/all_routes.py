@@ -86,6 +86,8 @@ class INVITE_LINK_ROUTES:
     UPDATE_INVITE_LINK = _INVITE_LINKS + "update_invite_link"
     REPLACE_INVITE_LINK = _INVITE_LINKS + "replace_invite_link"
     REVOKE_INVITE_LINK = _INVITE_LINKS + "revoke_invite_link"
+    INVITE_PAGE = _INVITE_LINKS + "invite_page"
+    JOIN_INVITE_PAGE = _INVITE_LINKS + "join_invite_page"
 
 
 class USER_ROUTES:
@@ -436,6 +438,11 @@ INDIRECT_JS_ENDPOINTS: dict[str, IndirectJsSource] = {
     # frontend/splash/reset-password-form.ts POSTs to its own page URL
     # (window.location.pathname).
     "splash.reset_password": IndirectJsSource.PAGE_SELF_URL,
+    # The public invite page's own URL: no template url_for targets the GET.
+    INVITE_LINK_ROUTES.INVITE_PAGE: IndirectJsSource.PAGE_SELF_URL,
+    # The invite page's Join form action is built server-side (page_response view),
+    # not via a template url_for.
+    INVITE_LINK_ROUTES.JOIN_INVITE_PAGE: IndirectJsSource.SERVER_BUILT_URL,
     # frontend/settings/connected-accounts.ts reads a `data-action-url` whose
     # per-provider URL is built server-side (linking_service.py) into the
     # settings page's template context, not via a literal template url_for.

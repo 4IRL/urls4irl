@@ -21,6 +21,41 @@ class INVITE_LINK_SUCCESS:
     ALREADY_MEMBER = INVITE_LINK_ALREADY_MEMBER
 
 
+# Public invite page copy (rendered by Jinja; Playwright asserts it via ui_testing_strs).
+class INVITE_LINK_PAGE:
+    EYEBROW_TEMPLATE = "{inviter} invited you to join"
+    JOIN_HINT = "You'll join as a member and can add URLs and tags."
+    LOGIN_HINT = (
+        "URLS4IRL is a shared space for collecting and tagging links. Create a free "
+        "account or log in to join; you'll land right in this UTub."
+    )
+    DEAD_HEADING = "This invite has expired or doesn't exist"
+    DEAD_HINT = (
+        "Invite links expire and can be revoked by the people who manage the UTub. "
+        "Ask the person who sent it for a new link."
+    )
+    UNVALIDATED_HEADING = "Confirm your email to join"
+    UNVALIDATED_MESSAGE = (
+        "Confirm your email address using the link we sent you, then open this "
+        "invite link again."
+    )
+    LOGIN_MESSAGE = "You're logged out. Log in to join this UTub."
+    CSRF_HEADING = "This page expired"
+    CSRF_MESSAGE = "Reload this invite link and try again."
+    RATE_LIMIT_HEADING = "Too many attempts"
+    RATE_LIMIT_MESSAGE = "Wait a minute, then reload this invite link and try again."
+    BACK_TO_INVITE = "Back to the invite"
+    JOINING_LABEL = "Joining..."
+    JOIN_LABEL = "Join UTub"
+    NOT_NOW_LABEL = "Not now"
+    GO_TO_APP_LABEL = "Go to URLS4IRL"
+    TITLE_JOIN = "Join a UTub - URLS4IRL"
+    TITLE_UNVALIDATED = "Confirm your email - URLS4IRL"
+    TITLE_DEAD = "Invite unavailable - URLS4IRL"
+    TITLE_CSRF = "Page expired - URLS4IRL"
+    TITLE_RATE_LIMIT = "Too many attempts - URLS4IRL"
+
+
 # Strings for invite link failure
 INVITE_LINK_NOT_FOUND_MESSAGE = "This UTub has no active invite link."
 INVALID_INVITE_LINK_INPUT = "Unable to process the invite link settings."

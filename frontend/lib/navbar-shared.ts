@@ -38,6 +38,9 @@ export function initNavbarRouting(): void {
  * does not need that metrics layer (admin, etc.).
  */
 export function initNavbarBackdrop(): void {
+  // The logged-in invite page renders a navbar with no dropdown.
+  if ($("#NavbarNavDropdown").length === 0) return;
+
   const toggler = new bootstrap.Collapse("#NavbarNavDropdown", {
     toggle: false,
   });

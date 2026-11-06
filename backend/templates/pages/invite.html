@@ -1,0 +1,63 @@
+{% extends "pages/layout.html" %}
+{# Public invite page. Only the states that need them receive the UTub name, description
+   and inviter (join_ready, login_required); the dead, unvalidated and error variants
+   carry no invite detail. #}
+{% block mainbody %}
+{% macro back_link(page) %}
+{% if page.back_url %}
+<div class="short-link-cta-row">
+  <a class="short-link-secondary" href="{{ page.back_url }}">{{ invite_strings.BACK_TO_INVITE }}</a>
+</div>
+{% endif %}
+{% endmacro %}
+<main id="InviteMain" class="short-link-main">
+  <section class="short-link-panel" aria-labelledby="inviteHeading">
+    {% if page.kind == "join_ready" or page.kind == "login_required" %}
+    {% if page.message %}
+    <p class="invite-message" role="{{ page.message_role or 'status' }}">{{ page.message }}</p>
+    {% endif %}
+    <p class="short-link-eyebrow">{{ invite_strings.EYEBROW_TEMPLATE.format(inviter=page.inviter) }}</p>
+    <h1 id="inviteHeading" class="short-link-heading">{{ page.utub_name }}</h1>
+    {% if page.utub_description %}
+    <p class="invite-description">{{ page.utub_description }}</p>
+    {% endif %}
+    {% if page.kind == "join_ready" %}
+    <p class="short-link-hint">{{ invite_strings.JOIN_HINT }}</p>
+    <form id="inviteJoinForm" method="post" action="{{ page.join_url }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="short-link-cta-row">
+        <button type="submit" id="inviteJoinBtn" class="splash-button" data-joining-label="{{ invite_strings.JOINING_LABEL }}">{{ invite_strings.JOIN_LABEL }}</button>
+        <a class="short-link-secondary" href="/home">{{ invite_strings.NOT_NOW_LABEL }}</a>
+      </div>
+      <span id="inviteJoinStatus" class="visually-hidden" role="status"></span>
+    </form>
+    {% else %}
+    <p class="short-link-hint">{{ invite_strings.LOGIN_HINT }}</p>
+    <div class="short-link-cta-row">
+      <a class="splash-button" href="{{ page.register_url }}">Create account</a>
+      <a class="short-link-secondary" href="{{ page.login_url }}">Log in</a>
+    </div>
+    {% endif %}
+    {% elif page.kind == "email_unvalidated" %}
+    <p class="invite-message" role="status">{{ page.message }}</p>
+    <h1 id="inviteHeading" class="short-link-heading">{{ page.heading }}</h1>
+    {{ back_link(page) }}
+    {% elif page.kind == "error" %}
+    <p class="invite-message" role="{{ page.message_role or 'alert' }}">{{ page.message }}</p>
+    <h1 id="inviteHeading" class="short-link-heading">{{ page.heading }}</h1>
+    {{ back_link(page) }}
+    {% else %}
+    <h1 id="inviteHeading" class="short-link-heading">{{ invite_strings.DEAD_HEADING }}</h1>
+    <p class="short-link-hint">{{ invite_strings.DEAD_HINT }}</p>
+    {% if page.show_home_link %}
+    <div class="short-link-cta-row">
+      <a class="splash-button" href="/">{{ invite_strings.GO_TO_APP_LABEL }}</a>
+    </div>
+    {% endif %}
+    {% endif %}
+  </section>
+</main>
+
+<!-- Initialized by frontend/invite.ts -->
+<script nonce="{{ nonce }}" type="module" src="{{ vite_asset('invite.ts') }}"></script>
+{% endblock %}

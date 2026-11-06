@@ -37,6 +37,7 @@ class EventName(StrEnum):
     EMAIL_VERIFIED = "email_verified"
     INVITE_LINK_CREATED = "invite_link_created"
     INVITE_LINK_REVOKED = "invite_link_revoked"
+    INVITE_LINK_VIEWED = "invite_link_viewed"
     LOGIN_FAILURE = "login_failure"
     LOGIN_SUCCESS = "login_success"
     MEMBER_ADDED = "member_added"

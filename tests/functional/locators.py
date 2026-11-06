@@ -929,6 +929,26 @@ class ShortLinkPageLocators(GenericPageLocator):
     VALID_LINK_HEADING = "#shortLinkHeading"
 
 
+class InvitePageLocators(GenericPageLocator):
+    """A collector class for the public UTub invite page (``/invite/<token>``)"""
+
+    MAIN = "#InviteMain"
+    PANEL = f"{MAIN} .short-link-panel"
+    HEADING = "#inviteHeading"
+    DESCRIPTION = f"{MAIN} .invite-description"
+    MESSAGE = f"{MAIN} .invite-message"
+    JOIN_FORM = "#inviteJoinForm"
+    BUTTON_JOIN = "#inviteJoinBtn"
+    JOIN_STATUS = "#inviteJoinStatus"
+    CTA_ROW = f"{MAIN} .short-link-cta-row"
+    LINK_NOT_NOW = f"{MAIN} a.short-link-secondary[href='/home']"
+    LINK_LOG_IN = f"{MAIN} a.short-link-secondary"
+    LINK_CREATE_ACCOUNT = f"{MAIN} a.splash-button"
+    LINK_GO_TO_APP = f"{MAIN} a.splash-button[href='/']"
+    ANY_ROOT_LINK = "a[href='/']"
+    NAVBAR_BRAND_SPAN = "span.navbar-brand"
+
+
 class ModalLocators:
     """A collector class for general modal locators"""
 

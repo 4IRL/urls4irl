@@ -5353,6 +5353,140 @@
         }
       }
     },
+    "/invite/{token}": {
+      "get": {
+        "operationId": "invitePage",
+        "tags": ["members"],
+        "security": [],
+        "description": "Public invite-link landing page. Shows who invited the visitor to which UTub (200) for a live link, a Confirm-your-email page (200) for an unconfirmed viewer, and redirects a member into the UTub (302). Every dead, unknown or malformed token returns the same 404 page.",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Documents an HTML page render (not a JSON body) returned for an\n    error/reject state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessEnvelope"
+                }
+              }
+            }
+          },
+          "302": {
+            "description": "Documents an HTML page render (not a JSON body) returned for an\n    error/reject state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HtmlErrorPageSchema"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HtmlErrorPageSchema"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/invite/{token}/join": {
+      "post": {
+        "operationId": "joinInvitePage",
+        "tags": ["members"],
+        "security": [
+          {
+            "csrfToken": []
+          }
+        ],
+        "description": "Join the UTub an invite link belongs to from the public invite page's plain form (CSRF-protected). Redirects into the UTub (302); a dead, unknown or malformed token is the uniform 404 page, an unconfirmed email the Confirm-your-email page (403), and a logged-out visitor the log-in page (401).",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Documents an HTML page render (not a JSON body) returned for an\n    error/reject state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HtmlErrorPageSchema"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HtmlErrorPageSchema"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HtmlErrorPageSchema"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HtmlErrorPageSchema"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/utubs/{utub_id}/invite-link": {
       "get": {
         "operationId": "getInviteLink",
@@ -6400,6 +6534,7 @@
                 "email_verified",
                 "invite_link_created",
                 "invite_link_revoked",
+                "invite_link_viewed",
                 "login_failure",
                 "login_success",
                 "member_added",
@@ -6769,6 +6904,7 @@
                 "email_verified",
                 "invite_link_created",
                 "invite_link_revoked",
+                "invite_link_viewed",
                 "login_failure",
                 "login_success",
                 "member_added",
@@ -13836,6 +13972,11 @@
         "x-enum-varnames": ["INVALID_FORM_INPUT"],
         "description": "Error codes for ContactErrorCodes"
       },
+      "HtmlErrorPageSchema": {
+        "description": "Documents an HTML page render (not a JSON body) returned for an\nerror/reject state.",
+        "properties": {},
+        "type": "object"
+      },
       "MetricsIngestEvent": {
         "additionalProperties": false,
         "description": "One UI metrics event submitted by the browser.\n\nPer-event dimension validation lives at the route layer\n(`validate_dimensions(...)`) \u2014 not in a `@model_validator` here. Pydantic\nv2 wraps `ValueError`/`AssertionError` raised inside validators, but a\n`ValidationError` raised inside a validator does NOT round-trip cleanly\nthrough that wrapper, so dimension shape checks happen post-decoration.",
@@ -14710,11 +14851,6 @@
           }
         },
         "required": ["window_start", "window_end", "buckets"],
-        "type": "object"
-      },
-      "HtmlErrorPageSchema": {
-        "description": "Documents an HTML page render (not a JSON body) returned for an\nerror/reject state.",
-        "properties": {},
         "type": "object"
       },
       "RegisterRequest": {
