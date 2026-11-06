@@ -57,6 +57,7 @@ from tests.functional.playwright_utils import (
     get_url_row_by_id,
     invalidate_csrf_token_on_page,
     wait_for_element_presence,
+    wait_for_page_complete_and_dom_stable,
     wait_then_click_element,
     wait_then_get_element,
     wait_until_hidden,
@@ -996,6 +997,9 @@ def test_create_url_when_utub_tag_applied(
     url_string = MOCK_URL_STRINGS[0] + "extraextra"
 
     fill_create_url_form(page=page, url_title=url_title, url_string=url_string)
+    # The tag filter's request and the create form's open animation must be done
+    # before the click, or it can hang while the page is still busy.
+    wait_for_page_complete_and_dom_stable(page=page)
     wait_then_click_element(page=page, css_selector=HPL.BUTTON_URL_SUBMIT_CREATE)
 
     # Wait for HTTP request to complete
