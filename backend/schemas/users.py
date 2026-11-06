@@ -89,6 +89,10 @@ class UtubSummaryItemSchema(BaseSchema):
         alias=MODELS.IS_LOCKED,
         description="Whether the UTub is locked (frozen to all user mutations)",
     )
+    is_pinned: bool = Field(
+        alias=MODELS.IS_PINNED,
+        description="Whether the requesting user pinned this UTub to the top of their list",
+    )
     url_count: int = Field(
         alias=MODELS.URL_COUNT,
         description="Number of live (non-trashed) URLs in the UTub",
@@ -199,6 +203,7 @@ class UtubSummaryListSchema(BaseSchema):
                     name=membership.to_utub.name,
                     member_role=membership.member_role.value,
                     is_locked=membership.to_utub.is_locked,
+                    is_pinned=membership.pinned_at is not None,
                     url_count=counts[membership.to_utub.id][0],
                     member_count=counts[membership.to_utub.id][1],
                     created_at=membership.to_utub.created_at,

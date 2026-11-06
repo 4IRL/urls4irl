@@ -4908,6 +4908,43 @@
     {
       "blueprint": "utubs",
       "decorators": [
+        "utub_membership_required",
+        "api_route"
+      ],
+      "endpoint": "utubs.update_utub_pin",
+      "handler": "backend/utubs/routes.py:update_utub_pin",
+      "js": {
+        "indirect": null,
+        "no_js": null,
+        "route_keys": [
+          "updateUTubPin"
+        ],
+        "template_url_for": []
+      },
+      "methods": [
+        "PATCH"
+      ],
+      "rule": "/utubs/<int:utub_id>/pin",
+      "schemas": {
+        "query": null,
+        "request": "backend.schemas.requests.utubs.UpdateUTubPinRequest",
+        "response": "backend.schemas.utubs.UtubPinUpdatedResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.utubs.UtubPinUpdatedResponseSchema",
+          "400": "backend.schemas.errors.ErrorResponse",
+          "403": "backend.schemas.errors.ErrorResponse",
+          "404": "backend.schemas.errors.ErrorResponse",
+          "409": "backend.schemas.errors.ErrorResponse"
+        }
+      },
+      "services": [
+        "backend.utubs.services.update_utub_pin:update_utub_pin_if_changed"
+      ],
+      "templates": []
+    },
+    {
+      "blueprint": "utubs",
+      "decorators": [
         "email_validation_required",
         "api_route"
       ],

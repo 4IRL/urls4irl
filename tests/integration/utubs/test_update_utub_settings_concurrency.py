@@ -32,11 +32,11 @@ from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.utub_strs import UTUB_FAILURE
 from backend.utubs.constants import UTubErrorCodes
 from backend.utubs.guards import lock_and_reauthorize
+from tests.integration.invite_links.concurrency_helpers import run_concurrently
 from tests.integration.utubmembers.test_owner_mutation_concurrency import (
     BARRIER_TIMEOUT_SECONDS,
     OWNER_USER_ID,
     _request_as_owner,
-    _run_concurrently,
     committed_owner_utub,  # noqa: F401  (fixture reused as a base seed)
 )
 from tests.settings_stub import URLS_DEFAULTS
@@ -210,7 +210,7 @@ def test_concurrent_patches_to_different_sections_both_persist(
     url = _settings_url(app, utub_id)
 
     with mock.patch(SERVICE_LOCK_PATH, _barriered_lock_and_reauthorize()):
-        results = _run_concurrently(
+        results = run_concurrently(
             {
                 "urls": lambda: _request_as_owner(
                     app, OWNER_USER_ID, "patch", url, {"urls": {"stub_flag": True}}

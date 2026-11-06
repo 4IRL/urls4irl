@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, field_validator
 
 from backend.schemas.requests._sanitize import OptionalSanitizedStr, SanitizedStr
 from backend.utils.constants import UTUB_CONSTANTS
@@ -102,4 +102,15 @@ class UpdateMemberSettingsRequest(BaseModel):
     tags: dict[str, Any] = Field(
         default_factory=dict,
         description="Patch for the caller's Tags panel display overrides",
+    )
+
+
+class UpdateUTubPinRequest(BaseModel):
+    """Pin or unpin one UTub for the caller. ``pinned`` is required, strictly a
+    boolean and never ``null``; unknown keys are rejected."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    pinned: StrictBool = Field(
+        description="True to pin the UTub for the caller, false to unpin it",
     )

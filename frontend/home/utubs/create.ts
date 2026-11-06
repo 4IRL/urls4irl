@@ -303,6 +303,7 @@ function createUTubSuccess(response: CreateUtubResponse): void {
       memberRole: APP_CONFIG.constants.MEMBER_ROLES.CREATOR,
       // A newly created UTub is never locked.
       isLocked: false,
+      isPinned: false,
       urlCount: 0,
       memberCount: 1,
       createdAt: nowISO,

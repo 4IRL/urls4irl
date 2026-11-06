@@ -161,6 +161,10 @@ class ExportUtubSchema(BaseSchema):
         alias="joinedAt",
         description="When the acting user joined this UTub (ISO 8601), or null when not recorded",
     )
+    pinned: bool = Field(
+        alias="pinned",
+        description="Whether the acting user pinned this UTub",
+    )
     member_settings: dict | None = Field(
         default=None,
         alias="memberSettings",

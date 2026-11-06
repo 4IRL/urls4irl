@@ -238,6 +238,36 @@ def test_data_export_core_exports_own_joined_at_never_others(
     assert "2019-08-09" not in serialized
 
 
+def test_data_export_core_exports_own_pinned_state_never_others(
+    login_first_user_with_distinct_stats: Tuple[FlaskClient, Users, Flask],
+) -> None:
+    """Each exported UTub carries ``pinned`` for the exporting user's own
+    membership only: other members' pins never make it true."""
+    _logged_in_client, seeded_user, app = login_first_user_with_distinct_stats
+
+    with app.app_context():
+        own_memberships = Utub_Members.query.filter(
+            Utub_Members.user_id == seeded_user.id
+        ).all()
+        pinned_utub_id = own_memberships[0].utub_id
+        for membership in Utub_Members.query.all():
+            if membership.user_id != seeded_user.id:
+                membership.pinned_at = utc_now()
+            elif membership.utub_id == pinned_utub_id:
+                membership.pinned_at = utc_now()
+        db.session.commit()
+        pinned_utub_name = Utubs.query.get(pinned_utub_id).name
+        export = build_user_data_export_core(
+            user=Users.query.get(seeded_user.id), generated_at=utc_now()
+        )
+
+    payload = export.model_dump(by_alias=True, mode="json")
+    assert len(payload["utubs"]) > 1
+    assert all(isinstance(utub["pinned"], bool) for utub in payload["utubs"])
+    pinned_names = [utub["name"] for utub in payload["utubs"] if utub["pinned"]]
+    assert pinned_names == [pinned_utub_name]
+
+
 def test_data_export_core_includes_trashed_utub(
     login_first_user_with_distinct_stats: Tuple[FlaskClient, Users, Flask],
 ) -> None:

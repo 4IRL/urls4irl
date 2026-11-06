@@ -1,6 +1,7 @@
 from backend.utils.strings.json_strs import FAILURE_GENERAL
 from backend.utils.strings.model_strs import UTUB_DESCRIPTION
 from backend.utils.strings.user_settings_strs import USER_SETTINGS_STRINGS
+from backend.utubs.constants import MAX_PINNED_UTUBS
 
 # Strings for utub success
 UTUB_ID = "utubID"
@@ -32,6 +33,9 @@ UTUB_ROW_URL_SINGULAR = "URL"
 UTUB_ROW_URL_PLURAL = "URLs"
 UTUB_ROW_MEMBER_SINGULAR = "member"
 UTUB_ROW_MEMBER_PLURAL = "members"
+# Visually-hidden label inside a pinned UTub row, shared by the Jinja card and
+# the TS-built row.
+UTUB_PINNED_ROW_LABEL = "Pinned"
 # Transient "Saved ✓" acknowledgment shown next to a field after a successful
 # per-field save on the mobile consolidated edit panels (UTub header + URL card).
 # Shared across all four fields; the "✓" glyph is decorative markup, not bridged.
@@ -169,6 +173,20 @@ UTUB_LIST_SETTINGS_LIST_TOTALS_LABEL = "Show list totals"
 UTUB_LIST_SETTINGS_LIST_TOTALS_DESC = 'The number beside "UTubs" and on Trash.'
 UTUB_LIST_SETTINGS_LIST_TOTALS_SHOWN_NOTICE = "List totals shown"
 UTUB_LIST_SETTINGS_LIST_TOTALS_HIDDEN_NOTICE = "List totals hidden"
+# UTubs gear "Pinned UTubs" section (read by TS, fully bridged). `{name}`, `{count}`
+# and `{max}` are replaced in TS. UTUB_PINS_CAP_REACHED is defined with the other
+# failure strings below and bridged alongside these.
+UTUB_PINS_SECTION_TITLE = "Pinned UTubs"
+UTUB_PINS_DESC = "Pinned UTubs stay at the top of your list."
+UTUB_PINS_EMPTY_HINT = "No pinned UTubs yet."
+UTUB_PINS_NONE_LEFT_HINT = "No UTubs left to pin."
+UTUB_PINS_UTUB_GONE = "That UTub is no longer available. Your pins were refreshed."
+UTUB_PINS_PICKER_PLACEHOLDER = "Pin a UTub…"
+UTUB_PINS_NO_MATCH = "No UTubs match."
+UTUB_PINS_COUNTER = "{count} of {max}"
+UTUB_PINS_UNPIN_LABEL = "Unpin {name}"
+UTUB_PINS_PINNED_NOTICE = "{name} pinned. {count} of {max}"
+UTUB_PINS_UNPINNED_NOTICE = "{name} unpinned. {count} of {max}"
 # Gear aria-label/tooltip text: Jinja-only, asserted by a Python integration test, so
 # backend constants only (not bridged to TS).
 PANEL_SETTINGS_GEAR_UTUBS = "UTubs settings"
@@ -202,6 +220,12 @@ UNABLE_TO_MODIFY_UTUB_SETTINGS = "Unable to modify UTub settings."
 HIDE_SCHEME_SELECTOR_REQUIRES_HTTPS = (
     "The scheme selector can only be hidden when the default scheme is https."
 )
+UTUB_PINS_CAP_REACHED = (
+    f"You can pin up to {MAX_PINNED_UTUBS} UTubs. Unpin one to pin another."
+)
+UTUB_PINNED = "UTub pinned."
+UTUB_UNPINNED = "UTub unpinned."
+UTUB_PIN_NO_CHANGE = "No change to the UTub pin."
 UTUB_DESC_TOO_LONG = "UTub description is too long."
 UTUB_DESC_FIELD_TOO_LONG = ["Field cannot be longer than 500 characters."]
 UTUB_NAME_FIELD_INVALID = ["Field must be between 1 and 30 characters long."]
@@ -214,6 +238,7 @@ class UTUB_FAILURE(UTUB_GENERAL, FAILURE_GENERAL):
     UNABLE_TO_MAKE_UTUB = UNABLE_TO_MAKE_UTUB
     UNABLE_TO_MODIFY_UTUB_DESC = UNABLE_TO_MODIFY_UTUB_DESC
     UNABLE_TO_MODIFY_UTUB_SETTINGS = UNABLE_TO_MODIFY_UTUB_SETTINGS
+    UTUB_PINS_CAP_REACHED = UTUB_PINS_CAP_REACHED
     UTUB_DESC_TOO_LONG = UTUB_DESC_TOO_LONG
     UTUB_DESC_FIELD_TOO_LONG = UTUB_DESC_FIELD_TOO_LONG
     UTUB_NAME_FIELD_INVALID = UTUB_NAME_FIELD_INVALID

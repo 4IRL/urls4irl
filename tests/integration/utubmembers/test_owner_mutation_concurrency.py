@@ -35,6 +35,7 @@ from backend.utils.strings.user_strs import MEMBER_FAILURE
 from backend.utils.strings.utub_strs import UTUB_FAILURE
 from backend.utubs.guards import lock_and_reauthorize
 from tests.conftest import AjaxFlaskLoginClient
+from tests.integration.invite_links.concurrency_helpers import run_concurrently
 from tests.integration.utils import flush_member_add_lookup_keys
 from tests.models_for_test import valid_user_1, valid_user_2, valid_user_3
 from tests.utils_for_test import get_csrf_token, set_member_role
@@ -42,7 +43,6 @@ from tests.utils_for_test import get_csrf_token, set_member_role
 pytestmark = pytest.mark.members
 
 BARRIER_TIMEOUT_SECONDS = 5
-THREAD_JOIN_TIMEOUT_SECONDS = 30
 OWNER_USER_ID = 1
 
 # Not a member of the seeded UTub: the add-member race test adds them.
@@ -129,38 +129,6 @@ def committed_owner_utub(
         client.flushdb()
 
 
-def _run_concurrently(
-    callables: dict[str, Callable[[], ThreadResult]],
-) -> dict[str, ThreadResult]:
-    """Run each callable on its own daemon thread; return results by label."""
-    results: dict[str, ThreadResult] = {}
-    thread_errors: list[BaseException] = []
-    results_lock = threading.Lock()
-
-    def _worker(label: str, target: Callable[[], ThreadResult]) -> None:
-        try:
-            result = target()
-            with results_lock:
-                results[label] = result
-        except BaseException as thread_error:
-            with results_lock:
-                thread_errors.append(thread_error)
-
-    threads = [
-        threading.Thread(target=_worker, args=(label, target), daemon=True)
-        for label, target in callables.items()
-    ]
-    for thread in threads:
-        thread.start()
-    for thread in threads:
-        thread.join(timeout=THREAD_JOIN_TIMEOUT_SECONDS)
-
-    stuck = [thread for thread in threads if thread.is_alive()]
-    assert stuck == [], "request threads still running after join timeout"
-    assert thread_errors == []
-    return results
-
-
 def _request_as_owner(
     app: Flask,
     user_id: int,
@@ -235,7 +203,7 @@ def test_concurrent_double_transfer_exactly_one_succeeds(
         "backend.api_common.auth_decorators.is_current_utub_owner",
         _barriered_owner_check(),
     ):
-        results = _run_concurrently(
+        results = run_concurrently(
             {
                 "to_second": lambda: _request_as_owner(
                     app,
@@ -294,7 +262,7 @@ def test_concurrent_transfer_and_demote_new_owner_keeps_one_creator(
         "backend.api_common.auth_decorators.is_current_utub_owner",
         _barriered_owner_check(),
     ):
-        results = _run_concurrently(
+        results = run_concurrently(
             {
                 "transfer": lambda: _request_as_owner(
                     app,
@@ -361,7 +329,7 @@ def test_concurrent_double_remove_member_one_success_one_404(
         "backend.members.services.delete_members.lock_and_reauthorize",
         _barriered_lock_and_reauthorize(),
     ):
-        results = _run_concurrently(
+        results = run_concurrently(
             {
                 "first": lambda: _request_as_owner(
                     app, OWNER_USER_ID, "delete", remove_url, {}
@@ -424,7 +392,7 @@ def test_concurrent_double_add_member_one_success_one_400(
         "backend.members.services.create_members._check_if_member_already_in_utub",
         _barriered_membership_check(),
     ):
-        results = _run_concurrently(
+        results = run_concurrently(
             {
                 "first": lambda: _request_as_owner(
                     app, OWNER_USER_ID, "post", add_url, body

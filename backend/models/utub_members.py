@@ -50,6 +50,10 @@ class Utub_Members(db.Model):
     last_opened_at: datetime | None = Column(
         DateTime(timezone=True), nullable=True, default=None, name="lastOpenedAt"
     )
+    # When this member pinned the UTub; NULL = not pinned.
+    pinned_at: datetime | None = Column(
+        DateTime(timezone=True), nullable=True, default=None, name="pinnedAt"
+    )
 
     # Sparse per-member view overrides for this UTub; NULL = all defaults.
     settings: dict | None = Column(

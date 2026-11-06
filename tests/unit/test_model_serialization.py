@@ -346,6 +346,7 @@ def test_user_utub_data_serialized_on_initial_load():
                 MODEL_STRS.NAME: new_utub.name,
                 MODEL_STRS.MEMBER_ROLE: Member_Role.CREATOR.value,
                 MODEL_STRS.IS_LOCKED: new_utub.is_locked,
+                MODEL_STRS.IS_PINNED: False,
                 MODEL_STRS.URL_COUNT: 2,
                 MODEL_STRS.MEMBER_COUNT: 1,
                 MODEL_STRS.CREATED_AT: to_iso_milliseconds(new_utub.created_at),

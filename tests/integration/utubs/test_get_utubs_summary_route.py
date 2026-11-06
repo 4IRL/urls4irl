@@ -50,6 +50,7 @@ SUMMARY_ITEM_KEYS = {
     MODELS.NAME,
     MODELS.MEMBER_ROLE,
     MODELS.IS_LOCKED,
+    MODELS.IS_PINNED,
     MODELS.URL_COUNT,
     MODELS.MEMBER_COUNT,
     MODELS.CREATED_AT,
@@ -66,6 +67,7 @@ def _expected_summary_item(member: Utub_Members) -> dict:
         MODELS.NAME: utub.name,
         MODELS.MEMBER_ROLE: member.member_role.value,
         MODELS.IS_LOCKED: utub.is_locked,
+        MODELS.IS_PINNED: member.pinned_at is not None,
         MODELS.URL_COUNT: Utub_Urls.query.filter(
             Utub_Urls.utub_id == utub.id, Utub_Urls.deleted_at.is_(None)
         ).count(),
