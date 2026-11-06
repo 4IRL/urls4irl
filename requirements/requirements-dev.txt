@@ -11,5 +11,5 @@ platformdirs==4.14.5
 pre-commit==3.7.0
 pyopenssl==26.4.0
 python-discovery==1.9.4
-virtualenv==21.14.9
+virtualenv==21.14.13
 -r requirements-test.txt
