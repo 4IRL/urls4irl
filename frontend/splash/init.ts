@@ -8,6 +8,7 @@ import { NAVBAR_TOGGLER } from "./navbar.js";
 import { initLoginForm } from "./login-form.js";
 import { initRegisterForm } from "./register-form.js";
 import { initRegisterConfirmationModal } from "./register-confirmation-form.js";
+import { initConfirmEmailForm } from "./confirm-email-form.js";
 import { initForgotPasswordForm } from "./forgot-password-form.js";
 import {
   initEmailValidationForm,
@@ -51,6 +52,9 @@ export function initSplash(): void {
   initLoginForm($("#LoginModal"));
   initRegisterForm($("#RegisterModal"));
   initRegisterConfirmationModal($("#RegisterConfirmationModal"));
+  if ($("#LoginModal").length > 0) {
+    initConfirmEmailForm($("#ConfirmEmailModal"), { mode: "inline" });
+  }
   initForgotPasswordForm($("#ForgotPasswordModal"));
 
   // Auto-show email validation modal for authenticated-but-not-validated users
@@ -193,41 +197,6 @@ export function showSplashModalAlertBanner(
 
 export function disableInputFields($modal: JQuery): void {
   $modal.find("input").attr("disabled", "disabled");
-}
-
-export function handleUserHasAccountNotEmailValidated(
-  $sourceModal: JQuery,
-  message: string,
-): void {
-  log("user-has-account-not-email-validated banner shown", {
-    sourceModal: $sourceModal.attr("id"),
-  });
-  const logoutOnExit = createLogoutOnExit();
-
-  $sourceModal.find(".form-control").removeClass("is-invalid");
-  $sourceModal.find(".invalid-feedback").remove();
-  $sourceModal.find(".to-forgot-password").remove();
-  const alertBanner = $sourceModal.find("#SplashModalAlertBanner");
-  alertBanner
-    .removeClass("d-none")
-    .removeClass("alert-banner-splash-modal-hide")
-    .addClass("alert-info alert-banner-splash-modal-show")
-    .append($("<div>" + message + "</div>"))
-    .append(
-      $(
-        `<button type="button" class="btn btn-link btn-block">${APP_CONFIG.strings.VALIDATE_MY_EMAIL}</button>`,
-      ).offAndOn("click", () => {
-        $sourceModal.off("hide.bs.modal", logoutOnExit);
-        emailValidationModalOpener($sourceModal);
-      }),
-    );
-
-  $sourceModal.find(".register-to-login-footer").remove();
-  $sourceModal.find(".modal-footer").remove();
-  $sourceModal.find(".oauth-divider").remove();
-  $sourceModal.find(".oauth-google-button").remove();
-  $sourceModal.find(".oauth-github-button").remove();
-  $sourceModal.one("hide.bs.modal", logoutOnExit);
 }
 
 export function handleImproperFormErrors(

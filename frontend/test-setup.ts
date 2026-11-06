@@ -128,6 +128,7 @@ const appConfig = {
   },
   constants: {
     UTUBS_MIN_NAME_LENGTH: 1,
+    EMAIL_RESEND_COOLDOWN_SECONDS: 60,
     // Source of truth: backend/metrics/flow_limits.py
     METRIC_FLOWS_MIN_STEPS: 2,
     METRIC_FLOWS_MAX_STEPS: 8,
@@ -531,7 +532,7 @@ const appConfig = {
     CROSS_SEARCH_TRIGGER_CLOSE_LABEL: "Close search",
     CROSS_SEARCH_SUBMIT_LABEL: "Search across your UTubs",
     CROSS_SEARCH_REFRESH_LABEL: "Refresh these search results",
-    VALIDATE_MY_EMAIL: "Validate My Email",
+    CONFIRM_EMAIL_RESEND_COOLDOWN: "Sent — resend in a minute",
     REGISTRATION_EMAIL_RESEND_SENDING: "Sending…",
     REGISTRATION_EMAIL_RESENT: "Confirmation email resent — check your inbox.",
     REGISTRATION_EMAIL_RESEND_ERROR:

@@ -14,15 +14,11 @@ from backend.models.email_validations import Email_Validations
 from backend.models.users import Users
 from backend.models.utils import VerifyTokenResponse
 from backend.schemas.errors import LoginEmailNotValidatedErrorResponse
-from backend.schemas.users import EmailValidationResponseSchema
-from backend.splash.constants import EmailValidationErrorCodes, LoginErrorCodes
+from backend.splash.constants import LoginErrorCodes
 from backend.splash.utils import verify_token
 from backend.utils.all_routes import ROUTES
-from backend.utils.constants import EMAIL_CONSTANTS
-from backend.utils.datetime_utils import utc_now
 from backend.utils.strings.email_validation_strs import (
     EMAILS,
-    EMAILS_FAILURE,
 )
 from backend.utils.strings.html_identifiers import IDENTIFIERS
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
@@ -30,33 +26,9 @@ from backend.utils.strings.splash_form_strs import REGISTER_FORM
 from backend.utils.strings.user_strs import MEMBER_SUCCESS, USER_FAILURE
 from tests.integration.splash.conftest import register_json
 from tests.integration.system.metrics_helpers import count_counter_keys
-from tests.integration.utils import assert_response_conforms_to_schema
 from tests.models_for_test import valid_user_1
 
 pytestmark = pytest.mark.splash
-
-
-def _register_and_login_unvalidated(client, csrf_token, user_data=valid_user_1):
-    """Register then log in an unvalidated user so /send-validation-email has a
-    session.
-
-    Register no longer logs the user in (opacity change); login logs an
-    unvalidated user in — before returning its 401 — precisely so they can
-    request a validation-email resend.
-    """
-    client.post(
-        url_for(ROUTES.SPLASH.REGISTER),
-        json=register_json(user_data),
-        headers={"X-CSRFToken": csrf_token},
-    )
-    client.post(
-        url_for(ROUTES.SPLASH.LOGIN),
-        json={
-            REGISTER_FORM.USERNAME: user_data[REGISTER_FORM.USERNAME],
-            REGISTER_FORM.PASSWORD: user_data[REGISTER_FORM.PASSWORD],
-        },
-        headers={"X-CSRFToken": csrf_token},
-    )
 
 
 def test_registered_user_is_not_email_validated(app, load_register_page):
@@ -387,137 +359,3 @@ def test_expired_token_accessed_shows_error_to_user(
     )
 
     assert EMAILS.TOKEN_EXPIRED.encode() in response.data
-
-
-def test_success_on_send_of_email(app, load_register_page):
-    """
-    GIVEN a user trying to validate email after registering
-    WHEN they request a validation email
-    THEN ensure that server responds with a success and proper JSON
-
-    Proper JSON response is as follows:
-    {
-        STD_JSON.STATUS : STD_JSON.SUCCESS,
-        STD_JSON.MESSAGE: EMAILS.EMAIL_SENT
-    }
-    """
-    client, csrf_token = load_register_page
-
-    _register_and_login_unvalidated(client, csrf_token)
-    send_email_response = client.post(
-        url_for(ROUTES.SPLASH.SEND_VALIDATION_EMAIL),
-        headers={"X-CSRFToken": csrf_token},
-    )
-
-    email_send_json = send_email_response.json
-    assert send_email_response.status_code == 200
-    assert email_send_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
-    assert email_send_json[STD_JSON.MESSAGE] == EMAILS.EMAIL_SENT
-
-
-def test_min_rate_limiting_of_sending_email(app, load_register_page):
-    """
-    GIVEN a user trying to validate email after registering
-    WHEN they request a validation email twice within a minute
-    THEN ensure that the second attempt responds in an error with a JSON
-
-    Proper JSON response is as follows:
-    {
-        STD_JSON.STATUS : STD_JSON.FAILURE,
-        STD_JSON.MESSAGE: "{Max Attempts in 1 Hr - attempts used}" + EMAILS_FAILURE.TOO_MANY_ATTEMPTS,
-        STD_JSON.ERROR_CODE: Integer representing the failure code, 2 for too many attempts within 1 minute
-    }
-    """
-    client, csrf_token = load_register_page
-
-    _register_and_login_unvalidated(client, csrf_token)
-    client.post(
-        url_for(ROUTES.SPLASH.SEND_VALIDATION_EMAIL),
-        headers={"X-CSRFToken": csrf_token},
-    )
-
-    send_second_email_response = client.post(
-        url_for(ROUTES.SPLASH.SEND_VALIDATION_EMAIL),
-        headers={"X-CSRFToken": csrf_token},
-    )
-    second_email_send_json = send_second_email_response.json
-
-    assert send_second_email_response.status_code == 429
-    assert second_email_send_json[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert (
-        int(second_email_send_json[STD_JSON.ERROR_CODE])
-        == EmailValidationErrorCodes.MAX_TIME_EMAIL_VALIDATION_ATTEMPTS
-    )
-    assert (
-        second_email_send_json[STD_JSON.MESSAGE]
-        == str(EMAIL_CONSTANTS.MAX_EMAIL_ATTEMPTS_IN_HOUR - 1)
-        + EMAILS_FAILURE.TOO_MANY_ATTEMPTS
-    )
-
-
-def test_max_rate_limiting_of_sending_email(app, load_register_page):
-    """
-    GIVEN a user trying to validate email after registering
-    WHEN they request a validation email more than 5 times in one hour
-    THEN ensure that the second attempt responds in an error with a JSON
-
-    Proper JSON response is as follows:
-    {
-        STD_JSON.STATUS : STD_JSON.FAILURE,
-        STD_JSON.MESSAGE: "{Max Attempts in 1 Hr - attempts used}" + EMAILS_FAILURE.TOO_MANY_ATTEMPTS,
-        STD_JSON.ERROR_CODE: Integer representing the failure code, 1 for too many attempts within 1 hr
-    }
-    """
-    client, csrf_token = load_register_page
-
-    _register_and_login_unvalidated(client, csrf_token)
-
-    with app.app_context():
-        user: Users = Users.query.filter(
-            Users.email == valid_user_1[REGISTER_FORM.EMAIL].lower()
-        ).first()
-        user.email_confirm.attempts = EMAIL_CONSTANTS.MAX_EMAIL_ATTEMPTS_IN_HOUR + 1
-        user.email_confirm.last_attempt = utc_now()
-        db.session.commit()
-
-    email_response = client.post(
-        url_for(ROUTES.SPLASH.SEND_VALIDATION_EMAIL),
-        headers={"X-CSRFToken": csrf_token},
-    )
-    email_response_json = email_response.json
-
-    assert email_response.status_code == 429
-    assert email_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert (
-        int(email_response_json[STD_JSON.ERROR_CODE])
-        == EmailValidationErrorCodes.MAX_TOTAL_EMAIL_VALIDATION_ATTEMPTS
-    )
-    assert email_response_json[STD_JSON.MESSAGE] == EMAILS_FAILURE.TOO_MANY_ATTEMPTS_MAX
-
-
-def test_send_validation_email_response_conforms_to_schema(app, load_register_page):
-    """
-    GIVEN a registered but non-email-validated user who is logged in
-    WHEN they request a validation email via POST to "/send-validation-email"
-    THEN ensure the 200 JSON response conforms to EmailValidationResponseSchema
-    """
-    client, csrf_token = load_register_page
-
-    # Register + log in (register no longer logs the user in; login logs an
-    # unvalidated user in so they can request a resend)
-    _register_and_login_unvalidated(client, csrf_token)
-
-    # Request validation email
-    send_email_response = client.post(
-        url_for(ROUTES.SPLASH.SEND_VALIDATION_EMAIL),
-        headers={"X-CSRFToken": csrf_token},
-    )
-
-    assert send_email_response.status_code == 200
-    response_json = send_email_response.json
-
-    assert_response_conforms_to_schema(
-        response_json,
-        EmailValidationResponseSchema,
-        {STD_JSON.STATUS, STD_JSON.MESSAGE},
-    )

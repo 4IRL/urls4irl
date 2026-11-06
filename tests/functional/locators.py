@@ -852,6 +852,13 @@ class SplashPageLocators(GenericPageLocator):
     BACK_TO_LOGIN_FROM_CONFIRMATION = "#BackToLoginFromConfirmation"
     HEADER_REGISTER_CONFIRMATION = "#RegisterConfirmationModalLabel"
 
+    # "Confirm your email" modal (shown after a login on an unconfirmed account)
+    CONFIRM_EMAIL_MODAL = "#ConfirmEmailModal"
+    CONFIRM_EMAIL_MODAL_ALERT = f"{CONFIRM_EMAIL_MODAL} #SplashModalAlertBanner"
+    HEADER_CONFIRM_EMAIL = "#ConfirmEmailModalLabel"
+    RESEND_CONFIRMATION_EMAIL_BUTTON = "#ResendConfirmationEmail"
+    BACK_TO_LOGIN_FROM_CONFIRM_EMAIL = "#BackToLoginFromConfirmEmail"
+
     # Login
     BUTTON_REGISTER_FROM_LOGIN = "#ToRegisterFromLogin"
 

@@ -12,6 +12,7 @@ CONFIRM_PASSWORD_TEXT = "Confirm Password"
 REGISTER = "Register"
 LOGIN = "Login"
 LOGIN_TITLE = "Login!"
+CONFIRM_EMAIL_TITLE = "Confirm your email"
 SEND_EMAIL_VALIDATION = "Resend Validation Email"
 FORGOT_YOUR_PASSWORD = "Forgot your password?"
 EMAILS_NOT_IDENTICAL = "Emails do not match."
@@ -27,6 +28,8 @@ REGISTRATION_EMAIL_RESENT = "Confirmation email resent — check your inbox."
 REGISTRATION_EMAIL_RESEND_ERROR = (
     "Something went wrong resending your email. Please try again."
 )
+# "Confirm your email" modal: resend button label during the cooldown window.
+CONFIRM_EMAIL_RESEND_COOLDOWN = "Sent — resend in a minute"
 
 
 class REGISTER_LOGIN_FORM(GENERAL_FORM):

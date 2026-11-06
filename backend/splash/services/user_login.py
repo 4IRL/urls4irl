@@ -97,10 +97,9 @@ def login_user_to_u4i(username: str, password: str) -> FlaskResponse:
             status_code=403,
         )
 
-    # Log in before email_validated check so unvalidated users can request a resend
-    login_user(user)  # Can add Remember Me functionality here
-
     if not user.email_validated:
+        # No session for an unconfirmed account: the resend token is the only
+        # credential the browser receives.
         warning_log(f"User={user.id} not email validated")
         record_event(
             EventName.LOGIN_FAILURE,
@@ -113,6 +112,7 @@ def login_user_to_u4i(username: str, password: str) -> FlaskResponse:
             resend_token=user.get_resend_validation_token(),
         ).to_response(401)
 
+    login_user(user)  # Can add Remember Me functionality here
     safe_add_log(f"Logging User.id={user.id} in")
 
     # next query param takes user to the page they wanted to originally before being logged in

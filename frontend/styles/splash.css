@@ -238,6 +238,47 @@ form {
     margin-top: 20px;
 }
 
+/* Confirm-your-email modal */
+
+.confirm-email-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--splashGreen);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+    flex-shrink: 0;
+}
+
+.confirm-email-lead {
+    color: var(--darkGrayTextColor);
+    font-size: 1rem;
+    line-height: 1.6;
+}
+
+.confirm-email-actions .btn {
+    min-height: 2.75rem;
+}
+
+.confirm-email-actions .btn:focus-visible {
+    outline: 3px solid var(--deckSelectionGreen);
+    outline-offset: 2px;
+}
+
+.confirm-email-actions .btn[aria-disabled="true"] {
+    opacity: 0.65;
+    cursor: not-allowed;
+}
+
+@media (max-width: 575.98px) {
+    .confirm-email-actions .btn {
+        width: 100%;
+    }
+}
+
 /* OAuth divider + button */
 
 .oauth-divider {

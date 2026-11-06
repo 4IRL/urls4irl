@@ -158,7 +158,6 @@
   "splash/forgot-password-form.ts:handleForgotPasswordSuccess",
   "splash/init.ts:displayFormErrors",
   "splash/init.ts:handleImproperFormErrors",
-  "splash/init.ts:handleUserHasAccountNotEmailValidated",
   "splash/init.ts:showSplashModalAlertBanner",
   "splash/init.ts:switchModal",
   "splash/login-form.ts:handleLogin",

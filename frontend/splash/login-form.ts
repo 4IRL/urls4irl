@@ -8,10 +8,10 @@ import { showNewPageOnAJAXHTMLResponse } from "../lib/page-utils.js";
 import {
   showSplashModalAlertBanner,
   resetModalFormState,
-  handleUserHasAccountNotEmailValidated,
   handleImproperFormErrors,
   switchModal,
 } from "./init.js";
+import { openConfirmEmailModal } from "./confirm-email-form.js";
 import { VALIDATION_FORM } from "../types/metrics-dim-values.js";
 import { debug } from "../lib/debug.js";
 
@@ -20,6 +20,8 @@ const log = debug("splash:login");
 type LoginRequest = Schema<"LoginRequest">;
 type LoginSuccess = SuccessResponse<"login">;
 type LoginError = Schema<"ErrorResponse_LoginErrorCodes">;
+type LoginEmailNotValidatedError =
+  Schema<"LoginEmailNotValidatedErrorResponse">;
 
 /**
  * Initialize login form handlers
@@ -145,9 +147,14 @@ function handleLoginFailure(
     emit({ event: UI_EVENTS.UI_VALIDATION_ERROR, form: VALIDATION_FORM.LOGIN });
     switch (errorJson.errorCode) {
       case 1: {
-        // User found but email not yet validated
-        handleUserHasAccountNotEmailValidated($modal, errorJson.message);
-        $modal.find("input").attr("disabled", "disabled");
+        // Correct password, email not yet confirmed: no session was created.
+        // Hand the signed resend token to the Confirm modal; login stays usable.
+        const notValidatedJson: LoginEmailNotValidatedError = xhr.responseJSON;
+        openConfirmEmailModal({
+          resendToken: notValidatedJson.resendToken ?? "",
+          fromModal: $modal,
+        });
+        $modal.find("#submit").removeAttr("disabled").removeAttr("aria-busy");
         break;
       }
       case 2: {

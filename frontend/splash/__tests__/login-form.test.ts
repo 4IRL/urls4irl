@@ -2,6 +2,7 @@ import { UI_EVENTS } from "../../types/metrics-events.js";
 import { createMockJqXHR } from "../../__tests__/helpers/mock-jquery.js";
 import { showNewPageOnAJAXHTMLResponse } from "../../lib/page-utils.js";
 import { initLoginForm } from "../login-form.js";
+import { openConfirmEmailModal } from "../confirm-email-form.js";
 import { VALIDATION_FORM } from "../../types/metrics-dim-values.js";
 
 const { mockMetricsClient } = await vi.hoisted(
@@ -18,8 +19,11 @@ vi.mock("../init.js", () => ({
   showSplashModalAlertBanner: vi.fn(),
   resetModalFormState: vi.fn(),
   handleImproperFormErrors: vi.fn(),
-  handleUserHasAccountNotEmailValidated: vi.fn(),
   switchModal: vi.fn(),
+}));
+
+vi.mock("../confirm-email-form.js", () => ({
+  openConfirmEmailModal: vi.fn(),
 }));
 
 vi.mock("../../lib/globals.js", () => ({
@@ -172,7 +176,7 @@ describe("login-form double-submit guard", () => {
     expect($modal.find("#submit").attr("aria-busy")).toBe("true");
   });
 
-  it("leaves #submit disabled (and aria-busy) on errorCode=1 (email-not-validated)", () => {
+  it("opens the Confirm modal with the resend token and re-enables #submit on errorCode=1 (email-not-validated)", () => {
     const mockDeferred = createMockJqXHR();
     vi.spyOn($, "ajax").mockReturnValue(mockDeferred);
 
@@ -180,9 +184,37 @@ describe("login-form double-submit guard", () => {
     initLoginForm($modal);
     $modal.find("#submit").trigger("click");
 
-    // disabled-leftover is intentional: handleUserHasAccountNotEmailValidated
-    // removes .modal-footer so re-enable in case 1 would be a silent no-op
-    // (jQuery set is empty); aria-busy is similarly left set.
+    mockDeferred.reject(
+      {
+        status: 401,
+        responseJSON: {
+          errorCode: 1,
+          message: "Email not validated",
+          resendToken: "signed.token",
+        },
+        getResponseHeader: vi.fn(),
+      },
+      "error",
+      "Unauthorized",
+    );
+
+    expect(openConfirmEmailModal).toHaveBeenCalledWith({
+      resendToken: "signed.token",
+      fromModal: expect.anything(),
+    });
+    expect($modal.find("#submit").attr("disabled")).toBeUndefined();
+    expect($modal.find("#submit").attr("aria-busy")).toBeUndefined();
+    expect($modal.find(".to-forgot-password").length).toBe(1);
+    expect($modal.find("input").attr("disabled")).toBeUndefined();
+  });
+
+  it("passes an empty token when the 401 body carries no resendToken", () => {
+    const mockDeferred = createMockJqXHR();
+    vi.spyOn($, "ajax").mockReturnValue(mockDeferred);
+
+    const $modal = $("#LoginModal");
+    initLoginForm($modal);
+    $modal.find("#submit").trigger("click");
     mockDeferred.reject(
       {
         status: 401,
@@ -193,8 +225,10 @@ describe("login-form double-submit guard", () => {
       "Unauthorized",
     );
 
-    expect($modal.find("#submit").attr("disabled")).toBe("disabled");
-    expect($modal.find("#submit").attr("aria-busy")).toBe("true");
+    expect(openConfirmEmailModal).toHaveBeenCalledWith({
+      resendToken: "",
+      fromModal: expect.anything(),
+    });
   });
 
   it("shows the generic credential banner and re-enables #submit on a 400 errorCode=2 failure", async () => {

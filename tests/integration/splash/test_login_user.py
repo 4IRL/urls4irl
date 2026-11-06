@@ -1,5 +1,6 @@
 from copy import deepcopy
 from unittest.mock import MagicMock
+from urllib.parse import urlparse
 
 import pytest
 from flask import Flask, request, url_for
@@ -217,6 +218,10 @@ def test_login_failure_email_unverified_records_metric_with_reason(
     )
 
     assert response.status_code == 401
+    assert current_user.is_authenticated is False
+    home_response = client.get(url_for(ROUTES.UTUBS.HOME))
+    assert home_response.status_code == 302
+    assert urlparse(home_response.location).path == url_for(ROUTES.SPLASH.SPLASH_PAGE)
 
     counter_keys = find_counter_keys(provide_metrics_redis, EventName.LOGIN_FAILURE)
     assert len(counter_keys) == 1
@@ -582,6 +587,12 @@ def test_login_user_not_email_validated(
     )
 
     assert response.status_code == 401
+
+    # No session is created for an unconfirmed account
+    assert current_user.is_authenticated is False
+    home_response = client.get(url_for(ROUTES.UTUBS.HOME))
+    assert home_response.status_code == 302
+    assert urlparse(home_response.location).path == url_for(ROUTES.SPLASH.SPLASH_PAGE)
 
 
 def test_already_logged_in_user_to_splash_page(login_first_user_with_register):

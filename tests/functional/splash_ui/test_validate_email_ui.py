@@ -6,20 +6,14 @@ from backend import db
 from backend.models.email_validations import Email_Validations
 from backend.models.users import Users
 from backend.utils.all_routes import ROUTES
-from backend.utils.strings.email_validation_strs import EMAILS, EMAILS_FAILURE
-from backend.utils.strings.html_identifiers import IDENTIFIERS
+from backend.utils.strings.email_validation_strs import EMAILS
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.locators import SplashPageLocators as SPL
 from tests.functional.playwright_assert_utils import assert_login
 from tests.functional.playwright_utils import (
     current_base_url,
-    login_user_ui,
-    wait_for_element_presence,
-    wait_for_modal_ready,
-    wait_then_click_element,
     wait_then_get_element,
 )
-from tests.functional.splash_ui.playwright_utils import register_user_ui
 
 pytestmark = pytest.mark.splash_ui
 
@@ -87,116 +81,3 @@ def test_expired_email_validation_routes_user_properly(page: Page, provide_app: 
         page=page, css_selector=SPL.SPLASH_MODAL_ALERT
     )
     expect(alert_modal_banner).to_have_text(EMAILS.TOKEN_EXPIRED)
-
-
-def test_email_validation_rate_limits(page: Page):
-    """
-    Tests that the email validation service appropriately rate limits a user
-
-    GIVEN a freshly registered but unvalidated email user
-    WHEN the auto-opened validation modal sends, then the user clicks resend
-        within the rate-limit window
-    THEN ensure a rate limiting message appears to the user
-    """
-    register_user_ui(
-        page=page,
-        username=UTS.TEST_USERNAME_1,
-        email=UTS.TEST_PASSWORD_1,
-        password=UTS.TEST_PASSWORD_1,
-    )
-
-    wait_then_click_element(page=page, css_selector=SPL.REGISTER_BUTTON_SUBMIT)
-
-    # Register now opens the opaque confirmation modal and does NOT log the user
-    # in, so it no longer auto-opens the EmailValidationModal (nor sends against
-    # the per-account attempt guard — branch 4 sends server-side without
-    # incrementing attempts). Reach the modal the way a real unvalidated user
-    # does: reload to a fresh anonymous splash, log in (which authenticates
-    # despite the 401), then revisit the splash — the modal auto-opens and
-    # auto-sends the first email (attempt 1).
-    page.goto(page.url.split("?")[0])
-    login_user_ui(
-        page=page,
-        username=UTS.TEST_USERNAME_1,
-        password=UTS.TEST_PASSWORD_1,
-    )
-    wait_then_click_element(page=page, css_selector=SPL.LOGIN_BUTTON_SUBMIT)
-    login_alert = wait_then_get_element(page=page, css_selector=SPL.LOGIN_MODAL_ALERT)
-    expect(login_alert).to_be_visible()
-
-    page.goto(page.url.split("?")[0])
-    wait_for_modal_ready(page=page, modal_selector=SPL.EMAIL_VALIDATION_MODAL)
-
-    modal_title = wait_then_get_element(
-        page=page, css_selector=SPL.HEADER_VALIDATE_EMAIL
-    )
-    assert modal_title is not None
-
-    # 'Email sent!' is shown when the modal auto-opens and sends the first email
-    alert_modal_banner = wait_then_get_element(
-        page=page, css_selector=SPL.EMAIL_VALIDATION_MODAL_ALERT
-    )
-    expect(alert_modal_banner).to_have_text(EMAILS.EMAIL_SENT)
-
-    # Clicking within 60 seconds will rate limit (attempt 2)
-    wait_then_click_element(page=page, css_selector=SPL.EMAIL_VALIDATION_BUTTON_SUBMIT)
-    alert_modal_banner = wait_then_get_element(
-        page=page, css_selector=SPL.EMAIL_VALIDATION_MODAL_ALERT
-    )
-    expect(alert_modal_banner).to_have_text("4" + EMAILS_FAILURE.TOO_MANY_ATTEMPTS)
-
-
-def test_authenticated_not_validated_user_sees_email_validation_modal(
-    page: Page, create_user_unconfirmed_email
-):
-    """
-    Tests that an authenticated but not email-validated user sees the email validation modal.
-
-    GIVEN a registered but not email-validated user
-    WHEN the user logs in and navigates to the splash page
-    THEN the EmailValidationModal is auto-shown, and closing it triggers logout
-    """
-    # Login with unvalidated user — this authenticates the session even though
-    # the server returns 401 for unvalidated email
-    login_user_ui(
-        page=page,
-        username=UTS.TEST_USERNAME_1,
-        password=UTS.TEST_PASSWORD_1,
-    )
-    wait_then_click_element(page=page, css_selector=SPL.LOGIN_BUTTON_SUBMIT)
-
-    # Wait for the login modal alert showing unconfirmed email error
-    login_alert = wait_then_get_element(page=page, css_selector=SPL.LOGIN_MODAL_ALERT)
-    expect(login_alert).to_be_visible()
-
-    # Navigate to splash page — user is authenticated but not validated,
-    # so the email validation modal should auto-show
-    page.goto(page.url.split("?")[0])
-    wait_for_modal_ready(page=page, modal_selector=SPL.EMAIL_VALIDATION_MODAL)
-
-    # Assert the email validation modal is visible
-    modal_element = wait_then_get_element(
-        page=page, css_selector=SPL.EMAIL_VALIDATION_MODAL
-    )
-    expect(modal_element).to_be_visible()
-
-    # Close the modal — this should trigger logout via logoutOnExit
-    email_validation_btn_close = f"{SPL.EMAIL_VALIDATION_MODAL} .btn-close"
-    wait_then_click_element(page=page, css_selector=email_validation_btn_close)
-
-    # The btn-close fires Bootstrap's modal-hide AND logoutOnExit's async logout
-    # AJAX, which then runs window.location.replace("/"). Wait for the deterministic
-    # positive signal that the logout + redirect completed: the reloaded anonymous
-    # splash renders #splashConfig with data-show-email-validation="false".
-    splash_config = wait_for_element_presence(
-        page=page, css_selector=SPL.SPLASH_CONFIG_ANONYMOUS
-    )
-    assert splash_config is not None
-
-    # The redirect having landed, the modal is hidden on the fresh anonymous
-    # splash page (it is still present in the DOM but not shown).
-    expect(modal_element).to_be_hidden()
-
-    # After logout, user should be redirected to splash page as anonymous
-    welcome_text = wait_then_get_element(page=page, css_selector=SPL.WELCOME_TEXT)
-    expect(welcome_text).to_have_text(IDENTIFIERS.SPLASH_PAGE)

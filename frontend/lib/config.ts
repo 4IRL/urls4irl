@@ -132,6 +132,7 @@ export interface AppConstants {
   readonly TAGS_MAX_LENGTH: number;
   readonly TAGS_MAX_ON_URLS: number;
   readonly VALIDATE_EMAIL_ERROR_CODES: Record<string, number>;
+  readonly EMAIL_RESEND_COOLDOWN_SECONDS: number;
   readonly DIMENSION_KEYS: readonly string[];
   readonly TRACKING_QUERY_PARAMS: readonly string[];
   readonly TRACKING_QUERY_PARAM_PREFIXES: readonly string[];
