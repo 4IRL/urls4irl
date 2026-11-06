@@ -22,11 +22,8 @@ class INVITE_LINK_SUCCESS:
 
 
 # Public invite page copy (rendered by Jinja; Playwright asserts it via ui_testing_strs).
-INVITE_PAGE_EYEBROW_TEMPLATE = "{inviter} invited you to join"
-
-
 class INVITE_LINK_PAGE:
-    EYEBROW_TEMPLATE = INVITE_PAGE_EYEBROW_TEMPLATE
+    EYEBROW_TEMPLATE = "{inviter} invited you to join"
     JOIN_HINT = "You'll join as a member and can add URLs and tags."
     LOGIN_HINT = (
         "URLS4IRL is a shared space for collecting and tagging links. Create a free "

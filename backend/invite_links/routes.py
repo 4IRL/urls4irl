@@ -113,7 +113,6 @@ def _build_page_view(
             heading=INVITE_LINK_PAGE.UNVALIDATED_HEADING,
             message=INVITE_LINK_PAGE.UNVALIDATED_MESSAGE,
             message_role="status",
-            show_home_link=False,
         )
     # Fail closed: every other state, and any state missing its details, is dead.
     return InvitePageView(

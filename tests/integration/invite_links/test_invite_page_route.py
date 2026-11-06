@@ -214,6 +214,37 @@ def test_every_dead_reason_returns_the_identical_404_for_a_validated_viewer(
     assert normalized_body(response) == normalized_body(baseline)
 
 
+@pytest.mark.parametrize("viewer_id", [None, VIEWER_ID])
+def test_live_link_with_a_missing_creator_is_the_uniform_dead_page(
+    app: Flask, every_user_makes_a_unique_utub, viewer_id: int | None
+) -> None:
+    """
+    GIVEN a live link whose creator is gone (created_by NULL)
+    WHEN an anonymous or validated viewer opens it
+    THEN the uniform dead 404 page with no inviter or UTub details
+    """
+    token = _live_token(app)
+    with app.app_context():
+        utub_name = db.session.get(Utubs, FIRST_UTUB_ID).name
+        inviter = db.session.get(Users, 1).username
+        Utub_Invite_Links.query.filter_by(token=token).one().created_by = None
+        db.session.commit()
+
+    if viewer_id is None:
+        client = anonymous_client(app)
+        baseline = _get(client, UNKNOWN_TOKEN)
+        response = _get(client, token)
+    else:
+        with _logged_in(app, viewer_id) as (client, _):
+            baseline = _get(client, UNKNOWN_TOKEN)
+            response = _get(client, token)
+
+    assert response.status_code == 404
+    assert normalized_body(response) == normalized_body(baseline)
+    assert utub_name not in _main_of(response)
+    assert inviter not in _main_of(response)
+
+
 # --- States, statuses and links ----------------------------------------------------
 
 

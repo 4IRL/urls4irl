@@ -18,6 +18,7 @@ from backend.invite_links.constants import (
     InviteJoinOutcome,
 )
 from backend.invite_links.data_models import InviteJoinResult
+from backend.invite_links.routes import _join_outcome_response
 from backend.metrics.events import EventName
 from backend.models.users import Users
 from backend.models.utub_invite_acceptances import Utub_Invite_Acceptances
@@ -422,6 +423,76 @@ def test_forced_429_renders_the_invite_error_page(
     assert _title_of(response) == INVITE_LINK_PAGE.TITLE_RATE_LIMIT
     assert _state(app) == before
     _assert_privacy_headers(response)
+
+
+@pytest.mark.parametrize("scenario", ["csrf", "forced_429"])
+def test_back_link_is_the_percent_encoded_invite_path_for_an_escaped_token(
+    app: Flask, every_user_makes_a_unique_utub, scenario: str
+) -> None:
+    """
+    GIVEN a token needing escaping (space and quote)
+    WHEN the join POST fails CSRF or is rate limited
+    THEN the Back to the invite href is the percent-encoded /invite/<token>
+    """
+    token = "a b'c"
+    with _logged_in(app, VIEWER_ID) as (client, csrf_token):
+        response = _post(
+            client,
+            token,
+            None if scenario == "csrf" else csrf_token,
+            headers=_FORCE_429 if scenario == "forced_429" else None,
+        )
+
+    assert response.status_code == (403 if scenario == "csrf" else 429)
+    assert _back_links(response) == ["/invite/a%20b%27c"]
+
+
+@pytest.mark.parametrize(
+    "outcome",
+    [
+        outcome
+        for outcome in InviteJoinOutcome
+        if outcome not in (InviteJoinOutcome.JOINED, InviteJoinOutcome.ALREADY_MEMBER)
+    ],
+)
+def test_join_outcome_fallback_is_the_dead_page_for_every_non_success(
+    app: Flask, outcome: InviteJoinOutcome
+) -> None:
+    """
+    GIVEN any non-success join outcome (even carrying a utub_id)
+    WHEN it is mapped to a response
+    THEN it is the uniform 404 dead page, never a redirect
+    """
+    with app.test_request_context():
+        response = _join_outcome_response(
+            InviteJoinResult(outcome=outcome, utub_id=FIRST_UTUB_ID)
+        )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.parametrize(
+    "outcome", [InviteJoinOutcome.JOINED, InviteJoinOutcome.ALREADY_MEMBER]
+)
+def test_join_outcome_success_redirects_only_with_a_utub_id(
+    app: Flask, outcome: InviteJoinOutcome
+) -> None:
+    """
+    GIVEN a success outcome
+    WHEN it carries a utub_id THEN it redirects into the UTub
+    WHEN utub_id is None THEN it fails closed to the 404 dead page
+    """
+    with app.test_request_context():
+        redirected = _join_outcome_response(
+            InviteJoinResult(outcome=outcome, utub_id=FIRST_UTUB_ID)
+        )
+        missing = _join_outcome_response(
+            InviteJoinResult(outcome=outcome, utub_id=None)
+        )
+
+    assert redirected.status_code == 302
+    assert redirected.headers["Location"].endswith(f"/home?UTubID={FIRST_UTUB_ID}")
+    assert missing.status_code == 404
 
 
 def test_eleventh_post_is_429_inline(

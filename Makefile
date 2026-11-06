@@ -10,8 +10,6 @@ $(if $(findstring $$,$(value c)),$(error c must not contain '$$'))
 $(if $(findstring $$,$(value e)),$(error e must not contain '$$'))
 $(if $(findstring $$,$(value run)),$(error run must not contain '$$'))
 $(if $(findstring $$,$(value base)),$(error base must not contain '$$'))
-# s (invite-token label) is spliced into the double-quoted $(EXEC_WEB) "…" string, so it only allows a plain label word.
-$(if $(or $(findstring $$,$(value s)),$(findstring ',$(value s)),$(findstring ",$(value s)),$(findstring `,$(value s)),$(findstring \,$(value s))),$(error s must be a plain label (no $$, quotes, backtick or backslash)))
 # base is also spliced into a single-quoted shell word (--base '$(base)'), so a ' in it is refused as well.
 $(if $(findstring ',$(value base)),$(error base must not contain a single quote (it is passed as one single-quoted shell word)))
 # A command-line AFFECTED_INT= / AFFECTED_UI= override skips the selector and is spliced into -m '$(AFFECTED_…)'
@@ -538,6 +536,8 @@ addmock: ## Seed the dev database with all mock data (flask addmock all)
 
 invite-token: ## Print the /invite/<token> path of a seeded sample invite link (run addmock first; dev only): make invite-token s=<live_unlimited|live_limited|expired|used_up|revoked>
 	$(if $(s),,$(error s=<label> is required, e.g. make invite-token s=live_unlimited))
+	@# s is spliced into the double-quoted $(EXEC_WEB) "…" string, so only the known sample labels are allowed.
+	$(if $(and $(filter live_unlimited live_limited expired used_up revoked,$(s)),$(if $(word 2,$(s)),,x)),,$(error s must be one of: live_unlimited live_limited expired used_up revoked (got '$(s)')))
 	$(EXEC_WEB) "$(FLASK) addmock invite-token $(s)"
 
 clear-db: ## Empty every table in the dev database (same schema, no data) — frees any registered email/username for reuse

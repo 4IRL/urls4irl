@@ -11,8 +11,7 @@ def mint_invite_link_in_db(
     *, app: Flask, utub_id: int, created_by: int, revoked: bool = False
 ) -> str:
     """Insert an invite link (live by default, or revoked) for ``utub_id`` minted by
-    ``created_by`` and return its token, so a test can open the public page without
-    driving the manager UI (which does not exist yet)."""
+    ``created_by`` and return its token, so a test can open the public page directly."""
     invite_id = add_invite_link(app, utub_id, created_by, revoked=revoked)
     with app.app_context():
         invite: Utub_Invite_Links = Utub_Invite_Links.query.get(invite_id)
