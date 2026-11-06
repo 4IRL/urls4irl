@@ -61,7 +61,6 @@ EXPECTED_JS_ROUTE_URLS: dict[str, str] = {
     # Splash routes
     "login": "/login",
     "register": "/register",
-    "sendValidationEmail": "/send-validation-email",
     "resendRegistrationEmail": "/resend-registration-email",
     "forgotPassword": "/forgot-password",
     "oauthGoogleLogin": "/oauth/google/login",

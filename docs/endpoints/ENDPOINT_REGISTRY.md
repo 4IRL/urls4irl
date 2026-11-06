@@ -1076,15 +1076,6 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Template:** —
 - **JS:** indirect: page-self-url
 
-### `POST /send-validation-email` — `splash.send_validation_email`
-
-- **Handler:** `backend/splash/routes.py:send_validation_email`
-- **Decorators:** `api_route`
-- **Service:** `backend.splash.services.validate_email:send_validation_email_to_user`
-- **Schema:** response: `backend.schemas.users.EmailValidationResponseSchema`; status: 200 `backend.schemas.users.EmailValidationResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`, 429 `backend.schemas.errors.ErrorResponse`
-- **Template:** —
-- **JS:** keys: `sendValidationEmail`
-
 ### `GET /validate/<string:token>` — `splash.validate_email`
 
 - **Handler:** `backend/splash/routes.py:validate_email`

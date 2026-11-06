@@ -27,8 +27,6 @@ MAILJET_ERROR_RELATED_TO = "ErrorRelatedTo"
 MAILJET_ERRORS = "Errors"
 ERROR_WITH_MAILJET = "Error with Mailjet service, retry later."
 INVALID_EMAIL_INPUT = "Invalid email address."
-VALIDATE_MY_EMAIL = "Validate My Email"
-VALIDATE_YOUR_EMAIL = "Validate Your Email!"
 
 
 # Email related strings
@@ -59,8 +57,6 @@ class EMAILS:
     ERROR_WITH_MAILJET = ERROR_WITH_MAILJET
     PASSWORD_RESET_SUBJECT = PASSWORD_RESET_SUBJECT
     OAUTH_HINT_SUBJECT = OAUTH_HINT_SUBJECT
-    VALIDATE_MY_EMAIL = VALIDATE_MY_EMAIL
-    VALIDATE_YOUR_EMAIL = VALIDATE_YOUR_EMAIL
 
 
 # Strings for email validation errors

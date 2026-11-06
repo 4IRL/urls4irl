@@ -203,7 +203,7 @@ All app-owned `localStorage` keys are prefixed `u4i:` to avoid collisions with t
 **frontend/splash/ — Auth Pages:**
 - **init.ts** — Form setup for login/register/forgot-password, modal switching, rate-limit handling
 - **navbar.ts** — Mobile navbar toggler
-- **login-form.ts**, **register-form.ts**, **forgot-password-form.ts**, **email-validation-form.ts**, **reset-password-form.ts** — Individual auth form modules
+- **login-form.ts**, **register-form.ts**, **forgot-password-form.ts**, **confirm-email-form.ts**, **reset-password-form.ts** — Individual auth form modules
 
 ### Event Bus Reference (`frontend/lib/event-bus.ts`)
 

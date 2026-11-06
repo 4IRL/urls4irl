@@ -30,53 +30,13 @@ from backend.utils.strings.email_validation_strs import EMAILS, EMAILS_FAILURE
 from backend.utils.strings.user_strs import MEMBER_SUCCESS
 
 
-def send_validation_email_to_user() -> WerkzeugResponse | FlaskResponse:
-    """
-    Handles sending a validation email to the User to verify their email.
-
-    If the user is already email validated, their email validation would have been deleted.
-
-    Users can only send so many email in the span of one hour.
-
-    Returns:
-        (WerkzeugResponse): A URL redirect
-        (FlaskResponse): Contains JSON and HTTP status code
-    """
-    current_email_validation: Email_Validations = Email_Validations.query.filter(
-        Email_Validations.user_id == current_user.id
-    ).first_or_404()
-
-    if current_user.email_validated:
-        warning_log(f"User {current_user.id} email already validated")
-        db.session.delete(current_email_validation)
-        db.session.commit()
-
-        return redirect(url_for(ROUTES.UTUBS.HOME))
-
-    if current_email_validation.has_too_many_email_attempts():
-        return build_response_for_max_email_attempts_sent()
-
-    has_more_attempts = current_email_validation.increment_attempt()
-    db.session.commit()
-
-    if not has_more_attempts:
-        return build_response_for_email_attempts_rate_limited(current_email_validation)
-
-    email_send_result = _send_account_confirmation_email(
-        current_user, current_email_validation
-    )
-
-    return handle_email_sending_result(email_send_result)
-
-
 def _send_account_confirmation_email(
     user: Users, email_validation: Email_Validations
 ) -> requests.Response:
     """Send the account-confirmation email for a given user, session-independently.
 
-    Extracted from `send_validation_email_to_user()` so both the session-scoped
-    resend endpoint and the anonymous register/resend paths can send the same
-    email without depending on `current_user`. The caller owns the
+    The register and resend paths share this so they can send the same email
+    without depending on `current_user`. The caller owns the
     attempt-count/rate-limit guarding; this only builds the link and sends.
 
     Args:

@@ -7747,60 +7747,6 @@
         }
       }
     },
-    "/send-validation-email": {
-      "post": {
-        "operationId": "sendValidationEmail",
-        "tags": ["auth"],
-        "security": [
-          {
-            "csrfToken": []
-          }
-        ],
-        "description": "Send an email validation link to the current user",
-        "responses": {
-          "200": {
-            "description": "Email validation",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/EmailValidationResponseSchema"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad request",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Too many requests",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/resend-registration-email": {
       "post": {
         "operationId": "resendRegistrationEmail",
@@ -14920,21 +14866,6 @@
           "ACCOUNT_SUSPENDED"
         ],
         "description": "Error codes for LoginErrorCodes"
-      },
-      "EmailValidationResponseSchema": {
-        "properties": {
-          "status": {
-            "description": "Response status: Success, Failure, or No change",
-            "enum": ["Success", "Failure", "No change"],
-            "type": "string"
-          },
-          "message": {
-            "description": "Human-readable response message",
-            "type": "string"
-          }
-        },
-        "required": ["status", "message"],
-        "type": "object"
       },
       "ResendRegistrationEmailRequest": {
         "properties": {

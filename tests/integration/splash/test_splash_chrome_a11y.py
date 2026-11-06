@@ -12,7 +12,7 @@ MODAL_LABEL_IDS = (
     b'id="LoginModalLabel"',
     b'id="RegisterModalLabel"',
     b'id="ForgotPasswordModalLabel"',
-    b'id="EmailValidationModalLabel"',
+    b'id="ConfirmEmailModalLabel"',
 )
 FAVICON_IMG_PATTERN = re.compile(rb'<img[^>]*id="u4iFavicon"[^>]*>', re.IGNORECASE)
 FAVICON_EMPTY_ALT_PATTERN = re.compile(rb'alt=""', re.IGNORECASE)

@@ -368,18 +368,6 @@ form {
     margin-bottom: var(--space-3);
 }
 
-/* Validate Email */
-
-.validate-email-title {
-    flex-grow: 1;
-    color: var(--splashGreen);
-    font-size: 36px;
-}
-
-.validate-email-text {
-    font-family: Arial, sans-serif;
-}
-
 /* Alert Banner */
 
 .alert-banner-splash-modal-hide {
@@ -422,43 +410,6 @@ form {
 
 #ForgotPasswordText {
     color: black;
-}
-
-/* Login-Register */
-
-/* Validate Email */
-
-#ValidateEmailIcon {
-    width: 48px;
-    height: 48px;
-    background-color: var(--splashGreen);
-    color: white;
-    font-size: 28px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-    /* Center horizontally */
-}
-
-#ValidateEmailText {
-    color: var(--darkGrayTextColor);
-    font-size: 18px;
-    line-height: 1.6;
-}
-
-#EmailValidationFooter {
-    flex-wrap: nowrap;
-    justify-content: center;
-}
-
-/* Alert Banner */
-
-#EmailAlertBanner {
-    color: var(--darkGrayTextColor);
-    font-size: 18px;
-    line-height: 1.6;
-    text-align: center;
 }
 
 /* Feature tiles */

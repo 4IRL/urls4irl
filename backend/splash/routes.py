@@ -43,7 +43,6 @@ from backend.schemas.requests.splash import (
     ResetPasswordRequest,
 )
 from backend.schemas.users import (
-    EmailValidationResponseSchema,
     ForgotPasswordResponseSchema,
     LoginRedirectResponseSchema,
     RegisterResponseSchema,
@@ -89,7 +88,6 @@ from backend.splash.services.user_registration import (
 from backend.splash.services.validate_email import (
     send_resend_registration_email,
     send_resend_validation_email_for_token,
-    send_validation_email_to_user,
     validate_email_for_user,
 )
 from backend.utils.all_routes import ROUTES
@@ -191,23 +189,6 @@ def register_user(register_request: RegisterRequest) -> FlaskResponse:
 def login(login_request: LoginRequest) -> FlaskResponse:
     """Handles login form submission."""
     return login_user_to_u4i(login_request.username, login_request.password)
-
-
-@splash.route("/send-validation-email", methods=["POST"])
-@api_route(
-    response_schema=EmailValidationResponseSchema,
-    ajax_required=False,
-    tags=[OPEN_API.AUTH],
-    description="Send an email validation link to the current user",
-    status_codes={
-        200: EmailValidationResponseSchema,
-        400: ErrorResponse,
-        404: ErrorResponse,
-        429: ErrorResponse,
-    },
-)
-def send_validation_email() -> WerkzeugResponse | FlaskResponse:
-    return send_validation_email_to_user()
 
 
 @splash.route("/resend-registration-email", methods=["POST"])

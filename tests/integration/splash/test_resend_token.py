@@ -446,3 +446,19 @@ def test_authenticated_caller_is_redirected(
 
     assert response.status_code == 302
     send_spy.assert_not_called()
+
+
+def test_removed_send_validation_email_route_is_404(app, load_register_page):
+    """
+    GIVEN the session-bound /send-validation-email route was removed
+    WHEN an AJAX POST hits the literal old path
+    THEN the response is 404
+    """
+    client, csrf_token = load_register_page
+
+    response = client.post(
+        "/send-validation-email",
+        headers={"X-CSRFToken": csrf_token, "X-Requested-With": "XMLHttpRequest"},
+    )
+
+    assert response.status_code == 404

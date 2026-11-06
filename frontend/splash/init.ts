@@ -1,6 +1,5 @@
 import type { Schema } from "../types/api-helpers.d.ts";
 import { $, bootstrap } from "../lib/globals.js";
-import { APP_CONFIG } from "../lib/config.js";
 import { emit } from "../lib/metrics-client.js";
 import { clearOpenForm, setOpenForm } from "../lib/modal-tracking.js";
 import { UI_EVENTS } from "../types/metrics-events.js";
@@ -10,10 +9,6 @@ import { initRegisterForm } from "./register-form.js";
 import { initRegisterConfirmationModal } from "./register-confirmation-form.js";
 import { initConfirmEmailForm } from "./confirm-email-form.js";
 import { initForgotPasswordForm } from "./forgot-password-form.js";
-import {
-  initEmailValidationForm,
-  SEND_INITIAL_EMAIL,
-} from "./email-validation-form.js";
 import { AUTH_MODAL_OPEN_FORM } from "../types/metrics-dim-values.js";
 import { initScrollReveal } from "./scroll-reveal.js";
 import { debug } from "../lib/debug.js";
@@ -84,14 +79,6 @@ export function clearOpenFormOnAuthModalHide($modal: JQuery): void {
   });
 }
 
-export function createLogoutOnExit(): () => void {
-  return () => {
-    $.get(APP_CONFIG.routes.logout).always(() => {
-      window.location.replace("/");
-    });
-  };
-}
-
 function targetFromSelector(
   selector: string,
 ): "login" | "register" | "forgot_password" | null {
@@ -142,13 +129,6 @@ export function registerModalOpener(): void {
   });
   setOpenForm("register");
   bootstrap.Modal.getOrCreateInstance("#RegisterModal").show();
-}
-
-export function emailValidationModalOpener($fromModal: JQuery): void {
-  switchModal($fromModal, "#EmailValidationModal");
-  initEmailValidationForm($("#EmailValidationModal"), SEND_INITIAL_EMAIL);
-  const logoutOnExit = createLogoutOnExit();
-  $("#EmailValidationModal").one("hide.bs.modal", logoutOnExit);
 }
 
 export function resetModalFormState($modal: JQuery): void {

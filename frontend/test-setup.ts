@@ -64,7 +64,6 @@ const appConfig = {
     getUTubs: "/utubs",
     login: "/login",
     register: "/register",
-    sendValidationEmail: "/send-validation-email",
     resendRegistrationEmail: "/resend-registration-email",
     forgotPassword: "/forgot-password",
     errorPage: "/error",

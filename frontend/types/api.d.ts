@@ -1259,23 +1259,6 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/send-validation-email": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** @description Send an email validation link to the current user */
-    post: operations["sendValidationEmail"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
   "/resend-registration-email": {
     parameters: {
       query?: never;
@@ -3850,15 +3833,6 @@ export interface components {
      * @enum {integer}
      */
     LoginErrorCodes: 1 | 2 | 3;
-    EmailValidationResponseSchema: {
-      /**
-       * @description Response status: Success, Failure, or No change
-       * @enum {string}
-       */
-      status: "Success" | "Failure" | "No change";
-      /** @description Human-readable response message */
-      message: string;
-    };
     ResendRegistrationEmailRequest: {
       /**
        * @description Email address of the pending registration to resend confirmation for
@@ -10222,53 +10196,6 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["LoginEmailNotValidatedErrorResponse"];
-        };
-      };
-      /** @description Too many requests */
-      429: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ErrorResponse"];
-        };
-      };
-    };
-  };
-  sendValidationEmail: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Email validation */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["EmailValidationResponseSchema"];
-        };
-      };
-      /** @description Bad request */
-      400: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ErrorResponse"];
-        };
-      };
-      /** @description Not found */
-      404: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ErrorResponse"];
         };
       };
       /** @description Too many requests */

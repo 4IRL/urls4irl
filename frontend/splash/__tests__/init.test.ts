@@ -1,13 +1,9 @@
 import type { Mock } from "vitest";
 
 import { UI_EVENTS } from "../../types/metrics-events.js";
-import {
-  createImmediateAlwaysJqXHR,
-  createMockModal,
-} from "../../__tests__/helpers/mock-jquery.js";
+import { createMockModal } from "../../__tests__/helpers/mock-jquery.js";
 import {
   clearOpenFormOnAuthModalHide,
-  createLogoutOnExit,
   initSplash,
   switchModal,
   loginModalOpener,
@@ -17,14 +13,12 @@ import {
   hideSplashModalAlertBanner,
   resetModalFormState,
   handleImproperFormErrors,
-  emailValidationModalOpener,
 } from "../init.js";
 import {
   clearOpenForm,
   getOpenForm,
   setOpenForm,
 } from "../../lib/modal-tracking.js";
-import { initEmailValidationForm } from "../email-validation-form.js";
 import { initConfirmEmailForm } from "../confirm-email-form.js";
 import {
   AUTH_FORM_SWITCH_TARGET,
@@ -66,12 +60,6 @@ vi.mock("../scroll-reveal.js", () => ({
   initScrollReveal: vi.fn(),
 }));
 
-vi.mock("../email-validation-form.js", () => ({
-  initEmailValidationForm: vi.fn(),
-  SEND_INITIAL_EMAIL: true,
-  SKIP_INITIAL_EMAIL: false,
-}));
-
 vi.mock("../../lib/page-utils.js", () => ({
   showNewPageOnAJAXHTMLResponse: vi.fn(),
 }));
@@ -104,36 +92,6 @@ interface MockBootstrapModal extends bootstrap.Modal {
   show: Mock<(relatedTarget?: HTMLElement) => void>;
   hide: Mock<() => void>;
 }
-
-describe("createLogoutOnExit", () => {
-  let ajaxGetSpy: ReturnType<typeof vi.spyOn>;
-
-  beforeEach(() => {
-    ajaxGetSpy = vi
-      .spyOn($, "get")
-      .mockReturnValue(createImmediateAlwaysJqXHR());
-    vi.spyOn(window.location, "replace").mockImplementation(() => {});
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it("returns a closure that calls $.get(logout) and redirects to /", () => {
-    const logoutFn = createLogoutOnExit();
-    logoutFn();
-
-    expect(ajaxGetSpy).toHaveBeenCalledWith("/logout");
-    expect(window.location.replace).toHaveBeenCalledWith("/");
-  });
-
-  it("returns independent closures on each call", () => {
-    const firstClosure = createLogoutOnExit();
-    const secondClosure = createLogoutOnExit();
-
-    expect(firstClosure).not.toBe(secondClosure);
-  });
-});
 
 describe("switchModal", () => {
   let mockFromModal: MockBootstrapModal;
@@ -248,14 +206,14 @@ describe("switchModal", () => {
     expect(emit).toHaveBeenCalledTimes(1);
   });
 
-  it("does NOT emit ui_auth_form_switch when toSelector is #EmailValidationModal", async () => {
+  it("does NOT emit ui_auth_form_switch when toSelector is #ConfirmEmailModal", async () => {
     const { emit } = await import("../../lib/metrics-client.js");
     vi.spyOn(window.bootstrap.Modal, "getInstance").mockReturnValue(null);
     vi.spyOn(window.bootstrap.Modal, "getOrCreateInstance").mockReturnValue(
       mockToModal,
     );
 
-    switchModal($("#RegisterModal"), "#EmailValidationModal");
+    switchModal($("#RegisterModal"), "#ConfirmEmailModal");
 
     expect(emit).not.toHaveBeenCalled();
   });
@@ -719,93 +677,6 @@ describe("initSplash confirm-email wiring", () => {
   });
 });
 
-describe("initEmailValidationForm", () => {
-  beforeEach(() => {
-    document.body.innerHTML = modalShell("EmailValidationModal");
-    vi.clearAllMocks();
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it("does NOT bind a hide.bs.modal logout handler", async () => {
-    const { initEmailValidationForm: realInitEmailValidationForm } =
-      await vi.importActual<typeof import("../email-validation-form.js")>(
-        "../email-validation-form.js",
-      );
-    const $modal = $("#EmailValidationModal");
-    const ajaxGetSpy = vi.spyOn($, "get");
-
-    realInitEmailValidationForm($modal, false);
-
-    // Trigger hide.bs.modal — should NOT call $.get(logout)
-    $modal.trigger("hide.bs.modal");
-
-    expect(ajaxGetSpy).not.toHaveBeenCalledWith("/logout");
-  });
-});
-
-describe("emailValidationModalOpener", () => {
-  beforeEach(() => {
-    document.body.innerHTML =
-      modalShell("RegisterModal") + modalShell("EmailValidationModal");
-    vi.clearAllMocks();
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it("calls switchModal from source to EmailValidationModal", () => {
-    const localFromModal = createMockModal();
-    const localToModal = createMockModal();
-    vi.spyOn(window.bootstrap.Modal, "getInstance").mockReturnValue(
-      localFromModal,
-    );
-    vi.spyOn(window.bootstrap.Modal, "getOrCreateInstance").mockReturnValue(
-      localToModal,
-    );
-
-    emailValidationModalOpener($("#RegisterModal"));
-
-    expect(localFromModal.hide).toHaveBeenCalled();
-  });
-
-  it("calls initEmailValidationForm with EmailValidationModal and sendInitialEmail=true", () => {
-    vi.spyOn(window.bootstrap.Modal, "getInstance").mockReturnValue(null);
-    vi.spyOn(window.bootstrap.Modal, "getOrCreateInstance").mockReturnValue(
-      createMockModal(),
-    );
-
-    emailValidationModalOpener($("#RegisterModal"));
-
-    expect(initEmailValidationForm).toHaveBeenCalledWith(
-      expect.any(Object),
-      true,
-    );
-  });
-
-  it("registers a one-time hide.bs.modal logout handler on EmailValidationModal", () => {
-    vi.spyOn(window.bootstrap.Modal, "getInstance").mockReturnValue(null);
-    vi.spyOn(window.bootstrap.Modal, "getOrCreateInstance").mockReturnValue(
-      createMockModal(),
-    );
-    const ajaxGetSpy = vi
-      .spyOn($, "get")
-      .mockReturnValue(createImmediateAlwaysJqXHR());
-    vi.spyOn(window.location, "replace").mockImplementation(() => {});
-
-    emailValidationModalOpener($("#RegisterModal"));
-
-    // Trigger hide on EmailValidationModal
-    $("#EmailValidationModal").trigger("hide.bs.modal");
-
-    expect(ajaxGetSpy).toHaveBeenCalledWith("/logout");
-    expect(window.location.replace).toHaveBeenCalledWith("/");
-  });
-});
-
 describe("show.bs.modal reset handlers", () => {
   beforeEach(() => {
     document.body.innerHTML =
@@ -823,10 +694,6 @@ describe("show.bs.modal reset handlers", () => {
         "ForgotPasswordModal",
         ALERT_BANNER +
           `<input id="email" class="form-control" /><button id="submit"></button>`,
-      ) +
-      modalShell(
-        "EmailValidationModal",
-        ALERT_BANNER + `<button id="submit"></button>`,
       );
     vi.clearAllMocks();
   });
@@ -899,24 +766,6 @@ describe("show.bs.modal reset handlers", () => {
 
     expect($modal.find(".invalid-feedback").length).toBe(0);
     expect($modal.find(".form-control.is-invalid").length).toBe(0);
-    expect(banner.hasClass("alert-banner-splash-modal-hide")).toBe(true);
-    expect(banner.hasClass("alert-banner-splash-modal-display")).toBe(false);
-  });
-
-  it("email validation form show.bs.modal removes invalid-feedback and is-invalid, hides alert banner", async () => {
-    const { initEmailValidationForm: realInit } = await vi.importActual<
-      typeof import("../email-validation-form.js")
-    >("../email-validation-form.js");
-    const $modal = $("#EmailValidationModal");
-
-    const banner = $modal.find("#SplashModalAlertBanner");
-    banner
-      .removeClass("alert-banner-splash-modal-hide")
-      .addClass("alert-banner-splash-modal-display alert-danger");
-
-    realInit($modal, false);
-    $modal.trigger("show.bs.modal");
-
     expect(banner.hasClass("alert-banner-splash-modal-hide")).toBe(true);
     expect(banner.hasClass("alert-banner-splash-modal-display")).toBe(false);
   });

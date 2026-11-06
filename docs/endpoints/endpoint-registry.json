@@ -3712,41 +3712,6 @@
       "templates": []
     },
     {
-      "blueprint": "splash",
-      "decorators": [
-        "api_route"
-      ],
-      "endpoint": "splash.send_validation_email",
-      "handler": "backend/splash/routes.py:send_validation_email",
-      "js": {
-        "indirect": null,
-        "no_js": null,
-        "route_keys": [
-          "sendValidationEmail"
-        ],
-        "template_url_for": []
-      },
-      "methods": [
-        "POST"
-      ],
-      "rule": "/send-validation-email",
-      "schemas": {
-        "query": null,
-        "request": null,
-        "response": "backend.schemas.users.EmailValidationResponseSchema",
-        "status_codes": {
-          "200": "backend.schemas.users.EmailValidationResponseSchema",
-          "400": "backend.schemas.errors.ErrorResponse",
-          "404": "backend.schemas.errors.ErrorResponse",
-          "429": "backend.schemas.errors.ErrorResponse"
-        }
-      },
-      "services": [
-        "backend.splash.services.validate_email:send_validation_email_to_user"
-      ],
-      "templates": []
-    },
-    {
       "blueprint": "users",
       "decorators": [
         "email_validation_required"

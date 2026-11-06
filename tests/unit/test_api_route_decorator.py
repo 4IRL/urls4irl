@@ -48,7 +48,6 @@ from backend.schemas.urls import (
 )
 from backend.schemas.users import (
     AddMemberResponseSchema,
-    EmailValidationResponseSchema,
     ForgotPasswordResponseSchema,
     LoginRedirectResponseSchema,
     MemberModifiedResponseSchema,
@@ -431,19 +430,6 @@ ALL_API_ROUTES = [
             200: LoginRedirectResponseSchema,
             400: ErrorResponse,
             401: LoginEmailNotValidatedErrorResponse,
-            429: ErrorResponse,
-        },
-    ),
-    (
-        "splash.send_validation_email",
-        None,
-        EmailValidationResponseSchema,
-        [OPEN_API.AUTH],
-        "Send an email validation link to the current user",
-        {
-            200: EmailValidationResponseSchema,
-            400: ErrorResponse,
-            404: ErrorResponse,
             429: ErrorResponse,
         },
     ),

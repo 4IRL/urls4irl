@@ -265,14 +265,14 @@ describe("register-form success → confirmation modal", () => {
     return $modal;
   }
 
-  it("switches to #RegisterConfirmationModal on 200 success (not EmailValidationModal)", () => {
+  it("switches to #RegisterConfirmationModal on 200 success (not ConfirmEmailModal)", () => {
     const $modal = submitAndResolve("Almost there");
 
     expect(switchModal).toHaveBeenCalledWith(
       $modal,
       "#RegisterConfirmationModal",
     );
-    // Only the register POST fired — no auto /send-validation-email request
+    // Only the register POST fired — no auto resend request
     expect($.ajax).toHaveBeenCalledTimes(1);
   });
 

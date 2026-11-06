@@ -781,7 +781,6 @@ class SplashPageLocators(GenericPageLocator):
     REGISTER_MODAL = "#RegisterModal"
     REGISTER_CONFIRMATION_MODAL = "#RegisterConfirmationModal"
     FORGOT_PASSWORD_MODAL = "#ForgotPasswordModal"
-    EMAIL_VALIDATION_MODAL = "#EmailValidationModal"
 
     # Change-email confirm-outcome banner (Phase 3, DD-11). Rendered near the
     # hero on splash.html when the `email_change_status` query param maps to a
@@ -792,7 +791,7 @@ class SplashPageLocators(GenericPageLocator):
     # Keep SPLASH_MODAL for reset password and expired email validation flows.
     # These flows use a single generic #SplashModal shell that is populated with
     # different form content at runtime (via URL dispatch), unlike the other modals
-    # (e.g. ForgotPasswordModal, EmailValidationModal) which are pre-rendered with
+    # (e.g. ForgotPasswordModal, ConfirmEmailModal) which are pre-rendered with
     # their own specific IDs and can be targeted directly.
     SPLASH_MODAL = "#SplashModal"
 
@@ -830,9 +829,6 @@ class SplashPageLocators(GenericPageLocator):
     FORGOT_PASSWORD_INVALID_FEEDBACK = f"{FORGOT_PASSWORD_MODAL} .invalid-feedback"
     FORGOT_PASSWORD_BTN_CLOSE = f"{FORGOT_PASSWORD_MODAL} .btn-close"
 
-    # Email validation modal scoped selectors
-    EMAIL_VALIDATION_BUTTON_SUBMIT = f"{EMAIL_VALIDATION_MODAL} #submit"
-
     # Reset password (uses #SplashModal — only modal on page, no scoping needed)
     RESET_PASSWORD_BUTTON_SUBMIT = f"{SPLASH_MODAL} #submit"
     RESET_PASSWORD_INVALID_FEEDBACK = f"{SPLASH_MODAL} .invalid-feedback"
@@ -842,7 +838,6 @@ class SplashPageLocators(GenericPageLocator):
 
     # Register
     BUTTON_LOGIN_FROM_REGISTER = "#ToLoginFromRegister"
-    HEADER_VALIDATE_EMAIL = ".validate-email-title"
 
     # Post-register confirmation modal
     REGISTER_CONFIRMATION_MODAL_ALERT = (
@@ -868,7 +863,6 @@ class SplashPageLocators(GenericPageLocator):
     LOGIN_MODAL_ALERT = f"{LOGIN_MODAL} #SplashModalAlertBanner"
     REGISTER_MODAL_ALERT = f"{REGISTER_MODAL} #SplashModalAlertBanner"
     FORGOT_PASSWORD_MODAL_ALERT = f"{FORGOT_PASSWORD_MODAL} #SplashModalAlertBanner"
-    EMAIL_VALIDATION_MODAL_ALERT = f"{EMAIL_VALIDATION_MODAL} #SplashModalAlertBanner"
     SPLASH_MODAL_ALERT = "#SplashModalAlertBanner"
 
     # Collision confirm-link page (components/splash/oauth_confirm_link.html)

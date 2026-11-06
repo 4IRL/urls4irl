@@ -6,7 +6,6 @@ describe("APP_CONFIG shape", () => {
       "home",
       "login",
       "register",
-      "sendValidationEmail",
       "forgotPassword",
       "errorPage",
       "logout",
