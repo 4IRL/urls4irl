@@ -4,13 +4,15 @@
      paint (zero-flash). data-theme-pref preserves the raw stored choice
      ("system"/"light"/"dark") so the settings control reflects the real
      preference even after the head script resolves "system" to light/dark. -->
-<html lang="en" data-theme="{{ user_theme }}" data-theme-pref="{{ user_theme }}">
+{# The public invite page is always dark (approved mock), whatever the viewer's stored theme. #}
+{% set page_theme = "dark" if is_invite_page else user_theme %}
+<html lang="en" data-theme="{{ page_theme }}" data-theme-pref="{{ user_theme }}">
 
 <head>
     {% include 'components/head/head.html' %}
 </head>
 
-<body class="flex-column">
+<body class="flex-column{% if is_invite_page %} invite-page{% endif %}">
     <!-- Includes jinja2 generated routes globally and all backend constants for use by frontend -->
     {% include '_config.html' %}
 

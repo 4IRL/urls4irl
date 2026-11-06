@@ -247,6 +247,22 @@ def test_state_one_renders_for_a_validated_non_member(
     assert 'id="inviteJoinStatus"' in main
 
 
+def test_invite_page_is_always_stamped_dark(
+    app: Flask, every_user_makes_a_unique_utub
+) -> None:
+    """
+    GIVEN a live link
+    WHEN a validated viewer opens it
+    THEN the page is stamped dark and carries the invite-page body class
+    """
+    token = _live_token(app)
+    with _logged_in(app, VIEWER_ID) as (client, _):
+        body = _get(client, token).get_data(as_text=True)
+
+    assert '<html lang="en" data-theme="dark"' in body
+    assert 'class="flex-column invite-page"' in body
+
+
 def test_state_two_hrefs_follow_the_splash_contract(
     app: Flask, every_user_makes_a_unique_utub
 ) -> None:

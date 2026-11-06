@@ -14,6 +14,18 @@ button.splash-button {
     background-color: var(--darkSplashLabelGreen);
 }
 
+/* Navbar matches the approved dark mock: plain green wordmark, no favicon chip. */
+.invite-page .navbar-brand,
+.invite-page .navbar-brand:hover,
+.invite-page .navbar-brand:focus {
+    color: var(--splashLabelGreen);
+    font-weight: var(--fw-bold);
+}
+
+.invite-page #iconContainer {
+    display: none;
+}
+
 .invite-description {
     margin: 0;
     color: var(--UTubDescriptionColor);
