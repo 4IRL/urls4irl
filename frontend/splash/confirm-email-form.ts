@@ -16,7 +16,7 @@ const log = debug("splash:confirm-email");
 type ConfirmEmailMode = "inline" | "expired";
 
 const RESEND_TIMEOUT_MS = 10000;
-const EXPIRED_COOLDOWN_KEY = "expired";
+export const EXPIRED_COOLDOWN_KEY = "expired";
 
 interface CooldownRecord {
   key: string;

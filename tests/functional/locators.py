@@ -788,11 +788,12 @@ class SplashPageLocators(GenericPageLocator):
     # identical id is also added to HomePageLocators for the DD-9 HOME render.
     EMAIL_CHANGE_STATUS_BANNER = "#EmailChangeStatusBanner"
 
-    # Keep SPLASH_MODAL for reset password and expired email validation flows.
-    # These flows use a single generic #SplashModal shell that is populated with
-    # different form content at runtime (via URL dispatch), unlike the other modals
-    # (e.g. ForgotPasswordModal, ConfirmEmailModal) which are pre-rendered with
-    # their own specific IDs and can be targeted directly.
+    # Keep SPLASH_MODAL for the reset password flow only. It uses a single generic
+    # #SplashModal shell that is populated with different form content at runtime
+    # (via URL dispatch), unlike the other modals (e.g. ForgotPasswordModal,
+    # ConfirmEmailModal) which are pre-rendered with their own specific IDs and
+    # can be targeted directly. SPLASH_MODAL_ALERT is intentionally unscoped (not
+    # nested under SPLASH_MODAL) so it matches the alert in any splash modal.
     SPLASH_MODAL = "#SplashModal"
 
     # Unscoped common selectors (use for reset password / single-modal pages)

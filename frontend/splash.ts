@@ -12,7 +12,11 @@ import { initNavbar } from "./splash/navbar.js";
 import { initSplash } from "./splash/init.js";
 import { initResetPasswordForm } from "./splash/reset-password-form.js";
 import { initConfirmLinkForm } from "./splash/confirm-link-form.js";
-import { announce, initConfirmEmailForm } from "./splash/confirm-email-form.js";
+import {
+  announce,
+  EXPIRED_COOLDOWN_KEY,
+  initConfirmEmailForm,
+} from "./splash/confirm-email-form.js";
 
 // Register jQuery plugins globally
 registerJQueryPlugins();
@@ -39,7 +43,7 @@ export function initExpiredConfirmEmailIfPresent(): void {
   if (!$shell.length) return;
 
   $shell.data("resendToken", String($shell.data("resendToken") ?? ""));
-  $shell.data("cooldownKey", "expired");
+  $shell.data("cooldownKey", EXPIRED_COOLDOWN_KEY);
   initConfirmEmailForm($shell, { mode: "expired" });
 
   bootstrap.Modal.getOrCreateInstance($shell[0]).show();

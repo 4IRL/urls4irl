@@ -1980,10 +1980,6 @@ def generate_constants_js() -> dict[
         "TAGS_MAX_LENGTH": CONSTANTS.TAGS.MAX_TAG_LENGTH,
         "TAGS_MAX_ON_URLS": CONSTANTS.TAGS.MAX_URL_TAGS,
         # Splash constants
-        "VALIDATE_EMAIL_ERROR_CODES": {
-            error_code.name: error_code.value
-            for error_code in CONSTANTS.SPLASH.EMAIL_VALIDATION_ERROR_CODES
-        },
         "EMAIL_RESEND_COOLDOWN_SECONDS": EMAIL_CONSTANTS.WAIT_TO_RETRY_BEFORE_MAX_ATTEMPTS,
         # Metrics dimension allow-list (source of truth: DIMENSION_MODELS)
         "DIMENSION_KEYS": list(get_all_dimension_keys()),

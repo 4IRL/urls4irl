@@ -45,6 +45,7 @@ vi.mock("../splash/reset-password-form.js", () => ({
 vi.mock("../splash/confirm-email-form.js", () => ({
   initConfirmEmailForm: vi.fn(),
   announce: vi.fn(),
+  EXPIRED_COOLDOWN_KEY: "expired",
 }));
 
 vi.mock("../lib/globals.js", () => ({

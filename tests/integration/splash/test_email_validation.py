@@ -360,6 +360,7 @@ def test_expired_token_accessed_shows_error_to_user(
     )
 
     assert EMAILS.TOKEN_EXPIRED.encode() in response.data
+    assert response.headers["Cache-Control"] == "no-store"
 
     # Visiting the expired link creates no session
     home_response = client.get(url_for(ROUTES.UTUBS.HOME))
