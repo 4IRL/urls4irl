@@ -17,6 +17,13 @@ INVITE_PATH_REGEX = re.compile(rf"/invite/[A-Za-z0-9_-]{{{INVITE_LINK_TOKEN_LENG
 ALL_LABELS = [state.label for state in MOCK_INVITE_LINK_STATES]
 
 
+@pytest.fixture(autouse=True)
+def local_dev_signal(runner, monkeypatch):
+    """Turn on the positive local-dev signal the command requires."""
+    app, _ = runner
+    monkeypatch.setitem(app.config, CONFIG_ENVS.VITE_DEV_SERVER, True)
+
+
 def _seeded_token(app, index: int) -> str:
     utub_name = f"{MOCK_UTUB_NAME_BASE}{index + 1}"
     with app.app_context():
@@ -93,6 +100,28 @@ def test_invite_token_refuses_on_deployed_config(runner, monkeypatch, env_flag):
     assert seed.exit_code == 0
     token = _seeded_token(app, 0)
     monkeypatch.setitem(app.config, env_flag, True)
+
+    result = cli_runner.invoke(args=["addmock", "invite-token", ALL_LABELS[0]])
+
+    assert result.exit_code == 1
+    assert "Cannot print invite tokens" in result.output
+    assert token not in result.output
+    assert INVITE_PATH_REGEX.search(result.output) is None
+
+
+def test_invite_token_refuses_without_local_dev_signal(runner, monkeypatch):
+    """
+    GIVEN a seeded database and neither PRODUCTION nor DEV_SERVER, but no local-dev signal
+    WHEN `addmock invite-token live_unlimited` runs
+    THEN it exits 1 with the refusal message and prints no token
+    """
+    app, cli_runner = runner
+    seed = cli_runner.invoke(args=["addmock", "all"])
+    assert seed.exit_code == 0
+    token = _seeded_token(app, 0)
+    monkeypatch.setitem(app.config, CONFIG_ENVS.PRODUCTION, False)
+    monkeypatch.setitem(app.config, CONFIG_ENVS.DEV_SERVER, False)
+    monkeypatch.setitem(app.config, CONFIG_ENVS.VITE_DEV_SERVER, False)
 
     result = cli_runner.invoke(args=["addmock", "invite-token", ALL_LABELS[0]])
 

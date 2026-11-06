@@ -65,7 +65,7 @@ def _build_page_view(
     *,
     resolution: InvitePageResolution,
     token: str,
-    viewer_unvalidated: bool,
+    viewer_unvalidated: bool = False,
     show_login_message: bool = False,
 ) -> InvitePageView:
     """Map a classifier resolution to the view the template renders (never a member).
@@ -174,13 +174,9 @@ def invite_page(token: str) -> Response:
     return render_invite_page(page=page, status_code=status_code)
 
 
-def _dead_page_response(*, viewer_unvalidated: bool) -> Response:
-    page = _build_page_view(
-        resolution=InvitePageResolution(
-            state=InvitePageState.DEAD, invite=None, utub_id=None, link_live=False
-        ),
-        token="",
-        viewer_unvalidated=viewer_unvalidated,
+def _dead_page_response() -> Response:
+    page = InvitePageView(
+        kind="dead", page_title=INVITE_LINK_PAGE.TITLE_DEAD, show_home_link=True
     )
     return render_invite_page(page=page, status_code=HTTPStatus.NOT_FOUND)
 
@@ -192,7 +188,7 @@ def _join_outcome_response(result: InviteJoinResult) -> Response:
         and result.utub_id is not None
     ):
         return invite_redirect(f"/home?UTubID={result.utub_id}")
-    return _dead_page_response(viewer_unvalidated=False)
+    return _dead_page_response()
 
 
 @invite_links.route("/invite/<token>/join", methods=["POST"])
@@ -230,7 +226,6 @@ def join_invite_page(token: str) -> Response:
         page = _build_page_view(
             resolution=resolution,
             token=token,
-            viewer_unvalidated=False,
             show_login_message=True,
         )
         if page.kind == "login_required":
@@ -253,7 +248,7 @@ def join_invite_page(token: str) -> Response:
 
     invite = find_invite_by_token(token)
     if invite is None:
-        return _dead_page_response(viewer_unvalidated=False)
+        return _dead_page_response()
     return _join_outcome_response(join_via_invite(current_user, invite))
 
 

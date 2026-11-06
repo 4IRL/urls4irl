@@ -224,7 +224,7 @@ def mock_admin():
     "invite-token",
     help=(
         "Print the /invite/<token> path of a seeded sample invite link, to try "
-        "each invite page state locally. Local dev only: refuses under PRODUCTION or DEV_SERVER."
+        "each invite page state locally. Local dev only: refuses under PRODUCTION or DEV_SERVER, and unless VITE_DEV_SERVER is on."
     ),
 )
 @click.argument(
@@ -232,12 +232,15 @@ def mock_admin():
 )
 @with_appcontext
 def mock_invite_token(label: str) -> None:
-    # Fail closed: refuse on any deployed environment (prod or the remote dev server).
-    if current_app.config.get(CONFIG_ENVS.PRODUCTION, False) or current_app.config.get(
-        CONFIG_ENVS.DEV_SERVER, False
+    # Fail closed: refuse on a deployed environment, and unless the explicit
+    # local-dev signal (VITE_DEV_SERVER, set only by docker/compose.local.yaml) is on.
+    if (
+        current_app.config.get(CONFIG_ENVS.PRODUCTION, False)
+        or current_app.config.get(CONFIG_ENVS.DEV_SERVER, False)
+        or not current_app.config.get(CONFIG_ENVS.VITE_DEV_SERVER, False)
     ):
         raise click.ClickException(
-            "Cannot print invite tokens in production or on the dev server"
+            "Cannot print invite tokens outside the local dev stack"
         )
 
     token = get_mock_invite_token(label)
