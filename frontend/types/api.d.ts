@@ -1285,7 +1285,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** @description Resend the account-confirmation email for a pending registration (opaque) */
+    /** @description Resend the account-confirmation email for a pending registration (opaque). Body takes exactly one of email or resendToken (from a login on an unconfirmed account) */
     post: operations["resendRegistrationEmail"];
     delete?: never;
     options?: never;
@@ -3812,6 +3812,39 @@ export interface components {
     ErrorResponse_LoginErrorCodes: components["schemas"]["ErrorResponse"] & {
       errorCode?: components["schemas"]["LoginErrorCodes"];
     };
+    LoginEmailNotValidatedErrorResponse: {
+      /**
+       * @description Error status, always Failure
+       * @constant
+       */
+      status: "Failure";
+      /** @description Human-readable error message */
+      message: string;
+      /**
+       * @description Application-specific error code, if applicable
+       * @default null
+       */
+      errorCode: number | null;
+      /**
+       * @description Map of field names to lists of validation error messages, if applicable
+       * @default null
+       */
+      errors: {
+        [key: string]: string[];
+      } | null;
+      /**
+       * @description Additional error detail, if applicable
+       * @default null
+       */
+      details: string | null;
+      /**
+       * @description URL string involved in the error, if applicable
+       * @default null
+       */
+      urlString: string | null;
+      /** @description Short-lived signed token that can only be used to request another confirmation email via /resend-registration-email */
+      resendToken: string;
+    };
     /**
      * @description Error codes for LoginErrorCodes
      * @enum {integer}
@@ -3828,11 +3861,16 @@ export interface components {
     };
     ResendRegistrationEmailRequest: {
       /**
-       * Format: email
        * @description Email address of the pending registration to resend confirmation for
+       * @default null
        * @example user@example.com
        */
-      email: string;
+      email: string | null;
+      /**
+       * @description Resend token returned by a login on an unconfirmed account
+       * @default null
+       */
+      resendToken: string | null;
     };
     ForgotPasswordRequest: {
       /**
@@ -10183,7 +10221,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ErrorResponse"];
+          "application/json": components["schemas"]["LoginEmailNotValidatedErrorResponse"];
         };
       };
       /** @description Too many requests */

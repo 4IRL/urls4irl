@@ -2,6 +2,7 @@ from backend.utils.strings.form_strs import EMAIL
 from backend.utils.strings.json_strs import FAILURE_GENERAL
 
 VALIDATE_EMAIL = "validate_email"
+RESEND_VALIDATION = "resend_validation"
 CHANGE_EMAIL = "change_email"
 CHANGE_EMAIL_TARGET = "change_email_target"
 EXPIRATION = "exp"
@@ -33,6 +34,7 @@ VALIDATE_YOUR_EMAIL = "Validate Your Email!"
 # Email related strings
 class EMAILS:
     VALIDATE_EMAIL = VALIDATE_EMAIL
+    RESEND_VALIDATION = RESEND_VALIDATION
     CHANGE_EMAIL = CHANGE_EMAIL
     CHANGE_EMAIL_TARGET = CHANGE_EMAIL_TARGET
     EXPIRATION = EXPIRATION

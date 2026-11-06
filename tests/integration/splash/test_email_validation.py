@@ -13,8 +13,9 @@ from backend.metrics.events import EventName
 from backend.models.email_validations import Email_Validations
 from backend.models.users import Users
 from backend.models.utils import VerifyTokenResponse
+from backend.schemas.errors import LoginEmailNotValidatedErrorResponse
 from backend.schemas.users import EmailValidationResponseSchema
-from backend.splash.constants import EmailValidationErrorCodes
+from backend.splash.constants import EmailValidationErrorCodes, LoginErrorCodes
 from backend.splash.utils import verify_token
 from backend.utils.all_routes import ROUTES
 from backend.utils.constants import EMAIL_CONSTANTS
@@ -186,8 +187,10 @@ def test_registered_not_email_validated_tries_logging_in(
     )
     assert (
         int(login_user_response_json[STD_JSON.ERROR_CODE])
-        == EmailValidationErrorCodes.MAX_TOTAL_EMAIL_VALIDATION_ATTEMPTS
+        == LoginErrorCodes.ACCOUNT_NOT_EMAIL_VALIDATED
     )
+    assert login_user_response_json[STD_JSON.RESEND_TOKEN]
+    LoginEmailNotValidatedErrorResponse.model_validate(login_user_response_json)
 
     assert response.status_code == 401
 

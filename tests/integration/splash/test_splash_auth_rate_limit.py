@@ -162,6 +162,33 @@ def test_forgot_password_rate_limit_returns_html_429(
         _disable_limiter()
 
 
+def test_resend_registration_email_token_body_rate_limit_returns_html_429(
+    app: Flask, load_register_page: Tuple[FlaskClient, str]
+):
+    """
+    GIVEN the 10/minute per-IP limit on POST /resend-registration-email
+    WHEN an 11th resend attempt with a resendToken body arrives within the window
+    THEN a 429 is returned as the HTML 429 page.
+    """
+    client, csrf_token = load_register_page
+    resend_url = url_for(ROUTES.SPLASH.RESEND_REGISTRATION_EMAIL)
+    resend_body = {"resendToken": "not-a-real-token"}
+    _enable_limiter(app)
+    try:
+        for _attempt_number in range(_AUTH_RATE_LIMIT_PER_MINUTE):
+            response = client.post(
+                resend_url, json=resend_body, headers={"X-CSRFToken": csrf_token}
+            )
+            assert response.status_code == 200
+
+        rate_limited_response = client.post(
+            resend_url, json=resend_body, headers={"X-CSRFToken": csrf_token}
+        )
+        _assert_rate_limited(rate_limited_response)
+    finally:
+        _disable_limiter()
+
+
 def test_resend_registration_email_rate_limit_returns_html_429(
     app: Flask, load_register_page: Tuple[FlaskClient, str]
 ):

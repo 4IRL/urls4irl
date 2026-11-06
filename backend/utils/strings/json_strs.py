@@ -19,6 +19,7 @@ class STD_JSON_RESPONSE:
     NO_CHANGE = NO_CHANGE
     TOO_MANY_REQUESTS = TOO_MANY_REQUESTS
     DETAILS = DETAILS
+    RESEND_TOKEN = "resendToken"
 
 
 # Strings for general failure, included in JSON message

@@ -982,7 +982,7 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Handler:** `backend/splash/routes.py:login`
 - **Decorators:** `no_authenticated_users_allowed`, `api_route`, `limiter.limit(SPLASH_AUTH_RATE_LIMIT, methods=['POST'])`
 - **Service:** `backend.splash.services.user_login:login_user_to_u4i`
-- **Schema:** request: `backend.schemas.requests.splash.LoginRequest`; response: `backend.schemas.users.LoginRedirectResponseSchema`; status: 200 `backend.schemas.users.LoginRedirectResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 401 `backend.schemas.errors.ErrorResponse`, 429 `backend.schemas.errors.ErrorResponse`
+- **Schema:** request: `backend.schemas.requests.splash.LoginRequest`; response: `backend.schemas.users.LoginRedirectResponseSchema`; status: 200 `backend.schemas.users.LoginRedirectResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 401 `backend.schemas.errors.LoginEmailNotValidatedErrorResponse`, 429 `backend.schemas.errors.ErrorResponse`
 - **Template:** —
 - **JS:** keys: `login`
 
@@ -1062,7 +1062,7 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 
 - **Handler:** `backend/splash/routes.py:resend_registration_email`
 - **Decorators:** `no_authenticated_users_allowed`, `api_route`, `limiter.limit(SPLASH_AUTH_RATE_LIMIT, methods=['POST'])`
-- **Service:** `backend.splash.services.validate_email:send_resend_registration_email`
+- **Service:** `backend.splash.services.validate_email:send_resend_registration_email`, `backend.splash.services.validate_email:send_resend_validation_email_for_token`
 - **Schema:** request: `backend.schemas.requests.splash.ResendRegistrationEmailRequest`; response: `backend.schemas.base.StatusMessageResponseSchema`; status: 200 `backend.schemas.base.StatusMessageResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 429 `backend.schemas.errors.ErrorResponse`
 - **Template:** —
 - **JS:** keys: `resendRegistrationEmail`

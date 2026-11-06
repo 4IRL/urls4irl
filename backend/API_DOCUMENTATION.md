@@ -119,8 +119,11 @@ Invalid form data sent with the request.
 >     "status": "Failure",
 >     "message": "An account already exists with that information but the email has not been validated.",
 >     "errorCode": 1,
+>     "resendToken": "%short-lived signed token%"
 > }
 > ```
+>
+> `resendToken` expires after about 15 minutes and can only be used as the `resendToken` body field of `POST /resend-registration-email`.
 
 ##### Example cURL
 
@@ -266,6 +269,31 @@ Invalid form data sent with the request.
 >  https://urls.4irl.app/confirm-email \
 >  -H 'Cookie: YOUR_COOKIE'
 > ```
+
+</details>
+
+<details>
+ <summary><code>POST</code> <code><b>/resend-registration-email</b></code> <code>(resends the confirmation email, opaque)</code></summary>
+
+##### Request Payload
+
+Payload content-type should be `application/json`. CSRF token must be sent in the `X-CSRFToken` request header. Not available to logged-in users.
+
+Exactly one of `email` or `resendToken` (an empty `resendToken` counts as absent):
+> ```json
+> { "email": "%email%" }
+> ```
+> ```json
+> { "resendToken": "%token from the /login 401 body%" }
+> ```
+
+##### Responses
+
+> | http code     | content-type                      | response  | details |
+> |---------------|-----------------------------------|-----------|---------------------------------------------------------|
+> | `200`         | `application/json`                | Uniform opaque success | Returned for every outcome (unknown, confirmed, expired or invalid token, rate-limited, sent). |
+> | `400`         | `application/json`                | `See above.` | Neither or both fields supplied. |
+> | `429`         | `text/html;charset=utf−8`         | None | Per-IP rate limit hit. |
 
 </details>
 

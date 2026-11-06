@@ -10,7 +10,10 @@ from backend.extensions.metrics.writer import record_event
 from backend.metrics.events import EventName
 from backend.models.users import Users
 from backend.models.utub_members import Utub_Members
-from backend.schemas.errors import build_message_error_response
+from backend.schemas.errors import (
+    LoginEmailNotValidatedErrorResponse,
+    build_message_error_response,
+)
 from backend.schemas.users import LoginRedirectResponseSchema
 from backend.splash.constants import (
     LOGIN_FAILURE_REASON_BAD_PASSWORD,
@@ -21,6 +24,7 @@ from backend.splash.constants import (
     LoginErrorCodes,
 )
 from backend.utils.all_routes import ROUTES
+from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.user_strs import USER_FAILURE
 from backend.utils.strings.utub_strs import UTUB_ID_QUERY_PARAM
 
@@ -102,11 +106,12 @@ def login_user_to_u4i(username: str, password: str) -> FlaskResponse:
             EventName.LOGIN_FAILURE,
             dimensions={"reason": LOGIN_FAILURE_REASON_EMAIL_UNVERIFIED},
         )
-        return build_message_error_response(
+        return LoginEmailNotValidatedErrorResponse(
+            status=STD_JSON.FAILURE,
             message=USER_FAILURE.ACCOUNT_CREATED_EMAIL_NOT_VALIDATED,
             error_code=LoginErrorCodes.ACCOUNT_NOT_EMAIL_VALIDATED,
-            status_code=401,
-        )
+            resend_token=user.get_resend_validation_token(),
+        ).to_response(401)
 
     safe_add_log(f"Logging User.id={user.id} in")
 

@@ -3253,7 +3253,7 @@
         "status_codes": {
           "200": "backend.schemas.users.LoginRedirectResponseSchema",
           "400": "backend.schemas.errors.ErrorResponse",
-          "401": "backend.schemas.errors.ErrorResponse",
+          "401": "backend.schemas.errors.LoginEmailNotValidatedErrorResponse",
           "429": "backend.schemas.errors.ErrorResponse"
         }
       },
@@ -3606,7 +3606,8 @@
         }
       },
       "services": [
-        "backend.splash.services.validate_email:send_resend_registration_email"
+        "backend.splash.services.validate_email:send_resend_registration_email",
+        "backend.splash.services.validate_email:send_resend_validation_email_for_token"
       ],
       "templates": []
     },

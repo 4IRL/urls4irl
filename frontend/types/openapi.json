@@ -7724,7 +7724,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "$ref": "#/components/schemas/LoginEmailNotValidatedErrorResponse"
                 }
               }
             }
@@ -7810,7 +7810,7 @@
             "csrfToken": []
           }
         ],
-        "description": "Resend the account-confirmation email for a pending registration (opaque)",
+        "description": "Resend the account-confirmation email for a pending registration (opaque). Body takes exactly one of email or resendToken (from a login on an unconfirmed account)",
         "requestBody": {
           "content": {
             "application/json": {
@@ -14838,6 +14838,79 @@
           }
         ]
       },
+      "LoginEmailNotValidatedErrorResponse": {
+        "properties": {
+          "status": {
+            "const": "Failure",
+            "description": "Error status, always Failure",
+            "type": "string"
+          },
+          "message": {
+            "description": "Human-readable error message",
+            "type": "string"
+          },
+          "errorCode": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Application-specific error code, if applicable"
+          },
+          "errors": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Map of field names to lists of validation error messages, if applicable"
+          },
+          "details": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Additional error detail, if applicable"
+          },
+          "urlString": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "URL string involved in the error, if applicable"
+          },
+          "resendToken": {
+            "description": "Short-lived signed token that can only be used to request another confirmation email via /resend-registration-email",
+            "type": "string"
+          }
+        },
+        "required": ["status", "message", "resendToken"],
+        "type": "object"
+      },
       "LoginErrorCodes": {
         "type": "integer",
         "enum": [1, 2, 3],
@@ -14866,13 +14939,33 @@
       "ResendRegistrationEmailRequest": {
         "properties": {
           "email": {
+            "anyOf": [
+              {
+                "format": "email",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
             "description": "Email address of the pending registration to resend confirmation for",
-            "examples": ["user@example.com"],
-            "format": "email",
-            "type": "string"
+            "examples": ["user@example.com"]
+          },
+          "resendToken": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Resend token returned by a login on an unconfirmed account"
           }
         },
-        "required": ["email"],
         "type": "object"
       },
       "ForgotPasswordRequest": {

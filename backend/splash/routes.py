@@ -27,7 +27,11 @@ from backend.schemas.base import (
     HtmlErrorPageSchema,
     StatusMessageResponseSchema,
 )
-from backend.schemas.errors import ErrorResponse
+from backend.schemas.errors import (
+    ErrorResponse,
+    LoginEmailNotValidatedErrorResponse,
+    build_message_error_response,
+)
 from backend.schemas.requests.splash import (
     ConfirmLinkRequest,
     ForgotPasswordRequest,
@@ -84,6 +88,7 @@ from backend.splash.services.user_registration import (
 )
 from backend.splash.services.validate_email import (
     send_resend_registration_email,
+    send_resend_validation_email_for_token,
     send_validation_email_to_user,
     validate_email_for_user,
 )
@@ -182,7 +187,7 @@ def register_user(register_request: RegisterRequest) -> FlaskResponse:
     status_codes={
         200: LoginRedirectResponseSchema,
         400: ErrorResponse,
-        401: ErrorResponse,
+        401: LoginEmailNotValidatedErrorResponse,
         429: ErrorResponse,
     },
 )
@@ -229,7 +234,7 @@ def send_validation_email() -> WerkzeugResponse | FlaskResponse:
     error_code=RegisterErrorCodes.INVALID_FORM_INPUT,
     ajax_required=False,
     tags=[OPEN_API.AUTH],
-    description="Resend the account-confirmation email for a pending registration (opaque)",
+    description="Resend the account-confirmation email for a pending registration (opaque). Body takes exactly one of email or resendToken (from a login on an unconfirmed account)",
     status_codes={
         200: StatusMessageResponseSchema,
         400: ErrorResponse,
@@ -240,6 +245,16 @@ def send_validation_email() -> WerkzeugResponse | FlaskResponse:
 def resend_registration_email(
     resend_registration_email_request: ResendRegistrationEmailRequest,
 ) -> FlaskResponse:
+    if resend_registration_email_request.resend_token is not None:
+        return send_resend_validation_email_for_token(
+            resend_registration_email_request.resend_token
+        )
+    if resend_registration_email_request.email is None:
+        # Unreachable past the schema validator; fail closed.
+        return build_message_error_response(
+            message=USER_FAILURE.UNABLE_TO_REGISTER,
+            error_code=RegisterErrorCodes.INVALID_FORM_INPUT,
+        )
     return send_resend_registration_email(resend_registration_email_request.email)
 
 
