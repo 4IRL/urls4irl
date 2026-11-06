@@ -491,7 +491,13 @@ def test_server_rejection_maps_to_the_exact_filter_row(
     row = _step_filter_rows(page, 2).nth(0)
     _choose(row.locator(MDL.FLOW_BUILDER_FILTER_DIM), "status_code")
     status_input = row.locator(MDL.FLOW_BUILDER_FILTER_VALUE)
-    status_input.fill(REJECTED_STATUS_CODE)
+    # The live preview (300 ms debounce, then a request) marks controls on its own
+    # response. Wait for that response before Save so its marks cannot land between
+    # the Save rejection and the assertions below and strip/replace the row's flags.
+    with page.expect_response(
+        lambda response: "/admin/metrics/flows/preview" in response.url
+    ):
+        status_input.fill(REJECTED_STATUS_CODE)
 
     page.locator(MDL.FLOW_BUILDER_SAVE_BUTTON).click()
     row_error = row.locator(MDL.FLOW_BUILDER_ERROR)
