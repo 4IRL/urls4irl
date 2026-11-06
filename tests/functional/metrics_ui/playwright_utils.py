@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import json
 import re
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable
@@ -80,6 +81,39 @@ class HeldFlowQueries:
         for route in self._held:
             route.continue_()
         self._held.clear()
+
+
+PEAK_LOADING_CARDS_GLOBAL: str = "__peakLoadingFlowCards"
+
+
+def track_peak_loading_flow_cards(page: Page) -> None:
+    """Record, inside the page, the most flow cards that were ever loading at
+    once. Call before navigating. A held `/flow` request times out client-side
+    after 5s, so a slow test can no longer see all cards loading; the in-page
+    peak is read with `peak_loading_flow_cards` instead of polling the DOM."""
+    page.add_init_script(
+        f"""
+        (() => {{
+          window.{PEAK_LOADING_CARDS_GLOBAL} = 0;
+          const record = () => {{
+            const loading = document.querySelectorAll({json.dumps(MDL.FLOWS_CARD_LOADING)}).length;
+            if (loading > window.{PEAK_LOADING_CARDS_GLOBAL}) {{
+              window.{PEAK_LOADING_CARDS_GLOBAL} = loading;
+            }}
+          }};
+          new MutationObserver(record).observe(document, {{
+            subtree: true,
+            childList: true,
+            attributes: true,
+          }});
+        }})();
+        """
+    )
+
+
+def peak_loading_flow_cards(page: Page) -> int:
+    """Peak simultaneous loading flow cards since `track_peak_loading_flow_cards`."""
+    return page.evaluate(f"() => window.{PEAK_LOADING_CARDS_GLOBAL}")
 
 
 def open_flows_tab(
