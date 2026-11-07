@@ -41,6 +41,7 @@ from tests.integration.utubs.test_get_utubs_summary_route import (
 from tests.utils_for_test import (
     get_utub_url_id,
     remove_member,
+    trash_utub,
     trash_utub_url,
 )
 
@@ -245,6 +246,130 @@ def test_home_seed_matches_get_utubs_order(
     web_order = _ordered_ids(_get_summary(client))
     assert web_order == EXPECTED_ORDER_BY_SORT[UtubSort.NAME_AZ]
     assert [item[MODELS.ID] for item in _home_utubs_data(client)] == web_order
+
+
+def _set_pinned(app: Flask, *, user_id: int, utub_ids: list[int]) -> None:
+    with app.app_context():
+        for membership in Utub_Members.query.filter_by(user_id=user_id).all():
+            membership.pinned_at = BASE_TIME if membership.utub_id in utub_ids else None
+        db.session.commit()
+
+
+@pytest.mark.parametrize("utub_sort", list(UtubSort), ids=lambda sort: sort.value)
+def test_pinned_utubs_lead_under_every_sort_everywhere(
+    every_user_in_every_utub,
+    login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+    utub_sort: UtubSort,
+):
+    """
+    GIVEN a user who pinned the last two UTubs of the sort's order (so every sort moves
+        rows), while another member pinned all three
+    WHEN the summary is read from GET /utubs and the /home seed
+    THEN the pinned UTubs lead in the sort's order, the rest follow in the sort's order,
+        isPinned is set only on the user's own pinned rows, and the other member's
+        pins never show
+    """
+    client, _, _, app = login_first_user_without_register
+    _seed_distinct_rows(app)
+    _set_user_preferences(app, 1, utub_sort=utub_sort)
+    base = EXPECTED_ORDER_BY_SORT[utub_sort]
+    pinned_ids = base[-2:]
+    _set_pinned(app, user_id=1, utub_ids=pinned_ids)
+    _set_pinned(app, user_id=2, utub_ids=[1, 2, 3])
+    expected = [utub_id for utub_id in base if utub_id in pinned_ids] + [
+        utub_id for utub_id in base if utub_id not in pinned_ids
+    ]
+    assert expected != base
+
+    summary = _get_summary(client)
+    assert _ordered_ids(summary) == expected
+    assert {
+        item[MODELS.ID]: item[MODELS.IS_PINNED] for item in summary[MODELS.UTUBS]
+    } == {utub_id: utub_id in pinned_ids for utub_id in base}
+    home_items = _home_utubs_data(client)
+    assert [item[MODELS.ID] for item in home_items] == expected
+    assert [item[MODELS.IS_PINNED] for item in home_items] == [
+        utub_id in pinned_ids for utub_id in expected
+    ]
+
+
+def test_more_than_five_pinned_rows_all_lead(
+    every_user_in_every_utub,
+    login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+):
+    """
+    GIVEN a user whose memberships are all pinned directly (past the write-time cap)
+        (seven extras with identical timestamps) while the three original UTubs stay
+        unpinned
+    WHEN the summary is listed
+    THEN every pinned row renders ahead of the unpinned ones, and the tied pinned rows
+        resolve by ascending id
+    """
+    client, _, _, app = login_first_user_without_register
+    with app.app_context():
+        for index in range(10, 17):
+            utub = Utubs(name=f"extra {index}", utub_creator=1, utub_description="")
+            utub.id = index
+            utub.created_at = BASE_TIME
+            utub.last_updated = BASE_TIME
+            utub.members.append(
+                Utub_Members(utub_id=index, user_id=1, member_role=Member_Role.CREATOR)
+            )
+            db.session.add(utub)
+        db.session.commit()
+    pinned_ids = [10, 11, 12, 13, 14, 15, 16]
+    _set_pinned(app, user_id=1, utub_ids=pinned_ids)
+
+    ordered = _ordered_ids(_get_summary(client))
+    assert len(ordered) > 7
+    assert ordered[: len(pinned_ids)] == pinned_ids
+    assert not set(ordered[len(pinned_ids) :]) & set(pinned_ids)
+
+
+def test_trashed_pinned_utub_is_absent_and_still_pinned_after_restore(
+    every_user_in_every_utub,
+    login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+):
+    """
+    GIVEN a pinned UTub that is then trashed
+    WHEN the summary is listed, and again after the UTub is restored
+    THEN it is absent while trashed and leads again, still pinned, once restored
+    """
+    client, _, _, app = login_first_user_without_register
+    _seed_distinct_rows(app)
+    _set_pinned(app, user_id=1, utub_ids=[3])
+    trash_utub(app, 3, deleted_by=1)
+    assert 3 not in _ordered_ids(_get_summary(client))
+
+    with app.app_context():
+        utub: Utubs = Utubs.query.get(3)
+        utub.deleted_at = None
+        utub.deleted_by = None
+        db.session.commit()
+
+    summary = _get_summary(client)
+    assert _ordered_ids(summary)[0] == 3
+    assert summary[MODELS.UTUBS][0][MODELS.IS_PINNED] is True
+
+
+def test_summary_statement_count_is_unchanged_by_pins(
+    every_user_in_every_utub,
+    login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+):
+    """
+    GIVEN a user in three UTubs
+    WHEN the summary is built with no pins, then with two pinned
+    THEN the same number of SQL statements runs both times
+    """
+    client, _, _, app = login_first_user_without_register
+
+    def send() -> Any:
+        return _get_summary(client)
+
+    unpinned = _statements_during(_fresh_request(app, send))
+    _set_pinned(app, user_id=1, utub_ids=[1, 2])
+    pinned = _statements_during(_fresh_request(app, send))
+    assert len(pinned) == len(unpinned), (unpinned, pinned)
 
 
 def test_summary_counts_exclude_trashed_urls_and_removed_members(
@@ -472,8 +597,37 @@ def test_sort_matches_shared_parity_fixture(
                     produced[utub_sort.value] == fixture["expected"][utub_sort.value]
                 ), utub_sort.value
 
+    # Pinned cases are additive: the unpinned inputs above are untouched, each case
+    # pins a subset (set directly on the membership) and lists its own expected orders.
+    produced_pinned: list[dict[str, list[int]]] = []
+    for case in fixture["pinnedCases"]:
+        with app.app_context():
+            for membership in Utub_Members.query.filter_by(user_id=1).all():
+                membership.pinned_at = (
+                    BASE_TIME if membership.utub_id in case["pinnedIds"] else None
+                )
+            db.session.commit()
+        case_produced: dict[str, list[int]] = {}
+        for utub_sort in UtubSort:
+            _set_user_preferences(app, 1, utub_sort=utub_sort)
+            with app.app_context():
+                rows = load_summary_memberships_and_counts(1)
+                case_produced[utub_sort.value] = [
+                    membership.utub_id for membership in rows.memberships
+                ]
+                if not regenerate:
+                    assert (
+                        case_produced[utub_sort.value]
+                        == case["expected"][utub_sort.value]
+                    ), (case["pinnedIds"], utub_sort.value)
+        produced_pinned.append(case_produced)
+
+    _set_pinned(app, user_id=1, utub_ids=[])
+
     if regenerate:
         fixture["expected"] = produced
+        for case, case_produced in zip(fixture["pinnedCases"], produced_pinned):
+            case["expected"] = case_produced
         PARITY_FIXTURE_PATH.write_text(json.dumps(fixture, indent=2) + "\n")
 
 

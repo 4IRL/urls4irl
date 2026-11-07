@@ -33,6 +33,7 @@ describe("APP_CONFIG shape", () => {
       "updateUTubDescription",
       "updateUTubSettings",
       "updateMemberSettings",
+      "updateUTubPin",
       "createURL",
       "createUTubTag",
       "createMember",
@@ -64,6 +65,10 @@ describe("APP_CONFIG shape", () => {
       expect(APP_CONFIG.routes.updateMemberSettings(7)).toBe(
         "/utubs/7/member-settings",
       );
+    });
+
+    it("routes.updateUTubPin substitutes the utub id", () => {
+      expect(APP_CONFIG.routes.updateUTubPin(7)).toBe("/utubs/7/pin");
     });
   });
 
@@ -126,6 +131,15 @@ describe("APP_CONFIG shape", () => {
       expect(APP_CONFIG.strings).toBeDefined();
       expect(typeof APP_CONFIG.strings).toBe("object");
       expect(APP_CONFIG.strings).not.toBeNull();
+    });
+
+    it("exposes the bridged pinned-UTub cap as a positive integer", () => {
+      // The value itself is asserted against the backend constant in
+      // tests/unit/test_config_constants.py.
+      expect(Number.isInteger(APP_CONFIG.constants.MAX_PINNED_UTUBS)).toBe(
+        true,
+      );
+      expect(APP_CONFIG.constants.MAX_PINNED_UTUBS).toBeGreaterThan(0);
     });
 
     it("exposes the bridged URL scheme constants", () => {

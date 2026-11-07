@@ -253,6 +253,7 @@ def test_get_utubs_additive_fields_and_saved_sort(
         MODELS.NAME,
         MODELS.MEMBER_ROLE,
         MODELS.IS_LOCKED,
+        MODELS.IS_PINNED,
         MODELS.URL_COUNT,
         MODELS.MEMBER_COUNT,
         MODELS.CREATED_AT,
@@ -290,9 +291,26 @@ def test_get_utubs_additive_fields_and_saved_sort(
         MODELS.SHOW_ROW_COUNTS: False,
         MODELS.SHOW_LIST_TOTALS: True,
     }
+    assert not any(item[MODELS.IS_PINNED] for item in response_json[_UTUBS_KEY])
     recent_names = [item[MODELS.NAME] for item in response_json[_UTUBS_KEY]]
 
+    # Pin the last item of the recent-activity order; it must lead once pinned.
+    pinned_utub_id = response_json[_UTUBS_KEY][-1][MODELS.ID]
     with app.app_context():
+        Utub_Members.query.get((pinned_utub_id, 1)).pinned_at = datetime(
+            2026, 2, 1, tzinfo=timezone.utc
+        )
+        db.session.commit()
+
+    response = api_client.get(_get_utubs_url(app), headers=bearer_headers_first_user)
+    assert response.status_code == 200
+    pinned_items = response.get_json()[_UTUBS_KEY]
+    assert pinned_items[0][MODELS.ID] == pinned_utub_id
+    assert pinned_items[0][MODELS.IS_PINNED] is True
+    assert not any(item[MODELS.IS_PINNED] for item in pinned_items[1:])
+
+    with app.app_context():
+        Utub_Members.query.get((pinned_utub_id, 1)).pinned_at = None
         db.session.add(User_Preferences(user_id=1, utub_sort=UtubSort.NAME_AZ))
         db.session.commit()
 

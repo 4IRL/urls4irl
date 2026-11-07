@@ -166,7 +166,7 @@ SHELL_FILES = $(wildcard $(shell git ls-files '*.sh' ':!:.claude/hooks/*' ':!:.c
 PYTHON_FILES = $(wildcard $(shell git ls-files '*.py' ':!:migrations/*' ':!:.claude/hooks/*' ':!:.claude/worktrees/*' 2>/dev/null))
 NOTIFY_TEST_DEFAULT_MSG = **Daily Backup — SUCCESS**\n✅ 💾 Database\n✅ 📄 Logs\n✅ ☁️ R2 daily\n💤 ☁️ R2 monthly\n✅ ☁️ R2 logs\n\n**Metrics — HEALTHY**\n🟢 📊 Minute Flush · 38s ago\n🟢 📊 Hourly Snapshot · 12m ago
 
-.PHONY: hooks hooks-check setup stack-info worktree-init worktree-new worktree-rm hub-up hub-down hub-restart playwright-up playwright-rebuild _hub-network _hub-capacity _admit-spoke _require-hub-files logs tools mise-config-check lockfile-check _require-tools _require-mise _require-shell-files _capacity-fresh _logs-owner-fix _test-artifacts-dir _ports-resolve _require-n-fits _profile-narrow _ui-up _require-workflow capacity test-last-failed up down build restart test-integration test-integration-parallel test-functional test-ui-parallel test-js test-js-built test-backup-pipeline test-db-provision test-playwright-lifecycle test-host-static _host-static-run affected-markers test-affected test-agent test-marker test-file test-file-parallel test-file-parallel-built vite-build vite-build-built typecheck lint lint-python lint-frontend lint-shell lint-actions format format-check format-check-python format-check-frontend format-check-shell prune help up-built start-built test-functional-built test-ui-parallel-built test-marker-built test-marker-parallel test-marker-parallel-built generate-types generate-endpoints audit-endpoints endpoint-info test-artifacts clear-db reset-db metrics-watch metrics-snapshot metrics-flush-now metrics-rows metrics-smoke-test metrics-clear-counters metrics-clear-rows metrics-clear-all gauge-sample-now trash-purge-now purge-short-links purge-invite-links test-workflow-image gauge-rows gauge-clear-rows notify-test addmock audit tunnel tunnel-stop reset-test-dbs audit-pins
+.PHONY: hooks hooks-check setup stack-info worktree-init worktree-new worktree-rm hub-up hub-down hub-restart playwright-up playwright-rebuild _hub-network _hub-capacity _admit-spoke _require-hub-files logs tools mise-config-check lockfile-check _require-tools _require-mise _require-shell-files _capacity-fresh _logs-owner-fix _test-artifacts-dir _ports-resolve _require-n-fits _profile-narrow _ui-up _require-workflow capacity test-last-failed up down build restart test-integration test-integration-parallel test-functional test-ui-parallel test-js test-js-built test-backup-pipeline test-db-provision test-playwright-lifecycle test-host-static _host-static-run affected-markers test-affected test-agent test-marker test-file test-file-parallel test-file-parallel-built vite-build vite-build-built typecheck lint lint-python lint-frontend lint-shell lint-actions format format-check format-check-python format-check-frontend format-check-shell prune help up-built start-built test-functional-built test-ui-parallel-built test-marker-built test-marker-parallel test-marker-parallel-built generate-types generate-endpoints audit-endpoints endpoint-info test-artifacts clear-db reset-db metrics-watch metrics-snapshot metrics-flush-now metrics-rows metrics-smoke-test metrics-clear-counters metrics-clear-rows metrics-clear-all gauge-sample-now trash-purge-now purge-short-links purge-invite-links test-workflow-image gauge-rows gauge-clear-rows notify-test addmock invite-token audit tunnel tunnel-stop reset-test-dbs audit-pins
 
 .DEFAULT_GOAL := help
 
@@ -314,22 +314,22 @@ tunnel-stop: ## Stop and remove the Cloudflare tunnel (leaves the rest of the st
 	$(COMPOSE) --profile tunnel rm -sf cloudflared
 
 test-integration: _hub-capacity ## Run all integration (non-UI) tests
-	$(call BUDGETED,1,$@,1) $(EXEC_WEB) "$(PYTEST) tests/ -m 'not splash_ui and not home_ui and not utubs_ui and not members_ui and not urls_ui and not create_urls_ui and not update_urls_ui and not tags_ui and not mobile_ui and not metrics_ui and not settings_ui and not search_ui and not admin_ui and not trash_ui' -v"
+	$(call BUDGETED,1,$@,1) $(EXEC_WEB) "$(PYTEST) tests/ -m 'not splash_ui and not home_ui and not utubs_ui and not members_ui and not urls_ui and not create_urls_ui and not update_urls_ui and not tags_ui and not mobile_ui and not metrics_ui and not settings_ui and not search_ui and not admin_ui and not trash_ui and not invite_links_ui' -v"
 
 test-integration-parallel: _capacity-fresh _require-n-fits _hub-capacity ## Run integration tests in parallel (queues on the host token budget; shrinks to fit live memory unless n= is given): make test-integration-parallel [n=derived: see make capacity]
-	$(call BUDGETED,$(N_INT),$@,$(MIN_TOKENS)) $(EXEC_WEB) "$(PYTEST) tests/ -m 'not splash_ui and not home_ui and not utubs_ui and not members_ui and not urls_ui and not create_urls_ui and not update_urls_ui and not tags_ui and not mobile_ui and not metrics_ui and not settings_ui and not search_ui and not admin_ui and not trash_ui' -n @TOKENS@ --dist=loadscope -v"
+	$(call BUDGETED,$(N_INT),$@,$(MIN_TOKENS)) $(EXEC_WEB) "$(PYTEST) tests/ -m 'not splash_ui and not home_ui and not utubs_ui and not members_ui and not urls_ui and not create_urls_ui and not update_urls_ui and not tags_ui and not mobile_ui and not metrics_ui and not settings_ui and not search_ui and not admin_ui and not trash_ui and not invite_links_ui' -n @TOKENS@ --dist=loadscope -v"
 
 test-functional: _hub-capacity prune _ui-up ## Run all functional (UI/Playwright) tests
-	$(call BUDGETED,1,$@,1) $(EXEC_WEB) "$(PYTEST) tests/ -m 'splash_ui or home_ui or utubs_ui or members_ui or urls_ui or create_urls_ui or update_urls_ui or tags_ui or mobile_ui or metrics_ui or settings_ui or search_ui or admin_ui or trash_ui' -v"
+	$(call BUDGETED,1,$@,1) $(EXEC_WEB) "$(PYTEST) tests/ -m 'splash_ui or home_ui or utubs_ui or members_ui or urls_ui or create_urls_ui or update_urls_ui or tags_ui or mobile_ui or metrics_ui or settings_ui or search_ui or admin_ui or trash_ui or invite_links_ui' -v"
 
 test-functional-built: _hub-capacity start-built ## Run all functional (UI/Playwright) tests against built assets
-	$(call BUDGETED,1,$@,1) $(EXEC_WEB_BUILT) "$(PYTEST) tests/ -m 'splash_ui or home_ui or utubs_ui or members_ui or urls_ui or create_urls_ui or update_urls_ui or tags_ui or mobile_ui or metrics_ui or settings_ui or search_ui or admin_ui or trash_ui' -v"
+	$(call BUDGETED,1,$@,1) $(EXEC_WEB_BUILT) "$(PYTEST) tests/ -m 'splash_ui or home_ui or utubs_ui or members_ui or urls_ui or create_urls_ui or update_urls_ui or tags_ui or mobile_ui or metrics_ui or settings_ui or search_ui or admin_ui or trash_ui or invite_links_ui' -v"
 
 test-ui-parallel: _capacity-fresh _require-n-fits _hub-capacity prune _ui-up ## Run UI tests in parallel (queues on the host token budget; shrinks to fit live memory unless n= is given): make test-ui-parallel [n=derived: see make capacity]
-	$(call BUDGETED,$(N_UI),$@,$(MIN_TOKENS)) $(EXEC_WEB) "$(PYTEST) -m 'splash_ui or home_ui or utubs_ui or members_ui or urls_ui or create_urls_ui or update_urls_ui or tags_ui or mobile_ui or metrics_ui or settings_ui or search_ui or admin_ui or trash_ui' -n @TOKENS@ --dist=loadscope"
+	$(call BUDGETED,$(N_UI),$@,$(MIN_TOKENS)) $(EXEC_WEB) "$(PYTEST) -m 'splash_ui or home_ui or utubs_ui or members_ui or urls_ui or create_urls_ui or update_urls_ui or tags_ui or mobile_ui or metrics_ui or settings_ui or search_ui or admin_ui or trash_ui or invite_links_ui' -n @TOKENS@ --dist=loadscope"
 
 test-ui-parallel-built: _capacity-fresh _require-n-fits _hub-capacity start-built ## Run UI tests in parallel against built assets (queues on the host token budget; shrinks to fit live memory unless n= is given): make test-ui-parallel-built [n=derived: see make capacity]
-	$(call BUDGETED,$(N_UI),$@,$(MIN_TOKENS)) $(EXEC_WEB_BUILT) "$(PYTEST) -m 'splash_ui or home_ui or utubs_ui or members_ui or urls_ui or create_urls_ui or update_urls_ui or tags_ui or mobile_ui or metrics_ui or settings_ui or search_ui or admin_ui or trash_ui' -n @TOKENS@ --dist=loadscope"
+	$(call BUDGETED,$(N_UI),$@,$(MIN_TOKENS)) $(EXEC_WEB_BUILT) "$(PYTEST) -m 'splash_ui or home_ui or utubs_ui or members_ui or urls_ui or create_urls_ui or update_urls_ui or tags_ui or mobile_ui or metrics_ui or settings_ui or search_ui or admin_ui or trash_ui or invite_links_ui' -n @TOKENS@ --dist=loadscope"
 
 test-js: _require-tools ## Run all JS unit tests (vitest) on the host — no stack needed
 	$(MISE) $(FRONTEND_BIN)/vitest run --config frontend/vitest.config.ts
@@ -533,6 +533,12 @@ audit: ## Run the metrics event coverage audit (exits non-zero if gaps found)
 
 addmock: ## Seed the dev database with all mock data (flask addmock all)
 	$(EXEC_WEB) "$(FLASK) addmock all"
+
+invite-token: ## Print the /invite/<token> path of a seeded sample invite link (run addmock first; dev only): make invite-token s=<live_unlimited|live_limited|expired|used_up|revoked>
+	$(if $(s),,$(error s=<label> is required, e.g. make invite-token s=live_unlimited))
+	@# s is spliced into the double-quoted $(EXEC_WEB) "…" string, so only the known sample labels are allowed.
+	$(if $(and $(filter live_unlimited live_limited expired used_up revoked,$(s)),$(if $(word 2,$(s)),,x)),,$(error s must be one of: live_unlimited live_limited expired used_up revoked (got '$(s)')))
+	$(EXEC_WEB) "$(FLASK) addmock invite-token $(s)"
 
 clear-db: ## Empty every table in the dev database (same schema, no data) — frees any registered email/username for reuse
 	$(EXEC_WEB) "$(FLASK) managedb clear dev"

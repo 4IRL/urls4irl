@@ -77,7 +77,11 @@ def api_v1_create_utub(create_utub_request: CreateUTubRequest) -> FlaskResponse:
     response_schema=UtubSummaryListSchema,
     ajax_required=False,
     tags=[OPEN_API.MOBILE_API],
-    description="Retrieve a summary of all UTubs for the current user",
+    description=(
+        "Retrieve a summary of all UTubs for the current user. Pinned UTubs "
+        "lead (stable partition on top of the saved utub_sort order); each "
+        "summary exposes isPinned."
+    ),
     status_codes={
         200: UtubSummaryListSchema,
         401: ErrorResponse,

@@ -733,6 +733,24 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 
 ## invite_links
 
+### `GET /invite/<token>` — `invite_links.invite_page`
+
+- **Handler:** `backend/invite_links/routes.py:invite_page`
+- **Decorators:** `api_route`, `limiter.limit(INVITE_LINK_PAGE_RATE_LIMIT)`
+- **Service:** `backend.invite_links.services.invite_page:resolve_invite_page`
+- **Schema:** status: 200 `backend.schemas.base.HtmlErrorPageSchema`, 302 `backend.schemas.base.HtmlErrorPageSchema`, 404 `backend.schemas.base.HtmlErrorPageSchema`, 429 `backend.schemas.base.HtmlErrorPageSchema`
+- **Template:** —
+- **JS:** indirect: page-self-url
+
+### `POST /invite/<token>/join` — `invite_links.join_invite_page`
+
+- **Handler:** `backend/invite_links/routes.py:join_invite_page`
+- **Decorators:** `api_route`, `limiter.shared_limit(INVITE_LINK_JOIN_RATE_LIMIT, scope=INVITE_LINK_JOIN_RATE_SCOPE, key_func=invite_link_join_rate_key, methods=['POST'])`
+- **Service:** `backend.invite_links.services.invite_page:resolve_invite_page`, `backend.invite_links.services.join_via_invite:join_via_invite`
+- **Schema:** status: 302 `backend.schemas.base.HtmlErrorPageSchema`, 401 `backend.schemas.base.HtmlErrorPageSchema`, 403 `backend.schemas.base.HtmlErrorPageSchema`, 404 `backend.schemas.base.HtmlErrorPageSchema`, 429 `backend.schemas.base.HtmlErrorPageSchema`
+- **Template:** —
+- **JS:** indirect: server-built-url
+
 ### `DELETE /utubs/<int:utub_id>/invite-link` — `invite_links.revoke_invite_link`
 
 - **Handler:** `backend/invite_links/routes.py:revoke_invite_link`
@@ -1492,6 +1510,15 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Schema:** request: `backend.schemas.requests.utubs.UpdateUTubNameRequest`; response: `backend.schemas.utubs.UtubNameUpdatedResponseSchema`; status: 200 `backend.schemas.utubs.UtubNameUpdatedResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`
 - **Template:** —
 - **JS:** keys: `updateUTubName`
+
+### `PATCH /utubs/<int:utub_id>/pin` — `utubs.update_utub_pin`
+
+- **Handler:** `backend/utubs/routes.py:update_utub_pin`
+- **Decorators:** `utub_membership_required`, `api_route`
+- **Service:** `backend.utubs.services.update_utub_pin:update_utub_pin_if_changed`
+- **Schema:** request: `backend.schemas.requests.utubs.UpdateUTubPinRequest`; response: `backend.schemas.utubs.UtubPinUpdatedResponseSchema`; status: 200 `backend.schemas.utubs.UtubPinUpdatedResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`, 409 `backend.schemas.errors.ErrorResponse`
+- **Template:** —
+- **JS:** keys: `updateUTubPin`
 
 ### `DELETE /utubs/<int:utub_id>/purge` — `utubs.purge_utub`
 

@@ -1321,6 +1321,7 @@ def test_explicit_n_sets_both_tokens_and_workers(make_args: tuple[str, ...]) -> 
         ("test-artifacts",),
         ("clear-db",),
         ("addmock",),
+        ("invite-token", "s=live_unlimited"),
         ("test-js",),
         ("test-host-static",),
         ("affected-markers",),
@@ -1372,6 +1373,19 @@ def test_endpoint_info_requires_a_route() -> None:
     result = _dry_run("endpoint-info")
     assert result.returncode != 0
     assert "e=<route> is required" in result.stderr
+
+
+def test_invite_token_requires_a_label() -> None:
+    result = _dry_run("invite-token")
+    assert result.returncode != 0
+    assert "s=<label> is required" in result.stderr
+
+
+@pytest.mark.parametrize("bad_label", ["a'b", 'a"b', "a`b", "a\\b", "a$$b"])
+def test_invite_token_refuses_labels_outside_the_allowlist(bad_label: str) -> None:
+    result = _dry_run("invite-token", f"s={bad_label}")
+    assert result.returncode != 0
+    assert "s must be one of:" in result.stderr
 
 
 def test_test_artifacts_reads_the_latest_run_by_default() -> None:

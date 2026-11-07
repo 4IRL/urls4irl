@@ -24,6 +24,7 @@ from backend.schemas.requests.utubs import (
     UpdateMemberSettingsRequest,
     UpdateUTubDescriptionRequest,
     UpdateUTubNameRequest,
+    UpdateUTubPinRequest,
     UpdateUTubSettingsRequest,
 )
 from backend.schemas.trash import (
@@ -40,6 +41,7 @@ from backend.schemas.utubs import (
     UtubDescUpdatedResponseSchema,
     UtubDetailSchema,
     UtubNameUpdatedResponseSchema,
+    UtubPinUpdatedResponseSchema,
     UtubSettingsUpdatedResponseSchema,
 )
 from backend.splash.services.change_email import (
@@ -76,6 +78,7 @@ from backend.utubs.services.trash_utubs import (
 from backend.utubs.services.update_member_settings import (
     update_member_settings_if_changed,
 )
+from backend.utubs.services.update_utub_pin import update_utub_pin_if_changed
 from backend.utubs.services.update_utub_settings import update_utub_settings_if_changed
 from backend.utubs.services.update_utubs import (
     update_utub_desc_if_new,
@@ -424,6 +427,38 @@ def update_member_settings(
         for section in update_member_settings_request.model_fields_set
     }
     return update_member_settings_if_changed(current_utub, patch)
+
+
+@utubs.route("/utubs/<int:utub_id>/pin", methods=["PATCH"])
+@utub_membership_required
+@api_route(
+    request_schema=UpdateUTubPinRequest,
+    response_schema=UtubPinUpdatedResponseSchema,
+    error_message=UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_SETTINGS,
+    error_code=UTubErrorCodes.INVALID_FORM_INPUT,
+    tags=[OPEN_API.UTUBS],
+    description="Pin or unpin a UTub for the caller (idempotent). At most 5 live pins per user; a sixth returns 409. Not gated by the UTub lock. Metrics: API_HIT only (no DOMAIN event).",
+    status_codes={
+        200: UtubPinUpdatedResponseSchema,
+        400: ErrorResponse,
+        403: ErrorResponse,
+        404: ErrorResponse,
+        409: ErrorResponse,
+    },
+)
+def update_utub_pin(
+    utub_id: int,
+    current_utub: Utubs,
+    update_utub_pin_request: UpdateUTubPinRequest,
+) -> FlaskResponse:
+    """
+    Any member of the UTub pins or unpins it for themselves. Only the caller's
+    own membership row is written, and the cap is enforced server-side.
+
+    Args:
+        utub_id (int): The ID of the UTub to pin or unpin
+    """
+    return update_utub_pin_if_changed(current_utub, update_utub_pin_request.pinned)
 
 
 @utubs.route("/utubs/<int:utub_id>", methods=["DELETE"])

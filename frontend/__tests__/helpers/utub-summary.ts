@@ -12,6 +12,7 @@ export function makeUtubSummaryItem(
     name: "UTub",
     memberRole: "creator",
     isLocked: false,
+    isPinned: false,
     urlCount: 0,
     memberCount: 1,
     createdAt: "2026-01-01T00:00:00.000Z",

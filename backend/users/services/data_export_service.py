@@ -62,6 +62,7 @@ def _build_export_utub(
             if membership.joined_at is not None
             else None
         ),
+        pinned=membership.pinned_at is not None,
         member_settings=membership.settings,
         urls=[
             _build_export_url(utub_url=utub_url, username_by_id=username_by_id)

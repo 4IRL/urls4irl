@@ -155,6 +155,38 @@ def spawn(target: Callable[[], Any]) -> tuple[threading.Thread, Box]:
     return thread, box
 
 
+def run_concurrently(
+    callables: dict[str, Callable[[], ThreadResult]],
+) -> dict[str, ThreadResult]:
+    """Run each callable on its own daemon thread; return results by label."""
+    results: dict[str, ThreadResult] = {}
+    thread_errors: list[BaseException] = []
+    results_lock = threading.Lock()
+
+    def _worker(label: str, target: Callable[[], ThreadResult]) -> None:
+        try:
+            result = target()
+            with results_lock:
+                results[label] = result
+        except BaseException as thread_error:
+            with results_lock:
+                thread_errors.append(thread_error)
+
+    threads = [
+        threading.Thread(target=_worker, args=(label, target), daemon=True)
+        for label, target in callables.items()
+    ]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(timeout=THREAD_JOIN_TIMEOUT_SECONDS)
+
+    stuck = [thread for thread in threads if thread.is_alive()]
+    assert stuck == [], "request threads still running after join timeout"
+    assert thread_errors == []
+    return results
+
+
 def wait_until_blocked(
     app: Flask, threads: list[threading.Thread], expected: int
 ) -> None:

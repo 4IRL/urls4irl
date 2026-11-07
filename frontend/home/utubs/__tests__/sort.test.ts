@@ -13,8 +13,10 @@ import {
   reorderUTubDeck,
   scrollActiveUTubIntoViewIfHidden,
   scrollUTubRowIntoView,
+  setUTubRowPinned,
   syncRowNameAndOrder,
 } from "../sort.js";
+import { syncUTubPinDivider } from "../pin-divider.js";
 import { createUTubSelector } from "../selectors.js";
 
 const $ = window.jQuery;
@@ -33,6 +35,10 @@ type ParityFixture = {
     "id" | "name" | "createdAt" | "lastUpdated" | "lastOpenedAt"
   >[];
   expected: Record<UtubSortValue, number[]>;
+  pinnedCases: {
+    pinnedIds: number[];
+    expected: Record<UtubSortValue, number[]>;
+  }[];
 };
 
 function setSort(sort: UtubSortValue): void {
@@ -40,7 +46,10 @@ function setSort(sort: UtubSortValue): void {
 }
 
 function rowHTML(utub: UtubSummaryItem, position: number): string {
-  return `<span class="UTubSelector" utubid="${utub.id}" position="${position}" tabindex="0"><b class="UTubName">${utub.name}</b></span>`;
+  const pin = utub.isPinned
+    ? '<svg class="UTubPinIcon"></svg><span class="UTubPinnedLabel">Pinned</span>'
+    : "";
+  return `<span class="UTubSelector" utubid="${utub.id}" position="${position}" tabindex="0"><b class="UTubName">${utub.name}</b>${pin}<svg class="memberRole"></svg></span>`;
 }
 
 function seedDeck(utubs: UtubSummaryItem[]): void {
@@ -84,6 +93,39 @@ describe("compareUTubs against the shared parity fixture", () => {
     );
     expect(sorted.map((item) => item.id)).toEqual(fixture.expected[sort]);
   });
+
+  const pinnedRuns = fixture.pinnedCases.flatMap((pinnedCase) =>
+    ALL_SORTS.map((sort) => ({
+      label: `[${pinnedCase.pinnedIds.join(",")}]`,
+      pinnedCase,
+      sort,
+    })),
+  );
+
+  it("has pinned cases, each pinning only ids that exist in the inputs", () => {
+    expect(fixture.pinnedCases.length).toBeGreaterThan(0);
+    for (const pinnedCase of fixture.pinnedCases) {
+      expect(
+        pinnedCase.pinnedIds.every((pinnedId) =>
+          items.some((item) => item.id === pinnedId),
+        ),
+      ).toBe(true);
+    }
+  });
+
+  it.each(pinnedRuns)(
+    "puts pinned $label first, then orders as the server does for $sort",
+    ({ pinnedCase, sort }) => {
+      const pinnedItems = items.map((item) => ({
+        ...item,
+        isPinned: pinnedCase.pinnedIds.includes(item.id),
+      }));
+      const sorted = [...pinnedItems].sort((left, right) =>
+        compareUTubs({ left, right, sort }),
+      );
+      expect(sorted.map((item) => item.id)).toEqual(pinnedCase.expected[sort]);
+    },
+  );
 
   it("casefolds names like the server (ss/ß tie by id)", () => {
     const strasse = items.find((item) => item.name === "Strasse")!;
@@ -199,6 +241,7 @@ describe("insertNewUTubRow", () => {
       utubID: utub.id,
       memberRole: "creator",
       isLocked: false,
+      isPinned: utub.isPinned,
       index: 0,
       urlCount: 0,
       memberCount: 1,
@@ -228,6 +271,33 @@ describe("insertNewUTubRow", () => {
       expect($("#listUTubs > .UTubSelector").eq(2).attr("position")).toBe("2");
     },
   );
+
+  it.each(["last_opened", "newest_created"] as const)(
+    "inserts after the pinned rows, never above them, under %s",
+    (sort) => {
+      seedDeck([{ ...existing[0], isPinned: true }, existing[1]]);
+      const utub = created("zulu");
+      insertNewUTubRow({ utub, row: newRow(utub), sort });
+      expect(storeOrder()).toEqual([1, 9, 2]);
+      expect(domOrder()).toEqual([1, 9, 2]);
+    },
+  );
+
+  it("inserts after every row when all rows are pinned", () => {
+    seedDeck(existing.map((item) => ({ ...item, isPinned: true })));
+    const utub = created("zulu");
+    insertNewUTubRow({ utub, row: newRow(utub), sort: "newest_created" });
+    expect(storeOrder()).toEqual([1, 2, 9]);
+    expect(domOrder()).toEqual([1, 2, 9]);
+  });
+
+  it("appends under oldest_created with pinned rows present", () => {
+    seedDeck([{ ...existing[0], isPinned: true }, existing[1]]);
+    const utub = created("zulu");
+    insertNewUTubRow({ utub, row: newRow(utub), sort: "oldest_created" });
+    expect(storeOrder()).toEqual([1, 2, 9]);
+    expect(domOrder()).toEqual([1, 2, 9]);
+  });
 
   it("inserts last under oldest_created even when the client clock is ahead", () => {
     seedDeck(existing);
@@ -444,6 +514,177 @@ describe("syncRowNameAndOrder (stale-data name sync)", () => {
     expect($(".UTubSelector[utubid=1] .UTubName").text()).toBe("zulu");
     expect(domOrder()).toEqual([1, 2]);
   });
+});
+
+describe("setUTubRowPinned", () => {
+  const items = [
+    makeUtubSummaryItem({ id: 1, name: "alpha" }),
+    makeUtubSummaryItem({ id: 2, name: "bravo" }),
+    makeUtubSummaryItem({ id: 3, name: "charlie" }),
+  ];
+
+  function pinMarkerCount(utubID: number): number {
+    return $(`.UTubSelector[utubid=${utubID}]`).children(".UTubPinIcon").length;
+  }
+
+  it("moves a pinned row to the top, adds the marker before the role icon and shows the divider", () => {
+    seedDeck(items);
+    setSort("recent_activity");
+
+    setUTubRowPinned({ utubID: 3, isPinned: true });
+
+    expect(storeOrder()).toEqual([3, 1, 2]);
+    expect(domOrder()).toEqual([3, 1, 2]);
+    expect(getState().utubs[0].isPinned).toBe(true);
+    const row = $(".UTubSelector[utubid=3]");
+    expect(row.children(".UTubPinIcon").next().text()).toBe("Pinned");
+    expect(row.children(".UTubPinnedLabel").next().is(".memberRole")).toBe(
+      true,
+    );
+    const divider = $("#listUTubs > #UTubPinDivider");
+    expect(divider.length).toBe(1);
+    expect(divider.hasClass("hidden")).toBe(false);
+    expect(divider.prev().attr("utubid")).toBe("3");
+    expect(divider.next().attr("utubid")).toBe("1");
+  });
+
+  it("restores the sorted place and hides the divider on unpin", () => {
+    seedDeck(items);
+    setSort("recent_activity");
+    setUTubRowPinned({ utubID: 3, isPinned: true });
+
+    setUTubRowPinned({ utubID: 3, isPinned: false });
+
+    expect(domOrder()).toEqual([1, 2, 3]);
+    expect(getState().utubs.every((utub) => !utub.isPinned)).toBe(true);
+    expect(pinMarkerCount(3)).toBe(0);
+    expect($(".UTubSelector[utubid=3] .UTubPinnedLabel").length).toBe(0);
+    expect($("#listUTubs > #UTubPinDivider").hasClass("hidden")).toBe(true);
+  });
+
+  it("keeps one marker when pinning an already-pinned row", () => {
+    seedDeck(items);
+    setUTubRowPinned({ utubID: 2, isPinned: true });
+    setUTubRowPinned({ utubID: 2, isPinned: true });
+    expect(pinMarkerCount(2)).toBe(1);
+    expect($("#listUTubs > #UTubPinDivider").length).toBe(1);
+  });
+
+  it("orders pinned rows by the chosen sort", () => {
+    seedDeck(items);
+    setSort("name_az");
+    setUTubRowPinned({ utubID: 3, isPinned: true });
+    setUTubRowPinned({ utubID: 2, isPinned: true });
+    expect(domOrder()).toEqual([2, 3, 1]);
+  });
+
+  it("restripes across the divider and keeps the active row", () => {
+    seedDeck(items);
+    $(".UTubSelector[utubid=2]").addClass("active");
+    setUTubRowPinned({ utubID: 3, isPinned: true });
+    const classes = $("#listUTubs > .UTubSelector")
+      .map((_, element) =>
+        element.classList.contains("even") ? "even" : "odd",
+      )
+      .get();
+    expect(classes).toEqual(["even", "odd", "even"]);
+    expect($("#listUTubs > .UTubSelector.active").attr("utubid")).toBe("2");
+  });
+
+  it("does nothing for a UTub the store does not know", () => {
+    seedDeck(items);
+    setUTubRowPinned({ utubID: 99, isPinned: true });
+    expect(domOrder()).toEqual([1, 2, 3]);
+    expect($("#listUTubs > #UTubPinDivider").length).toBe(0);
+  });
+});
+
+describe("rename and insert with pinned rows", () => {
+  it("renames within the unpinned group without crossing the pinned rows", () => {
+    const items = [
+      makeUtubSummaryItem({ id: 1, name: "zulu", isPinned: true }),
+      makeUtubSummaryItem({ id: 2, name: "alpha" }),
+      makeUtubSummaryItem({ id: 3, name: "bravo" }),
+    ];
+    seedDeck(items);
+    setSort("name_az");
+    setState({
+      utubs: getState().utubs.map((utub) =>
+        utub.id === 3 ? { ...utub, name: "aardvark" } : utub,
+      ),
+    });
+    $(".UTubSelector[utubid=3] .UTubName").text("aardvark");
+
+    reorderAfterRename({ utubID: 3 });
+
+    expect(domOrder()).toEqual([1, 3, 2]);
+    expect($("#listUTubs > #UTubPinDivider").prev().attr("utubid")).toBe("1");
+  });
+
+  it("keeps a renamed pinned row in the pinned group", () => {
+    const items = [
+      makeUtubSummaryItem({ id: 1, name: "alpha", isPinned: true }),
+      makeUtubSummaryItem({ id: 2, name: "bravo", isPinned: true }),
+      makeUtubSummaryItem({ id: 3, name: "aaa" }),
+    ];
+    seedDeck(items);
+    setSort("name_az");
+    setState({
+      utubs: getState().utubs.map((utub) =>
+        utub.id === 1 ? { ...utub, name: "zulu" } : utub,
+      ),
+    });
+    $(".UTubSelector[utubid=1] .UTubName").text("zulu");
+
+    reorderAfterRename({ utubID: 1 });
+
+    expect(domOrder()).toEqual([2, 1, 3]);
+  });
+
+  it.each(ALL_SORTS)(
+    "places a new UTub after the pinned rows and before the divider's unpinned group under %s",
+    (sort) => {
+      const pinned = makeUtubSummaryItem({
+        id: 1,
+        name: "zzz",
+        isPinned: true,
+        createdAt: "2030-01-01T00:00:00.000Z",
+        lastUpdated: "2030-01-01T00:00:00.000Z",
+      });
+      const other = makeUtubSummaryItem({ id: 2, name: "mmm" });
+      seedDeck([pinned, other]);
+      syncUTubPinDivider();
+      const utub = makeUtubSummaryItem({
+        id: 9,
+        name: "aaa",
+        createdAt: "2029-01-01T00:00:00.000Z",
+        lastUpdated: "2029-01-01T00:00:00.000Z",
+      });
+
+      insertNewUTubRow({
+        utub,
+        row: createUTubSelector({
+          utubName: utub.name,
+          utubID: utub.id,
+          memberRole: "creator",
+          isLocked: false,
+          isPinned: false,
+          index: 0,
+          urlCount: 0,
+          memberCount: 1,
+        }),
+        sort,
+      });
+
+      // Insert-first sorts land the new row right after the pinned row; name_az
+      // sorts "aaa" before "mmm"; oldest_created appends.
+      const expected = sort === "oldest_created" ? [1, 2, 9] : [1, 9, 2];
+      expect(storeOrder()).toEqual(expected);
+      expect(domOrder()).toEqual(expected);
+      expect($("#listUTubs > #UTubPinDivider").prev().attr("utubid")).toBe("1");
+      expect($("#listUTubs > #UTubPinDivider").hasClass("hidden")).toBe(false);
+    },
+  );
 });
 
 describe("markUTubOpened", () => {

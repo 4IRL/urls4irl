@@ -17,6 +17,9 @@ def generate_mock_utubmembers(db: SQLAlchemy):
     """
     Adds each User to each UTub, if not already added.
 
+    Memberships stay unpinned (pinned_at is NULL) so existing functional tests
+    keep their deck order; tests pin rows with a helper where needed.
+
     Args:
         db (SQLAlchemy): Database engine and connection for committing mock data
     """

@@ -14,6 +14,7 @@ from backend.schemas.utub_member_settings import (
     resolve_member_settings,
 )
 from backend.schemas.utub_settings import UtubSettings, resolve_utub_settings
+from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.model_strs import MODELS, UTUB_DESCRIPTION
 from backend.utils.strings.utub_strs import UTUB_CREATOR_ID, UTUB_ID, UTUB_NAME
 
@@ -262,6 +263,31 @@ class UtubSettingsUpdatedResponseSchema(BaseSchema):
     settings: SerializeAsAny[UtubSettings] = Field(
         alias=MODELS.SETTINGS,
         description="Full resolved per-UTub settings (stored overrides merged over defaults)",
+    )
+
+
+class UtubPinUpdatedResponseSchema(BaseSchema):
+    """The caller's pin state for one UTub after a pin or unpin"""
+
+    status: Literal["Success", "No change"] = Field(
+        alias=STD_JSON.STATUS,
+        description="Response status: Success or No change",
+    )
+    message: str = Field(
+        alias=STD_JSON.MESSAGE,
+        description="Human-readable, server-sourced banner text",
+    )
+    utub_id: int = Field(
+        alias=UTUB_ID,
+        description="ID of the UTub whose pin was updated",
+    )
+    is_pinned: bool = Field(
+        alias=MODELS.IS_PINNED,
+        description="Whether the caller has the UTub pinned after the request",
+    )
+    pinned_count: int = Field(
+        alias=MODELS.PINNED_COUNT,
+        description="The caller's live pinned UTub count (not clamped to the cap)",
     )
 
 

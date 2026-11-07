@@ -1,0 +1,60 @@
+/* Public invite page additions (GET /invite/<token>); the shell is short-link.css. Tokens only. */
+
+button.splash-button {
+    font-family: inherit;
+    cursor: pointer;
+}
+
+.short-link-panel .splash-button[aria-disabled="true"] {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.short-link-panel .splash-button[aria-disabled="true"]:hover {
+    background-color: var(--darkSplashLabelGreen);
+}
+
+/* Navbar matches the approved dark mock: plain green wordmark, no favicon chip. */
+.invite-page .navbar-brand,
+.invite-page .navbar-brand:hover,
+.invite-page .navbar-brand:focus {
+    color: var(--splashLabelGreen);
+    font-weight: var(--fw-bold);
+}
+
+.invite-page #iconContainer {
+    display: none;
+}
+
+.invite-description {
+    margin: 0;
+    color: var(--UTubDescriptionColor);
+    overflow-wrap: anywhere;
+}
+
+.invite-message {
+    margin: 0;
+    padding: var(--space-3) var(--space-4);
+    border-left: 3px solid var(--memberOutsiderAmber);
+    border-radius: var(--radius-sm);
+    background: var(--memberOutsiderAmberTint);
+    color: var(--UTubDescriptionColor);
+    font-size: var(--fs-sm);
+}
+
+.short-link-panel .splash-button:focus-visible,
+.short-link-panel .short-link-secondary:focus-visible {
+    outline: 3px solid var(--deckSelectionGreen);
+    outline-offset: 2px;
+}
+
+@media (max-width: 767.98px) {
+    .short-link-main {
+        padding-bottom: calc(var(--space-16) + 8rem); /* clear of the cookie banner */
+    }
+
+    .short-link-cta-row a,
+    .short-link-cta-row button {
+        width: 100%;
+    }
+}

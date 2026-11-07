@@ -493,6 +493,84 @@ export function patchTagDisplayPreferences({
   });
 }
 
+type UpdateUTubPinResponse = SuccessResponse<"updateUtubPin">;
+
+/** `UTubErrorCodes.PIN_LIMIT_REACHED` (409), mirrored from `backend/utubs/constants.py`. */
+const PIN_LIMIT_REACHED_ERROR_CODE = 6;
+
+/**
+ * A pin write outcome. `ok` carries the server's live state; `cap` is a 409
+ * with the pin-limit code; `gone` is a JSON 404 (the UTub is no longer the
+ * caller's); `error` is everything else, including a 409 with another code, a
+ * non-JSON 404 and a 200 with a malformed body. Writes no store.
+ */
+export type PinSaveResult =
+  | { outcome: "ok"; isPinned: boolean; pinnedCount: number }
+  | { outcome: "cap" }
+  | { outcome: "gone" }
+  | { outcome: "error" };
+
+function readPinResponse(
+  response: unknown,
+): { isPinned: boolean; pinnedCount: number } | null {
+  if (typeof response !== "object" || response === null) return null;
+  const { status, utubID, isPinned, pinnedCount } = response as Record<
+    string,
+    unknown
+  >;
+  if (status !== "Success" && status !== "No change") return null;
+  if (typeof utubID !== "number") return null;
+  if (typeof isPinned !== "boolean") return null;
+  if (typeof pinnedCount !== "number") return null;
+  return { isPinned, pinnedCount };
+}
+
+/**
+ * PATCHes the caller's pin for one UTub. The body is `{ pinned }` only (the UTub
+ * id is the path parameter). The pin targets no active UTub, so it has no
+ * active-UTub stale guard and never calls `handleActiveUTubGone`.
+ */
+export function patchUtubPin({
+  utubID,
+  pinned,
+}: {
+  utubID: number;
+  pinned: boolean;
+}): Promise<PinSaveResult> {
+  return new Promise<PinSaveResult>((resolve) => {
+    const request = ajaxCall(
+      "patch",
+      APP_CONFIG.routes.updateUTubPin(utubID),
+      { pinned },
+      PATCH_TIMEOUT_MS,
+    );
+
+    request.done((response: UpdateUTubPinResponse) => {
+      const state = readPinResponse(response);
+      if (state === null) {
+        log("patchUtubPin — malformed 200 body", { utubID });
+        resolve({ outcome: "error" });
+        return;
+      }
+      resolve({ outcome: "ok", ...state });
+    });
+
+    request.fail((xhr: JQuery.jqXHR) => {
+      // mapXhrToSaveOutcome maps every 409 to a plain error, so the code is read first.
+      if (xhr.status === 409 && !isHtmlOrNonJson(xhr)) {
+        const errorCode = (xhr.responseJSON as { errorCode?: number })
+          .errorCode;
+        resolve({
+          outcome: errorCode === PIN_LIMIT_REACHED_ERROR_CODE ? "cap" : "error",
+        });
+        return;
+      }
+      const result = mapXhrToSaveOutcome(xhr);
+      resolve({ outcome: result.outcome === "gone" ? "gone" : "error" });
+    });
+  });
+}
+
 /**
  * Re-fetches the UTub and writes only `memberSettings` (no version bump), after
  * a failed or timed-out personal save. Writes only when the active UTub and

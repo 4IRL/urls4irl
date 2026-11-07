@@ -198,20 +198,28 @@ def _sort_summary_memberships(
         return (1, truncate_to_milliseconds(membership.last_opened_at))
 
     if utub_sort == UtubSort.LAST_OPENED:
-        return sorted(by_id, key=last_opened, reverse=True)
-    if utub_sort == UtubSort.NAME_AZ:
-        return sorted(by_id, key=lambda membership: membership.to_utub.name.casefold())
-    if utub_sort in (UtubSort.NEWEST_CREATED, UtubSort.OLDEST_CREATED):
-        return sorted(
+        ordered = sorted(by_id, key=last_opened, reverse=True)
+    elif utub_sort == UtubSort.NAME_AZ:
+        ordered = sorted(
+            by_id, key=lambda membership: membership.to_utub.name.casefold()
+        )
+    elif utub_sort in (UtubSort.NEWEST_CREATED, UtubSort.OLDEST_CREATED):
+        ordered = sorted(
             by_id,
             key=lambda membership: truncate_to_milliseconds(
                 membership.to_utub.created_at
             ),
             reverse=utub_sort == UtubSort.NEWEST_CREATED,
         )
-    if utub_sort == UtubSort.RECENT_ACTIVITY:
-        return sorted(by_id, key=recency, reverse=True)
-    raise ValueError(f"Unhandled UTub sort: {utub_sort!r}")
+    elif utub_sort == UtubSort.RECENT_ACTIVITY:
+        ordered = sorted(by_id, key=recency, reverse=True)
+    else:
+        raise ValueError(f"Unhandled UTub sort: {utub_sort!r}")
+
+    # Stable partition: pinned rows first, each group keeping the chosen order.
+    pinned = [row for row in ordered if row.pinned_at is not None]
+    unpinned = [row for row in ordered if row.pinned_at is None]
+    return pinned + unpinned
 
 
 def load_summary_memberships_and_counts(user_id: int) -> SummaryRows:

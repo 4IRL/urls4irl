@@ -123,6 +123,14 @@ CSRF_HEADER_KEY = "X-CSRFToken"
             id="update_member_settings",
         ),
         pytest.param(
+            "update_utub_pin",
+            "PATCH",
+            ROUTES.UTUBS.UPDATE_UTUB_PIN,
+            {"utub_id": "utub_id"},
+            {"pinned": True},
+            id="update_utub_pin",
+        ),
+        pytest.param(
             "delete_utub",
             "DELETE",
             ROUTES.UTUBS.DELETE_UTUB,
@@ -403,6 +411,22 @@ def test_ajax_required_routes_reject_non_ajax(
             {"code": "Zzzzzzzzzz"},
             None,
             id="resolve_short_link",
+        ),
+        pytest.param(
+            "invite_page",
+            "GET",
+            ROUTES.INVITE_LINKS.INVITE_PAGE,
+            {"token": "Zzzzzzzzzzzzzzzzzzzzzz"},
+            None,
+            id="invite_page",
+        ),
+        pytest.param(
+            "join_invite_page",
+            "POST",
+            ROUTES.INVITE_LINKS.JOIN_INVITE_PAGE,
+            {"token": "Zzzzzzzzzzzzzzzzzzzzzz"},
+            None,
+            id="join_invite_page",
         ),
         pytest.param(
             "health",

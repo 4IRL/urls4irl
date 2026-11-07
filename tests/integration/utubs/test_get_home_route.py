@@ -1,7 +1,7 @@
 import json
 import re
-from datetime import timedelta
-from typing import Tuple
+from datetime import datetime, timedelta, timezone
+from typing import Any, Tuple
 
 import pytest
 from flask import Flask, url_for
@@ -24,6 +24,7 @@ from backend.utils.all_routes import ROUTES
 from backend.utils.strings.utub_strs import (
     MOBILE_PANEL_QUERY_PARAM,
     UTUB_ID_QUERY_PARAM,
+    UTUB_PINNED_ROW_LABEL,
 )
 from tests.utils_for_test import is_string_in_logs, trash_utub
 
@@ -471,6 +472,157 @@ def test_get_home_page_deck_orders_most_recently_opened_utub_first(
         )
     ]
     assert rendered_ids == expected_ids
+
+
+def test_get_home_page_deck_renders_pinned_utub_first(
+    every_user_in_every_utub,
+    login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+):
+    """
+    GIVEN a user who pinned their least recently updated UTub
+    WHEN the user requests /home
+    THEN the server-rendered deck lists the pinned UTub first
+    """
+    client, _, user, app = login_first_user_without_register
+    with app.app_context():
+        memberships = Utub_Members.query.filter(Utub_Members.user_id == user.id).all()
+        by_updated = sorted(
+            memberships, key=lambda membership: membership.to_utub.last_updated
+        )
+        oldest_membership = by_updated[0]
+        oldest_membership.pinned_at = datetime.now(timezone.utc)
+        oldest_utub_id = oldest_membership.utub_id
+        expected_ids = [oldest_utub_id] + [
+            membership.utub_id for membership in reversed(by_updated[1:])
+        ]
+        db.session.commit()
+
+    response = client.get(url_for(ROUTES.UTUBS.HOME))
+    assert response.status_code == 200
+
+    rendered_ids = [
+        int(utub_id)
+        for utub_id in re.findall(
+            r'class="UTubSelector[^"]*"\s+utubid="(\d+)"', response.text
+        )
+    ]
+    assert rendered_ids == expected_ids
+
+    deck_items = _deck_items(response.text)
+    assert [item["id"] for item in deck_items if item["kind"] == "row"] == expected_ids
+    assert [item["kind"] for item in deck_items][:2] == ["row", "divider"]
+    pinned_rows = [item for item in deck_items if item["has_pin_icon"]]
+    assert [item["id"] for item in pinned_rows] == [oldest_utub_id]
+    assert deck_items[0]["id"] == oldest_utub_id
+    assert deck_items[0]["has_pinned_label"]
+    # The pinned row's pin icon is a sibling placed before the role icon,
+    # never inside it.
+    assert deck_items[0]["pin_before_role_icon"]
+    assert not deck_items[0]["pin_inside_role_icon"]
+    divider = next(item for item in deck_items if item["kind"] == "divider")
+    assert divider["aria_hidden"]
+    assert not divider["has_role"]
+    assert not divider["hidden"]
+    assert sum(item["kind"] == "divider" for item in deck_items) == 1
+
+
+def test_get_home_page_deck_without_pins_has_no_icon_and_one_hidden_divider(
+    every_user_in_every_utub,
+    login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+):
+    """
+    GIVEN a user with no pinned UTubs
+    WHEN the user requests /home
+    THEN no row carries the pin icon or label, and the deck has exactly one
+        hidden, aria-hidden divider
+    """
+    client, _, _, _ = login_first_user_without_register
+
+    response = client.get(url_for(ROUTES.UTUBS.HOME))
+    assert response.status_code == 200
+
+    deck_items = _deck_items(response.text)
+    assert any(item["kind"] == "row" for item in deck_items)
+    assert not any(item["has_pin_icon"] for item in deck_items)
+    assert not any(item["has_pinned_label"] for item in deck_items)
+    dividers = [item for item in deck_items if item["kind"] == "divider"]
+    assert len(dividers) == 1
+    assert dividers[0]["hidden"]
+    assert dividers[0]["aria_hidden"]
+    assert not dividers[0]["has_role"]
+
+
+def test_get_home_page_deck_with_every_utub_pinned_hides_trailing_divider(
+    every_user_in_every_utub,
+    login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+):
+    """
+    GIVEN a user who pinned every UTub they belong to
+    WHEN the user requests /home
+    THEN exactly one hidden divider follows the last row
+    """
+    client, _, user, app = login_first_user_without_register
+    with app.app_context():
+        for membership in Utub_Members.query.filter(
+            Utub_Members.user_id == user.id
+        ).all():
+            membership.pinned_at = datetime.now(timezone.utc)
+        db.session.commit()
+
+    response = client.get(url_for(ROUTES.UTUBS.HOME))
+    assert response.status_code == 200
+
+    deck_items = _deck_items(response.text)
+    assert deck_items[-1]["kind"] == "divider"
+    assert deck_items[-1]["hidden"]
+    assert sum(item["kind"] == "divider" for item in deck_items) == 1
+    assert all(item["has_pin_icon"] for item in deck_items if item["kind"] == "row")
+
+
+def _deck_items(page_html: str) -> list[dict[str, Any]]:
+    """Splits the rendered #listUTubs block into row and divider descriptors."""
+    start = page_html.index('id="listUTubs"')
+    end = page_html.index('id="TrashSelectorWrap"', start)
+    deck = page_html[start:end]
+    chunks = re.split(r'(?=<span class="UTubSelector|<div id="UTubPinDivider")', deck)
+    items: list[dict[str, Any]] = []
+    for chunk in chunks:
+        if chunk.startswith('<div id="UTubPinDivider"'):
+            tag = chunk[: chunk.index(">")]
+            items.append(
+                {
+                    "kind": "divider",
+                    "id": None,
+                    "hidden": "hidden" in tag.split('class="')[1].split('"')[0],
+                    "aria_hidden": 'aria-hidden="true"' in tag,
+                    "has_role": "role=" in tag,
+                    "has_pin_icon": False,
+                    "has_pinned_label": False,
+                }
+            )
+        elif chunk.startswith('<span class="UTubSelector'):
+            pin_index = chunk.find("UTubPinIcon")
+            role_index = chunk.find("memberRole")
+            items.append(
+                {
+                    "kind": "row",
+                    "id": int(re.search(r'utubid="(\d+)"', chunk).group(1)),
+                    "hidden": False,
+                    "aria_hidden": False,
+                    "has_role": False,
+                    "has_pin_icon": pin_index != -1,
+                    "has_pinned_label": "UTubPinnedLabel" in chunk
+                    and f">{UTUB_PINNED_ROW_LABEL}<" in chunk,
+                    "pin_before_role_icon": pin_index != -1 and pin_index < role_index,
+                    "pin_inside_role_icon": re.search(
+                        r'class="[^"]*memberRole[^"]*UTubPinIcon', chunk
+                    )
+                    is not None
+                    or re.search(r'class="[^"]*UTubPinIcon[^"]*memberRole', chunk)
+                    is not None,
+                }
+            )
+    return items
 
 
 def test_get_home_page_when_in_utub(

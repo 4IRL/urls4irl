@@ -502,6 +502,36 @@ def test_invite_link_revoked_rejects_invalid_dims(bad_dims: dict):
         model_class.model_validate(bad_dims)
 
 
+@pytest.mark.parametrize("viewer_state", ["member", "logged_in", "logged_out"])
+@pytest.mark.parametrize("outcome", ["valid", "dead"])
+def test_invite_link_viewed_accepts_each_combination(viewer_state: str, outcome: str):
+    model_class = DIMENSION_MODELS[EventName.INVITE_LINK_VIEWED]
+    assert model_class is not None
+    model = model_class.model_validate(
+        {"viewer_state": viewer_state, "outcome": outcome}
+    )
+    assert model.viewer_state == viewer_state
+    assert model.outcome == outcome
+
+
+@pytest.mark.parametrize(
+    "bad_dims",
+    [
+        {},
+        {"viewer_state": "member"},
+        {"outcome": "valid"},
+        {"viewer_state": "admin", "outcome": "valid"},
+        {"viewer_state": "member", "outcome": "expired"},
+        {"viewer_state": "member", "outcome": "valid", "utub_id": "1"},
+    ],
+)
+def test_invite_link_viewed_rejects_invalid_dims(bad_dims: dict):
+    model_class = DIMENSION_MODELS[EventName.INVITE_LINK_VIEWED]
+    assert model_class is not None
+    with pytest.raises(ValidationError):
+        model_class.model_validate(bad_dims)
+
+
 def test_per_event_models_reject_missing_required_keys():
     """Omitting a required field raises ValidationError."""
     with pytest.raises(ValidationError):

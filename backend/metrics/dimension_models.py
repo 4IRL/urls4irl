@@ -7,6 +7,8 @@ from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 from backend.invite_links.constants import (
     INVITE_LINK_METRIC_HAS_USE_LIMIT_VALUES,
     INVITE_LINK_METRIC_REVOKE_REASONS,
+    INVITE_LINK_METRIC_VIEW_OUTCOME_VALUES,
+    INVITE_LINK_METRIC_VIEWER_STATE_VALUES,
 )
 from backend.members.constants import (
     MEMBER_ADD_HAS_RESULTS_VALUES,
@@ -559,6 +561,13 @@ class _DimInviteLinkRevoked(BaseModel):
     device_type: _StrictDeviceType = Field(default=DeviceType.DESKTOP)
 
 
+class _DimInviteLinkViewed(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    viewer_state: Literal[INVITE_LINK_METRIC_VIEWER_STATE_VALUES]  # type: ignore[valid-type]
+    outcome: Literal[INVITE_LINK_METRIC_VIEW_OUTCOME_VALUES]  # type: ignore[valid-type]
+    device_type: _StrictDeviceType = Field(default=DeviceType.DESKTOP)
+
+
 # ---------------------------------------------------------------------------
 # DIMENSION_MODELS — every member of EventName keyed. `None` for events
 # without dimensions. Order mirrors `EventName` for review-friendliness.
@@ -579,6 +588,7 @@ DIMENSION_MODELS: dict[EventName, type[BaseModel] | None] = {
     EventName.EMAIL_VERIFIED: _DimDeviceOnly,
     EventName.INVITE_LINK_CREATED: _DimInviteLinkCreated,
     EventName.INVITE_LINK_REVOKED: _DimInviteLinkRevoked,
+    EventName.INVITE_LINK_VIEWED: _DimInviteLinkViewed,
     EventName.LOGIN_FAILURE: _DimLoginFailure,
     EventName.LOGIN_SUCCESS: _DimLoginSuccess,
     EventName.MEMBER_ADDED: _DimMemberAdded,

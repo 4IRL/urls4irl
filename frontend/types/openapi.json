@@ -4933,7 +4933,7 @@
             "bearerAuth": []
           }
         ],
-        "description": "Retrieve a summary of all UTubs for the current user",
+        "description": "Retrieve a summary of all UTubs for the current user. Pinned UTubs lead (stable partition on top of the saved utub_sort order); each summary exposes isPinned.",
         "responses": {
           "200": {
             "description": "List of UTub summaries",
@@ -5349,6 +5349,140 @@
         "x-error-codes": {
           "ContactErrorCodes": {
             "$ref": "#/components/schemas/ContactErrorCodes"
+          }
+        }
+      }
+    },
+    "/invite/{token}": {
+      "get": {
+        "operationId": "invitePage",
+        "tags": ["members"],
+        "security": [],
+        "description": "Public invite-link landing page. Shows who invited the visitor to which UTub (200) for a live link, a Confirm-your-email page (200) for an unconfirmed viewer, and redirects a member into the UTub (302). Every dead, unknown or malformed token returns the same 404 page.",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Documents an HTML page render (not a JSON body) returned for an\n    error/reject state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessEnvelope"
+                }
+              }
+            }
+          },
+          "302": {
+            "description": "Documents an HTML page render (not a JSON body) returned for an\n    error/reject state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HtmlErrorPageSchema"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HtmlErrorPageSchema"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/invite/{token}/join": {
+      "post": {
+        "operationId": "joinInvitePage",
+        "tags": ["members"],
+        "security": [
+          {
+            "csrfToken": []
+          }
+        ],
+        "description": "Join the UTub an invite link belongs to from the public invite page's plain form (CSRF-protected). Redirects into the UTub (302); a dead, unknown or malformed token is the uniform 404 page, an unconfirmed email the Confirm-your-email page (403), and a logged-out visitor the log-in page (401).",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Documents an HTML page render (not a JSON body) returned for an\n    error/reject state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HtmlErrorPageSchema"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HtmlErrorPageSchema"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HtmlErrorPageSchema"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HtmlErrorPageSchema"
+                }
+              }
+            }
           }
         }
       }
@@ -6400,6 +6534,7 @@
                 "email_verified",
                 "invite_link_created",
                 "invite_link_revoked",
+                "invite_link_viewed",
                 "login_failure",
                 "login_success",
                 "member_added",
@@ -6769,6 +6904,7 @@
                 "email_verified",
                 "invite_link_created",
                 "invite_link_revoked",
+                "invite_link_viewed",
                 "login_failure",
                 "login_success",
                 "member_added",
@@ -10824,6 +10960,95 @@
         }
       }
     },
+    "/utubs/{utub_id}/pin": {
+      "patch": {
+        "operationId": "updateUtubPin",
+        "tags": ["utubs"],
+        "security": [
+          {
+            "sessionAuth": [],
+            "csrfToken": []
+          }
+        ],
+        "description": "Pin or unpin a UTub for the caller (idempotent). At most 5 live pins per user; a sixth returns 409. Not gated by the UTub lock. Metrics: API_HIT only (no DOMAIN event).",
+        "parameters": [
+          {
+            "name": "utub_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUTubPinRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The caller's pin state for one UTub after a pin or unpin",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UtubPinUpdatedResponseSchema"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_UTubErrorCodes"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_UTubErrorCodes"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "UTubErrorCodes": {
+            "$ref": "#/components/schemas/UTubErrorCodes"
+          }
+        }
+      }
+    },
     "/utubs/{utub_id}/urls/{utub_url_id}/tags": {
       "post": {
         "operationId": "createUtubUrlTag",
@@ -13074,13 +13299,14 @@
       },
       "UTubErrorCodes": {
         "type": "integer",
-        "enum": [1, 2, 3, 4, 5],
+        "enum": [1, 2, 3, 4, 5, 6],
         "x-enum-varnames": [
           "UNKNOWN_ERROR",
           "INVALID_FORM_INPUT",
           "UTUB_IS_LOCKED",
           "NOT_IN_TRASH",
-          "UNABLE_TO_EMPTY_TRASH_ERROR"
+          "UNABLE_TO_EMPTY_TRASH_ERROR",
+          "PIN_LIMIT_REACHED"
         ],
         "description": "Error codes for UTubErrorCodes"
       },
@@ -13128,6 +13354,10 @@
             "description": "Whether the UTub is locked (frozen to all user mutations)",
             "type": "boolean"
           },
+          "isPinned": {
+            "description": "Whether the requesting user pinned this UTub to the top of their list",
+            "type": "boolean"
+          },
           "urlCount": {
             "description": "Number of live (non-trashed) URLs in the UTub",
             "type": "integer"
@@ -13164,6 +13394,7 @@
           "name",
           "memberRole",
           "isLocked",
+          "isPinned",
           "urlCount",
           "memberCount",
           "createdAt",
@@ -13781,6 +14012,11 @@
         "enum": [1],
         "x-enum-varnames": ["INVALID_FORM_INPUT"],
         "description": "Error codes for ContactErrorCodes"
+      },
+      "HtmlErrorPageSchema": {
+        "description": "Documents an HTML page render (not a JSON body) returned for an\nerror/reject state.",
+        "properties": {},
+        "type": "object"
       },
       "MetricsIngestEvent": {
         "additionalProperties": false,
@@ -14656,11 +14892,6 @@
           }
         },
         "required": ["window_start", "window_end", "buckets"],
-        "type": "object"
-      },
-      "HtmlErrorPageSchema": {
-        "description": "Documents an HTML page render (not a JSON body) returned for an\nerror/reject state.",
-        "properties": {},
         "type": "object"
       },
       "RegisterRequest": {
@@ -16368,6 +16599,10 @@
             "default": null,
             "description": "When the acting user joined this UTub (ISO 8601), or null when not recorded"
           },
+          "pinned": {
+            "description": "Whether the acting user pinned this UTub",
+            "type": "boolean"
+          },
           "memberSettings": {
             "anyOf": [
               {
@@ -16403,7 +16638,14 @@
             "type": "array"
           }
         },
-        "required": ["name", "description", "role", "isLocked", "createdAt"],
+        "required": [
+          "name",
+          "description",
+          "role",
+          "isLocked",
+          "createdAt",
+          "pinned"
+        ],
         "type": "object"
       },
       "UserDataExportSchema": {
@@ -16873,6 +17115,46 @@
           }
         },
         "required": ["utubID", "memberSettings"],
+        "type": "object"
+      },
+      "UpdateUTubPinRequest": {
+        "additionalProperties": false,
+        "description": "Pin or unpin one UTub for the caller. ``pinned`` is required, strictly a\nboolean and never ``null``; unknown keys are rejected.",
+        "properties": {
+          "pinned": {
+            "description": "True to pin the UTub for the caller, false to unpin it",
+            "type": "boolean"
+          }
+        },
+        "required": ["pinned"],
+        "type": "object"
+      },
+      "UtubPinUpdatedResponseSchema": {
+        "description": "The caller's pin state for one UTub after a pin or unpin",
+        "properties": {
+          "status": {
+            "description": "Response status: Success or No change",
+            "enum": ["Success", "No change"],
+            "type": "string"
+          },
+          "message": {
+            "description": "Human-readable, server-sourced banner text",
+            "type": "string"
+          },
+          "utubID": {
+            "description": "ID of the UTub whose pin was updated",
+            "type": "integer"
+          },
+          "isPinned": {
+            "description": "Whether the caller has the UTub pinned after the request",
+            "type": "boolean"
+          },
+          "pinnedCount": {
+            "description": "The caller's live pinned UTub count (not clamped to the cap)",
+            "type": "integer"
+          }
+        },
+        "required": ["status", "message", "utubID", "isPinned", "pinnedCount"],
         "type": "object"
       },
       "AddTagsToUrlsRequest": {
