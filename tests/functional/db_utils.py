@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Tuple
 
 from flask import Flask
@@ -874,6 +874,21 @@ def set_utub_timeline(
                 Utub_Members.utub_id == utub_id, Utub_Members.user_id == user_id
             ).one()
             member.last_opened_at = last_opened_at
+        db.session.commit()
+
+
+def pin_utubs_for_user(app: Flask, user_id: int, utub_ids: list[int]) -> None:
+    """Pin each of ``utub_ids`` for ``user_id`` directly on the membership row
+    (``pinned_at``), without UI clicks. Seeds the cap and order cases, including
+    a stale-tab pin written after the page loaded."""
+    with app.app_context():
+        first_pinned_at = utc_now()
+        for offset, utub_id in enumerate(utub_ids):
+            member: Utub_Members = Utub_Members.query.filter(
+                Utub_Members.utub_id == utub_id, Utub_Members.user_id == user_id
+            ).one()
+            # Distinct, ordered timestamps so nothing depends on a tie.
+            member.pinned_at = first_pinned_at + timedelta(milliseconds=offset)
         db.session.commit()
 
 
