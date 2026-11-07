@@ -5358,7 +5358,7 @@
         "operationId": "invitePage",
         "tags": ["members"],
         "security": [],
-        "description": "Public invite-link landing page. Shows who invited the visitor to which UTub (200) for a live link, a Confirm-your-email page (200) for an unconfirmed viewer, and redirects a member into the UTub (302). Every dead, unknown or malformed token returns the same 404 page.",
+        "description": "Public invite-link landing page. Shows who invited the visitor to which UTub (200) for a live link and redirects a member into the UTub (302). Every dead, unknown or malformed token returns the same 404 page.",
         "parameters": [
           {
             "name": "token",
@@ -5422,7 +5422,7 @@
             "csrfToken": []
           }
         ],
-        "description": "Join the UTub an invite link belongs to from the public invite page's plain form (CSRF-protected). Redirects into the UTub (302); a dead, unknown or malformed token is the uniform 404 page, an unconfirmed email the Confirm-your-email page (403), and a logged-out visitor the log-in page (401).",
+        "description": "Join the UTub an invite link belongs to from the public invite page's plain form (CSRF-protected). Redirects into the UTub (302); a dead, unknown or malformed token is the uniform 404 page, and a logged-out visitor the log-in page (401).",
         "parameters": [
           {
             "name": "token",
@@ -5446,16 +5446,6 @@
           },
           "401": {
             "description": "Unauthorized",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HtmlErrorPageSchema"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden",
             "content": {
               "application/json": {
                 "schema": {

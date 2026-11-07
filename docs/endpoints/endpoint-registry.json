@@ -3263,7 +3263,6 @@
         "status_codes": {
           "302": "backend.schemas.base.HtmlErrorPageSchema",
           "401": "backend.schemas.base.HtmlErrorPageSchema",
-          "403": "backend.schemas.base.HtmlErrorPageSchema",
           "404": "backend.schemas.base.HtmlErrorPageSchema",
           "429": "backend.schemas.base.HtmlErrorPageSchema"
         }

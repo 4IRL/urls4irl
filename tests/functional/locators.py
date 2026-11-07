@@ -946,7 +946,6 @@ class InvitePageLocators(GenericPageLocator):
     LINK_CREATE_ACCOUNT = f"{MAIN} a.splash-button"
     LINK_GO_TO_APP = f"{MAIN} a.splash-button[href='/']"
     ANY_ROOT_LINK = "a[href='/']"
-    NAVBAR_BRAND_SPAN = "span.navbar-brand"
 
 
 class ModalLocators:

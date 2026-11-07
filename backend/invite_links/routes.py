@@ -25,7 +25,6 @@ from backend.invite_links.data_models import (
 from backend.invite_links.lookup import find_invite_by_token
 from backend.invite_links.page_response import (
     InvitePageView,
-    back_to_invite_url,
     build_invite_splash_urls,
     invite_redirect,
     render_invite_page,
@@ -65,7 +64,6 @@ def _build_page_view(
     *,
     resolution: InvitePageResolution,
     token: str,
-    viewer_unvalidated: bool = False,
     show_login_message: bool = False,
 ) -> InvitePageView:
     """Map a classifier resolution to the view the template renders (never a member).
@@ -73,8 +71,6 @@ def _build_page_view(
     Args:
         resolution (InvitePageResolution): The classifier's result.
         token (str): The raw token from the request path (for the splash URLs).
-        viewer_unvalidated (bool): Whether the viewer is authenticated with an
-            unconfirmed email; their pages never link to the splash page.
         show_login_message (bool): Whether state 2 carries the "log in" message
             (the join POST re-render for a logged-out visitor).
     """
@@ -106,19 +102,11 @@ def _build_page_view(
             message=login_message,
             message_role="status" if login_message else None,
         )
-    if resolution.state == InvitePageState.EMAIL_UNVALIDATED:
-        return InvitePageView(
-            kind="email_unvalidated",
-            page_title=INVITE_LINK_PAGE.TITLE_UNVALIDATED,
-            heading=INVITE_LINK_PAGE.UNVALIDATED_HEADING,
-            message=INVITE_LINK_PAGE.UNVALIDATED_MESSAGE,
-            message_role="status",
-        )
     # Fail closed: every other state, and any state missing its details, is dead.
     return InvitePageView(
         kind="dead",
         page_title=INVITE_LINK_PAGE.TITLE_DEAD,
-        show_home_link=not viewer_unvalidated,
+        show_home_link=True,
     )
 
 
@@ -128,9 +116,8 @@ def _build_page_view(
     tags=[OPEN_API.MEMBERS],
     description=(
         "Public invite-link landing page. Shows who invited the visitor to which "
-        "UTub (200) for a live link, a Confirm-your-email page (200) for an "
-        "unconfirmed viewer, and redirects a member into the UTub (302). Every dead, "
-        "unknown or malformed token returns the same 404 page."
+        "UTub (200) for a live link and redirects a member into the UTub (302). "
+        "Every dead, unknown or malformed token returns the same 404 page."
     ),
     status_codes={
         200: HtmlErrorPageSchema,
@@ -166,10 +153,7 @@ def invite_page(token: str) -> Response:
     if resolution.state == InvitePageState.MEMBER_REDIRECT:
         return invite_redirect(f"/home?UTubID={resolution.utub_id}")
 
-    viewer_unvalidated = visitor is not None and not visitor.email_validated
-    page = _build_page_view(
-        resolution=resolution, token=token, viewer_unvalidated=viewer_unvalidated
-    )
+    page = _build_page_view(resolution=resolution, token=token)
     status_code = HTTPStatus.NOT_FOUND if page.kind == "dead" else HTTPStatus.OK
     return render_invite_page(page=page, status_code=status_code)
 
@@ -198,13 +182,12 @@ def _join_outcome_response(result: InviteJoinResult) -> Response:
     description=(
         "Join the UTub an invite link belongs to from the public invite page's plain "
         "form (CSRF-protected). Redirects into the UTub (302); a dead, unknown or "
-        "malformed token is the uniform 404 page, an unconfirmed email the "
-        "Confirm-your-email page (403), and a logged-out visitor the log-in page (401)."
+        "malformed token is the uniform 404 page, and a logged-out visitor the "
+        "log-in page (401)."
     ),
     status_codes={
         302: HtmlErrorPageSchema,
         401: HtmlErrorPageSchema,
-        403: HtmlErrorPageSchema,
         404: HtmlErrorPageSchema,
         429: HtmlErrorPageSchema,
     },
@@ -231,20 +214,6 @@ def join_invite_page(token: str) -> Response:
         if page.kind == "login_required":
             return render_invite_page(page=page, status_code=HTTPStatus.UNAUTHORIZED)
         return render_invite_page(page=page, status_code=HTTPStatus.NOT_FOUND)
-
-    # Gate on the confirmed email before any token lookup so every token looks alike.
-    if not current_user.email_validated:
-        return render_invite_page(
-            page=InvitePageView(
-                kind="email_unvalidated",
-                page_title=INVITE_LINK_PAGE.TITLE_UNVALIDATED,
-                heading=INVITE_LINK_PAGE.UNVALIDATED_HEADING,
-                message=INVITE_LINK_PAGE.UNVALIDATED_MESSAGE,
-                message_role="status",
-                back_url=back_to_invite_url(),
-            ),
-            status_code=HTTPStatus.FORBIDDEN,
-        )
 
     invite = find_invite_by_token(token)
     if invite is None:

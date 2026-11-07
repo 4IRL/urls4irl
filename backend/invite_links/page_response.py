@@ -20,9 +20,7 @@ from backend.utils.strings.invite_link_strs import INVITE_LINK_PAGE
 _INVITE_PAGE_TEMPLATE = "pages/invite.html"
 _INVITE_PATH_PREFIX = "/invite/"
 
-InvitePageKind = Literal[
-    "join_ready", "login_required", "email_unvalidated", "dead", "error"
-]
+InvitePageKind = Literal["join_ready", "login_required", "dead", "error"]
 
 
 @dataclass(frozen=True)

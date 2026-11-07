@@ -10,7 +10,6 @@ class InvitePageState(StrEnum):
 
     JOIN_READY = "join_ready"
     LOGIN_REQUIRED = "login_required"
-    EMAIL_UNVALIDATED = "email_unvalidated"
     MEMBER_REDIRECT = "member_redirect"
     DEAD = "dead"
 
