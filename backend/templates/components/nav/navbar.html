@@ -1,15 +1,10 @@
 {# is_short_link_page forces the neutral anonymous shell for every viewer #}
-{# is_invite_page does too, except a logged-in viewer gets no nav items or dropdown, and an
-   unvalidated one gets a non-link brand so no a[href='/'] exists on the page #}
+{# is_invite_page does too, except a logged-in viewer gets no nav items or dropdown #}
 {% set authed_shell = current_user.is_authenticated and current_user.email_validated and not (is_short_link_page or is_invite_page) %}
 {% set invite_authed = is_invite_page and current_user.is_authenticated %}
-{% set plain_brand = invite_authed and not current_user.email_validated %}
 {% if authed_shell %}
 <nav id="mainNavbar" class="navbar navbar-expand-none navbar-dark bg-dark py-0">
     <a class="navbar-brand navbar-start" href="/home">
-{% elif plain_brand %}
-<nav id="mainNavbar" class="navbar navbar-expand-md navbar-dark bg-dark py-0">
-    <span class="navbar-brand navbar-start">
 {% else %}
 <nav id="mainNavbar" class="navbar navbar-expand-md navbar-dark bg-dark py-0">
     <a class="navbar-brand navbar-start" href="/">
@@ -18,7 +13,7 @@
         <div id="iconContainer">
             <img id="u4iFavicon" src="/static/favicon/android-chrome-192x192.png" alt="" />
         </div>
-    {% if plain_brand %}</span>{% else %}</a>{% endif %}
+    </a>
     {% if authed_shell %}
     {% include 'components/nav/logged_in_as_inline.html' %}
     {% endif %}

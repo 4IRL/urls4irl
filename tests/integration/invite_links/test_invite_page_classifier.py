@@ -263,42 +263,25 @@ def test_anonymous_dead_link_is_dead(
         assert result == _dead_resolution()
 
 
-def test_unvalidated_non_member_live_link_is_email_unvalidated(
-    app: Flask, every_user_makes_a_unique_utub
-) -> None:
-    """
-    GIVEN a live link and an unvalidated non-member
-    WHEN classified
-    THEN EMAIL_UNVALIDATED, no invite details, link_live True
-    """
-    _prepare(app, "live")
-    with app.app_context():
-        visitor = _unvalidate()
-        result = resolve_invite_page(visitor=visitor, token=TOKEN)
-        assert result == InvitePageResolution(
-            state=InvitePageState.EMAIL_UNVALIDATED,
-            invite=None,
-            utub_id=None,
-            link_live=True,
-        )
-
-
+@pytest.mark.parametrize("is_member", (True, False))
 @pytest.mark.parametrize("case", ALL_LINK_CASES)
-def test_unvalidated_member_is_email_unvalidated(
-    app: Flask, every_user_makes_a_unique_utub, case: str
+def test_unvalidated_visitor_fails_closed_to_dead(
+    app: Flask, every_user_makes_a_unique_utub, case: str, is_member: bool
 ) -> None:
     """
-    GIVEN an unvalidated member of a non-trashed UTub, any link state
-    WHEN classified
-    THEN EMAIL_UNVALIDATED (never MEMBER_REDIRECT), link_live per the link
+    GIVEN an unvalidated visitor (defensive path; load_user keeps them anonymous)
+    WHEN classified against any link state, member or not
+    THEN DEAD with no invite or utub id (never MEMBER_REDIRECT/JOIN_READY);
+         link_live is the link's own liveness
     """
     _prepare(app, case)
     with app.app_context():
-        _add_member(VISITOR_ID)
+        if is_member:
+            _add_member(VISITOR_ID)
         visitor = _unvalidate()
         result = resolve_invite_page(visitor=visitor, token=TOKEN)
         assert result == InvitePageResolution(
-            state=InvitePageState.EMAIL_UNVALIDATED,
+            state=InvitePageState.DEAD,
             invite=None,
             utub_id=None,
             link_live=case == "live",
@@ -328,7 +311,7 @@ def test_unvalidated_visitor_unknown_or_malformed_token_is_dead(
     """
     GIVEN an unvalidated visitor and an unknown or malformed token
     WHEN classified
-    THEN DEAD (never EMAIL_UNVALIDATED)
+    THEN DEAD
     """
     _prepare(app, "live")
     with app.app_context():

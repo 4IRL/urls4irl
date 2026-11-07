@@ -939,7 +939,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** @description Public invite-link landing page. Shows who invited the visitor to which UTub (200) for a live link, a Confirm-your-email page (200) for an unconfirmed viewer, and redirects a member into the UTub (302). Every dead, unknown or malformed token returns the same 404 page. */
+    /** @description Public invite-link landing page. Shows who invited the visitor to which UTub (200) for a live link and redirects a member into the UTub (302). Every dead, unknown or malformed token returns the same 404 page. */
     get: operations["invitePage"];
     put?: never;
     post?: never;
@@ -958,7 +958,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** @description Join the UTub an invite link belongs to from the public invite page's plain form (CSRF-protected). Redirects into the UTub (302); a dead, unknown or malformed token is the uniform 404 page, an unconfirmed email the Confirm-your-email page (403), and a logged-out visitor the log-in page (401). */
+    /** @description Join the UTub an invite link belongs to from the public invite page's plain form (CSRF-protected). Redirects into the UTub (302); a dead, unknown or malformed token is the uniform 404 page, and a logged-out visitor the log-in page (401). */
     post: operations["joinInvitePage"];
     delete?: never;
     options?: never;
@@ -8810,15 +8810,6 @@ export interface operations {
       };
       /** @description Unauthorized */
       401: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["HtmlErrorPageSchema"];
-        };
-      };
-      /** @description Forbidden */
-      403: {
         headers: {
           [name: string]: unknown;
         };

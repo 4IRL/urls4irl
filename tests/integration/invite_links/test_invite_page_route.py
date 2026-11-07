@@ -525,11 +525,10 @@ def test_navbar_items_by_viewer(app: Flask, every_user_makes_a_unique_utub) -> N
     assert 'http-equiv="refresh"' not in logged_in
 
 
-def _assert_balanced_nav(nav: str, brand_close: str) -> None:
+def _assert_balanced_nav(nav: str) -> None:
     for tag in ("div", "span", "a"):
         assert len(re.findall(rf"<{tag}[\s>]", nav)) == nav.count(f"</{tag}>"), tag
-    brand_tag = "span" if brand_close == "</span>" else "a"
-    assert f'<{brand_tag} class="navbar-brand navbar-start"' in nav
+    assert '<a class="navbar-brand navbar-start"' in nav
     assert "navbar-toggler" not in nav
     assert "NavbarNavDropdown" not in nav
 
@@ -540,14 +539,14 @@ def test_navbar_is_well_formed_for_logged_in_viewers(
     """
     GIVEN validated and anonymous viewers
     WHEN each opens the page
-    THEN the nav's divs balance and the brand closes with the matching tag
+    THEN the nav's tags balance and the brand is a link
     """
     token = _live_token(app)
     anonymous_nav = _nav_of(_get(anonymous_client(app), token))
     with _logged_in(app, VIEWER_ID) as (client, _):
         validated_nav = _nav_of(_get(client, token))
 
-    _assert_balanced_nav(validated_nav, "</a>")
+    _assert_balanced_nav(validated_nav)
     assert anonymous_nav.count("<div") == anonymous_nav.count("</div>")
     assert "NavbarNavDropdown" in anonymous_nav
 

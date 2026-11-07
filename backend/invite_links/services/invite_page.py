@@ -60,10 +60,10 @@ def resolve_invite_page(*, visitor: Users | None, token: str) -> InvitePageResol
         get_fresh_membership(utub_id=invite.utub_id, user_id=visitor.id) is not None
     )
 
+    # An unconfirmed account never holds a session (load_user rejects it), but fail
+    # closed if one reaches here.
     if not visitor.email_validated:
-        if is_member or link_live:
-            return _resolution(InvitePageState.EMAIL_UNVALIDATED, link_live=link_live)
-        return _resolution(InvitePageState.DEAD, link_live=False)
+        return _resolution(InvitePageState.DEAD, link_live=link_live)
 
     if is_member:
         return _resolution(

@@ -34,11 +34,6 @@ class INVITE_LINK_PAGE:
         "Invite links expire and can be revoked by the people who manage the UTub. "
         "Ask the person who sent it for a new link."
     )
-    UNVALIDATED_HEADING = "Confirm your email to join"
-    UNVALIDATED_MESSAGE = (
-        "Confirm your email address using the link we sent you, then open this "
-        "invite link again."
-    )
     LOGIN_MESSAGE = "You're logged out. Log in to join this UTub."
     CSRF_HEADING = "This page expired"
     CSRF_MESSAGE = "Reload this invite link and try again."
@@ -50,7 +45,6 @@ class INVITE_LINK_PAGE:
     NOT_NOW_LABEL = "Not now"
     GO_TO_APP_LABEL = "Go to URLS4IRL"
     TITLE_JOIN = "Join a UTub - URLS4IRL"
-    TITLE_UNVALIDATED = "Confirm your email - URLS4IRL"
     TITLE_DEAD = "Invite unavailable - URLS4IRL"
     TITLE_CSRF = "Page expired - URLS4IRL"
     TITLE_RATE_LIMIT = "Too many attempts - URLS4IRL"

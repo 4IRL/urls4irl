@@ -747,7 +747,7 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Handler:** `backend/invite_links/routes.py:join_invite_page`
 - **Decorators:** `api_route`, `limiter.shared_limit(INVITE_LINK_JOIN_RATE_LIMIT, scope=INVITE_LINK_JOIN_RATE_SCOPE, key_func=invite_link_join_rate_key, methods=['POST'])`
 - **Service:** `backend.invite_links.services.invite_page:resolve_invite_page`, `backend.invite_links.services.join_via_invite:join_via_invite`
-- **Schema:** status: 302 `backend.schemas.base.HtmlErrorPageSchema`, 401 `backend.schemas.base.HtmlErrorPageSchema`, 403 `backend.schemas.base.HtmlErrorPageSchema`, 404 `backend.schemas.base.HtmlErrorPageSchema`, 429 `backend.schemas.base.HtmlErrorPageSchema`
+- **Schema:** status: 302 `backend.schemas.base.HtmlErrorPageSchema`, 401 `backend.schemas.base.HtmlErrorPageSchema`, 404 `backend.schemas.base.HtmlErrorPageSchema`, 429 `backend.schemas.base.HtmlErrorPageSchema`
 - **Template:** —
 - **JS:** indirect: server-built-url
 
