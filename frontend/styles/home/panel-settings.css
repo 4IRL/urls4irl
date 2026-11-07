@@ -653,6 +653,157 @@ h3.panelSettingsRowTitle {
     outline-offset: 2px;
 }
 
+/* ------------------- UTubs panel: "Pinned UTubs" section ------------------- */
+.utubPinsCounter {
+    margin: 0 0 0.4rem;
+    color: var(--textPrimary);
+    font-weight: 700;
+    font-size: 0.9rem;
+}
+
+.utubPinsList {
+    list-style: none;
+    margin: 0 0 0.4rem;
+    padding: 0;
+}
+
+.utubPinsItem {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 2.2rem;
+}
+
+.utubPinsItem .UTubPinIcon {
+    flex: 0 0 auto;
+    color: var(--deckSelectionGreen);
+}
+
+.utubPinsName {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--textPrimary);
+    font-weight: 700;
+    font-size: 0.9rem;
+}
+
+.utubPinsRemove {
+    flex: 0 0 auto;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    background: none;
+    border: none;
+    border-radius: 6px;
+    color: var(--grayBadgeSelection);
+    font-size: 0.95rem;
+    cursor: pointer;
+}
+
+.utubPinsRemove[aria-disabled="true"] {
+    opacity: 0.45;
+    cursor: default;
+}
+
+.utubPinsRemove:focus-visible {
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: 1px;
+}
+
+@media (hover: hover) {
+    .utubPinsRemove:not([aria-disabled="true"]):hover {
+        color: var(--textPrimary);
+    }
+}
+
+.utubPinsHint,
+.utubPinsNotice,
+.utubPinsCapNote {
+    margin: 0.1rem 0 0.5rem;
+    color: var(--cardURLTextColor);
+    font-size: 0.85rem;
+}
+
+.utubPinsNotice {
+    color: var(--removeIconColor);
+}
+
+.utubPinsCapNote {
+    margin: 6px 0 0;
+    font-size: 0.8rem;
+}
+
+.utubPinsInput {
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 2.75rem;
+    padding: 0 0.75rem;
+    background: var(--cardBackgroundColor);
+    border: 1px solid var(--borderColor);
+    border-radius: 8px;
+    color: var(--textPrimary);
+    font-size: 16px;
+}
+
+.utubPinsInput:focus-visible {
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: 2px;
+}
+
+.utubPinsInput[aria-disabled="true"] {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.utubPinsOptions {
+    margin-top: 4px;
+    background: var(--cardBackgroundColor);
+    border: 1px solid var(--borderColor);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.utubPinsOptions[hidden] {
+    display: none;
+}
+
+.utubPinsOption {
+    padding: 8px 12px;
+    color: var(--grayBadgeSelection);
+    font-size: 0.95rem;
+    cursor: pointer;
+}
+
+.utubPinsOption:focus-visible,
+.utubPinsOption:focus {
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: -2px;
+    background: var(--selectedUTubColorBackground);
+    color: var(--deckSelectionGreen);
+}
+
+@media (hover: hover) {
+    .utubPinsOption:hover {
+        background: var(--selectedUTubColorBackground);
+        color: var(--deckSelectionGreen);
+    }
+}
+
+.utubPinsNoMatch {
+    color: var(--cardURLTextColor);
+    font-size: 0.85rem;
+}
+
+.utubPinsNoMatch:not(:empty) {
+    padding: 8px 2px 0;
+}
+
 /* Inline status slot: saving muted, saved green, error red (each also carries text).
    It sits at the END of the section, absolutely positioned inside the section's
    bottom padding, so saving/saved text never changes any layout: collapsing or
@@ -712,6 +863,18 @@ h3.panelSettingsRowTitle {
     .panelSettingsSheet input {
         min-width: 2.75rem;
         min-height: 2.75rem;
+    }
+
+    .utubPinsRemove {
+        min-width: 2.75rem;
+        min-height: 2.75rem;
+    }
+
+    .utubPinsItem,
+    .utubPinsOption {
+        min-height: 2.75rem;
+        display: flex;
+        align-items: center;
     }
 }
 
