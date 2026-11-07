@@ -132,6 +132,9 @@ vi.mock("../home/urls/personal-settings-section.js", () => ({
 vi.mock("../home/utubs/list-settings-section.js", () => ({
   registerUtubListSettingsSection: track("registerUtubListSettingsSection"),
 }));
+vi.mock("../home/utubs/pins-section.js", () => ({
+  registerUtubPinsSection: track("registerUtubPinsSection"),
+}));
 vi.mock("../home/members/list-settings-section.js", () => ({
   registerMembersListSettingsSection: track(
     "registerMembersListSettingsSection",
@@ -257,14 +260,18 @@ describe("main.ts init order", () => {
     expect(listIndex).toBeLessThan(callOrder.indexOf("initOnboardingNudges"));
   });
 
-  it("registers the Members section right after the UTub list section, before tooltips and nudges", () => {
+  it("registers the Pinned UTubs section right after the UTub list section", () => {
+    expect(callOrder.indexOf("registerUtubPinsSection")).toBe(
+      callOrder.indexOf("registerUtubListSettingsSection") + 1,
+    );
+  });
+
+  it("registers the Members section right after the Pinned UTubs section, before tooltips and nudges", () => {
     const membersIndex = callOrder.indexOf(
       "registerMembersListSettingsSection",
     );
 
-    expect(membersIndex).toBe(
-      callOrder.indexOf("registerUtubListSettingsSection") + 1,
-    );
+    expect(membersIndex).toBe(callOrder.indexOf("registerUtubPinsSection") + 1);
     expect(membersIndex).toBeLessThan(callOrder.indexOf("initTooltips"));
     expect(membersIndex).toBeLessThan(
       callOrder.indexOf("initOnboardingNudges"),

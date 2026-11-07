@@ -51,6 +51,7 @@ import { initPanelSettings } from "./home/panel-settings/index.js";
 import { registerUrlsSettingsSection } from "./home/urls/settings-section.js";
 import { registerUrlsPersonalSettingsSection } from "./home/urls/personal-settings-section.js";
 import { registerUtubListSettingsSection } from "./home/utubs/list-settings-section.js";
+import { registerUtubPinsSection } from "./home/utubs/pins-section.js";
 import { registerMembersListSettingsSection } from "./home/members/list-settings-section.js";
 import { initUrlDeckPolicyAttrs } from "./home/urls/deck-view-attrs.js";
 import { loadInitialTrashCount, renderTrashCount } from "./home/trash/count.js";
@@ -84,6 +85,7 @@ $(document).ready(() => {
   registerUrlsSettingsSection();
   registerUrlsPersonalSettingsSection();
   registerUtubListSettingsSection();
+  registerUtubPinsSection();
   registerMembersListSettingsSection();
   registerTagsPersonalSettingsSection();
   initLeftPanelToggle();

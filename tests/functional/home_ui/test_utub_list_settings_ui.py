@@ -821,14 +821,15 @@ def test_controls_are_found_by_role_and_name_and_select_is_keyboard_operable(
     expect(sort_select(page=page)).to_have_value("last_opened")
 
 
-def test_the_lone_section_has_no_heading_but_stays_a_labelled_expanded_group(
+def test_the_list_section_is_a_headed_expanded_section_beside_pinned_utubs(
     page: Page, create_test_utubmembers, provide_app: Flask
 ):
     """
-    GIVEN the UTubs settings popover, whose "Just for you" group holds one section
+    GIVEN the UTubs settings popover, whose "Just for you" group holds the list
+        and Pinned UTubs sections
     WHEN it opens
-    THEN no "Your UTub list" heading or toggle shows, the section is a group named
-        by that title, and its controls sit directly under the scope heading
+    THEN each section has a heading with an expanded toggle, and the list
+        section's controls are visible
     """
     app = provide_app
     login_user_to_home_page(app=app, page=page, user_id=USER_ID_FOR_TEST)
@@ -840,11 +841,21 @@ def test_the_lone_section_has_no_heading_but_stays_a_labelled_expanded_group(
         )
     )
     expect(section).to_have_count(1)
-    expect(section).to_have_attribute("role", "group")
-    expect(section).to_have_attribute("aria-label", UTUB_LIST_SETTINGS_SECTION_TITLE)
-    expect(section.locator("h3")).to_be_hidden()
-    expect(section.locator(".panelSettingsSectionToggle")).to_be_hidden()
-    expect(section.locator(".panelSettingsSectionToggleTitle")).to_be_hidden()
+    expect(section.locator("h3")).to_be_visible()
+    expect(section.locator(".panelSettingsSectionToggleTitle")).to_have_text(
+        UTUB_LIST_SETTINGS_SECTION_TITLE
+    )
+    expect(section.locator(".panelSettingsSectionToggle")).to_have_attribute(
+        "aria-expanded", "true"
+    )
+    pins_section = page.locator(
+        HPL.SETTINGS_GROUP_SECTION_FORMAT.format(
+            scope=HPL.SETTINGS_GROUP_USER, section_id="utubs-pins"
+        )
+    )
+    expect(pins_section.locator(".panelSettingsSectionToggle")).to_have_attribute(
+        "aria-expanded", "true"
+    )
     expect(sort_select(page=page)).to_be_visible()
     expect(counts_switch(page=page)).to_be_visible()
     expect(totals_switch(page=page)).to_be_visible()
