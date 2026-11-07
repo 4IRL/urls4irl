@@ -1,12 +1,11 @@
 from unittest.mock import MagicMock
 
 import pytest
-from flask import Flask, url_for
+from flask import url_for
 from requests import Response
 
 from backend import db
 from backend.extensions.email_sender.email_sender import EmailSender
-from backend.models.email_validations import Email_Validations
 from backend.models.users import Users
 from backend.utils.all_routes import ROUTES
 from backend.utils.constants import EMAIL_CONSTANTS
@@ -14,21 +13,13 @@ from backend.utils.datetime_utils import utc_now
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.splash_form_strs import REGISTER_FORM
 from backend.utils.strings.user_strs import MEMBER_SUCCESS
+from tests.integration.splash.conftest import (
+    create_user,
+    patch_email_confirmation_spy,
+)
 from tests.models_for_test import valid_user_1, valid_user_2
 
 pytestmark = pytest.mark.splash
-
-
-def _ok_email_response() -> Response:
-    response = Response()
-    response.status_code = 200
-    return response
-
-
-def _patch_email_confirmation_spy(monkeypatch) -> MagicMock:
-    send_spy = MagicMock(return_value=_ok_email_response())
-    monkeypatch.setattr(EmailSender, "send_account_email_confirmation", send_spy)
-    return send_spy
 
 
 def _server_error_email_response() -> Response:
@@ -42,25 +33,6 @@ def _patch_email_confirmation_server_error(monkeypatch) -> MagicMock:
     send_spy = MagicMock(return_value=_server_error_email_response())
     monkeypatch.setattr(EmailSender, "send_account_email_confirmation", send_spy)
     return send_spy
-
-
-def _create_user(
-    app: Flask, username: str, email: str, password: str, *, validated: bool
-) -> None:
-    with app.app_context():
-        new_user = Users(
-            username=username,
-            email=email.lower(),
-            plaintext_password=password,
-        )
-        if validated:
-            new_user.email_validated = True
-        else:
-            new_user.email_confirm = Email_Validations(
-                validation_token=new_user.get_email_validation_token()
-            )
-        db.session.add(new_user)
-        db.session.commit()
 
 
 def _post_resend(client, csrf_token: str, email: str):
@@ -79,8 +51,8 @@ def test_resend_pending_unvalidated_user_sends_opaque_success(
     WHEN POST /resend-registration-email with their email
     THEN the confirmation email is sent once AND the uniform opaque success is returned.
     """
-    send_spy = _patch_email_confirmation_spy(monkeypatch)
-    _create_user(
+    send_spy = patch_email_confirmation_spy(monkeypatch)
+    create_user(
         app,
         username=valid_user_1[REGISTER_FORM.USERNAME],
         email=valid_user_1[REGISTER_FORM.EMAIL],
@@ -104,8 +76,8 @@ def test_resend_validated_email_does_not_send(app, load_register_page, monkeypat
     WHEN POST /resend-registration-email with their email
     THEN no email is sent, yet the uniform opaque success is still returned.
     """
-    send_spy = _patch_email_confirmation_spy(monkeypatch)
-    _create_user(
+    send_spy = patch_email_confirmation_spy(monkeypatch)
+    create_user(
         app,
         username=valid_user_1[REGISTER_FORM.USERNAME],
         email=valid_user_1[REGISTER_FORM.EMAIL],
@@ -127,7 +99,7 @@ def test_resend_unknown_email_does_not_send(app, load_register_page, monkeypatch
     WHEN POST /resend-registration-email with that email
     THEN no email is sent, yet the uniform opaque success is still returned.
     """
-    send_spy = _patch_email_confirmation_spy(monkeypatch)
+    send_spy = patch_email_confirmation_spy(monkeypatch)
     client, csrf_token = load_register_page
 
     response = _post_resend(client, csrf_token, valid_user_2[REGISTER_FORM.EMAIL])
@@ -143,15 +115,15 @@ def test_resend_responses_are_byte_identical(app, load_register_page, monkeypatc
     WHEN POST /resend-registration-email is hit for each
     THEN all three response bodies are byte-identical (no enumeration signal).
     """
-    _patch_email_confirmation_spy(monkeypatch)
-    _create_user(
+    patch_email_confirmation_spy(monkeypatch)
+    create_user(
         app,
         username=valid_user_1[REGISTER_FORM.USERNAME],
         email=valid_user_1[REGISTER_FORM.EMAIL],
         password=valid_user_1[REGISTER_FORM.PASSWORD],
         validated=False,
     )
-    _create_user(
+    create_user(
         app,
         username=valid_user_2[REGISTER_FORM.USERNAME],
         email=valid_user_2[REGISTER_FORM.EMAIL],
@@ -186,7 +158,7 @@ def test_resend_mailjet_server_error_stays_opaque(
     from tests.utils_for_test import is_string_in_logs
 
     send_spy = _patch_email_confirmation_server_error(monkeypatch)
-    _create_user(
+    create_user(
         app,
         username=valid_user_1[REGISTER_FORM.USERNAME],
         email=valid_user_1[REGISTER_FORM.EMAIL],
@@ -219,8 +191,8 @@ def test_resend_guard_tripped_sends_nothing(app, load_register_page, monkeypatch
     WHEN POST /resend-registration-email with their email
     THEN NO email is sent yet the response is still the identical opaque success.
     """
-    send_spy = _patch_email_confirmation_spy(monkeypatch)
-    _create_user(
+    send_spy = patch_email_confirmation_spy(monkeypatch)
+    create_user(
         app,
         username=valid_user_1[REGISTER_FORM.USERNAME],
         email=valid_user_1[REGISTER_FORM.EMAIL],

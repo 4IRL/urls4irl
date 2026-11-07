@@ -279,6 +279,24 @@ def test_decode_resend_validation_token_rejects_non_resend_tokens(app):
         non_str_claim_token = jwt.encode(
             payload={
                 EMAILS.RESEND_VALIDATION: 123,
+                EMAILS.RESEND_PURPOSE_CLAIM: EMAILS.RESEND_PURPOSE_VALUE,
+                EMAILS.EXPIRATION: utc_now().timestamp() + 600,
+            },
+            key=current_app.config[CONFIG_ENVS.SECRET_KEY],
+            algorithm=EMAILS.ALGORITHM,
+        )
+        missing_purpose_token = jwt.encode(
+            payload={
+                EMAILS.RESEND_VALIDATION: user.username,
+                EMAILS.EXPIRATION: utc_now().timestamp() + 600,
+            },
+            key=current_app.config[CONFIG_ENVS.SECRET_KEY],
+            algorithm=EMAILS.ALGORITHM,
+        )
+        wrong_purpose_token = jwt.encode(
+            payload={
+                EMAILS.RESEND_VALIDATION: user.username,
+                EMAILS.RESEND_PURPOSE_CLAIM: "something_else",
                 EMAILS.EXPIRATION: utc_now().timestamp() + 600,
             },
             key=current_app.config[CONFIG_ENVS.SECRET_KEY],
@@ -287,6 +305,8 @@ def test_decode_resend_validation_token_rejects_non_resend_tokens(app):
 
         assert decode_resend_validation_token(user.get_email_validation_token()) is None
         assert decode_resend_validation_token(non_str_claim_token) is None
+        assert decode_resend_validation_token(missing_purpose_token) is None
+        assert decode_resend_validation_token(wrong_purpose_token) is None
         assert decode_resend_validation_token("not-a-jwt") is None
 
 

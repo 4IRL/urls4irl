@@ -1,51 +1,31 @@
 """No session can belong to an unconfirmed account (``load_user`` fails closed)."""
 
-from typing import Generator, Tuple
+from typing import Tuple
 from urllib.parse import parse_qs, urlsplit
 
 import pytest
 from flask import Flask, url_for
 from flask.testing import FlaskClient
 
-from backend import db
 from backend.models.users import Users
 from backend.users.routes import unauthorized
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings.email_validation_strs import EMAILS
-from tests.conftest import AjaxFlaskLoginClient
 
 pytestmark = pytest.mark.splash
 
 SPLASH_CONFIG_MARKER = b'id="splashConfig"'
 
 
-@pytest.fixture
-def stale_session_client(
-    app: Flask, register_first_user
-) -> Generator[Tuple[FlaskClient, Users, Flask], None, None]:
-    """A client holding a live session for user 1, who is then marked
-    unconfirmed. Simulates a session that pre-dates the rollout."""
-    app.test_client_class = AjaxFlaskLoginClient
-    with app.app_context():
-        user: Users = Users.query.get(1)
-
-    with app.test_client(user=user) as client:
-        with app.app_context():
-            stale_user: Users = Users.query.get(1)
-            stale_user.email_validated = False
-            db.session.commit()
-        yield client, user, app
-
-
 def test_session_of_unconfirmed_user_is_anonymous(
-    stale_session_client: Tuple[FlaskClient, Users, Flask],
+    stale_session_unvalidated_user: Tuple[FlaskClient, Users, Flask],
 ):
     """
     GIVEN a session cookie created for a user who is then marked unconfirmed
     WHEN the next request hits an authenticated route
     THEN the request is anonymous and redirects to splash
     """
-    client, _, _ = stale_session_client
+    client, _, _ = stale_session_unvalidated_user
 
     response = client.get("/home")
 

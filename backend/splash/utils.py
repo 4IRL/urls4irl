@@ -67,6 +67,9 @@ def decode_resend_validation_token(token: str) -> Users | None:
     ):
         return None
 
+    if payload.get(EMAILS.RESEND_PURPOSE_CLAIM) != EMAILS.RESEND_PURPOSE_VALUE:
+        return None
+
     username = payload.get(EMAILS.RESEND_VALIDATION)
     if not isinstance(username, str):
         return None

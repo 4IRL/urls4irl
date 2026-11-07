@@ -1,19 +1,42 @@
 from __future__ import annotations
 
-from typing import Generator
+from typing import Generator, Tuple
 
 import pytest
 from flask import Flask
+from flask.testing import FlaskClient
 from redis import Redis
 
 from backend import db
 from backend import metrics_writer as app_metrics_writer
 from backend.models.urls import Urls
+from backend.models.users import Users
 from backend.models.utub_tags import Utub_Tags
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
 from backend.utils.strings.config_strs import CONFIG_ENVS
+from tests.conftest import AjaxFlaskLoginClient
+
+
+@pytest.fixture
+def stale_session_unvalidated_user(
+    app: Flask, register_first_user
+) -> Generator[Tuple[FlaskClient, Users, Flask], None, None]:
+    """
+    Registers the user with ID == 1, flips ``email_validated`` to ``False``,
+    then installs a session cookie for them. The session is effectively
+    anonymous: ``load_user`` fails closed for unvalidated users, so requests
+    are answered by the login_manager unauthorized handler.
+    """
+    app.test_client_class = AjaxFlaskLoginClient
+    with app.app_context():
+        unvalidated_user: Users = Users.query.get(1)
+        unvalidated_user.email_validated = False
+        db.session.commit()
+
+    with app.test_client(user=unvalidated_user) as logged_in_client:
+        yield logged_in_client, unvalidated_user, app
 
 
 @pytest.fixture

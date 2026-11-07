@@ -11,6 +11,9 @@ All HTTP requests to the API must include a `session` cookie under the header `C
 will redirect the user to the splash page. AJAX endpoints that accept JSON (`application/json`) require a CSRF token via the `X-Csrftoken` request header.
 HTML form endpoints (splash/auth and contact) use `application/x-www-form-urlencoded` and include the CSRF token as a `csrf_token` form field.
 
+Web sessions are gated by `load_user`: an account whose email is not validated gets no session (the request is treated as anonymous).
+The `/api/v1` bearer auth deliberately still authenticates unvalidated users so that mobile clients can call the resend-validation endpoint.
+
 ------------------------------------------------------------------------------------------
 
 ### ID Values

@@ -3,6 +3,8 @@ import {
   initConfirmEmailForm,
   openConfirmEmailModal,
 } from "../confirm-email-form.js";
+import { emit } from "../../lib/metrics-client.js";
+import { UI_EVENTS } from "../../types/metrics-events.js";
 import {
   resetModalFormState,
   switchModal,
@@ -111,6 +113,38 @@ describe("confirm-email-form", () => {
         timeout: 10000,
       }),
     );
+  });
+
+  it("emits the manual_click validation-submit metric on a resend click", () => {
+    vi.spyOn($, "ajax").mockReturnValue(createMockJqXHR());
+    openModal("tok-metric");
+
+    clickResend();
+
+    expect(emit).toHaveBeenCalledTimes(1);
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_EMAIL_VALIDATION_SUBMIT,
+      trigger: "manual_click",
+    });
+  });
+
+  it("emits no metric when the token is empty", () => {
+    vi.spyOn($, "ajax").mockReturnValue(createMockJqXHR());
+    openModal("");
+
+    clickResend();
+
+    expect(emit).not.toHaveBeenCalled();
+  });
+
+  it("emits no metric while the resend button is aria-disabled", () => {
+    vi.spyOn($, "ajax").mockReturnValue(createMockJqXHR());
+    const { $modal } = openModal("tok-disabled");
+    $modal.find("#ResendConfirmationEmail").attr("aria-disabled", "true");
+
+    clickResend();
+
+    expect(emit).not.toHaveBeenCalled();
   });
 
   it("makes no request when the stashed token is empty", () => {
@@ -371,9 +405,9 @@ describe("confirm-email-form", () => {
       expect(resetModalFormState).toHaveBeenCalled();
     });
 
-    it("uses the shared 'expired' cooldown key", () => {
-      initConfirmEmailForm($("#ConfirmEmailModal"), { mode: "expired" });
-      const { $modal } = openModal();
+    it("init sets the shared 'expired' cooldown key", () => {
+      const $modal = $("#ConfirmEmailModal");
+      initConfirmEmailForm($modal, { mode: "expired" });
 
       expect($modal.data("cooldownKey")).toBe("expired");
     });

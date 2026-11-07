@@ -1,11 +1,14 @@
 from datetime import timedelta
 from typing import Generator, Tuple
+from unittest.mock import MagicMock
 
 import pytest
 from flask import Flask, url_for
 from flask.testing import FlaskClient
+from requests import Response
 
 from backend import db
+from backend.extensions.email_sender.email_sender import EmailSender
 from backend.models.email_validations import Email_Validations
 from backend.models.forgot_passwords import Forgot_Passwords
 from backend.models.users import Users
@@ -14,6 +17,39 @@ from backend.utils.strings import model_strs, reset_password_strs
 from backend.utils.strings.splash_form_strs import REGISTER_FORM
 from tests.models_for_test import valid_user_1
 from tests.utils_for_test import get_csrf_token
+
+
+def _ok_email_response() -> Response:
+    response = Response()
+    response.status_code = 200
+    return response
+
+
+def patch_email_confirmation_spy(monkeypatch) -> MagicMock:
+    """Replace the account-confirmation send with an OK-returning spy."""
+    send_spy = MagicMock(return_value=_ok_email_response())
+    monkeypatch.setattr(EmailSender, "send_account_email_confirmation", send_spy)
+    return send_spy
+
+
+def create_user(
+    app: Flask, username: str, email: str, password: str, *, validated: bool
+) -> None:
+    """Persist a user, either validated or pending with a validation token."""
+    with app.app_context():
+        new_user = Users(
+            username=username,
+            email=email.lower(),
+            plaintext_password=password,
+        )
+        if validated:
+            new_user.email_validated = True
+        else:
+            new_user.email_confirm = Email_Validations(
+                validation_token=new_user.get_email_validation_token()
+            )
+        db.session.add(new_user)
+        db.session.commit()
 
 
 def register_json(user_data: dict) -> dict:

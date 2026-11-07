@@ -197,6 +197,7 @@ class Users(db.Model, UserMixin):
         return jwt.encode(
             payload={
                 EMAILS.RESEND_VALIDATION: self.username,
+                EMAILS.RESEND_PURPOSE_CLAIM: EMAILS.RESEND_PURPOSE_VALUE,
                 EMAILS.EXPIRATION: datetime.timestamp(utc_now()) + expires_in,
             },
             key=current_app.config[CONFIG_ENVS.SECRET_KEY],

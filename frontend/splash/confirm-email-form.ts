@@ -16,7 +16,7 @@ const log = debug("splash:confirm-email");
 type ConfirmEmailMode = "inline" | "expired";
 
 const RESEND_TIMEOUT_MS = 10000;
-export const EXPIRED_COOLDOWN_KEY = "expired";
+const EXPIRED_COOLDOWN_KEY = "expired";
 
 interface CooldownRecord {
   key: string;
@@ -46,6 +46,9 @@ export function initConfirmEmailForm(
     $resend.data("originalText", $resend.text());
   }
   $modal.data("mode", mode);
+  // The expired page opens its static shell directly (never through
+  // openConfirmEmailModal), so its single shared cooldown key is set here.
+  if (mode === "expired") $modal.data("cooldownKey", EXPIRED_COOLDOWN_KEY);
 
   $resend.offAndOn("click", (event) => handleResend({ event, $modal }));
 
@@ -96,14 +99,10 @@ export function openConfirmEmailModal({
   const username: string = String(fromModal.find("#username").val() ?? "");
   fromModal.find("#password").val("");
 
-  const key: string =
-    $modal.data("mode") === "expired"
-      ? EXPIRED_COOLDOWN_KEY
-      : username.trim().toLowerCase();
   openCounter += 1;
   $modal.data("openNonce", openCounter);
   $modal.data("resendToken", resendToken);
-  $modal.data("cooldownKey", key);
+  $modal.data("cooldownKey", username.trim().toLowerCase());
 
   log("openConfirmEmailModal", { hasToken: resendToken !== "" });
   switchModal(fromModal, "#ConfirmEmailModal");

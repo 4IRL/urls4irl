@@ -15,10 +15,10 @@ from backend.utils.strings.email_validation_strs import EMAILS
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.splash_form_strs import REGISTER_FORM
 from backend.utils.strings.user_strs import MEMBER_SUCCESS
-from tests.integration.splash.conftest import register_json
-from tests.integration.splash.test_resend_registration_email import (
-    _create_user,
-    _patch_email_confirmation_spy,
+from tests.integration.splash.conftest import (
+    create_user,
+    patch_email_confirmation_spy,
+    register_json,
 )
 from tests.models_for_test import valid_user_1, valid_user_2
 
@@ -39,7 +39,7 @@ _EMAIL = valid_user_1[REGISTER_FORM.EMAIL]
 
 
 def _make_pending_user(app: Flask) -> None:
-    _create_user(
+    create_user(
         app,
         username=_USERNAME,
         email=_EMAIL,
@@ -155,7 +155,7 @@ def test_valid_token_sends_exactly_once(app, load_register_page, monkeypatch):
     WHEN the token is posted to the resend endpoint
     THEN exactly one confirmation email is sent and the opaque success returned
     """
-    send_spy = _patch_email_confirmation_spy(monkeypatch)
+    send_spy = patch_email_confirmation_spy(monkeypatch)
     _make_pending_user(app)
     client, csrf_token = load_register_page
 
@@ -176,9 +176,9 @@ def test_every_token_outcome_is_byte_identical_and_only_valid_sends(
     WHEN each is posted
     THEN all bodies are byte-identical and only the valid one sends
     """
-    send_spy = _patch_email_confirmation_spy(monkeypatch)
+    send_spy = patch_email_confirmation_spy(monkeypatch)
     _make_pending_user(app)
-    _create_user(
+    create_user(
         app,
         username=valid_user_2[REGISTER_FORM.USERNAME],
         email=valid_user_2[REGISTER_FORM.EMAIL],
@@ -189,6 +189,7 @@ def test_every_token_outcome_is_byte_identical_and_only_valid_sends(
         unknown_user_token = jwt.encode(
             payload={
                 EMAILS.RESEND_VALIDATION: "nobody_here",
+                EMAILS.RESEND_PURPOSE_CLAIM: EMAILS.RESEND_PURPOSE_VALUE,
                 EMAILS.EXPIRATION: utc_now().timestamp() + 600,
             },
             key=app.config[CONFIG_ENVS.SECRET_KEY],
@@ -233,7 +234,7 @@ def test_sent_with_expired_stored_token_remints_and_emails_new_link(
     WHEN a valid resend passes the guard
     THEN a new validation token is stored and the emailed link is built from it
     """
-    send_spy = _patch_email_confirmation_spy(monkeypatch)
+    send_spy = patch_email_confirmation_spy(monkeypatch)
     _make_pending_user(app)
     expired = _expired_validation_token(app)
     _set_stored_token(app, expired)
@@ -256,7 +257,7 @@ def test_sent_with_near_expiry_stored_token_remints_and_old_link_404s(
     WHEN a valid resend passes the guard
     THEN the token is re-minted, the old link 404s and the new link validates
     """
-    _patch_email_confirmation_spy(monkeypatch)
+    patch_email_confirmation_spy(monkeypatch)
     _make_pending_user(app)
     near_expiry = _near_expiry_validation_token(app)
     _set_stored_token(app, near_expiry)
@@ -280,7 +281,7 @@ def test_sent_with_healthy_stored_token_reuses_it_and_old_link_validates(
     WHEN a valid resend passes the guard
     THEN the stored token is unchanged, resent, and the link still validates
     """
-    send_spy = _patch_email_confirmation_spy(monkeypatch)
+    send_spy = patch_email_confirmation_spy(monkeypatch)
     _make_pending_user(app)
     healthy = _fresh_validation_token(app)
     _set_stored_token(app, healthy)
@@ -304,7 +305,7 @@ def test_guard_skip_never_remints_expired_token(
     WHEN a valid resend arrives
     THEN nothing is sent and the stored token is unchanged
     """
-    send_spy = _patch_email_confirmation_spy(monkeypatch)
+    send_spy = patch_email_confirmation_spy(monkeypatch)
     _make_pending_user(app)
     expired = _expired_validation_token(app)
     _set_stored_token(app, expired)
@@ -324,7 +325,7 @@ def test_registration_branch_three_never_remints(app, load_register_page, monkey
     WHEN someone registers again with that email (branch 3)
     THEN the stored token is not re-minted and the old expired link is emailed
     """
-    send_spy = _patch_email_confirmation_spy(monkeypatch)
+    send_spy = patch_email_confirmation_spy(monkeypatch)
     _make_pending_user(app)
     expired = _expired_validation_token(app)
     _set_stored_token(app, expired)
@@ -351,7 +352,7 @@ def test_email_keyed_resend_with_expired_stored_token_remints(
     WHEN the email-keyed resend passes the guard
     THEN a new validation token is stored and the emailed link is built from it
     """
-    send_spy = _patch_email_confirmation_spy(monkeypatch)
+    send_spy = patch_email_confirmation_spy(monkeypatch)
     _make_pending_user(app)
     expired = _expired_validation_token(app)
     _set_stored_token(app, expired)
@@ -375,7 +376,7 @@ def test_email_keyed_resend_with_healthy_stored_token_reuses_it(
     WHEN the email-keyed resend passes the guard
     THEN the stored token is unchanged and is the one emailed
     """
-    send_spy = _patch_email_confirmation_spy(monkeypatch)
+    send_spy = patch_email_confirmation_spy(monkeypatch)
     _make_pending_user(app)
     healthy = _fresh_validation_token(app)
     _set_stored_token(app, healthy)
@@ -439,7 +440,7 @@ def test_authenticated_caller_is_redirected(
     WHEN they post to the resend endpoint with a token
     THEN they are 302'd
     """
-    send_spy = _patch_email_confirmation_spy(monkeypatch)
+    send_spy = patch_email_confirmation_spy(monkeypatch)
     client, csrf_token, _, _ = login_first_user_with_register
 
     response = _post_token(client, csrf_token, "anything")
