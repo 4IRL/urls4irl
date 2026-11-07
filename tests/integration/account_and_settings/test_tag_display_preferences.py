@@ -327,9 +327,9 @@ def test_anonymous_redirects_to_splash_with_next(client: FlaskClient) -> None:
 
 
 def test_unvalidated_email_redirects_to_splash_and_writes_nothing(
-    login_unvalidated_user: Tuple[FlaskClient, Users, Flask],
+    stale_session_unvalidated_user: Tuple[FlaskClient, Users, Flask],
 ) -> None:
-    client, user, app = login_unvalidated_user
+    client, user, app = stale_session_unvalidated_user
     user_id = user.id
 
     splash_response = client.get("/")
@@ -344,5 +344,7 @@ def test_unvalidated_email_redirects_to_splash_and_writes_nothing(
     assert response.status_code == 302
     location = urlsplit(response.location)
     assert location.path == "/"
-    assert "next" not in parse_qs(location.query)
+    # An unconfirmed account holds no session: it is anonymous, so the
+    # unauthorized handler redirects to splash with the originating path.
+    assert "next" in parse_qs(location.query)
     assert _stored_row(app, user_id) is None

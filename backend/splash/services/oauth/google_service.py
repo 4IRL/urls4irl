@@ -224,6 +224,15 @@ def handle_google_callback() -> WerkzeugResponse | str | FlaskResponse:
             oauth_reject_message=USER_FAILURE.ACCOUNT_SUSPENDED,
         )
 
+    if not resolved_user.email_validated:
+        # Fail closed: never open a session for an unvalidated account, mirroring
+        # the confirm-link gate in linking_service.
+        return render_template(
+            "pages/splash.html",
+            oauth_generic_failure=True,
+            oauth_reject_message=USER_FAILURE.ACCOUNT_CREATED_EMAIL_NOT_VALIDATED,
+        )
+
     login_user(resolved_user)
     record_event(EventName.LOGIN_SUCCESS, dimensions={"method": "google"})
     # Completes a collision confirm-link for a password-less account: this

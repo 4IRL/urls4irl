@@ -1,5 +1,5 @@
 from typing import Tuple
-from urllib.parse import quote, urlsplit
+from urllib.parse import parse_qs, quote, urlsplit
 
 import pytest
 from flask import Flask, url_for
@@ -298,11 +298,11 @@ def test_settings_page_redirects_anonymous_to_splash(client: FlaskClient) -> Non
 
 
 def test_settings_page_redirects_unvalidated_user_to_splash(
-    login_unvalidated_user: Tuple[FlaskClient, Users, Flask],
+    stale_session_unvalidated_user: Tuple[FlaskClient, Users, Flask],
 ) -> None:
-    """An authenticated-but-unvalidated user GET /settings receives a plain 302
-    to splash (`/`) with no ``next`` query parameter."""
-    logged_in_client, _, _ = login_unvalidated_user
+    """A stale session for an unvalidated user is anonymous (``load_user`` fails
+    closed): GET /settings 302s to splash (`/`) with a ``next`` parameter."""
+    logged_in_client, _, _ = stale_session_unvalidated_user
 
     resp = logged_in_client.get(_SETTINGS_PATH)
 
@@ -311,6 +311,7 @@ def test_settings_page_redirects_unvalidated_user_to_splash(
 
     redirect_path = urlsplit(resp.location).path
     assert redirect_path == _SPLASH_PATH
+    assert "next" in parse_qs(urlsplit(resp.location).query)
 
 
 def test_settings_page_exposes_csrf_meta_and_app_config(

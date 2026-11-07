@@ -3011,27 +3011,6 @@
     {
       "blueprint": "splash",
       "decorators": [],
-      "endpoint": "splash.confirm_email_after_register",
-      "handler": "backend/splash/routes.py:confirm_email_after_register",
-      "js": {
-        "indirect": null,
-        "no_js": null,
-        "route_keys": [
-          "confirmEmailAfterRegister"
-        ],
-        "template_url_for": []
-      },
-      "methods": [
-        "GET"
-      ],
-      "rule": "/confirm-email",
-      "schemas": null,
-      "services": [],
-      "templates": []
-    },
-    {
-      "blueprint": "splash",
-      "decorators": [],
       "endpoint": "splash.confirm_email_change",
       "handler": "backend/splash/routes.py:confirm_email_change",
       "js": {
@@ -3323,7 +3302,7 @@
         "status_codes": {
           "200": "backend.schemas.users.LoginRedirectResponseSchema",
           "400": "backend.schemas.errors.ErrorResponse",
-          "401": "backend.schemas.errors.ErrorResponse",
+          "401": "backend.schemas.errors.LoginEmailNotValidatedErrorResponse",
           "429": "backend.schemas.errors.ErrorResponse"
         }
       },
@@ -3676,7 +3655,8 @@
         }
       },
       "services": [
-        "backend.splash.services.validate_email:send_resend_registration_email"
+        "backend.splash.services.validate_email:send_resend_registration_email",
+        "backend.splash.services.validate_email:send_resend_validation_email_for_token"
       ],
       "templates": []
     },
@@ -3798,41 +3778,6 @@
       },
       "services": [
         "backend.search.services.cross_utub_search:search_across_user_utubs"
-      ],
-      "templates": []
-    },
-    {
-      "blueprint": "splash",
-      "decorators": [
-        "api_route"
-      ],
-      "endpoint": "splash.send_validation_email",
-      "handler": "backend/splash/routes.py:send_validation_email",
-      "js": {
-        "indirect": null,
-        "no_js": null,
-        "route_keys": [
-          "sendValidationEmail"
-        ],
-        "template_url_for": []
-      },
-      "methods": [
-        "POST"
-      ],
-      "rule": "/send-validation-email",
-      "schemas": {
-        "query": null,
-        "request": null,
-        "response": "backend.schemas.users.EmailValidationResponseSchema",
-        "status_codes": {
-          "200": "backend.schemas.users.EmailValidationResponseSchema",
-          "400": "backend.schemas.errors.ErrorResponse",
-          "404": "backend.schemas.errors.ErrorResponse",
-          "429": "backend.schemas.errors.ErrorResponse"
-        }
-      },
-      "services": [
-        "backend.splash.services.validate_email:send_validation_email_to_user"
       ],
       "templates": []
     },

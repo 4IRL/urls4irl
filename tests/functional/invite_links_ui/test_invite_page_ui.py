@@ -363,17 +363,17 @@ def test_dead_invite_has_no_overflow_at_phone_width(
     _assert_no_horizontal_overflow(page=page)
 
 
-def test_unvalidated_email_state_five_has_no_clickable_way_out(
+def test_unconfirmed_email_viewer_is_treated_as_anonymous_on_a_live_link(
     page: Page,
     create_test_users,
     create_test_utubs,
     provide_app: Flask,
 ):
     """
-    GIVEN a logged-in user whose email is no longer validated
+    GIVEN a logged-in user whose email is no longer validated (so an anonymous viewer)
     WHEN the user opens a live invite link
-    THEN the page shows the confirm-email status and nothing clickable in the body,
-         no splash link, and a non-link brand
+    THEN it shows the anonymous page: Log in and Create account links carrying the
+         `next` contract, the navbar splash item and no Join button
     """
     scenario = _seed_invite(app=provide_app, page=page)
     login_user_to_home_page(app=provide_app, page=page, user_id=VISITOR_ID)
@@ -383,57 +383,36 @@ def test_unvalidated_email_state_five_has_no_clickable_way_out(
 
     assert response is not None
     assert response.status == 200
-    expect(page.locator(IPL.HEADING)).to_have_text(UTS.INVITE_UNVALIDATED_HEADING)
-    expect(page.locator(IPL.MESSAGE)).to_be_visible()
-    expect(page.locator(IPL.MESSAGE)).to_have_attribute("role", "status")
-    expect(
-        page.locator(f"{IPL.MAIN} button, {IPL.MAIN} a, {IPL.MAIN} form")
-    ).to_have_count(0)
-    expect(page.locator(IPL.BACK_SPLASH_BTN)).to_have_count(0)
-    expect(page.locator(IPL.ANY_ROOT_LINK)).to_have_count(0)
-    expect(page.locator(IPL.NAVBAR_BRAND_SPAN)).to_have_count(1)
+    expect(page.locator(IPL.HEADING)).to_have_text(scenario.utub_name)
+    expect(page.locator(IPL.LINK_LOG_IN)).to_have_attribute(
+        "href", f"/?next=/invite/{scenario.token}"
+    )
+    expect(page.locator(IPL.LINK_CREATE_ACCOUNT)).to_have_attribute(
+        "href", f"/?next=/invite/{scenario.token}/register"
+    )
+    expect(page.locator(IPL.BACK_SPLASH_BTN)).to_be_visible()
+    expect(page.locator(IPL.BUTTON_JOIN)).to_have_count(0)
 
 
-def test_unvalidated_email_state_five_phone_width_has_no_overflow(
+def test_unconfirmed_email_viewer_is_treated_as_anonymous_on_a_dead_link(
     page: Page,
     create_test_users,
     create_test_utubs,
     provide_app: Flask,
 ):
     """
-    GIVEN a logged-in user whose email is no longer validated on a 390px viewport
-    WHEN the user opens a live invite link
-    THEN the confirm-email message shows and nothing overflows horizontally
-    """
-    scenario = _seed_invite(app=provide_app, page=page)
-    login_user_to_home_page(app=provide_app, page=page, user_id=VISITOR_ID)
-    set_email_validated_in_db(app=provide_app, user_id=VISITOR_ID, validated=False)
-    _use_mobile_viewport(page=page)
-
-    page.goto(scenario.url)
-
-    expect(page.locator(IPL.MESSAGE)).to_be_visible()
-    expect(page.locator(IPL.ANY_ROOT_LINK)).to_have_count(0)
-    _assert_no_horizontal_overflow(page=page)
-
-
-def test_unvalidated_email_viewer_dead_page_has_no_go_to_app_link(
-    page: Page,
-    create_test_users,
-    create_test_utubs,
-    provide_app: Flask,
-):
-    """
-    GIVEN a logged-in user whose email is no longer validated
+    GIVEN a logged-in user whose email is no longer validated (so an anonymous viewer)
     WHEN the user opens a revoked invite link
-    THEN the dead page omits the Go to URLS4IRL link and has no root link at all
+    THEN the uniform dead page shows with the Go to URLS4IRL link and no UTub details
     """
     scenario = _seed_invite(app=provide_app, page=page, revoked=True)
     login_user_to_home_page(app=provide_app, page=page, user_id=VISITOR_ID)
     set_email_validated_in_db(app=provide_app, user_id=VISITOR_ID, validated=False)
 
-    page.goto(scenario.url)
+    response = page.goto(scenario.url)
 
+    assert response is not None
+    assert response.status == 404
     expect(page.locator(IPL.HEADING)).to_have_text(UTS.INVITE_DEAD_HEADING)
-    expect(page.locator(IPL.LINK_GO_TO_APP)).to_have_count(0)
-    expect(page.locator(IPL.ANY_ROOT_LINK)).to_have_count(0)
+    expect(page.locator(IPL.LINK_GO_TO_APP)).to_have_text(UTS.INVITE_GO_TO_APP_LABEL)
+    expect(page.locator(IPL.MAIN)).not_to_contain_text(scenario.utub_name)

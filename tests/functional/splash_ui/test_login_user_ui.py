@@ -2,7 +2,6 @@ import pytest
 from playwright.sync_api import Page, expect
 
 from backend.api_common.request_errors import min_length_message
-from backend.utils.strings.email_validation_strs import EMAILS, VALIDATE_MY_EMAIL
 from backend.utils.strings.html_identifiers import IDENTIFIERS
 from backend.utils.strings.splash_form_strs import LOGIN_TITLE
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
@@ -18,9 +17,9 @@ from tests.functional.playwright_utils import (
     dismiss_modal_with_click_out,
     invalidate_csrf_token_in_form,
     login_user_ui,
+    wait_for_element_presence,
     wait_for_modal_hidden,
     wait_for_modal_ready,
-    wait_for_web_element_and_click,
     wait_then_click_element,
     wait_then_get_element,
     wait_then_get_elements,
@@ -186,15 +185,17 @@ def test_login_test_user_rate_limits(page: Page, create_test_users):
     assert_on_429_page(page=page)
 
 
-def test_login_user_unconfirmed_email_shows_alert(
+def test_login_user_unconfirmed_email_opens_confirm_email_modal(
     page: Page, create_user_unconfirmed_email
 ):
     """
-    Tests the site error response to a user submitting a login form with unconfirmed email.
+    Tests that a correct login on an unconfirmed account opens the dedicated
+    "Confirm your email" modal and leaves no session behind.
 
-    GIVEN a fresh load of the U4I Splash page
-    WHEN user attempts to login with an unconfirmed email address
-    THEN U4I responds with a failure message and prompts user to confirm email
+    GIVEN a fresh load of the U4I Splash page and an unconfirmed-email user
+    WHEN the user logs in, resends the confirmation email, then goes back to login
+    THEN the Confirm modal shows a success banner, the login modal is intact and
+        usable, and a reload shows the anonymous splash page
     """
     login_user_ui(
         page=page,
@@ -203,27 +204,46 @@ def test_login_user_unconfirmed_email_shows_alert(
     )
     wait_then_click_element(page=page, css_selector=SPL.LOGIN_BUTTON_SUBMIT)
 
-    splash_modal_alert_elem = wait_then_get_element(
-        page=page, css_selector=SPL.LOGIN_MODAL_ALERT
+    wait_for_modal_ready(page=page, modal_selector=SPL.CONFIRM_EMAIL_MODAL)
+    expect(page.locator(SPL.HEADER_CONFIRM_EMAIL)).to_have_text(UTS.CONFIRM_EMAIL_TITLE)
+
+    wait_then_click_element(
+        page=page, css_selector=SPL.RESEND_CONFIRMATION_EMAIL_BUTTON
     )
-    expect(splash_modal_alert_elem).to_be_visible()
-    expect(splash_modal_alert_elem.locator("div").first).to_have_text(
-        USER_FAILURE.ACCOUNT_CREATED_EMAIL_NOT_VALIDATED
+    banner = wait_then_get_element(
+        page=page, css_selector=SPL.CONFIRM_EMAIL_MODAL_ALERT
     )
-    expect(splash_modal_alert_elem.locator("button").first).to_have_text(
-        VALIDATE_MY_EMAIL
+    expect(banner).to_have_text(UTS.REGISTER_EMAIL_RESENT)
+    expect(page.locator(SPL.RESEND_CONFIRMATION_EMAIL_BUTTON)).to_have_attribute(
+        "aria-disabled", "true"
     )
 
+    wait_then_click_element(
+        page=page, css_selector=SPL.BACK_TO_LOGIN_FROM_CONFIRM_EMAIL
+    )
+    wait_for_modal_ready(page=page, modal_selector=SPL.LOGIN_MODAL)
+    expect(page.locator(SPL.LOGIN_BUTTON_SUBMIT)).to_be_enabled()
+    expect(
+        page.locator(f"{SPL.LOGIN_MODAL} {SPL.BUTTON_FORGOT_PASSWORD_MODAL}")
+    ).to_be_visible()
+    expect(page.locator(f"{SPL.LOGIN_MODAL} #password")).to_have_value("")
 
-def test_login_user_unconfirmed_email_validate_btn_shows_validate_modal(
+    # No session was created, so a reload is the anonymous splash page
+    page.goto(page.url.split("?")[0])
+    splash_config = wait_for_element_presence(
+        page=page, css_selector=SPL.SPLASH_CONFIG_ANONYMOUS
+    )
+    assert splash_config is not None
+
+
+def test_login_user_unconfirmed_email_dismiss_confirm_modal_keeps_login_usable(
     page: Page, create_user_unconfirmed_email
 ):
     """
-    Tests the site error response to a user submitting a login form with unconfirmed email, and then clicking on the "Validate My Email" button.
-
-    GIVEN a fresh load of the U4I Splash page
-    WHEN user attempts to login with unconfirmed email address, and then clicks on the "Validate My Email" button
-    THEN U4I responds with the Validate My Email modal, alert shows with "Email Sent!"
+    GIVEN an unconfirmed-email user who logged in and sees the Confirm modal
+    WHEN they dismiss it with the X button
+    THEN the page is not reloaded (no logout redirect) and the login modal can be
+        re-opened with its inputs enabled
     """
     login_user_ui(
         page=page,
@@ -231,20 +251,19 @@ def test_login_user_unconfirmed_email_validate_btn_shows_validate_modal(
         password=UTS.TEST_PASSWORD_1,
     )
     wait_then_click_element(page=page, css_selector=SPL.LOGIN_BUTTON_SUBMIT)
+    wait_for_modal_ready(page=page, modal_selector=SPL.CONFIRM_EMAIL_MODAL)
 
-    splash_modal_alert_elem = wait_then_get_element(
-        page=page, css_selector=SPL.LOGIN_MODAL_ALERT
+    wait_then_click_element(
+        page=page, css_selector=f"{SPL.CONFIRM_EMAIL_MODAL} .btn-close"
     )
-    expect(splash_modal_alert_elem).to_be_visible()
+    wait_for_modal_hidden(page=page, modal_selector=SPL.CONFIRM_EMAIL_MODAL)
 
-    validate_email_btn = splash_modal_alert_elem.locator("button").first
-    wait_for_web_element_and_click(locator=validate_email_btn)
-    wait_until_visible_css_selector(page=page, css_selector=SPL.HEADER_VALIDATE_EMAIL)
-
-    email_sent = wait_then_get_element(
-        page=page, css_selector=SPL.EMAIL_VALIDATION_MODAL_ALERT
+    wait_then_click_element(page=page, css_selector=SPL.BUTTON_LOGIN)
+    wait_for_modal_ready(page=page, modal_selector=SPL.LOGIN_MODAL)
+    expect(page.locator(f"{SPL.LOGIN_MODAL} #username")).to_be_enabled()
+    expect(page.locator(f"{SPL.LOGIN_MODAL} #username")).to_have_value(
+        UTS.TEST_USERNAME_1
     )
-    expect(email_sent).to_have_text(EMAILS.EMAIL_SENT)
 
 
 def test_login_with_nonexistent_user(page: Page, create_test_users):

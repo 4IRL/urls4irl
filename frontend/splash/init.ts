@@ -1,6 +1,5 @@
 import type { Schema } from "../types/api-helpers.d.ts";
 import { $, bootstrap } from "../lib/globals.js";
-import { APP_CONFIG } from "../lib/config.js";
 import { emit } from "../lib/metrics-client.js";
 import { clearOpenForm, setOpenForm } from "../lib/modal-tracking.js";
 import { UI_EVENTS } from "../types/metrics-events.js";
@@ -8,17 +7,13 @@ import { NAVBAR_TOGGLER } from "./navbar.js";
 import { initLoginForm } from "./login-form.js";
 import { initRegisterForm } from "./register-form.js";
 import { initRegisterConfirmationModal } from "./register-confirmation-form.js";
+import { initConfirmEmailForm } from "./confirm-email-form.js";
 import { initForgotPasswordForm } from "./forgot-password-form.js";
-import {
-  initEmailValidationForm,
-  SEND_INITIAL_EMAIL,
-} from "./email-validation-form.js";
 import { AUTH_MODAL_OPEN_FORM } from "../types/metrics-dim-values.js";
 import { initScrollReveal } from "./scroll-reveal.js";
 import { debug } from "../lib/debug.js";
 
 const log = debug("splash");
-const logEmail = debug("splash:email");
 
 type ErrorResponse = Schema<"ErrorResponse">;
 
@@ -51,21 +46,11 @@ export function initSplash(): void {
   initLoginForm($("#LoginModal"));
   initRegisterForm($("#RegisterModal"));
   initRegisterConfirmationModal($("#RegisterConfirmationModal"));
-  initForgotPasswordForm($("#ForgotPasswordModal"));
-
-  // Auto-show email validation modal for authenticated-but-not-validated users
-  const splashConfig: HTMLElement | null =
-    document.getElementById("splashConfig");
-  log("initSplash invoked", {
-    showEmailValidation: splashConfig?.dataset.showEmailValidation === "true",
-  });
-  if (splashConfig && splashConfig.dataset.showEmailValidation === "true") {
-    logEmail("auto-opening EmailValidationModal for unvalidated user");
-    bootstrap.Modal.getOrCreateInstance("#EmailValidationModal").show();
-    initEmailValidationForm($("#EmailValidationModal"), SEND_INITIAL_EMAIL);
-    const logoutOnExit = createLogoutOnExit();
-    $("#EmailValidationModal").one("hide.bs.modal", logoutOnExit);
+  if ($("#LoginModal").length > 0) {
+    initConfirmEmailForm($("#ConfirmEmailModal"), { mode: "inline" });
   }
+  initForgotPasswordForm($("#ForgotPasswordModal"));
+  log("initSplash invoked");
 }
 
 function setToRegisterButton(): void {
@@ -92,14 +77,6 @@ export function clearOpenFormOnAuthModalHide($modal: JQuery): void {
   $modal.offAndOn("hidden.bs.modal", () => {
     clearOpenForm();
   });
-}
-
-export function createLogoutOnExit(): () => void {
-  return () => {
-    $.get(APP_CONFIG.routes.logout).always(() => {
-      window.location.replace("/");
-    });
-  };
 }
 
 function targetFromSelector(
@@ -154,13 +131,6 @@ export function registerModalOpener(): void {
   bootstrap.Modal.getOrCreateInstance("#RegisterModal").show();
 }
 
-export function emailValidationModalOpener($fromModal: JQuery): void {
-  switchModal($fromModal, "#EmailValidationModal");
-  initEmailValidationForm($("#EmailValidationModal"), SEND_INITIAL_EMAIL);
-  const logoutOnExit = createLogoutOnExit();
-  $("#EmailValidationModal").one("hide.bs.modal", logoutOnExit);
-}
-
 export function resetModalFormState($modal: JQuery): void {
   $modal.find(".invalid-feedback").remove();
   $modal.find(".form-control").removeClass("is-invalid");
@@ -193,41 +163,6 @@ export function showSplashModalAlertBanner(
 
 export function disableInputFields($modal: JQuery): void {
   $modal.find("input").attr("disabled", "disabled");
-}
-
-export function handleUserHasAccountNotEmailValidated(
-  $sourceModal: JQuery,
-  message: string,
-): void {
-  log("user-has-account-not-email-validated banner shown", {
-    sourceModal: $sourceModal.attr("id"),
-  });
-  const logoutOnExit = createLogoutOnExit();
-
-  $sourceModal.find(".form-control").removeClass("is-invalid");
-  $sourceModal.find(".invalid-feedback").remove();
-  $sourceModal.find(".to-forgot-password").remove();
-  const alertBanner = $sourceModal.find("#SplashModalAlertBanner");
-  alertBanner
-    .removeClass("d-none")
-    .removeClass("alert-banner-splash-modal-hide")
-    .addClass("alert-info alert-banner-splash-modal-show")
-    .append($("<div>" + message + "</div>"))
-    .append(
-      $(
-        `<button type="button" class="btn btn-link btn-block">${APP_CONFIG.strings.VALIDATE_MY_EMAIL}</button>`,
-      ).offAndOn("click", () => {
-        $sourceModal.off("hide.bs.modal", logoutOnExit);
-        emailValidationModalOpener($sourceModal);
-      }),
-    );
-
-  $sourceModal.find(".register-to-login-footer").remove();
-  $sourceModal.find(".modal-footer").remove();
-  $sourceModal.find(".oauth-divider").remove();
-  $sourceModal.find(".oauth-google-button").remove();
-  $sourceModal.find(".oauth-github-button").remove();
-  $sourceModal.one("hide.bs.modal", logoutOnExit);
 }
 
 export function handleImproperFormErrors(

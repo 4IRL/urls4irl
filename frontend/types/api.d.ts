@@ -1293,23 +1293,6 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/send-validation-email": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** @description Send an email validation link to the current user */
-    post: operations["sendValidationEmail"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
   "/resend-registration-email": {
     parameters: {
       query?: never;
@@ -1319,7 +1302,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** @description Resend the account-confirmation email for a pending registration (opaque) */
+    /** @description Resend the account-confirmation email for a pending registration (opaque). Body takes exactly one of email or resendToken (from a login on an unconfirmed account) */
     post: operations["resendRegistrationEmail"];
     delete?: never;
     options?: never;
@@ -1683,7 +1666,7 @@ export interface paths {
     delete?: never;
     options?: never;
     head?: never;
-    /** @description Partially update the authenticated user's UTub-list preferences (sort, row counts, list totals). Acts only on the logged-in user and never touches the display preferences; the preferences row is created on the first real change, and a no-op returns 200 'No change'. An empty body, unknown key, explicit null, non-boolean toggle or unknown sort is a 400. An unauthenticated request is answered by the app-wide login_manager unauthorized_handler with a 302 redirect to the splash page (with next), and an authenticated user with an unvalidated email gets a 302 to the splash page (no next), which shows the confirm-email state. Metrics: API_HIT only (no DOMAIN event). */
+    /** @description Partially update the authenticated user's UTub-list preferences (sort, row counts, list totals). Acts only on the logged-in user and never touches the display preferences; the preferences row is created on the first real change, and a no-op returns 200 'No change'. An empty body, unknown key, explicit null, non-boolean toggle or unknown sort is a 400. An unauthenticated request is answered by the app-wide login_manager unauthorized_handler with a 302 redirect to the splash page (with next), and a session whose user has an unvalidated email is treated as anonymous (load_user fails closed), so it gets the same redirect. Metrics: API_HIT only (no DOMAIN event). */
     patch: operations["updateUtubListPreferences"];
     trace?: never;
   };
@@ -1700,7 +1683,7 @@ export interface paths {
     delete?: never;
     options?: never;
     head?: never;
-    /** @description Partially update the authenticated user's member-list preferences (member sort). Acts only on the logged-in user and never touches the display or UTub-list preferences; the preferences row is created on the first real change, and a no-op returns 200 'No change'. An empty body, unknown key, explicit null or unknown sort is a 400. An unauthenticated request is answered by the app-wide login_manager unauthorized_handler with a 302 redirect to the splash page (with next), and an authenticated user with an unvalidated email gets a 302 to the splash page (no next). Metrics: API_HIT only (no DOMAIN event). */
+    /** @description Partially update the authenticated user's member-list preferences (member sort). Acts only on the logged-in user and never touches the display or UTub-list preferences; the preferences row is created on the first real change, and a no-op returns 200 'No change'. An empty body, unknown key, explicit null or unknown sort is a 400. An unauthenticated request is answered by the app-wide login_manager unauthorized_handler with a 302 redirect to the splash page (with next), and a session whose user has an unvalidated email is treated as anonymous (load_user fails closed), so it gets the same redirect. Metrics: API_HIT only (no DOMAIN event). */
     patch: operations["updateMemberListPreferences"];
     trace?: never;
   };
@@ -1717,7 +1700,7 @@ export interface paths {
     delete?: never;
     options?: never;
     head?: never;
-    /** @description Partially update the authenticated user's all-UTubs tag display defaults (tag sort, match mode, count style, tags on collapsed URLs, collapsed style, drop-opens-URL). Acts only on the logged-in user and never touches the display, UTub-list or member-list preferences; the preferences row is created on the first real change, and a no-op returns 200 'No change'. An empty body, unknown key, explicit null, non-boolean toggle or unknown enum value is a 400. An unauthenticated request is answered by the app-wide login_manager unauthorized_handler with a 302 redirect to the splash page (with next), and an authenticated user with an unvalidated email gets a 302 to the splash page (no next). Metrics: API_HIT only (no DOMAIN event). */
+    /** @description Partially update the authenticated user's all-UTubs tag display defaults (tag sort, match mode, count style, tags on collapsed URLs, collapsed style, drop-opens-URL). Acts only on the logged-in user and never touches the display, UTub-list or member-list preferences; the preferences row is created on the first real change, and a no-op returns 200 'No change'. An empty body, unknown key, explicit null, non-boolean toggle or unknown enum value is a 400. An unauthenticated request is answered by the app-wide login_manager unauthorized_handler with a 302 redirect to the splash page (with next), and a session whose user has an unvalidated email is treated as anonymous (load_user fails closed), so it gets the same redirect. Metrics: API_HIT only (no DOMAIN event). */
     patch: operations["updateTagDisplayPreferences"];
     trace?: never;
   };
@@ -1781,7 +1764,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** @description Sign the authenticated user out on every device (non-destructive). Bumps the per-user session kill-switch and revokes every refresh token, then logs the acting session out too (the current device is signed out along with the rest) and returns the splash redirect URL. Requires no re-authentication — logging back in restores access. Uses session auth only (no validated-email requirement), so a user with an unvalidated email can still sign out everywhere. Takes no request body. */
+    /** @description Sign the authenticated user out on every device (non-destructive). Bumps the per-user session kill-switch and revokes every refresh token, then logs the acting session out too (the current device is signed out along with the rest) and returns the splash redirect URL. Requires no re-authentication — logging back in restores access. Uses session auth only (no validated-email requirement), so it does not depend on the email_validation_required gate (unconfirmed accounts cannot hold a session at all). Takes no request body. */
     post: operations["logoutEverywhere"];
     delete?: never;
     options?: never;
@@ -3865,27 +3848,56 @@ export interface components {
     ErrorResponse_LoginErrorCodes: components["schemas"]["ErrorResponse"] & {
       errorCode?: components["schemas"]["LoginErrorCodes"];
     };
+    LoginEmailNotValidatedErrorResponse: {
+      /**
+       * @description Error status, always Failure
+       * @constant
+       */
+      status: "Failure";
+      /** @description Human-readable error message */
+      message: string;
+      /**
+       * @description Application-specific error code, if applicable
+       * @default null
+       */
+      errorCode: number | null;
+      /**
+       * @description Map of field names to lists of validation error messages, if applicable
+       * @default null
+       */
+      errors: {
+        [key: string]: string[];
+      } | null;
+      /**
+       * @description Additional error detail, if applicable
+       * @default null
+       */
+      details: string | null;
+      /**
+       * @description URL string involved in the error, if applicable
+       * @default null
+       */
+      urlString: string | null;
+      /** @description Short-lived signed token that can only be used to request another confirmation email via /resend-registration-email */
+      resendToken: string;
+    };
     /**
      * @description Error codes for LoginErrorCodes
      * @enum {integer}
      */
     LoginErrorCodes: 1 | 2 | 3;
-    EmailValidationResponseSchema: {
-      /**
-       * @description Response status: Success, Failure, or No change
-       * @enum {string}
-       */
-      status: "Success" | "Failure" | "No change";
-      /** @description Human-readable response message */
-      message: string;
-    };
     ResendRegistrationEmailRequest: {
       /**
-       * Format: email
        * @description Email address of the pending registration to resend confirmation for
+       * @default null
        * @example user@example.com
        */
-      email: string;
+      email: string | null;
+      /**
+       * @description Resend token returned by a login on an unconfirmed account
+       * @default null
+       */
+      resendToken: string | null;
     };
     ForgotPasswordRequest: {
       /**
@@ -10380,54 +10392,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ErrorResponse"];
-        };
-      };
-      /** @description Too many requests */
-      429: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ErrorResponse"];
-        };
-      };
-    };
-  };
-  sendValidationEmail: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Email validation */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["EmailValidationResponseSchema"];
-        };
-      };
-      /** @description Bad request */
-      400: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ErrorResponse"];
-        };
-      };
-      /** @description Not found */
-      404: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ErrorResponse"];
+          "application/json": components["schemas"]["LoginEmailNotValidatedErrorResponse"];
         };
       };
       /** @description Too many requests */

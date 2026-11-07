@@ -12,7 +12,7 @@ from backend.contact.routes import contact
 from backend.members.routes import members
 from backend.schemas.base import BaseSchema, StatusMessageResponseSchema
 from backend.schemas.contact import ContactResponseSchema
-from backend.schemas.errors import ErrorResponse
+from backend.schemas.errors import ErrorResponse, LoginEmailNotValidatedErrorResponse
 from backend.schemas.requests.contact import ContactRequest
 from backend.schemas.requests.members import AddMemberRequest
 from backend.schemas.requests.splash import (
@@ -48,7 +48,6 @@ from backend.schemas.urls import (
 )
 from backend.schemas.users import (
     AddMemberResponseSchema,
-    EmailValidationResponseSchema,
     ForgotPasswordResponseSchema,
     LoginRedirectResponseSchema,
     MemberModifiedResponseSchema,
@@ -430,20 +429,7 @@ ALL_API_ROUTES = [
         {
             200: LoginRedirectResponseSchema,
             400: ErrorResponse,
-            401: ErrorResponse,
-            429: ErrorResponse,
-        },
-    ),
-    (
-        "splash.send_validation_email",
-        None,
-        EmailValidationResponseSchema,
-        [OPEN_API.AUTH],
-        "Send an email validation link to the current user",
-        {
-            200: EmailValidationResponseSchema,
-            400: ErrorResponse,
-            404: ErrorResponse,
+            401: LoginEmailNotValidatedErrorResponse,
             429: ErrorResponse,
         },
     ),
@@ -468,7 +454,7 @@ ALL_API_ROUTES = [
         ResendRegistrationEmailRequest,
         StatusMessageResponseSchema,
         [OPEN_API.AUTH],
-        "Resend the account-confirmation email for a pending registration (opaque)",
+        "Resend the account-confirmation email for a pending registration (opaque). Body takes exactly one of email or resendToken (from a login on an unconfirmed account)",
         {200: StatusMessageResponseSchema, 400: ErrorResponse, 429: ErrorResponse},
     ),
     # UTub routes

@@ -55,7 +55,6 @@ from tests.integration.mobile_api.mobile_helpers import (
 from tests.integration.short_links.short_link_helpers import (
     FIRST_UTUB_ID,
     NON_XHR_HEADERS,
-    SECOND_USER_ID,
     anonymous_client,
     normalized_body,
 )
@@ -132,10 +131,6 @@ def _back_links(response: Response) -> list[str]:
         r'<a[^>]*href="([^"]*)"[^>]*>\s*' + INVITE_LINK_PAGE.BACK_TO_INVITE,
         response.get_data(as_text=True),
     )
-
-
-def _status_normalized(response: Response, token: str) -> str:
-    return normalized_body(response).replace(token, "TOKEN")
 
 
 def _logout(client: FlaskClient) -> None:
@@ -244,46 +239,38 @@ def test_dead_matrix_is_the_identical_404_and_joins_no_one(
     _assert_privacy_headers(response)
 
 
-# --- Unvalidated viewer ------------------------------------------------------------
+# --- Unconfirmed viewer is anonymous -----------------------------------------------
 
 
-def test_unvalidated_viewer_gets_identical_state_five_for_every_token(
+def test_unconfirmed_viewer_post_is_treated_as_logged_out(
     app: Flask, every_user_makes_a_unique_utub
 ) -> None:
     """
-    GIVEN an unvalidated viewer
-    WHEN they post to a live, a dead, an unknown and a malformed token
-    THEN every response is the same 403 state 5 with one Back to the invite link to
-        its own invite URL, no invite details, no a[href='/'] and no join
+    GIVEN a logged-in user whose email is unconfirmed (so an anonymous viewer)
+    WHEN they post to a live token and to a revoked, an unknown and a malformed one
+    THEN the live token gets the 401 state 2 with the log-in message and splash hrefs,
+        every other token gets the uniform dead 404, and nothing is joined
     """
     live = _live_token(app)
     dead = _token_of(app, add_invite_link(app, FIRST_UTUB_ID, 1, revoked=True))
-    tokens = [live, dead, UNKNOWN_TOKEN, MALFORMED_TOKEN]
-    with app.app_context():
-        utub_name = db.session.get(Utubs, FIRST_UTUB_ID).name
-        inviter = db.session.get(Users, 1).username
+    dead_tokens = [dead, UNKNOWN_TOKEN, MALFORMED_TOKEN]
     before = _state(app)
     with _logged_in(app, VIEWER_ID) as (client, csrf_token):
         _set_unvalidated(app)
-        responses = [_post(client, token, csrf_token) for token in tokens]
+        baseline = _get(client, UNKNOWN_TOKEN)
+        live_response = _post(client, live, csrf_token)
+        dead_responses = [_post(client, token, csrf_token) for token in dead_tokens]
 
-    for token, response in zip(tokens, responses):
-        body = response.get_data(as_text=True)
-        assert response.status_code == 403
-        assert _main_of(response).count('role="status"') == 1
-        assert INVITE_LINK_PAGE.UNVALIDATED_MESSAGE in unescape(_main_of(response))
-        assert unescape(INVITE_LINK_PAGE.UNVALIDATED_HEADING) in unescape(body)
-        assert _back_links(response) == [f"/invite/{token}"]
-        assert utub_name not in _main_of(response)
-        assert inviter not in _main_of(response)
-        assert 'href="/"' not in body
-        assert _title_of(response) == INVITE_LINK_PAGE.TITLE_UNVALIDATED
+    main = _main_of(live_response)
+    assert live_response.status_code == 401
+    assert INVITE_LINK_PAGE.LOGIN_MESSAGE in unescape(main)
+    assert f'href="/?next=/invite/{live}"' in main
+    assert f'href="/?next=/invite/{live}/register"' in main
+    _assert_privacy_headers(live_response)
+    for response in dead_responses:
+        assert response.status_code == 404
+        assert normalized_body(response) == normalized_body(baseline)
         _assert_privacy_headers(response)
-    normalized = {
-        _status_normalized(response, token)
-        for token, response in zip(tokens, responses)
-    }
-    assert len(normalized) == 1
     assert _state(app) == before
 
 
@@ -544,31 +531,27 @@ def test_web_and_mobile_join_share_one_bucket(
     assert limited.status_code == 429
 
 
-def test_unvalidated_viewer_error_pages_have_a_non_link_brand(
+def test_unconfirmed_viewer_error_pages_match_the_anonymous_ones(
     app: Flask, every_user_makes_a_unique_utub
 ) -> None:
     """
-    GIVEN an email-unvalidated viewer
+    GIVEN a logged-in user whose email is unconfirmed (so an anonymous viewer)
     WHEN their join POST is rate limited or fails CSRF
-    THEN neither page has an a[href='/'] and each keeps one Back to the invite link;
-        validated and anonymous viewers keep the href="/" brand
+    THEN each page keeps the linked href="/" brand and one Back to the invite link,
+        like the anonymous viewer's
     """
     token = _live_token(app)
     with _logged_in(app, VIEWER_ID) as (client, csrf_token):
-        validated = _post(client, token, csrf_token, headers=_FORCE_429)
         _set_unvalidated(app)
         limited = _post(client, token, csrf_token, headers=_FORCE_429)
         no_csrf = _post(client, token, None)
     anonymous = _post(anonymous_client(app), token, None)
 
-    for response in (limited, no_csrf):
-        assert 'href="/"' not in response.get_data(as_text=True)
-        assert '<span class="navbar-brand navbar-start">' in response.get_data(
-            as_text=True
-        )
-        assert _back_links(response) == [f"/invite/{token}"]
-    for response in (validated, anonymous):
+    assert limited.status_code == 429
+    assert no_csrf.status_code == 403
+    for response in (limited, no_csrf, anonymous):
         assert 'href="/"' in response.get_data(as_text=True)
+        assert _back_links(response) == [f"/invite/{token}"]
 
 
 def test_other_endpoints_and_the_invite_get_keep_the_global_pages(
@@ -646,7 +629,7 @@ def test_no_link_viewed_event_on_any_form_post_outcome(
 ) -> None:
     """
     GIVEN metrics enabled
-    WHEN the form is posted: success, dead, unvalidated, anonymous, CSRF failure, 429
+    WHEN the form is posted: success, dead, unconfirmed, anonymous, CSRF failure, 429
     THEN no INVITE_LINK_VIEWED event is recorded
     """
     live = _live_token(app)
@@ -655,11 +638,10 @@ def test_no_link_viewed_event_on_any_form_post_outcome(
         assert _post(client, live, None).status_code == 403
         assert _post(client, live, csrf_token, _FORCE_429).status_code == 429
         assert _post(client, live, csrf_token).status_code == 302
+        _set_unvalidated(app)
+        assert _post(client, live, csrf_token).status_code == 401
         _logout(client)
         assert _post(client, live, csrf_token).status_code == 401
-    with _logged_in(app, SECOND_USER_ID) as (client, csrf_token):
-        _set_unvalidated(app, SECOND_USER_ID)
-        assert _post(client, live, csrf_token).status_code == 403
 
     # Positive control: metrics are live (the one successful join was counted).
     assert sum_counter_values(provide_metrics_redis, EventName.MEMBER_ADDED) == 1

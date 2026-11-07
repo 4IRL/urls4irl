@@ -101,7 +101,9 @@ users = Blueprint("users", __name__)
 def load_user(user_id) -> Users | None:
     """Resolve the session cookie's user, enforcing account-state gates.
 
-    Returns None (anonymous) when the account is suspended, or when the
+    Returns None (anonymous) when the account is suspended, when its email is
+    not yet confirmed (no session may belong to an unconfirmed account, which
+    also ends any pre-existing sessions), or when the
     session was issued before ``Users.sessionsInvalidatedAt`` — the admin
     portal's per-user web-session kill switch. A session with no issued-at
     stamp (predating the stamp mechanism) is rejected once any invalidation
@@ -111,6 +113,8 @@ def load_user(user_id) -> Users | None:
     if user is None:
         return None
     if user.is_suspended:
+        return None
+    if not user.email_validated:
         return None
     if user.sessions_invalidated_at is not None:
         session_issued_at = session.get(SESSION_ISSUED_AT_KEY)
@@ -160,18 +164,13 @@ def load_user_from_request(incoming_request: Request) -> Users | None:
 
 @login_manager.unauthorized_handler
 def unauthorized():
-    if not current_user.is_authenticated:
-        if hasattr(current_user, "id"):
-            warning_log(f"User={current_user.id} not authenticated")
-        else:
-            warning_log("User not authenticated")
+    if hasattr(current_user, "id"):
+        warning_log(f"User={current_user.id} not authenticated")
+    else:
+        warning_log("User not authenticated")
 
-        # TODO: Validate the full path here before attaching query param
-        return redirect(url_for(ROUTES.SPLASH.SPLASH_PAGE, next=request.full_path))
-
-    if current_user.is_authenticated and not current_user.email_validated:
-        warning_log(f"User={current_user.id} authenticated but email not validated")
-        return redirect(url_for(ROUTES.SPLASH.CONFIRM_EMAIL))
+    # TODO: Validate the full path here before attaching query param
+    return redirect(url_for(ROUTES.SPLASH.SPLASH_PAGE, next=request.full_path))
 
 
 @users.route("/logout")
@@ -276,7 +275,7 @@ def update_preferences(
     error_message=USER_FAILURE.INVALID_INPUT,
     error_code=PreferencesErrorCodes.INVALID_FORM_INPUT,
     tags=[OPEN_API.AUTH],
-    description="Partially update the authenticated user's UTub-list preferences (sort, row counts, list totals). Acts only on the logged-in user and never touches the display preferences; the preferences row is created on the first real change, and a no-op returns 200 'No change'. An empty body, unknown key, explicit null, non-boolean toggle or unknown sort is a 400. An unauthenticated request is answered by the app-wide login_manager unauthorized_handler with a 302 redirect to the splash page (with next), and an authenticated user with an unvalidated email gets a 302 to the splash page (no next), which shows the confirm-email state. Metrics: API_HIT only (no DOMAIN event).",
+    description="Partially update the authenticated user's UTub-list preferences (sort, row counts, list totals). Acts only on the logged-in user and never touches the display preferences; the preferences row is created on the first real change, and a no-op returns 200 'No change'. An empty body, unknown key, explicit null, non-boolean toggle or unknown sort is a 400. An unauthenticated request is answered by the app-wide login_manager unauthorized_handler with a 302 redirect to the splash page (with next), and a session whose user has an unvalidated email is treated as anonymous (load_user fails closed), so it gets the same redirect. Metrics: API_HIT only (no DOMAIN event).",
     status_codes={
         200: UpdateUtubListPreferencesResponseSchema,
         400: ErrorResponse,
@@ -301,7 +300,7 @@ def update_utub_list_preferences(
     error_message=USER_FAILURE.INVALID_INPUT,
     error_code=PreferencesErrorCodes.INVALID_FORM_INPUT,
     tags=[OPEN_API.AUTH],
-    description="Partially update the authenticated user's member-list preferences (member sort). Acts only on the logged-in user and never touches the display or UTub-list preferences; the preferences row is created on the first real change, and a no-op returns 200 'No change'. An empty body, unknown key, explicit null or unknown sort is a 400. An unauthenticated request is answered by the app-wide login_manager unauthorized_handler with a 302 redirect to the splash page (with next), and an authenticated user with an unvalidated email gets a 302 to the splash page (no next). Metrics: API_HIT only (no DOMAIN event).",
+    description="Partially update the authenticated user's member-list preferences (member sort). Acts only on the logged-in user and never touches the display or UTub-list preferences; the preferences row is created on the first real change, and a no-op returns 200 'No change'. An empty body, unknown key, explicit null or unknown sort is a 400. An unauthenticated request is answered by the app-wide login_manager unauthorized_handler with a 302 redirect to the splash page (with next), and a session whose user has an unvalidated email is treated as anonymous (load_user fails closed), so it gets the same redirect. Metrics: API_HIT only (no DOMAIN event).",
     status_codes={
         200: UpdateMemberListPreferencesResponseSchema,
         400: ErrorResponse,
@@ -324,7 +323,7 @@ def update_member_list_preferences(
     error_message=USER_FAILURE.INVALID_INPUT,
     error_code=PreferencesErrorCodes.INVALID_FORM_INPUT,
     tags=[OPEN_API.AUTH],
-    description="Partially update the authenticated user's all-UTubs tag display defaults (tag sort, match mode, count style, tags on collapsed URLs, collapsed style, drop-opens-URL). Acts only on the logged-in user and never touches the display, UTub-list or member-list preferences; the preferences row is created on the first real change, and a no-op returns 200 'No change'. An empty body, unknown key, explicit null, non-boolean toggle or unknown enum value is a 400. An unauthenticated request is answered by the app-wide login_manager unauthorized_handler with a 302 redirect to the splash page (with next), and an authenticated user with an unvalidated email gets a 302 to the splash page (no next). Metrics: API_HIT only (no DOMAIN event).",
+    description="Partially update the authenticated user's all-UTubs tag display defaults (tag sort, match mode, count style, tags on collapsed URLs, collapsed style, drop-opens-URL). Acts only on the logged-in user and never touches the display, UTub-list or member-list preferences; the preferences row is created on the first real change, and a no-op returns 200 'No change'. An empty body, unknown key, explicit null, non-boolean toggle or unknown enum value is a 400. An unauthenticated request is answered by the app-wide login_manager unauthorized_handler with a 302 redirect to the splash page (with next), and a session whose user has an unvalidated email is treated as anonymous (load_user fails closed), so it gets the same redirect. Metrics: API_HIT only (no DOMAIN event).",
     status_codes={
         200: UpdateTagDisplayPreferencesResponseSchema,
         400: ErrorResponse,
@@ -436,7 +435,7 @@ def delete_account(
     response_schema=AccountRemovalResponseSchema,
     error_code=LogoutEverywhereErrorCodes.NOT_AUTHORIZED,
     tags=[OPEN_API.AUTH],
-    description="Sign the authenticated user out on every device (non-destructive). Bumps the per-user session kill-switch and revokes every refresh token, then logs the acting session out too (the current device is signed out along with the rest) and returns the splash redirect URL. Requires no re-authentication — logging back in restores access. Uses session auth only (no validated-email requirement), so a user with an unvalidated email can still sign out everywhere. Takes no request body.",
+    description="Sign the authenticated user out on every device (non-destructive). Bumps the per-user session kill-switch and revokes every refresh token, then logs the acting session out too (the current device is signed out along with the rest) and returns the splash redirect URL. Requires no re-authentication — logging back in restores access. Uses session auth only (no validated-email requirement), so it does not depend on the email_validation_required gate (unconfirmed accounts cannot hold a session at all). Takes no request body.",
     status_codes={
         200: AccountRemovalResponseSchema,
         403: ErrorResponse,

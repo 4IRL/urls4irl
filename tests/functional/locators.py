@@ -781,7 +781,6 @@ class SplashPageLocators(GenericPageLocator):
     REGISTER_MODAL = "#RegisterModal"
     REGISTER_CONFIRMATION_MODAL = "#RegisterConfirmationModal"
     FORGOT_PASSWORD_MODAL = "#ForgotPasswordModal"
-    EMAIL_VALIDATION_MODAL = "#EmailValidationModal"
 
     # Change-email confirm-outcome banner (Phase 3, DD-11). Rendered near the
     # hero on splash.html when the `email_change_status` query param maps to a
@@ -789,11 +788,12 @@ class SplashPageLocators(GenericPageLocator):
     # identical id is also added to HomePageLocators for the DD-9 HOME render.
     EMAIL_CHANGE_STATUS_BANNER = "#EmailChangeStatusBanner"
 
-    # Keep SPLASH_MODAL for reset password and expired email validation flows.
-    # These flows use a single generic #SplashModal shell that is populated with
-    # different form content at runtime (via URL dispatch), unlike the other modals
-    # (e.g. ForgotPasswordModal, EmailValidationModal) which are pre-rendered with
-    # their own specific IDs and can be targeted directly.
+    # Keep SPLASH_MODAL for the reset password flow only. It uses a single generic
+    # #SplashModal shell that is populated with different form content at runtime
+    # (via URL dispatch), unlike the other modals (e.g. ForgotPasswordModal,
+    # ConfirmEmailModal) which are pre-rendered with their own specific IDs and
+    # can be targeted directly. SPLASH_MODAL_ALERT is intentionally unscoped (not
+    # nested under SPLASH_MODAL) so it matches the alert in any splash modal.
     SPLASH_MODAL = "#SplashModal"
 
     # Unscoped common selectors (use for reset password / single-modal pages)
@@ -830,9 +830,6 @@ class SplashPageLocators(GenericPageLocator):
     FORGOT_PASSWORD_INVALID_FEEDBACK = f"{FORGOT_PASSWORD_MODAL} .invalid-feedback"
     FORGOT_PASSWORD_BTN_CLOSE = f"{FORGOT_PASSWORD_MODAL} .btn-close"
 
-    # Email validation modal scoped selectors
-    EMAIL_VALIDATION_BUTTON_SUBMIT = f"{EMAIL_VALIDATION_MODAL} #submit"
-
     # Reset password (uses #SplashModal — only modal on page, no scoping needed)
     RESET_PASSWORD_BUTTON_SUBMIT = f"{SPLASH_MODAL} #submit"
     RESET_PASSWORD_INVALID_FEEDBACK = f"{SPLASH_MODAL} .invalid-feedback"
@@ -842,7 +839,6 @@ class SplashPageLocators(GenericPageLocator):
 
     # Register
     BUTTON_LOGIN_FROM_REGISTER = "#ToLoginFromRegister"
-    HEADER_VALIDATE_EMAIL = ".validate-email-title"
 
     # Post-register confirmation modal
     REGISTER_CONFIRMATION_MODAL_ALERT = (
@@ -851,6 +847,13 @@ class SplashPageLocators(GenericPageLocator):
     RESEND_REGISTRATION_EMAIL_LINK = "#ResendRegistrationEmail"
     BACK_TO_LOGIN_FROM_CONFIRMATION = "#BackToLoginFromConfirmation"
     HEADER_REGISTER_CONFIRMATION = "#RegisterConfirmationModalLabel"
+
+    # "Confirm your email" modal (shown after a login on an unconfirmed account)
+    CONFIRM_EMAIL_MODAL = "#ConfirmEmailModal"
+    CONFIRM_EMAIL_MODAL_ALERT = f"{CONFIRM_EMAIL_MODAL} #SplashModalAlertBanner"
+    HEADER_CONFIRM_EMAIL = "#ConfirmEmailModalLabel"
+    RESEND_CONFIRMATION_EMAIL_BUTTON = "#ResendConfirmationEmail"
+    BACK_TO_LOGIN_FROM_CONFIRM_EMAIL = "#BackToLoginFromConfirmEmail"
 
     # Login
     BUTTON_REGISTER_FROM_LOGIN = "#ToRegisterFromLogin"
@@ -861,8 +864,7 @@ class SplashPageLocators(GenericPageLocator):
     LOGIN_MODAL_ALERT = f"{LOGIN_MODAL} #SplashModalAlertBanner"
     REGISTER_MODAL_ALERT = f"{REGISTER_MODAL} #SplashModalAlertBanner"
     FORGOT_PASSWORD_MODAL_ALERT = f"{FORGOT_PASSWORD_MODAL} #SplashModalAlertBanner"
-    EMAIL_VALIDATION_MODAL_ALERT = f"{EMAIL_VALIDATION_MODAL} #SplashModalAlertBanner"
-    SPLASH_MODAL_ALERT = "#SplashModal #SplashModalAlertBanner"
+    SPLASH_MODAL_ALERT = "#SplashModalAlertBanner"
 
     # Collision confirm-link page (components/splash/oauth_confirm_link.html)
     CONFIRM_LINK_PROMPT = "#SplashModal #ConfirmLinkPrompt"
@@ -881,13 +883,11 @@ class SplashPageLocators(GenericPageLocator):
     LOGIN_X_MODAL_DISMISS = f"{LOGIN_MODAL} .close-register-login-modal"
     REGISTER_X_MODAL_DISMISS = f"{REGISTER_MODAL} .close-register-login-modal"
 
-    # Anonymous-splash readiness signal. #splashConfig carries
-    # data-show-email-validation, which the route sets to "true" only for an
-    # authenticated-but-unvalidated user (email-validation modal auto-shows) and
-    # "false" for an anonymous visitor. After logout + redirect, the reloaded
-    # splash renders this with "false" — a deterministic positive signal that the
-    # session is now anonymous, used in place of a stale-element race.
-    SPLASH_CONFIG_ANONYMOUS = '#splashConfig[data-show-email-validation="false"]'
+    # Anonymous-splash readiness signal. splashModals.html (and so #splashConfig)
+    # is included by the layout only for unauthenticated visitors, so its
+    # presence is a deterministic positive signal that the page is the anonymous
+    # splash, used in place of a stale-element race.
+    SPLASH_CONFIG_ANONYMOUS = "#splashConfig"
 
     # Hero section
     WELCOME_TEXT = "#splash-major-text"

@@ -46,6 +46,16 @@ class ErrorResponse(BaseSchema):
         return jsonify(payload), status_code
 
 
+class LoginEmailNotValidatedErrorResponse(ErrorResponse):
+    resend_token: str = Field(
+        alias=STD_JSON.RESEND_TOKEN,
+        description=(
+            "Short-lived signed token that can only be used to request another "
+            "confirmation email via /resend-registration-email"
+        ),
+    )
+
+
 def build_field_error_response(
     message: str,
     errors: dict[str, list[str]],

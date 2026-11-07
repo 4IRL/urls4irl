@@ -7,8 +7,6 @@ export type RouteId =
   | "home"
   | "login"
   | "register"
-  | "confirmEmailAfterRegister"
-  | "sendValidationEmail"
   | "resendRegistrationEmail"
   | "forgotPassword"
   | "oauthGoogleLogin"
@@ -35,8 +33,6 @@ export interface AppRoutes {
   copyURLsToUtubs: string;
   login: string;
   register: string;
-  confirmEmailAfterRegister: string;
-  sendValidationEmail: string;
   resendRegistrationEmail: string;
   forgotPassword: string;
   oauthGoogleLogin: string;
@@ -133,7 +129,7 @@ export interface AppConstants {
   readonly TAGS_MIN_LENGTH: number;
   readonly TAGS_MAX_LENGTH: number;
   readonly TAGS_MAX_ON_URLS: number;
-  readonly VALIDATE_EMAIL_ERROR_CODES: Record<string, number>;
+  readonly EMAIL_RESEND_COOLDOWN_SECONDS: number;
   readonly DIMENSION_KEYS: readonly string[];
   readonly TRACKING_QUERY_PARAMS: readonly string[];
   readonly TRACKING_QUERY_PARAM_PREFIXES: readonly string[];
@@ -193,8 +189,6 @@ export const APP_CONFIG: AppConfig = Object.freeze({
     copyURLsToUtubs: rawConfig.routes.copyURLsToUtubs,
     login: rawConfig.routes.login,
     register: rawConfig.routes.register,
-    confirmEmailAfterRegister: rawConfig.routes.confirmEmailAfterRegister,
-    sendValidationEmail: rawConfig.routes.sendValidationEmail,
     resendRegistrationEmail: rawConfig.routes.resendRegistrationEmail,
     forgotPassword: rawConfig.routes.forgotPassword,
     oauthGoogleLogin: rawConfig.routes.oauthGoogleLogin,

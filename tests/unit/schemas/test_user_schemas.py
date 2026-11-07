@@ -4,7 +4,6 @@ import pytest
 from pydantic import ValidationError
 
 from backend.schemas.users import (
-    EmailValidationResponseSchema,
     ForgotPasswordResponseSchema,
     LoginRedirectResponseSchema,
     OwnershipTransferredResponseSchema,
@@ -199,13 +198,11 @@ STATUS_MESSAGE_SCHEMAS = pytest.mark.parametrize(
         RegisterResponseSchema,
         ForgotPasswordResponseSchema,
         ResetPasswordResponseSchema,
-        EmailValidationResponseSchema,
     ],
     ids=[
         "RegisterResponseSchema",
         "ForgotPasswordResponseSchema",
         "ResetPasswordResponseSchema",
-        "EmailValidationResponseSchema",
     ],
 )
 

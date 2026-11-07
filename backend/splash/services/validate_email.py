@@ -1,6 +1,10 @@
+from datetime import datetime
+
+import jwt
 import requests
 from flask import abort, current_app, redirect, session, url_for
 from flask_login import current_user, login_user
+from jwt import exceptions as JWTExceptions
 from werkzeug import Response as WerkzeugResponse
 
 from backend import db
@@ -16,51 +20,14 @@ from backend.models.email_validations import Email_Validations
 from backend.models.users import Users
 from backend.schemas.errors import build_message_error_response
 from backend.splash.constants import EmailValidationErrorCodes
-from backend.splash.utils import verify_token
+from backend.splash.utils import decode_resend_validation_token, verify_token
 from backend.utils.all_routes import ROUTES
 from backend.utils.constants import EMAIL_CONSTANTS
+from backend.utils.datetime_utils import utc_now
 from backend.utils.mailjet_utils import handle_mailjet_failure
+from backend.utils.strings.config_strs import CONFIG_ENVS
 from backend.utils.strings.email_validation_strs import EMAILS, EMAILS_FAILURE
 from backend.utils.strings.user_strs import MEMBER_SUCCESS
-
-
-def send_validation_email_to_user() -> WerkzeugResponse | FlaskResponse:
-    """
-    Handles sending a validation email to the User to verify their email.
-
-    If the user is already email validated, their email validation would have been deleted.
-
-    Users can only send so many email in the span of one hour.
-
-    Returns:
-        (WerkzeugResponse): A URL redirect
-        (FlaskResponse): Contains JSON and HTTP status code
-    """
-    current_email_validation: Email_Validations = Email_Validations.query.filter(
-        Email_Validations.user_id == current_user.id
-    ).first_or_404()
-
-    if current_user.email_validated:
-        warning_log(f"User {current_user.id} email already validated")
-        db.session.delete(current_email_validation)
-        db.session.commit()
-
-        return redirect(url_for(ROUTES.UTUBS.HOME))
-
-    if current_email_validation.has_too_many_email_attempts():
-        return build_response_for_max_email_attempts_sent()
-
-    has_more_attempts = current_email_validation.increment_attempt()
-    db.session.commit()
-
-    if not has_more_attempts:
-        return build_response_for_email_attempts_rate_limited(current_email_validation)
-
-    email_send_result = _send_account_confirmation_email(
-        current_user, current_email_validation
-    )
-
-    return handle_email_sending_result(email_send_result)
 
 
 def _send_account_confirmation_email(
@@ -68,9 +35,8 @@ def _send_account_confirmation_email(
 ) -> requests.Response:
     """Send the account-confirmation email for a given user, session-independently.
 
-    Extracted from `send_validation_email_to_user()` so both the session-scoped
-    resend endpoint and the anonymous register/resend paths can send the same
-    email without depending on `current_user`. The caller owns the
+    The register and resend paths share this so they can send the same email
+    without depending on `current_user`. The caller owns the
     attempt-count/rate-limit guarding; this only builds the link and sends.
 
     Args:
@@ -95,8 +61,31 @@ def _send_account_confirmation_email(
     )
 
 
+def _validation_token_needs_refresh(stored_token: str) -> bool:
+    """True when the stored validation token is expired, undecodable or within
+    the refresh margin of expiry."""
+    try:
+        payload = jwt.decode(
+            jwt=stored_token,
+            key=current_app.config[CONFIG_ENVS.SECRET_KEY],
+            algorithms=[EMAILS.ALGORITHM],
+        )
+    except JWTExceptions.PyJWTError:
+        return True
+
+    expiration = payload.get(EMAILS.EXPIRATION)
+    if not isinstance(expiration, (int, float)):
+        return True
+
+    seconds_left = expiration - datetime.timestamp(utc_now())
+    return seconds_left < EMAIL_CONSTANTS.VALIDATION_TOKEN_REFRESH_MARGIN_SECONDS
+
+
 def _guard_and_send_confirmation_email(
-    user: Users, email_validation: Email_Validations, log_context: str
+    user: Users,
+    email_validation: Email_Validations,
+    log_context: str,
+    refresh_token: bool = False,
 ) -> None:
     """Gate the confirmation-email send behind the per-account attempt guard,
     then send and log-only on a Mailjet server failure (>= 500).
@@ -112,6 +101,8 @@ def _guard_and_send_confirmation_email(
         user (Users): The account the confirmation email is for
         email_validation (Email_Validations): That account's Email_Validations row
         log_context (str): Phrase identifying the caller in the >= 500 error log
+        refresh_token (bool): When True, re-mint the stored validation token if
+            it is expired or near expiry, after the guard passes and before the send
     """
     if email_validation.has_too_many_email_attempts():
         return
@@ -121,6 +112,12 @@ def _guard_and_send_confirmation_email(
 
     if not has_more_attempts:
         return
+
+    if refresh_token and _validation_token_needs_refresh(
+        email_validation.validation_token
+    ):
+        email_validation.validation_token = user.get_email_validation_token()
+        db.session.commit()
 
     _send_confirmation_email_and_log(user, email_validation, log_context)
 
@@ -157,13 +154,33 @@ def send_resend_registration_email(email: str) -> FlaskResponse:
         (FlaskResponse): JSON and HTTP status code (always the opaque success)
     """
     user: Users | None = Users.query.filter(Users.email == email.lower()).first()
+    return _resend_confirmation_if_pending(user, "registration confirmation resend")
 
+
+def send_resend_validation_email_for_token(token: str) -> FlaskResponse:
+    """Resend the account-confirmation email for the account a resend token names.
+
+    Same opaque outcome as the email-keyed path for every token problem.
+
+    Args:
+        token (str): The resend token from a login on an unconfirmed account
+
+    Returns:
+        (FlaskResponse): JSON and HTTP status code (always the opaque success)
+    """
+    user = decode_resend_validation_token(token)
+    return _resend_confirmation_if_pending(user, "resend token confirmation resend")
+
+
+def _resend_confirmation_if_pending(
+    user: Users | None, log_context: str
+) -> FlaskResponse:
+    """Shared tail of both resend paths: send only for a pending account."""
     if user is None or user.email_validated or user.email_confirm is None:
         return _build_opaque_resend_success()
 
-    email_validation: Email_Validations = user.email_confirm
     _guard_and_send_confirmation_email(
-        user, email_validation, "registration confirmation resend"
+        user, user.email_confirm, log_context, refresh_token=True
     )
 
     return _build_opaque_resend_success()

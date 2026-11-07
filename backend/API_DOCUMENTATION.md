@@ -11,6 +11,9 @@ All HTTP requests to the API must include a `session` cookie under the header `C
 will redirect the user to the splash page. AJAX endpoints that accept JSON (`application/json`) require a CSRF token via the `X-Csrftoken` request header.
 HTML form endpoints (splash/auth and contact) use `application/x-www-form-urlencoded` and include the CSRF token as a `csrf_token` form field.
 
+Web sessions are gated by `load_user`: an account whose email is not validated gets no session (the request is treated as anonymous).
+The `/api/v1` bearer auth deliberately still authenticates unvalidated users so that mobile clients can call the resend-validation endpoint.
+
 ------------------------------------------------------------------------------------------
 
 ### ID Values
@@ -119,8 +122,11 @@ Invalid form data sent with the request.
 >     "status": "Failure",
 >     "message": "An account already exists with that information but the email has not been validated.",
 >     "errorCode": 1,
+>     "resendToken": "%short-lived signed token%"
 > }
 > ```
+>
+> `resendToken` expires after about 15 minutes and can only be used as the `resendToken` body field of `POST /resend-registration-email`.
 
 ##### Example cURL
 
@@ -248,101 +254,27 @@ Invalid form data sent with the request.
 </details>
 
 <details>
- <summary><code>GET</code> <code><b>/confirm-email</b></code> <code>(renders email confirmation modal)</code></summary>
+ <summary><code>POST</code> <code><b>/resend-registration-email</b></code> <code>(resends the confirmation email, opaque)</code></summary>
+
+##### Request Payload
+
+Payload content-type should be `application/json`. CSRF token must be sent in the `X-CSRFToken` request header. Not available to logged-in users.
+
+Exactly one of `email` or `resendToken` (an empty `resendToken` counts as absent):
+> ```json
+> { "email": "%email%" }
+> ```
+> ```json
+> { "resendToken": "%token from the /login 401 body%" }
+> ```
 
 ##### Responses
 
 > | http code     | content-type                      | response  | details |
 > |---------------|-----------------------------------|-----------|---------------------------------------------------------|
-> | `200`         | `text/html;charset=utf−8`         | `Renders HTML for email validation modal.` | Renders the modal to email validate, if user is logged in but not email validated. |
-> | `302`         | `text/html;charset=utf−8`         | `Redirects and renders HTML for splash page.` | User has not made an account to confirm an email for. |
-> | `302`         | `text/html;charset=utf−8`         | `Redirects user to the /home page.` | User already logged in and email validated. Redirects user to /home page and renders it. |
-> | `405`         | `text/html;charset=utf−8`         | None | Invalid HTTP method. |
-
-##### Example cURL
-
-> ```bash
-> curl -X GET \
->  https://urls.4irl.app/confirm-email \
->  -H 'Cookie: YOUR_COOKIE'
-> ```
-
-</details>
-
-<details>
- <summary><code>POST</code> <code><b>/send-validation-email</b></code> <code>(sends validation email to user)</code></summary>
-
-##### Responses
-
-> | http code     | content-type                      | response  | details |
-> |---------------|-----------------------------------|-----------|---------------------------------------------------------|
-> | `200`         | `application/json`                | `See below.` | Email sent to user for validation. |
-> | `302`         | `text/html;charset=utf−8`         | `Redirects user to the /home page.` | User already logged in and email validated. Redirects user to /home page and renders it. |
-> | `400`         | `application/json`                | `See below.` | Error sending email to given address. |
-> | `400`         | `application/json`                | `See below.` | Error with Mailjet service. |
-> | `404`         | `text/html;charset=utf−8`         | None | User to send email to does not exist. |
-> | `405`         | `text/html;charset=utf−8`         | None | Invalid HTTP method. |
-> | `429`         | `application/json`                | `See below.` | Too many attempts in an hour, or request done in the past minute. |
-
-###### 200 HTTP Code Response Body - Example
-
-> ```json
-> {
->     "status": "Success",
->     "message": "Email sent!",
-> }
-> ```
-
-###### 400 HTTP Code Response Body - Example
-
-> ```json
-> {
->     "status": "Failure",
->     "message": "Email could not be sent.",
->     "errorCode": 3
-> }
-> ```
-
-###### 400 HTTP Code Response Body - Example
-
-> ```json
-> {
->     "status": "Failure",
->     "message": "Error with Mailjet service.",
->     "errorCode": 4
-> }
-> ```
-
-###### 429 HTTP Code Response Body - Example
-
-> ```json
-> {
->     "status": "Failure",
->     "message": "Too many attempts, please wait 1 hour",
->     "errorCode": 1,
-> }
-> ```
-
-###### 429 HTTP Code Response Body - Example
-
-> ```json
-> {
->     "status": "Failure",
->     "message": "4 attempts left, please wait 1 minute before sending another email.",
->     "errorCode": 2,
-> }
-> ```
-
-
-##### Example cURL
-
-> ```bash
-> curl -X POST \
->  https://urls.4irl.app/send-validation-email \
->  -H 'Content-Type: application/x-www-form-urlencoded' \
->  -H 'Cookie: YOUR_COOKIE' \
->  --data-urlencode 'csrf_token=CSRF_TOKEN'
-> ```
+> | `200`         | `application/json`                | Uniform opaque success | Returned for every outcome (unknown, confirmed, expired or invalid token, rate-limited, sent). |
+> | `400`         | `application/json`                | `See above.` | Neither or both fields supplied. |
+> | `429`         | `text/html;charset=utf−8`         | None | Per-IP rate limit hit. |
 
 </details>
 
@@ -374,7 +306,7 @@ Invalid form data sent with the request.
 </details>
 
 <details>
- <summary><code>GET</code> <code><b>/validate/expired</b></code> <code>(resets an expired email validation token and logs the user in)</code></summary>
+ <summary><code>GET</code> <code><b>/validate/expired</b></code> <code>(resets an expired email validation token and renders the "Confirm your email" modal; creates no session)</code></summary>
 
 ##### Parameters
 
@@ -386,7 +318,8 @@ Invalid form data sent with the request.
 
 > | http code     | content-type                      | response  | details |
 > |---------------|-----------------------------------|-----------|---------------------------------------------------------|
-> | `200`         | `text/html;charset=utf−8`         | `Renders splash page with expired-token modal.` | Token found, reset, and user logged in. Splash page is rendered with a modal notifying the user that a new validation email has been sent. |
+> | `200`         | `text/html;charset=utf−8`         | `Renders splash page with expired-token modal.` | Token found and reset; no session is created. Splash page is rendered with the "Confirm your email" modal, an expired-link banner, and a short-lived resend token that drives `/resend-registration-email`. |
+> | `302`         | `text/html;charset=utf−8`         | None | The caller is already authenticated; redirected to `HOME` without resetting the token. |
 > | `404`         | `text/html;charset=utf−8`         | None | `token` query parameter is absent, or no email validation record exists for the given token. |
 > | `405`         | `text/html;charset=utf−8`         | None | Invalid HTTP method. |
 

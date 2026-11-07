@@ -959,15 +959,6 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Template:** `pages/splash.html`
 - **JS:** template url_for: `email_templates/email_validation_email.html`, `email_templates/oauth_provider_hint_email.html`, `email_templates/reset_password_email.html`
 
-### `GET /confirm-email` — `splash.confirm_email_after_register`
-
-- **Handler:** `backend/splash/routes.py:confirm_email_after_register`
-- **Decorators:** —
-- **Service:** —
-- **Schema:** —
-- **Template:** —
-- **JS:** keys: `confirmEmailAfterRegister`
-
 ### `GET /confirm-email-change/<string:token>` — `splash.confirm_email_change`
 
 - **Handler:** `backend/splash/routes.py:confirm_email_change`
@@ -1000,7 +991,7 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Handler:** `backend/splash/routes.py:login`
 - **Decorators:** `no_authenticated_users_allowed`, `api_route`, `limiter.limit(SPLASH_AUTH_RATE_LIMIT, methods=['POST'])`
 - **Service:** `backend.splash.services.user_login:login_user_to_u4i`
-- **Schema:** request: `backend.schemas.requests.splash.LoginRequest`; response: `backend.schemas.users.LoginRedirectResponseSchema`; status: 200 `backend.schemas.users.LoginRedirectResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 401 `backend.schemas.errors.ErrorResponse`, 429 `backend.schemas.errors.ErrorResponse`
+- **Schema:** request: `backend.schemas.requests.splash.LoginRequest`; response: `backend.schemas.users.LoginRedirectResponseSchema`; status: 200 `backend.schemas.users.LoginRedirectResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 401 `backend.schemas.errors.LoginEmailNotValidatedErrorResponse`, 429 `backend.schemas.errors.ErrorResponse`
 - **Template:** —
 - **JS:** keys: `login`
 
@@ -1080,7 +1071,7 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 
 - **Handler:** `backend/splash/routes.py:resend_registration_email`
 - **Decorators:** `no_authenticated_users_allowed`, `api_route`, `limiter.limit(SPLASH_AUTH_RATE_LIMIT, methods=['POST'])`
-- **Service:** `backend.splash.services.validate_email:send_resend_registration_email`
+- **Service:** `backend.splash.services.validate_email:send_resend_registration_email`, `backend.splash.services.validate_email:send_resend_validation_email_for_token`
 - **Schema:** request: `backend.schemas.requests.splash.ResendRegistrationEmailRequest`; response: `backend.schemas.base.StatusMessageResponseSchema`; status: 200 `backend.schemas.base.StatusMessageResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 429 `backend.schemas.errors.ErrorResponse`
 - **Template:** —
 - **JS:** keys: `resendRegistrationEmail`
@@ -1102,15 +1093,6 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Schema:** request: `backend.schemas.requests.splash.ResetPasswordRequest`; response: `backend.schemas.users.ResetPasswordResponseSchema`; status: 200 `backend.schemas.users.ResetPasswordResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`
 - **Template:** —
 - **JS:** indirect: page-self-url
-
-### `POST /send-validation-email` — `splash.send_validation_email`
-
-- **Handler:** `backend/splash/routes.py:send_validation_email`
-- **Decorators:** `api_route`
-- **Service:** `backend.splash.services.validate_email:send_validation_email_to_user`
-- **Schema:** response: `backend.schemas.users.EmailValidationResponseSchema`; status: 200 `backend.schemas.users.EmailValidationResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`, 429 `backend.schemas.errors.ErrorResponse`
-- **Template:** —
-- **JS:** keys: `sendValidationEmail`
 
 ### `GET /validate/<string:token>` — `splash.validate_email`
 

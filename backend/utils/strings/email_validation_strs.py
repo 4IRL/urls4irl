@@ -2,6 +2,9 @@ from backend.utils.strings.form_strs import EMAIL
 from backend.utils.strings.json_strs import FAILURE_GENERAL
 
 VALIDATE_EMAIL = "validate_email"
+RESEND_VALIDATION = "resend_validation"
+RESEND_PURPOSE_CLAIM = "purpose"
+RESEND_PURPOSE_VALUE = "resend_validation_email"
 CHANGE_EMAIL = "change_email"
 CHANGE_EMAIL_TARGET = "change_email_target"
 EXPIRATION = "exp"
@@ -26,13 +29,14 @@ MAILJET_ERROR_RELATED_TO = "ErrorRelatedTo"
 MAILJET_ERRORS = "Errors"
 ERROR_WITH_MAILJET = "Error with Mailjet service, retry later."
 INVALID_EMAIL_INPUT = "Invalid email address."
-VALIDATE_MY_EMAIL = "Validate My Email"
-VALIDATE_YOUR_EMAIL = "Validate Your Email!"
 
 
 # Email related strings
 class EMAILS:
     VALIDATE_EMAIL = VALIDATE_EMAIL
+    RESEND_VALIDATION = RESEND_VALIDATION
+    RESEND_PURPOSE_CLAIM = RESEND_PURPOSE_CLAIM
+    RESEND_PURPOSE_VALUE = RESEND_PURPOSE_VALUE
     CHANGE_EMAIL = CHANGE_EMAIL
     CHANGE_EMAIL_TARGET = CHANGE_EMAIL_TARGET
     EXPIRATION = EXPIRATION
@@ -57,8 +61,6 @@ class EMAILS:
     ERROR_WITH_MAILJET = ERROR_WITH_MAILJET
     PASSWORD_RESET_SUBJECT = PASSWORD_RESET_SUBJECT
     OAUTH_HINT_SUBJECT = OAUTH_HINT_SUBJECT
-    VALIDATE_MY_EMAIL = VALIDATE_MY_EMAIL
-    VALIDATE_YOUR_EMAIL = VALIDATE_YOUR_EMAIL
 
 
 # Strings for email validation errors

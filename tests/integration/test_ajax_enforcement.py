@@ -381,14 +381,6 @@ def test_ajax_required_routes_reject_non_ajax(
             id="login",
         ),
         pytest.param(
-            "send_validation_email",
-            "POST",
-            ROUTES.SPLASH.SEND_VALIDATION_EMAIL,
-            {},
-            None,
-            id="send_validation_email",
-        ),
-        pytest.param(
             "forgot_password",
             "POST",
             ROUTES.SPLASH.FORGOT_PASSWORD_PAGE,

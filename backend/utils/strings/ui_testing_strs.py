@@ -41,6 +41,7 @@ from backend.utils.strings.onboarding_strs import (
 )
 from backend.utils.strings.search_strs import CROSS_SEARCH_NO_RESULTS
 from backend.utils.strings.splash_form_strs import (
+    CONFIRM_EMAIL_TITLE,
     GITHUB_OAUTH_LOGIN_BUTTON_TEXT,
     GITHUB_OAUTH_REGISTER_BUTTON_TEXT,
     GOOGLE_OAUTH_LOGIN_BUTTON_TEXT,
@@ -159,6 +160,7 @@ class UI_TEST_STRINGS:
     GOOGLE_OAUTH_REGISTER_BUTTON_TEXT = GOOGLE_OAUTH_REGISTER_BUTTON_TEXT
     GITHUB_OAUTH_LOGIN_BUTTON_TEXT = GITHUB_OAUTH_LOGIN_BUTTON_TEXT
     GITHUB_OAUTH_REGISTER_BUTTON_TEXT = GITHUB_OAUTH_REGISTER_BUTTON_TEXT
+    CONFIRM_EMAIL_TITLE = CONFIRM_EMAIL_TITLE
 
     # Google OAuth — reject-page copy re-exported so UI tests assert the
     # rendered banner text against the same backend source

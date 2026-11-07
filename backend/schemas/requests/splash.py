@@ -1,9 +1,20 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, EmailStr, Field, ValidationInfo, field_validator
+from typing import Self
+
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    EmailStr,
+    Field,
+    ValidationInfo,
+    field_validator,
+    model_validator,
+)
 
 from backend.schemas.requests._sanitize import SanitizedStr
 from backend.utils.constants import USER_CONSTANTS
+from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.reset_password_strs import RESET_PASSWORD
 from backend.utils.strings.splash_form_strs import EMAILS_NOT_IDENTICAL
 
@@ -82,10 +93,30 @@ class ForgotPasswordRequest(BaseModel):
 
 
 class ResendRegistrationEmailRequest(BaseModel):
-    email: EmailStr = Field(
+    model_config = ConfigDict(populate_by_name=True)
+
+    email: EmailStr | None = Field(
+        default=None,
         description="Email address of the pending registration to resend confirmation for",
         examples=["user@example.com"],
     )
+    resend_token: str | None = Field(
+        default=None,
+        alias=STD_JSON.RESEND_TOKEN,
+        max_length=2000,
+        description="Resend token returned by a login on an unconfirmed account",
+    )
+
+    @field_validator("resend_token", mode="after")
+    @classmethod
+    def empty_resend_token_is_unset(cls, value: str | None) -> str | None:
+        return value or None
+
+    @model_validator(mode="after")
+    def exactly_one_of_email_or_token(self) -> Self:
+        if (self.email is None) == (self.resend_token is None):
+            raise ValueError("Provide exactly one of email or resendToken")
+        return self
 
 
 class GoogleOAuthCallbackQuerySchema(BaseModel):

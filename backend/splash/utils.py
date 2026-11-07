@@ -37,8 +37,41 @@ def verify_token(token: str, token_key: str) -> VerifyTokenResponse:
     ):
         return VerifyTokenResponse(failed_due_to_exception=True)
 
+    if token_key not in username_to_validate:
+        return VerifyTokenResponse(failed_due_to_exception=True)
+
     return VerifyTokenResponse(
         user=Users.query.filter(
             Users.username == username_to_validate[token_key]
         ).first_or_404(),
     )
+
+
+def decode_resend_validation_token(token: str) -> Users | None:
+    """Opaque decoder for a resend token: returns the user or None on any failure.
+
+    None covers expired, undecodable, wrong-purpose (missing the
+    RESEND_VALIDATION claim) and unknown-user tokens, so callers can answer
+    identically whatever happened.
+    """
+    try:
+        payload = jwt.decode(
+            jwt=token,
+            key=current_app.config[CONFIG_ENVS.SECRET_KEY],
+            algorithms=[EMAILS.ALGORITHM],
+        )
+    except (
+        RuntimeError,
+        TypeError,
+        JWTExceptions.PyJWTError,
+    ):
+        return None
+
+    if payload.get(EMAILS.RESEND_PURPOSE_CLAIM) != EMAILS.RESEND_PURPOSE_VALUE:
+        return None
+
+    username = payload.get(EMAILS.RESEND_VALIDATION)
+    if not isinstance(username, str):
+        return None
+
+    return Users.query.filter(Users.username == username).first()

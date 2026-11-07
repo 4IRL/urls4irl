@@ -451,7 +451,3 @@ class ForgotPasswordResponseSchema(StatusMessageResponseSchema):
 
 class ResetPasswordResponseSchema(StatusMessageResponseSchema):
     pass
-
-
-class EmailValidationResponseSchema(StatusMessageResponseSchema):
-    pass

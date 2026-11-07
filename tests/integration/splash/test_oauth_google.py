@@ -49,6 +49,7 @@ from backend.utils.strings.oauth_strs import (
 from backend.utils.strings.oauth_strs import (
     UNVERIFIED_EMAIL_MESSAGE as _UNVERIFIED_EMAIL_MESSAGE,
 )
+from backend.utils.strings.user_strs import USER_FAILURE
 from backend.utils.strings.utub_strs import UTUB_ID_QUERY_PARAM
 from tests.conftest import TEST_GOOGLE_OAUTH_CLIENT_ID, TEST_GOOGLE_OAUTH_CLIENT_SECRET
 from tests.integration.system.metrics_helpers import (
@@ -272,6 +273,36 @@ def test_google_callback_returning_user_logs_in_without_new_rows(
     with app.app_context():
         assert Users.query.count() == 1
         assert UserOAuthIdentity.query.count() == 1
+
+
+@mock.patch(_AUTHORIZE_ACCESS_TOKEN_TARGET)
+def test_google_callback_unvalidated_user_gets_no_session(
+    mock_authorize_access_token: mock.MagicMock, app: Flask, load_login_page
+):
+    """
+    GIVEN a Users row linked to google whose email is not validated
+    WHEN the callback resolves that user
+    THEN no session is opened and the not-validated message is rendered
+    """
+    mock_authorize_access_token.return_value = _build_mocked_token(
+        subject=_EXISTING_SUBJECT, email=_EXISTING_EMAIL
+    )
+    _seed_existing_oauth_user(
+        app,
+        subject=_EXISTING_SUBJECT,
+        email=_EXISTING_EMAIL,
+        username=_EXISTING_USERNAME,
+    )
+    with app.app_context():
+        Users.query.filter_by(email=_EXISTING_EMAIL).first().email_validated = False
+        db.session.commit()
+    client, _ = load_login_page
+
+    response = client.get(_callback_url(code=_FAKE_CODE, state=_FAKE_STATE))
+
+    assert response.status_code == 200
+    assert USER_FAILURE.ACCOUNT_CREATED_EMAIL_NOT_VALIDATED.encode() in response.data
+    assert not current_user.is_authenticated
 
 
 @mock.patch(_AUTHORIZE_ACCESS_TOKEN_TARGET)

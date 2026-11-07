@@ -205,13 +205,32 @@ class TestResendRegistrationEmailRequest:
         errors = exc_info.value.errors()
         assert any(err["loc"][0] == "email" for err in errors)
 
-    def test_missing_email_raises(self):
+    def test_missing_both_raises(self):
         from backend.schemas.requests.splash import ResendRegistrationEmailRequest
 
-        with pytest.raises(ValidationError) as exc_info:
+        with pytest.raises(ValidationError):
             ResendRegistrationEmailRequest.model_validate({})
-        errors = exc_info.value.errors()
-        assert any(err["loc"][0] == "email" for err in errors)
+
+    def test_valid_resend_token(self):
+        from backend.schemas.requests.splash import ResendRegistrationEmailRequest
+
+        req = ResendRegistrationEmailRequest.model_validate({"resendToken": "abc"})
+        assert req.resend_token == "abc"
+        assert req.email is None
+
+    def test_both_fields_raises(self):
+        from backend.schemas.requests.splash import ResendRegistrationEmailRequest
+
+        with pytest.raises(ValidationError):
+            ResendRegistrationEmailRequest.model_validate(
+                {"email": "user@example.com", "resendToken": "abc"}
+            )
+
+    def test_empty_token_alone_raises(self):
+        from backend.schemas.requests.splash import ResendRegistrationEmailRequest
+
+        with pytest.raises(ValidationError):
+            ResendRegistrationEmailRequest.model_validate({"resendToken": ""})
 
 
 class TestResetPasswordRequest:

@@ -22,8 +22,6 @@ class SPLASH_ROUTES:
     SPLASH_PAGE = _SPLASH + "splash_page"
     REGISTER = _SPLASH + "register_user"
     LOGIN = _SPLASH + "login"
-    CONFIRM_EMAIL = _SPLASH + "confirm_email_after_register"
-    SEND_VALIDATION_EMAIL = _SPLASH + "send_validation_email"
     RESEND_REGISTRATION_EMAIL = _SPLASH + "resend_registration_email"
     VALIDATE_EMAIL = _SPLASH + "validate_email"
     CONFIRM_EMAIL_CHANGE = _SPLASH + "confirm_email_change"
@@ -349,8 +347,6 @@ JS_ROUTES: dict[str, JsRoute] = {
     # Splash routes
     "login": JsRoute(SPLASH_ROUTES.LOGIN, {}),
     "register": JsRoute(SPLASH_ROUTES.REGISTER, {}),
-    "confirmEmailAfterRegister": JsRoute(SPLASH_ROUTES.CONFIRM_EMAIL, {}),
-    "sendValidationEmail": JsRoute(SPLASH_ROUTES.SEND_VALIDATION_EMAIL, {}),
     "resendRegistrationEmail": JsRoute(SPLASH_ROUTES.RESEND_REGISTRATION_EMAIL, {}),
     "forgotPassword": JsRoute(SPLASH_ROUTES.FORGOT_PASSWORD_PAGE, {}),
     "oauthGoogleLogin": JsRoute(OAUTH_ROUTES.GOOGLE_LOGIN, {}),

@@ -393,80 +393,51 @@ def test_get_changes_no_row(app: Flask, every_user_makes_a_unique_utub) -> None:
     assert _snapshot(app) == before_member
 
 
-# --- State 5 and the unvalidated viewer --------------------------------------------
+# --- Unconfirmed viewer is anonymous -----------------------------------------------
 
 
-def test_state_five_has_no_links_buttons_forms_or_invite_details(
+def test_unconfirmed_viewer_gets_the_anonymous_live_page(
     app: Flask, every_user_makes_a_unique_utub
 ) -> None:
     """
-    GIVEN a live link and an authenticated viewer with an unconfirmed email
+    GIVEN a live link and a logged-in user whose email is unconfirmed
     WHEN they open it
-    THEN 200, text only in main, no UTub name or inviter, no a[href='/'] anywhere
+    THEN they are anonymous: state 2 with the two splash `next` hrefs, no Join form
+        and no Not now link
     """
     token = _live_token(app)
-    with app.app_context():
-        utub_name = db.session.get(Utubs, FIRST_UTUB_ID).name
-        inviter = db.session.get(Users, 1).username
     with _logged_in(app, VIEWER_ID) as (client, _):
         _set_unvalidated(app)
         response = _get(client, token)
 
-    body = response.get_data(as_text=True)
     main = _main_of(response)
     assert response.status_code == 200
-    for forbidden in ("<a", "<button", "<form"):
-        assert forbidden not in main
-    assert utub_name not in main
-    assert inviter not in main
-    assert 'href="/"' not in body
-    assert "a[href='/']" not in body
-    assert '<span class="navbar-brand navbar-start">' in body
-    assert 'role="status"' in main
+    assert f'href="/?next=/invite/{token}"' in main
+    assert f'href="/?next=/invite/{token}/register"' in main
+    assert 'id="inviteJoinForm"' not in main
+    assert 'href="/home">Not now</a>' not in main
+    assert _title_of(response) == INVITE_LINK_PAGE.TITLE_JOIN
+    assert 'id="backToSplashBtn"' in response.get_data(as_text=True)
 
 
-def test_unvalidated_non_member_of_a_dead_link_gets_the_dead_page_without_home_cta(
+def test_unconfirmed_member_of_a_dead_link_gets_the_anonymous_dead_page(
     app: Flask, every_user_makes_a_unique_utub
 ) -> None:
     """
-    GIVEN a dead token and an unvalidated non-member
+    GIVEN an unconfirmed member and a revoked link
     WHEN they open it
-    THEN the 404 dead page has no Go to URLS4IRL CTA and no a[href='/']
-    AND anonymous and validated viewers keep the CTA and the linked brand
-    """
-    with _logged_in(app, VIEWER_ID) as (client, _):
-        validated = _get(client, UNKNOWN_TOKEN)
-        _set_unvalidated(app)
-        unvalidated = _get(client, UNKNOWN_TOKEN)
-    anonymous = _get(anonymous_client(app), UNKNOWN_TOKEN)
-
-    assert unvalidated.status_code == 404
-    unvalidated_body = unvalidated.get_data(as_text=True)
-    assert "Go to URLS4IRL" not in unvalidated_body
-    assert 'href="/"' not in unvalidated_body
-    for linked in (validated, anonymous):
-        assert "Go to URLS4IRL" in linked.get_data(as_text=True)
-        assert 'class="navbar-brand navbar-start" href="/"' in linked.get_data(
-            as_text=True
-        )
-
-
-def test_unvalidated_member_of_a_dead_link_still_sees_state_five(
-    app: Flask, every_user_makes_a_unique_utub
-) -> None:
-    """
-    GIVEN an unvalidated member and a revoked link
-    WHEN they open it
-    THEN 200 with the confirm-your-email page (members keep state 5)
+    THEN they are anonymous: the uniform dead 404, not a member redirect
     """
     token = _token_of(app, add_invite_link(app, FIRST_UTUB_ID, 1, revoked=True))
     _add_member(app)
     with _logged_in(app, VIEWER_ID) as (client, _):
         _set_unvalidated(app)
         response = _get(client, token)
+    baseline = _get(anonymous_client(app), UNKNOWN_TOKEN)
 
-    assert response.status_code == 200
-    assert INVITE_LINK_PAGE.UNVALIDATED_HEADING in response.get_data(as_text=True)
+    assert response.status_code == 404
+    assert normalized_body(response) == normalized_body(baseline)
+    assert INVITE_LINK_PAGE.DEAD_HEADING in unescape(response.get_data(as_text=True))
 
 
 # --- Suspended session -------------------------------------------------------------
@@ -504,10 +475,9 @@ def test_structure_and_titles_for_every_state(
     app: Flask, every_user_makes_a_unique_utub
 ) -> None:
     """
-    GIVEN states 1, 2, 4 and 5
+    GIVEN states 1, 2 and 4
     WHEN each renders
-    THEN each has one h1, one main, the fixed title and no UTub name in the title;
-        state 5's message carries role=status
+    THEN each has one h1, one main, the fixed title and no UTub name in the title
     """
     token = _live_token(app)
     with app.app_context():
@@ -518,14 +488,11 @@ def test_structure_and_titles_for_every_state(
     pages["dead"] = _get(anonymous_client(app), UNKNOWN_TOKEN)
     with _logged_in(app, VIEWER_ID) as (client, _):
         pages["state1"] = _get(client, token)
-        _set_unvalidated(app)
-        pages["state5"] = _get(client, token)
 
     expected = {
         "state1": INVITE_LINK_PAGE.TITLE_JOIN,
         "state2": INVITE_LINK_PAGE.TITLE_JOIN,
         "dead": INVITE_LINK_PAGE.TITLE_DEAD,
-        "state5": INVITE_LINK_PAGE.TITLE_UNVALIDATED,
     }
     for name, response in pages.items():
         body = response.get_data(as_text=True)
@@ -534,7 +501,6 @@ def test_structure_and_titles_for_every_state(
         assert _title_of(response) == expected[name], name
         assert utub_name not in _title_of(response), name
         assert '<meta name="robots" content="noindex, nofollow">' in body, name
-    assert 'role="status"' in pages["state5"].get_data(as_text=True)
     other_dead = _get(anonymous_client(app), MALFORMED_TOKEN)
     assert _title_of(other_dead) == INVITE_LINK_PAGE.TITLE_DEAD
 
@@ -572,7 +538,7 @@ def test_navbar_is_well_formed_for_logged_in_viewers(
     app: Flask, every_user_makes_a_unique_utub
 ) -> None:
     """
-    GIVEN validated, unvalidated and anonymous viewers
+    GIVEN validated and anonymous viewers
     WHEN each opens the page
     THEN the nav's divs balance and the brand closes with the matching tag
     """
@@ -580,12 +546,8 @@ def test_navbar_is_well_formed_for_logged_in_viewers(
     anonymous_nav = _nav_of(_get(anonymous_client(app), token))
     with _logged_in(app, VIEWER_ID) as (client, _):
         validated_nav = _nav_of(_get(client, token))
-        _set_unvalidated(app)
-        unvalidated_nav = _nav_of(_get(client, token))
 
     _assert_balanced_nav(validated_nav, "</a>")
-    _assert_balanced_nav(unvalidated_nav, "</span>")
-    assert "<a " not in unvalidated_nav
     assert anonymous_nav.count("<div") == anonymous_nav.count("</div>")
     assert "NavbarNavDropdown" in anonymous_nav
 

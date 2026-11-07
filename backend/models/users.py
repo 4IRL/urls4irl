@@ -191,6 +191,19 @@ class Users(db.Model, UserMixin):
             algorithm=EMAILS.ALGORITHM,
         )
 
+    def get_resend_validation_token(
+        self, expires_in: int = EMAIL_CONSTANTS.RESEND_TOKEN_LIFETIME_SECONDS
+    ) -> str:
+        return jwt.encode(
+            payload={
+                EMAILS.RESEND_VALIDATION: self.username,
+                EMAILS.RESEND_PURPOSE_CLAIM: EMAILS.RESEND_PURPOSE_VALUE,
+                EMAILS.EXPIRATION: datetime.timestamp(utc_now()) + expires_in,
+            },
+            key=current_app.config[CONFIG_ENVS.SECRET_KEY],
+            algorithm=EMAILS.ALGORITHM,
+        )
+
     def get_email_change_token(
         self, expires_in=EMAIL_CONSTANTS.WAIT_TO_ATTEMPT_AFTER_MAX_ATTEMPTS
     ) -> str:

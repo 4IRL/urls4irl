@@ -70,7 +70,7 @@ def test_validated_non_member_on_live_link_counts_logged_in_valid(
     _assert_one_view(provide_metrics_redis, "logged_in", "valid")
 
 
-def test_unvalidated_viewer_on_live_link_counts_logged_in_valid(
+def test_unconfirmed_viewer_on_live_link_counts_logged_out_valid(
     metrics_enabled_app,
     provide_metrics_redis,
     every_user_makes_a_unique_utub,
@@ -80,7 +80,7 @@ def test_unvalidated_viewer_on_live_link_counts_logged_in_valid(
     with _logged_in(app, VIEWER_ID) as (client, _):
         _set_unvalidated(app)
         assert _get(client, token).status_code == 200
-    _assert_one_view(provide_metrics_redis, "logged_in", "valid")
+    _assert_one_view(provide_metrics_redis, "logged_out", "valid")
 
 
 def test_member_redirect_on_live_link_counts_member_valid(
@@ -109,7 +109,7 @@ def test_member_redirect_on_revoked_link_counts_member_dead(
     _assert_one_view(provide_metrics_redis, "member", "dead")
 
 
-def test_unvalidated_member_on_dead_link_counts_logged_in_dead(
+def test_unconfirmed_member_on_dead_link_counts_logged_out_dead(
     metrics_enabled_app,
     provide_metrics_redis,
     every_user_makes_a_unique_utub,
@@ -119,8 +119,8 @@ def test_unvalidated_member_on_dead_link_counts_logged_in_dead(
     _add_member(app)
     with _logged_in(app, VIEWER_ID) as (client, _):
         _set_unvalidated(app)
-        assert _get(client, token).status_code == 200
-    _assert_one_view(provide_metrics_redis, "logged_in", "dead")
+        assert _get(client, token).status_code == 404
+    _assert_one_view(provide_metrics_redis, "logged_out", "dead")
 
 
 def test_unknown_token_counts_logged_out_dead(

@@ -227,11 +227,11 @@ def test_change_username_anonymous_redirects_to_splash(client: FlaskClient) -> N
 
 
 def test_change_username_unvalidated_user_redirects(
-    login_unvalidated_user: Tuple[FlaskClient, Users, Flask],
+    stale_session_unvalidated_user: Tuple[FlaskClient, Users, Flask],
 ) -> None:
-    """An authenticated-but-unvalidated user is redirected by the
-    email_validation_required gate."""
-    client, user, _ = login_unvalidated_user
+    """A session for an unvalidated user is anonymous (``load_user`` fails
+    closed), so the unauthorized handler redirects."""
+    client, user, _ = stale_session_unvalidated_user
 
     splash_response = client.get("/")
     csrf_token = get_csrf_token(splash_response.get_data(), meta_tag=True)

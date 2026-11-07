@@ -59,6 +59,7 @@ from backend.utils.strings.oauth_strs import (
 from backend.utils.strings.oauth_strs import (
     GITHUB_UNVERIFIED_EMAIL_MESSAGE as _GITHUB_UNVERIFIED_EMAIL_MESSAGE,
 )
+from backend.utils.strings.user_strs import USER_FAILURE
 from backend.utils.strings.utub_strs import UTUB_ID_QUERY_PARAM
 from tests.conftest import TEST_GITHUB_OAUTH_CLIENT_ID, TEST_GITHUB_OAUTH_CLIENT_SECRET
 from tests.integration.system.metrics_helpers import (
@@ -370,6 +371,41 @@ def test_github_callback_returning_user_logs_in_without_new_rows(
     with app.app_context():
         assert Users.query.count() == 1
         assert UserOAuthIdentity.query.count() == 1
+
+
+@mock.patch(_AUTHORIZE_ACCESS_TOKEN_TARGET)
+@mock.patch(_GITHUB_GET_TARGET)
+def test_github_callback_unvalidated_user_gets_no_session(
+    mock_github_get: mock.MagicMock,
+    mock_authorize_access_token: mock.MagicMock,
+    app: Flask,
+    load_login_page,
+):
+    """
+    GIVEN a Users row linked to github whose email is not validated
+    WHEN the callback resolves that user
+    THEN no session is opened and the not-validated message is rendered
+    """
+    mock_authorize_access_token.return_value = _FAKE_TOKEN
+    mock_github_get.side_effect = _default_github_get_side_effect(
+        github_id=_EXISTING_GITHUB_ID, login=_EXISTING_LOGIN, email=_EXISTING_EMAIL
+    )
+    _seed_existing_oauth_user(
+        app,
+        subject=_EXISTING_SUBJECT,
+        email=_EXISTING_EMAIL,
+        username=_EXISTING_USERNAME,
+    )
+    with app.app_context():
+        Users.query.filter_by(email=_EXISTING_EMAIL).first().email_validated = False
+        db.session.commit()
+    client, _ = load_login_page
+
+    response = client.get(_callback_url(code=_FAKE_CODE, state=_FAKE_STATE))
+
+    assert response.status_code == 200
+    assert USER_FAILURE.ACCOUNT_CREATED_EMAIL_NOT_VALIDATED.encode() in response.data
+    assert not current_user.is_authenticated
 
 
 @mock.patch(_AUTHORIZE_ACCESS_TOKEN_TARGET)

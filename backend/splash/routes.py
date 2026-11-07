@@ -6,7 +6,7 @@ from flask import (
     request,
     url_for,
 )
-from flask_login import current_user, login_user
+from flask_login import current_user
 from werkzeug import Response as WerkzeugResponse
 
 from backend import csrf, db, limiter
@@ -27,7 +27,11 @@ from backend.schemas.base import (
     HtmlErrorPageSchema,
     StatusMessageResponseSchema,
 )
-from backend.schemas.errors import ErrorResponse
+from backend.schemas.errors import (
+    ErrorResponse,
+    LoginEmailNotValidatedErrorResponse,
+    build_message_error_response,
+)
 from backend.schemas.requests.splash import (
     ConfirmLinkRequest,
     ForgotPasswordRequest,
@@ -39,7 +43,6 @@ from backend.schemas.requests.splash import (
     ResetPasswordRequest,
 )
 from backend.schemas.users import (
-    EmailValidationResponseSchema,
     ForgotPasswordResponseSchema,
     LoginRedirectResponseSchema,
     RegisterResponseSchema,
@@ -84,7 +87,7 @@ from backend.splash.services.user_registration import (
 )
 from backend.splash.services.validate_email import (
     send_resend_registration_email,
-    send_validation_email_to_user,
+    send_resend_validation_email_for_token,
     validate_email_for_user,
 )
 from backend.utils.all_routes import ROUTES
@@ -115,7 +118,7 @@ def splash_page() -> WerkzeugResponse | str:
     # DD-9: an already-logged-in browser is redirected to HOME before any banner
     # renders here, so forward the confirm-outcome code so HOME can surface it.
     email_change_status = request.args.get(EMAIL_CHANGE_STATUS_QUERY_PARAM, "")
-    if current_user.is_authenticated and current_user.email_validated:
+    if current_user.is_authenticated:
         safe_add_log(f"User={current_user} already logged in")
         return redirect(
             url_for(
@@ -127,18 +130,14 @@ def splash_page() -> WerkzeugResponse | str:
                 ),
             )
         )
-    show_email_validation = (
-        current_user.is_authenticated and not current_user.email_validated
-    )
-    # DD-1/DD-15: this call site is reached only when the requester is NOT both
-    # authenticated and email-validated, so the splash-path banner keeps the
-    # "log in as usual" clause (authenticated=False).
+    # DD-1/DD-15: this call site is reached only by anonymous requesters (an
+    # authenticated user was redirected above), so the splash-path banner keeps
+    # the "log in as usual" clause (authenticated=False).
     email_change_banner = build_email_change_banner(
         email_change_status, authenticated=False
     )
     return render_template(
         "pages/splash.html",
-        show_email_validation=show_email_validation,
         email_change_banner=email_change_banner,
     )
 
@@ -182,7 +181,7 @@ def register_user(register_request: RegisterRequest) -> FlaskResponse:
     status_codes={
         200: LoginRedirectResponseSchema,
         400: ErrorResponse,
-        401: ErrorResponse,
+        401: LoginEmailNotValidatedErrorResponse,
         429: ErrorResponse,
     },
 )
@@ -190,34 +189,6 @@ def register_user(register_request: RegisterRequest) -> FlaskResponse:
 def login(login_request: LoginRequest) -> FlaskResponse:
     """Handles login form submission."""
     return login_user_to_u4i(login_request.username, login_request.password)
-
-
-@splash.route("/confirm-email", methods=["GET"])
-def confirm_email_after_register() -> WerkzeugResponse:
-    if current_user.is_anonymous:
-        safe_add_log("No user logged in")
-        return redirect(url_for(ROUTES.SPLASH.SPLASH_PAGE))
-    if current_user.email_validated:
-        warning_log(f"User={current_user.id} already logged in")
-        return redirect(url_for(ROUTES.UTUBS.HOME))
-    return redirect(url_for(ROUTES.SPLASH.SPLASH_PAGE))
-
-
-@splash.route("/send-validation-email", methods=["POST"])
-@api_route(
-    response_schema=EmailValidationResponseSchema,
-    ajax_required=False,
-    tags=[OPEN_API.AUTH],
-    description="Send an email validation link to the current user",
-    status_codes={
-        200: EmailValidationResponseSchema,
-        400: ErrorResponse,
-        404: ErrorResponse,
-        429: ErrorResponse,
-    },
-)
-def send_validation_email() -> WerkzeugResponse | FlaskResponse:
-    return send_validation_email_to_user()
 
 
 @splash.route("/resend-registration-email", methods=["POST"])
@@ -229,7 +200,7 @@ def send_validation_email() -> WerkzeugResponse | FlaskResponse:
     error_code=RegisterErrorCodes.INVALID_FORM_INPUT,
     ajax_required=False,
     tags=[OPEN_API.AUTH],
-    description="Resend the account-confirmation email for a pending registration (opaque)",
+    description="Resend the account-confirmation email for a pending registration (opaque). Body takes exactly one of email or resendToken (from a login on an unconfirmed account)",
     status_codes={
         200: StatusMessageResponseSchema,
         400: ErrorResponse,
@@ -240,11 +211,26 @@ def send_validation_email() -> WerkzeugResponse | FlaskResponse:
 def resend_registration_email(
     resend_registration_email_request: ResendRegistrationEmailRequest,
 ) -> FlaskResponse:
+    if resend_registration_email_request.resend_token is not None:
+        return send_resend_validation_email_for_token(
+            resend_registration_email_request.resend_token
+        )
+    if resend_registration_email_request.email is None:
+        # Unreachable past the schema validator; fail closed.
+        return build_message_error_response(
+            message=USER_FAILURE.UNABLE_TO_REGISTER,
+            error_code=RegisterErrorCodes.INVALID_FORM_INPUT,
+        )
     return send_resend_registration_email(resend_registration_email_request.email)
 
 
 @splash.route("/validate/expired", methods=["GET"])
 def validate_email_expired():
+    # The resend route and splash.ts are anonymous-only, so an authenticated
+    # visitor would get a dead shell (and a pointless re-mint).
+    if current_user.is_authenticated:
+        return redirect(url_for(ROUTES.UTUBS.HOME))
+
     expired_token = request.args.get("token", None)
     if expired_token is None:
         warning_log("No token provided")
@@ -259,7 +245,6 @@ def validate_email_expired():
     invalid_email.validation_token = new_token
     invalid_email.reset_attempts()
     db.session.commit()
-    login_user(user_with_expired_token)
 
     safe_add_log(f"User={user_with_expired_token.id} email validation token reset")
     return (
@@ -267,8 +252,11 @@ def validate_email_expired():
             "pages/splash.html",
             email_token_is_expired=True,
             expired_token_message=EMAILS.TOKEN_EXPIRED,
+            expired_resend_token=user_with_expired_token.get_resend_validation_token(),
         ),
         200,
+        # The page embeds a resend token; keep it out of shared caches.
+        {"Cache-Control": "no-store"},
     )
 
 

@@ -12,7 +12,9 @@ from backend.models.utils import VerifyTokenResponse
 from backend.models.utub_tags import Utub_Tags
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
-from backend.splash.utils import verify_token
+from backend.splash.utils import decode_resend_validation_token, verify_token
+from backend.utils.constants import EMAIL_CONSTANTS
+from backend.utils.datetime_utils import utc_now
 from backend.utils.strings.config_strs import CONFIG_ENVS
 from backend.utils.strings.email_validation_strs import EMAILS
 
@@ -144,8 +146,9 @@ def test_change_email_token_is_purpose_isolated_from_validate_email(app):
     """
     GIVEN a change-email token (carrying only the CHANGE_EMAIL claim)
     WHEN it is fed to verify_token with the VALIDATE_EMAIL key
-    THEN it cannot resolve a user — the validate-email claim is absent, so the
-        registration consume path can never cross-consume a change-email token
+    THEN it cannot resolve a user and is reported as a failed token (no
+        KeyError) — the validate-email claim is absent, so the registration
+        consume path can never cross-consume a change-email token
     """
     with app.app_context():
         user = Users(
@@ -159,8 +162,9 @@ def test_change_email_token_is_purpose_isolated_from_validate_email(app):
 
         token = user.get_email_change_token()
 
-        with pytest.raises(KeyError):
-            verify_token(token, EMAILS.VALIDATE_EMAIL)
+        response = verify_token(token, EMAILS.VALIDATE_EMAIL)
+        assert response.user is None
+        assert response.failed_due_to_exception
 
 
 def test_get_email_change_token_embeds_target_email_claim(app):
@@ -213,6 +217,97 @@ def test_change_email_token_is_detectably_stale_after_repeated_staging(app):
         )
         assert stale_payload[EMAILS.CHANGE_EMAIL_TARGET] == "first@example.com"
         assert stale_payload[EMAILS.CHANGE_EMAIL_TARGET] != user.pending_email
+
+
+def _persisted_new_user() -> Users:
+    user = Users(
+        username=new_user["username"],
+        email=new_user["email"],
+        plaintext_password=new_user["password"],
+    )
+    db.session.add(user)
+    db.session.commit()
+    return user
+
+
+def test_get_resend_validation_token_claims_and_lifetime(app):
+    """
+    GIVEN a persisted user
+    WHEN a resend-validation token is minted and independently decoded
+    THEN it carries the RESEND_VALIDATION claim and expires about
+        RESEND_TOKEN_LIFETIME_SECONDS from now
+    """
+    with app.app_context():
+        user = _persisted_new_user()
+        before = utc_now().timestamp()
+
+        payload = jwt.decode(
+            user.get_resend_validation_token(),
+            key=current_app.config[CONFIG_ENVS.SECRET_KEY],
+            algorithms=[EMAILS.ALGORITHM],
+        )
+
+        assert payload[EMAILS.RESEND_VALIDATION] == new_user["username"]
+        assert EMAILS.VALIDATE_EMAIL not in payload
+        expected_exp = before + EMAIL_CONSTANTS.RESEND_TOKEN_LIFETIME_SECONDS
+        assert abs(payload[EMAILS.EXPIRATION] - expected_exp) < 5
+
+
+def test_decode_resend_validation_token_returns_user_for_valid_token(app):
+    """
+    GIVEN a valid resend-validation token
+    WHEN it is decoded
+    THEN the owning user is returned
+    """
+    with app.app_context():
+        user = _persisted_new_user()
+
+        decoded = decode_resend_validation_token(user.get_resend_validation_token())
+
+        assert decoded is not None and decoded.username == new_user["username"]
+
+
+def test_decode_resend_validation_token_rejects_non_resend_tokens(app):
+    """
+    GIVEN a validate-email token, a token whose resend claim is not a string,
+        and garbage
+    WHEN each is decoded as a resend token
+    THEN every one yields None
+    """
+    with app.app_context():
+        user = _persisted_new_user()
+        non_str_claim_token = jwt.encode(
+            payload={
+                EMAILS.RESEND_VALIDATION: 123,
+                EMAILS.RESEND_PURPOSE_CLAIM: EMAILS.RESEND_PURPOSE_VALUE,
+                EMAILS.EXPIRATION: utc_now().timestamp() + 600,
+            },
+            key=current_app.config[CONFIG_ENVS.SECRET_KEY],
+            algorithm=EMAILS.ALGORITHM,
+        )
+        missing_purpose_token = jwt.encode(
+            payload={
+                EMAILS.RESEND_VALIDATION: user.username,
+                EMAILS.EXPIRATION: utc_now().timestamp() + 600,
+            },
+            key=current_app.config[CONFIG_ENVS.SECRET_KEY],
+            algorithm=EMAILS.ALGORITHM,
+        )
+        wrong_purpose_token = jwt.encode(
+            payload={
+                EMAILS.RESEND_VALIDATION: user.username,
+                EMAILS.RESEND_PURPOSE_CLAIM: "something_else",
+                EMAILS.EXPIRATION: utc_now().timestamp() + 600,
+            },
+            key=current_app.config[CONFIG_ENVS.SECRET_KEY],
+            algorithm=EMAILS.ALGORITHM,
+        )
+
+        assert decode_resend_validation_token(user.get_email_validation_token()) is None
+        assert decode_resend_validation_token(non_str_claim_token) is None
+        assert decode_resend_validation_token(missing_purpose_token) is None
+        assert decode_resend_validation_token(wrong_purpose_token) is None
+        assert decode_resend_validation_token("not-a-jwt") is None
 
 
 def test_utub_model(app):
