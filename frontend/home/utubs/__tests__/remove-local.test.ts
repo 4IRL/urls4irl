@@ -20,7 +20,7 @@ import {
 import { clearOpenForm } from "../../../lib/modal-tracking.js";
 import { showURLDeckBannerError } from "../../urls/deck.js";
 import { refreshTrashCount } from "../../trash/count.js";
-import { removeUTubLocally } from "../remove-local.js";
+import { purgeUTubLocally, removeUTubLocally } from "../remove-local.js";
 
 vi.mock("../../trash/count.js", () => ({ refreshTrashCount: vi.fn() }));
 vi.mock("../deck.js", () => ({
@@ -125,6 +125,23 @@ describe("removeUTubLocally", () => {
     replaceStateSpy.mockRestore();
     assignSpy.mockRestore();
     document.body.className = "";
+  });
+
+  it("hides the pin divider once the last pinned row is removed", () => {
+    document.body.innerHTML = `
+      <div id="confirmModal"></div>
+      <span id="URLDeckLockIcon"></span>
+      <div id="listUTubs">
+        <div class="UTubSelector" utubid="42"><svg class="UTubPinIcon"></svg></div>
+        <div id="UTubPinDivider" class="UTubPinDivider" aria-hidden="true"></div>
+        <div class="UTubSelector" utubid="43"></div>
+      </div>
+    `;
+
+    removeUTubLocally({ utubID: 42 });
+
+    expect($("#listUTubs > #UTubPinDivider").length).toBe(1);
+    expect($("#UTubPinDivider").hasClass("hidden")).toBe(true);
   });
 
   it("removes the selector, filters the store and resets the active UTub fields", () => {
@@ -292,5 +309,55 @@ describe("removeUTubLocally", () => {
 
     expect(showURLDeckBannerError).not.toHaveBeenCalled();
     expect(assignSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe("purgeUTubLocally", () => {
+  beforeEach(() => {
+    document.body.innerHTML = REMOVE_LOCAL_HTML;
+    vi.clearAllMocks();
+    vi.mocked(getState).mockReturnValue({
+      utubs: [{ id: 42 }, { id: 43 }],
+      activeUTubID: 43,
+    } as unknown as ReturnType<typeof getState>);
+    vi.mocked(getNumOfUTubs).mockReturnValue(1);
+  });
+
+  it("synchronously filters the store and removes the row, with no removal side effects", () => {
+    purgeUTubLocally({ utubID: 42 });
+
+    expect(setState).toHaveBeenCalledWith({ utubs: [{ id: 43 }] });
+    expect($(".UTubSelector[utubid=42]")).toHaveLength(0);
+    expect($(".UTubSelector[utubid=43]")).toHaveLength(1);
+    expect(updateUTubDeckCount).toHaveBeenCalledTimes(1);
+    expect(applyAlternatingUTubSelectorBackground).toHaveBeenCalledTimes(1);
+    expect(refreshTrashCount).toHaveBeenCalledTimes(1);
+    expect(emit).not.toHaveBeenCalled();
+    expect(hideInputs).not.toHaveBeenCalled();
+    expect(setUIWhenNoUTubSelected).not.toHaveBeenCalled();
+    expect(resetUTubDeckIfNoUTubs).not.toHaveBeenCalled();
+  });
+
+  it("syncs the pin divider after removing the last pinned row", () => {
+    document.body.innerHTML = `
+      <div id="listUTubs">
+        <div class="UTubSelector" utubid="42"><svg class="UTubPinIcon"></svg></div>
+        <div id="UTubPinDivider" class="UTubPinDivider" aria-hidden="true"></div>
+        <div class="UTubSelector" utubid="43"></div>
+      </div>
+    `;
+
+    purgeUTubLocally({ utubID: 42 });
+
+    expect($("#UTubPinDivider").hasClass("hidden")).toBe(true);
+  });
+
+  it("resets the empty-deck state when no UTubs remain", () => {
+    vi.mocked(getNumOfUTubs).mockReturnValue(0);
+
+    purgeUTubLocally({ utubID: 42 });
+
+    expect(resetUTubDeckIfNoUTubs).toHaveBeenCalledTimes(1);
+    expect(emit).not.toHaveBeenCalled();
   });
 });

@@ -38,6 +38,7 @@ import {
 import { isUTubSearchActive } from "./search.js";
 import { makeUTubRowCountsLabel, setRowCountsFromStore } from "./row-counts.js";
 import { fitUTubHeaderAndSubheader } from "./header-fit.js";
+import { makeUTubPinMarker } from "./pin-marker.js";
 import { markUTubOpened, scrollActiveUTubIntoViewIfHidden } from "./sort.js";
 import { isMobile, replaceMobilePanelHistoryState } from "../mobile.js";
 import { SEARCH_ACTIVE } from "../../types/metrics-dim-values.js";
@@ -526,6 +527,7 @@ export function createUTubSelector({
   utubID,
   memberRole,
   isLocked,
+  isPinned,
   index,
   urlCount,
   memberCount,
@@ -534,6 +536,7 @@ export function createUTubSelector({
   utubID: number;
   memberRole: string;
   isLocked: boolean;
+  isPinned: boolean;
   index: number;
   urlCount: number;
   memberCount: number;
@@ -566,8 +569,10 @@ export function createUTubSelector({
       utubSelector.off("keyup.selectUTub");
     })
     .append(utubSelectorText)
-    .append(makeUTubRowCounts({ urlCount, memberCount }))
-    .append(makeUTubRoleIcon({ memberRole, isLocked }));
+    .append(makeUTubRowCounts({ urlCount, memberCount }));
+  // The pin marker is a sibling placed before .memberRole, never inside it.
+  if (isPinned) utubSelector.append(makeUTubPinMarker());
+  utubSelector.append(makeUTubRoleIcon({ memberRole, isLocked }));
 
   return utubSelector;
 }

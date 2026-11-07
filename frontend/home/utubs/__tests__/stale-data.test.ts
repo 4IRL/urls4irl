@@ -14,7 +14,7 @@ import { setState } from "../../../store/app-store.js";
 import { emit, AppEvents } from "../../../lib/event-bus.js";
 import { APP_CONFIG } from "../../../lib/config.js";
 import { isBackgroundRefreshActive } from "../background-refresh-flag.js";
-import type { UtubDetail } from "../../../types/utub.js";
+import type { UtubDetail, UtubSummaryItem } from "../../../types/utub.js";
 import { makeUtubSummaryItem } from "../../../__tests__/helpers/utub-summary.js";
 import { TAG_DISPLAY_PREFERENCE_DEFAULTS } from "../../../__tests__/helpers/tag-display.js";
 import {
@@ -1200,6 +1200,29 @@ describe("updateUTubOnFindingStaleData", () => {
       ).toBe(", 3 URLs, 2 members");
       expect($(".UTubSelector[utubid=1] .memberRole").attr("data-locked")).toBe(
         "true",
+      );
+    });
+
+    it("keeps a pinned row's pin icon and label, and its store isPinned, when the role icon is replaced", async () => {
+      $(".UTubSelector[utubid=1] .UTubName").after(
+        `<svg class="UTubPinIcon"></svg><span class="UTubPinnedLabel">Pinned</span>`,
+      );
+      const seeded = storeState.value.utubs as UtubSummaryItem[];
+      storeState.value.utubs = seeded.map((utub) => ({
+        ...utub,
+        isPinned: true,
+      }));
+
+      await refreshWith(ok(makeDetail({ isLocked: true })));
+
+      const row = $(".UTubSelector[utubid=1]");
+      expect(row.children(".UTubPinIcon").length).toBe(1);
+      expect(row.children(".UTubPinnedLabel").length).toBe(1);
+      expect(row.children(".UTubPinnedLabel").next().is(".memberRole")).toBe(
+        true,
+      );
+      expect((storeState.value.utubs as UtubSummaryItem[])[0].isPinned).toBe(
+        true,
       );
     });
 

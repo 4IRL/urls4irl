@@ -19,10 +19,20 @@
         <span id="UTubSearchAnnouncement" class="visually-hidden" aria-live="polite"></span>
         <div class="pad-in-15p flex-column" id="listUTubs">
             <!-- UTubs -->
+            {# One aria-hidden rule (no role) before the first unpinned row, or last when every row is pinned or the deck is empty; hidden unless both groups exist. #}
+            {% set _pinned_count = utubs_for_this_user|selectattr('isPinned')|list|length %}
+            {% set _divider = namespace(placed=false) %}
             {% for utub in utubs_for_this_user %}
+            {% if not utub.isPinned and not _divider.placed %}
+            {% set _divider.placed = true %}
+            <div id="UTubPinDivider" class="UTubPinDivider{% if _pinned_count == 0 %} hidden{% endif %}" aria-hidden="true"></div>
+            {% endif %}
             {% set position=loop.index %}
             {% include 'components/home/UTubDeck/UTubCard.html' %}
             {% endfor %}
+            {% if not _divider.placed %}
+            <div id="UTubPinDivider" class="UTubPinDivider hidden" aria-hidden="true"></div>
+            {% endif %}
         </div>
         <!-- Trash entry: its own wrapper AFTER #listUTubs (not a .UTubSelector) so the
              UTub list's counting, search, striping and rebuild never touch it. -->

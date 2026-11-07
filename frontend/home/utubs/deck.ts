@@ -15,6 +15,7 @@ import {
   setUTubSelectorSearchEventListener,
   showUTubSearchBar,
 } from "./search.js";
+import { syncUTubPinDivider } from "./pin-divider.js";
 import { setDeleteEventListeners } from "./delete.js";
 import { updateUTubDeckCount } from "./utils.js";
 import { debug } from "../../lib/debug.js";
@@ -76,6 +77,7 @@ export function buildUTubDeck(
           utubID: utubs[index].id,
           memberRole: utubs[index].memberRole,
           isLocked: utubs[index].isLocked,
+          isPinned: utubs[index].isPinned,
           index,
           urlCount: utubs[index].urlCount,
           memberCount: utubs[index].memberCount,
@@ -91,6 +93,8 @@ export function buildUTubDeck(
   } else {
     resetUTubDeckIfNoUTubs();
   }
+  // resetUTubDeck emptied #listUTubs, so recreate the divider in both branches.
+  syncUTubPinDivider();
 
   if (timeoutID) hideUTubLoadingIconAndClearTimeout(timeoutID);
 }
@@ -107,6 +111,7 @@ export function setUTubEventListenersOnInitialPageLoad(): void {
   // not buildUTubDeck — is what runs on a fresh page load. Stripe those rows
   // here, since utubs.css now relies on the JS-assigned `.even`/`.odd` classes.
   applyAlternatingUTubSelectorBackground();
+  syncUTubPinDivider();
 }
 
 export function resetUTubDeckIfNoUTubs(): void {

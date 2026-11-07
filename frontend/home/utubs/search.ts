@@ -10,6 +10,7 @@ import {
   UTUB_SEARCH_OPEN_TARGET,
 } from "../../types/metrics-dim-values.js";
 import { debug } from "../../lib/debug.js";
+import { syncUTubPinDivider } from "./pin-divider.js";
 
 const log = debug("utubs");
 
@@ -52,6 +53,7 @@ function updatedUTubSelectorDisplay(filteredUTubIDsToHide: number[]): void {
   if (filteredUTubIDsToHide.length === 0) {
     $(".UTubSelector").removeClass("hidden");
     applyAlternatingUTubSelectorBackground();
+    syncUTubPinDivider();
     return;
   }
   const hideSet = new Set(filteredUTubIDsToHide);
@@ -66,6 +68,7 @@ function updatedUTubSelectorDisplay(filteredUTubIDsToHide: number[]): void {
     }
   }
   applyAlternatingUTubSelectorBackground();
+  syncUTubPinDivider();
 }
 
 function showUTubSearchNoResults(): void {
@@ -192,6 +195,7 @@ export function resetUTubSearch(): void {
   searchInput.off("keydown.searchInputEsc");
   $(".UTubSelector").removeClass("hidden");
   applyAlternatingUTubSelectorBackground();
+  syncUTubPinDivider();
   hideUTubSearchNoResults();
 }
 

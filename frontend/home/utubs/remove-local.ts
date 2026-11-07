@@ -14,7 +14,22 @@ import { TAG_SHEET_TOGGLE_TRIGGER } from "../../types/metrics-dim-values.js";
 import { getNumOfUTubs, updateUTubDeckCount } from "./utils.js";
 import { getState, setState } from "../../store/app-store.js";
 import { applyAlternatingUTubSelectorBackground } from "./search.js";
+import { syncUTubPinDivider } from "./pin-divider.js";
 import { refreshTrashCount } from "../trash/count.js";
+
+// Narrow, synchronous removal of one UTub's row and store entry for a reseed
+// that finds a pinned UTub gone. Unlike removeUTubLocally it has no active-UTub,
+// history, modal, mobile or UTUB_DELETED effects (the caller hands the active
+// UTub to handleActiveUTubGone after this, which finds no row to fade).
+export function purgeUTubLocally({ utubID }: { utubID: number }): void {
+  setState({ utubs: getState().utubs.filter((utub) => utub.id !== utubID) });
+  $(".UTubSelector[utubid=" + utubID + "]").remove();
+  updateUTubDeckCount();
+  applyAlternatingUTubSelectorBackground();
+  syncUTubPinDivider();
+  void refreshTrashCount();
+  if (getNumOfUTubs() === 0) resetUTubDeckIfNoUTubs();
+}
 
 // Purges a UTub from the store and UI without any server call: used after a
 // successful delete and when a refresh finds the UTub is gone. Showing a banner
@@ -53,6 +68,7 @@ export function removeUTubLocally({
     utubSelector.remove();
     updateUTubDeckCount();
     applyAlternatingUTubSelectorBackground();
+    syncUTubPinDivider();
 
     setState({
       utubs: getState().utubs.filter((utub) => utub.id !== utubID),
