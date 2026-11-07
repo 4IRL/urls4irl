@@ -61,6 +61,7 @@ export interface AppRoutes {
   updateUTubDescription: (id: number) => string;
   updateUTubSettings: (id: number) => string;
   updateMemberSettings: (id: number) => string;
+  updateUTubPin: (id: number) => string;
   createURL: (id: number) => string;
   createUTubTag: (id: number) => string;
   applyTagsToURLs: (utubId: number) => string;
@@ -124,6 +125,7 @@ export interface DeviceTypeValues {
 export interface AppConstants {
   readonly MEMBER_ROLES: MemberRoles;
   readonly UTUBS_MIN_NAME_LENGTH: number;
+  readonly MAX_PINNED_UTUBS: number;
   readonly URLS_MIN_LENGTH: number;
   readonly URLS_MAX_LENGTH: number;
   readonly URLS_TITLE_MIN_LENGTH: number;
@@ -222,6 +224,8 @@ export const APP_CONFIG: AppConfig = Object.freeze({
       rawConfig.routes.updateUTubSettings.replace("-1", String(id)),
     updateMemberSettings: (id: number) =>
       rawConfig.routes.updateMemberSettings.replace("-1", String(id)),
+    updateUTubPin: (id: number) =>
+      rawConfig.routes.updateUTubPin.replace("-1", String(id)),
 
     getURL: (utubId: number, urlId: number) =>
       rawConfig.routes.getURL

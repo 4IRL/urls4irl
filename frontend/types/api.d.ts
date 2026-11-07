@@ -852,7 +852,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** @description Retrieve a summary of all UTubs for the current user */
+    /** @description Retrieve a summary of all UTubs for the current user. Pinned UTubs lead (stable partition on top of the saved utub_sort order); each summary exposes isPinned. */
     get: operations["apiV1GetUtubs"];
     put?: never;
     /** @description Create a new UTub */
@@ -2013,6 +2013,23 @@ export interface paths {
     patch: operations["updateMemberSettings"];
     trace?: never;
   };
+  "/utubs/{utub_id}/pin": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /** @description Pin or unpin a UTub for the caller (idempotent). At most 5 live pins per user; a sixth returns 409. Not gated by the UTub lock. Metrics: API_HIT only (no DOMAIN event). */
+    patch: operations["updateUtubPin"];
+    trace?: never;
+  };
   "/utubs/{utub_id}/urls/{utub_url_id}/tags": {
     parameters: {
       query?: never;
@@ -2937,7 +2954,7 @@ export interface components {
      * @description Error codes for UTubErrorCodes
      * @enum {integer}
      */
-    UTubErrorCodes: 1 | 2 | 3 | 4 | 5;
+    UTubErrorCodes: 1 | 2 | 3 | 4 | 5 | 6;
     /** @description The requesting user's resolved UTub-list preferences (plain data). */
     UtubListPreferencesSchema: {
       /**
@@ -2964,6 +2981,8 @@ export interface components {
       memberRole: string;
       /** @description Whether the UTub is locked (frozen to all user mutations) */
       isLocked: boolean;
+      /** @description Whether the requesting user pinned this UTub to the top of their list */
+      isPinned: boolean;
       /** @description Number of live (non-trashed) URLs in the UTub */
       urlCount: number;
       /** @description Number of members of the UTub */
@@ -4643,6 +4662,8 @@ export interface components {
        * @default null
        */
       joinedAt: string | null;
+      /** @description Whether the acting user pinned this UTub */
+      pinned: boolean;
       /**
        * @description The acting user's sparse private view overrides for this UTub, or null when none
        * @default null
@@ -4893,6 +4914,30 @@ export interface components {
       utubID: number;
       /** @description The caller's full resolved view settings for this UTub */
       memberSettings: components["schemas"]["UtubMemberSettings"];
+    };
+    /**
+     * @description Pin or unpin one UTub for the caller. ``pinned`` is required, strictly a
+     *     boolean and never ``null``; unknown keys are rejected.
+     */
+    UpdateUTubPinRequest: {
+      /** @description True to pin the UTub for the caller, false to unpin it */
+      pinned: boolean;
+    };
+    /** @description The caller's pin state for one UTub after a pin or unpin */
+    UtubPinUpdatedResponseSchema: {
+      /**
+       * @description Response status: Success or No change
+       * @enum {string}
+       */
+      status: "Success" | "No change";
+      /** @description Human-readable, server-sourced banner text */
+      message: string;
+      /** @description ID of the UTub whose pin was updated */
+      utubID: number;
+      /** @description Whether the caller has the UTub pinned after the request */
+      isPinned: boolean;
+      /** @description The caller's live pinned UTub count (not clamped to the cap) */
+      pinnedCount: number;
     };
     AddTagsToUrlsRequest: {
       /**
@@ -12480,6 +12525,68 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  updateUtubPin: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        utub_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["UpdateUTubPinRequest"];
+      };
+    };
+    responses: {
+      /** @description The caller's pin state for one UTub after a pin or unpin */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["UtubPinUpdatedResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_UTubErrorCodes"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_UTubErrorCodes"];
         };
       };
     };

@@ -1529,6 +1529,15 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Template:** —
 - **JS:** keys: `updateUTubName`
 
+### `PATCH /utubs/<int:utub_id>/pin` — `utubs.update_utub_pin`
+
+- **Handler:** `backend/utubs/routes.py:update_utub_pin`
+- **Decorators:** `utub_membership_required`, `api_route`
+- **Service:** `backend.utubs.services.update_utub_pin:update_utub_pin_if_changed`
+- **Schema:** request: `backend.schemas.requests.utubs.UpdateUTubPinRequest`; response: `backend.schemas.utubs.UtubPinUpdatedResponseSchema`; status: 200 `backend.schemas.utubs.UtubPinUpdatedResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`, 409 `backend.schemas.errors.ErrorResponse`
+- **Template:** —
+- **JS:** keys: `updateUTubPin`
+
 ### `DELETE /utubs/<int:utub_id>/purge` — `utubs.purge_utub`
 
 - **Handler:** `backend/utubs/routes.py:purge_utub`

@@ -27,6 +27,7 @@ from backend.utils.strings.admin_metrics_strs import ADMIN_METRICS_STRINGS
 from backend.utils.strings.config_strs import CONFIG_ENVS
 from backend.utils.strings.json_strs import NOT_AUTHORIZED
 from backend.utils.strings.trash_strs import TRASH_UI
+from backend.utubs.constants import MAX_PINNED_UTUBS
 from tests.utils_for_test import create_secondary_app
 
 pytestmark = pytest.mark.unit
@@ -519,11 +520,34 @@ def test_generate_strings_js_includes_panel_settings_strings():
         "UTUB_LIST_SETTINGS_LIST_TOTALS_DESC": utub_strs.UTUB_LIST_SETTINGS_LIST_TOTALS_DESC,
         "UTUB_LIST_SETTINGS_LIST_TOTALS_SHOWN_NOTICE": utub_strs.UTUB_LIST_SETTINGS_LIST_TOTALS_SHOWN_NOTICE,
         "UTUB_LIST_SETTINGS_LIST_TOTALS_HIDDEN_NOTICE": utub_strs.UTUB_LIST_SETTINGS_LIST_TOTALS_HIDDEN_NOTICE,
+        "UTUB_PINS_CAP_REACHED": utub_strs.UTUB_PINS_CAP_REACHED,
+        "UTUB_PINS_SECTION_TITLE": utub_strs.UTUB_PINS_SECTION_TITLE,
+        "UTUB_PINS_DESC": utub_strs.UTUB_PINS_DESC,
+        "UTUB_PINS_EMPTY_HINT": utub_strs.UTUB_PINS_EMPTY_HINT,
+        "UTUB_PINS_NONE_LEFT_HINT": utub_strs.UTUB_PINS_NONE_LEFT_HINT,
+        "UTUB_PINS_UTUB_GONE": utub_strs.UTUB_PINS_UTUB_GONE,
+        "UTUB_PINS_PICKER_PLACEHOLDER": utub_strs.UTUB_PINS_PICKER_PLACEHOLDER,
+        "UTUB_PINS_NO_MATCH": utub_strs.UTUB_PINS_NO_MATCH,
+        "UTUB_PINS_COUNTER": utub_strs.UTUB_PINS_COUNTER,
+        "UTUB_PINS_UNPIN_LABEL": utub_strs.UTUB_PINS_UNPIN_LABEL,
+        "UTUB_PINS_PINNED_NOTICE": utub_strs.UTUB_PINS_PINNED_NOTICE,
+        "UTUB_PINS_UNPINNED_NOTICE": utub_strs.UTUB_PINS_UNPINNED_NOTICE,
+        "UTUB_PINNED_ROW_LABEL": utub_strs.UTUB_PINNED_ROW_LABEL,
     }
     for key, value in expected.items():
         assert key in strings, f"generate_strings_js() is missing {key}"
         assert strings[key] == value
         assert value
+
+
+def test_generate_constants_js_includes_max_pinned_utubs():
+    """The pin cap is bridged from the backend constant, never duplicated in TS."""
+    constants = generate_constants_js()
+    assert constants["MAX_PINNED_UTUBS"] == MAX_PINNED_UTUBS
+
+
+def test_pin_cap_message_embeds_cap():
+    assert str(MAX_PINNED_UTUBS) in utub_strs.UTUB_PINS_CAP_REACHED
 
 
 def test_generate_strings_js_includes_delete_undo_strings():

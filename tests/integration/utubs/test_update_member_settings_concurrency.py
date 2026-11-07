@@ -18,10 +18,10 @@ from flask import Flask, url_for
 from backend.models.utub_members import Utub_Members
 from backend.schemas.utub_member_settings import merge_member_settings
 from backend.utils.all_routes import ROUTES
+from tests.integration.invite_links.concurrency_helpers import run_concurrently
 from tests.integration.utubmembers.test_owner_mutation_concurrency import (
     OWNER_USER_ID,
     _request_as_owner,
-    _run_concurrently,
     committed_owner_utub,  # noqa: F401  (fixture reused as a base seed)
 )
 
@@ -58,7 +58,7 @@ def test_concurrent_patches_to_different_keys_both_persist(
         url = url_for(ROUTES.UTUBS.UPDATE_MEMBER_SETTINGS, utub_id=utub_id)
 
     with mock.patch(MERGE_PATH, _slow_merge):
-        results = _run_concurrently(
+        results = run_concurrently(
             {
                 "copy": lambda: _request_as_owner(
                     app,
@@ -95,7 +95,7 @@ def test_concurrent_urls_and_tags_patches_both_persist(
         url = url_for(ROUTES.UTUBS.UPDATE_MEMBER_SETTINGS, utub_id=utub_id)
 
     with mock.patch(MERGE_PATH, _slow_merge):
-        results = _run_concurrently(
+        results = run_concurrently(
             {
                 "urls": lambda: _request_as_owner(
                     app, OWNER_USER_ID, "patch", url, {"urls": {"density": "compact"}}
