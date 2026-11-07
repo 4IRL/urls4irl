@@ -428,4 +428,40 @@ describe("UTub Search", () => {
       expect($("#utubNameFilterBtn").hasClass("hidden")).toBe(true);
     });
   });
+
+  describe("pin divider", () => {
+    beforeEach(() => {
+      $("#listUTubs").html(
+        `<div class="UTubSelector" utubid="1"><span class="UTubName">Alpha</span><svg class="UTubPinIcon"></svg></div>` +
+          `<div id="UTubPinDivider" class="UTubPinDivider hidden" aria-hidden="true"></div>` +
+          `<div class="UTubSelector" utubid="2"><span class="UTubName">Beta</span></div>` +
+          `<div class="UTubSelector" utubid="3"><span class="UTubName">Gamma</span></div>`,
+      );
+    });
+
+    it("hides when a filter hides every pinned row and shows again when the filter clears", () => {
+      vi.mocked(filterUTubsByName).mockReturnValue([1]);
+      $("#UTubNameSearch").val("beta").trigger("input");
+      expect($("#UTubPinDivider").hasClass("hidden")).toBe(true);
+
+      vi.mocked(filterUTubsByName).mockReturnValue([]);
+      $("#UTubNameSearch").val("").trigger("input");
+      expect($("#UTubPinDivider").hasClass("hidden")).toBe(false);
+    });
+
+    it("hides when a filter hides every unpinned row", () => {
+      vi.mocked(filterUTubsByName).mockReturnValue([2, 3]);
+      $("#UTubNameSearch").val("alpha").trigger("input");
+      expect($("#UTubPinDivider").hasClass("hidden")).toBe(true);
+    });
+
+    it("shows again after resetUTubSearch", () => {
+      vi.mocked(filterUTubsByName).mockReturnValue([2, 3]);
+      $("#UTubNameSearch").val("alpha").trigger("input");
+
+      resetUTubSearch();
+
+      expect($("#UTubPinDivider").hasClass("hidden")).toBe(false);
+    });
+  });
 });

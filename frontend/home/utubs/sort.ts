@@ -5,8 +5,10 @@ import { $ } from "../../lib/globals.js";
 import { compareCodePoints, foldName } from "../../lib/name-order.js";
 import { getState, setState } from "../../store/app-store.js";
 import { applyAlternatingUTubSelectorBackground } from "./search.js";
+import { syncUTubPinDivider } from "./pin-divider.js";
+import { setRowPinMarker } from "./pin-marker.js";
 
-// Leaf module: imports only types, the store and search.ts. It must not import
+// Leaf module: imports only types, the store, search.ts and the pin leaves. It must not import
 // deck.ts, utils.ts or list-preferences.ts (list-preferences.ts imports this).
 
 function toMillis(timestamp: string): number {
@@ -41,6 +43,8 @@ export function compareUTubs({
   right: UtubSummaryItem;
   sort: UtubSortValue;
 }): number {
+  // Pinned rows lead; each group then follows the chosen sort.
+  if (left.isPinned !== right.isPinned) return left.isPinned ? -1 : 1;
   let primary = 0;
   switch (sort) {
     case "last_opened": {
@@ -132,6 +136,7 @@ export function reorderUTubDeck(sort: UtubSortValue): void {
   rowsByID.forEach(reappend);
 
   applyAlternatingUTubSelectorBackground();
+  syncUTubPinDivider();
 
   if (
     focused instanceof HTMLElement &&
@@ -155,6 +160,8 @@ function newUTubInsertIndex({
   utubs: UtubSummaryItem[];
   sort: UtubSortValue;
 }): number {
+  // A new UTub is never pinned, so "first" means right after the pinned rows.
+  const firstUnpinned = utubs.filter((other) => other.isPinned).length;
   switch (sort) {
     case "oldest_created":
       return utubs.length;
@@ -168,7 +175,7 @@ function newUTubInsertIndex({
     case "last_opened":
     case "newest_created":
     default:
-      return 0;
+      return firstUnpinned;
   }
 }
 
@@ -200,6 +207,31 @@ export function insertNewUTubRow({
     $(element).attr("position", position);
   });
   applyAlternatingUTubSelectorBackground();
+  syncUTubPinDivider();
+}
+
+// Pins or unpins a UTub locally: updates the store item and the row's pin
+// marker, then re-sorts the deck (which also syncs the divider). A no-op for a
+// UTub the store does not know.
+export function setUTubRowPinned({
+  utubID,
+  isPinned,
+}: {
+  utubID: number;
+  isPinned: boolean;
+}): void {
+  const utubs = getState().utubs;
+  if (!utubs.some((utub) => utub.id === utubID)) return;
+  setState({
+    utubs: utubs.map((utub) =>
+      utub.id === utubID ? { ...utub, isPinned } : utub,
+    ),
+  });
+  setRowPinMarker({
+    row: $(`#listUTubs > .UTubSelector[utubid="${utubID}"]`),
+    isPinned,
+  });
+  reorderUTubDeck(getState().preferences.utubSort);
 }
 
 function nearestScrollParent(row: HTMLElement): HTMLElement {

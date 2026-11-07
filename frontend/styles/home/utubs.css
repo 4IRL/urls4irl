@@ -61,6 +61,28 @@
     color: var(--utubLockedIconColor);
 }
 
+/* Filled green pin before the role icon on a pinned row. */
+.UTubSelector .UTubPinIcon {
+    flex-shrink: 0;
+    color: var(--deckSelectionGreen);
+    /* Pushes the pin and role icon to the row end under space-between; with row
+       counts shown, the counts group already carries the auto margin. */
+    margin-left: auto;
+    margin-right: 0.5rem;
+}
+
+#UTubDeck.showUTubRowCounts .UTubSelector .UTubPinIcon {
+    margin-left: 0;
+}
+
+/* The rule between pinned and unpinned rows: the Trash wrapper's 2px rule, zero
+   height. Not a row, so striping and counting ignore it; .hidden hides it when
+   either group has no visible rows. */
+.UTubPinDivider {
+    height: 0;
+    border-top: 2px solid var(--borderColor);
+}
+
 /* Per-row URL / member counts. Hidden by default (display:none also removes the
    visually-hidden label from assistive tech); shown only when the user turned
    row counts on. margin-left:auto pushes the group beside the role icon under

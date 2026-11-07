@@ -42,6 +42,7 @@ describe("createUTubSelector — locked-UTub role icon", () => {
       utubID: 1,
       memberRole: CREATOR_ROLE,
       isLocked: true,
+      isPinned: false,
       index: 0,
       urlCount: 0,
       memberCount: 1,
@@ -58,6 +59,7 @@ describe("createUTubSelector — locked-UTub role icon", () => {
       utubID: 2,
       memberRole: CREATOR_ROLE,
       isLocked: false,
+      isPinned: false,
       index: 1,
       urlCount: 0,
       memberCount: 1,
@@ -75,6 +77,7 @@ describe("createUTubSelector — row counts group", () => {
       utubID: 3,
       memberRole: CREATOR_ROLE,
       isLocked: false,
+      isPinned: false,
       index: 2,
       urlCount,
       memberCount,
@@ -99,6 +102,70 @@ describe("createUTubSelector — row counts group", () => {
 
     expect(utubSelector.find(".UTubRowCounts .visually-hidden").text()).toBe(
       ", 1 URL, 1 member",
+    );
+  });
+});
+
+describe("createUTubSelector — pin marker", () => {
+  function build(isPinned: boolean) {
+    return createUTubSelector({
+      utubName: "Pin UTub",
+      utubID: 4,
+      memberRole: CREATOR_ROLE,
+      isLocked: false,
+      isPinned,
+      index: 0,
+      urlCount: 0,
+      memberCount: 1,
+    });
+  }
+
+  it("renders an aria-hidden pin icon and a Pinned label before the role icon", () => {
+    const utubSelector = build(true);
+    const icon = utubSelector.children("svg.bi-pin-fill.UTubPinIcon");
+
+    expect(icon.length).toBe(1);
+    expect(icon.attr("aria-hidden")).toBe("true");
+    expect(icon.attr("width")).toBe("16");
+    expect(icon.hasClass("memberRole")).toBe(false);
+    expect(icon.next(".visually-hidden").text()).toBe("Pinned");
+    expect(icon.next().next().is("svg.memberRole")).toBe(true);
+    expect(utubSelector.find(".memberRole .UTubPinIcon").length).toBe(0);
+  });
+
+  it("renders nothing extra for an unpinned item", () => {
+    const utubSelector = build(false);
+
+    expect(utubSelector.find(".UTubPinIcon").length).toBe(0);
+    expect(utubSelector.find(".UTubPinnedLabel").length).toBe(0);
+    expect(utubSelector.children().length).toBe(3);
+  });
+
+  it("matches the UTubCard.html pin marker (normalized whitespace)", () => {
+    const line = utubCardTemplate
+      .split("\n")
+      .find((text: string) => text.includes("{% if utub.isPinned %}"));
+    expect(line).toBeDefined();
+
+    const rendered = (line ?? "")
+      .replace("{% if utub.isPinned %}", "")
+      .replace("{% endif %}", "")
+      .replace(
+        "{{ CONSTANTS.STRINGS.UTUB_PINNED_ROW_LABEL }}",
+        APP_CONFIG.strings.UTUB_PINNED_ROW_LABEL,
+      );
+    const template = document.createElement("div");
+    template.innerHTML = rendered;
+    const normalize = (html: string) => html.replace(/\s+/g, " ").trim();
+
+    expect(normalize(template.innerHTML)).toBe(
+      normalize(
+        build(true)
+          .children(".UTubPinIcon, .UTubPinnedLabel")
+          .toArray()
+          .map((element) => element.outerHTML)
+          .join(""),
+      ),
     );
   });
 });
