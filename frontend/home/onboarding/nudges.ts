@@ -29,6 +29,7 @@ import { getState } from "../../store/app-store.js";
 import { isCrossUtubSearchActive } from "../search/cross-utub-search.js";
 import { isPanelSettingsOpen } from "../panel-settings/state.js";
 import { isUTubSearchActive } from "../utubs/search.js";
+import { canAddMembers } from "../utubs/policy.js";
 import {
   _resetOnboardingStorageForTests,
   clearAllSeenTips,
@@ -102,6 +103,14 @@ const SHEET_OPEN_SHOW_RETRY_INTERVAL_MS = 40;
 // subscriptions on a repeated call (subscriptions accumulate otherwise),
 // mirroring swipe.ts's `_swipeInitialized` idempotency guard.
 let _onboardingInitialized = false;
+
+/**
+ * Tears down the add-member tip when it is the active one, without marking it
+ * seen. Called when a policy change takes the add button away from the viewer.
+ */
+export function dismissAddMemberTipIfActive(): void {
+  if (_activeTipId === "addMember") dismissActiveTip({ markSeen: false });
+}
 
 /**
  * Dismiss the currently-active tip, if any: clear the anchor's
@@ -395,7 +404,7 @@ const NUDGE_REGISTRY: readonly NudgeConfig[] = [
     titleKey: "ONBOARDING_ADD_MEMBER_TIP_TITLE",
     bodyKey: "ONBOARDING_ADD_MEMBER_TIP_BODY",
     isEligible: (): boolean =>
-      (getState().isCurrentUserOwner || getState().isCoCreator) &&
+      canAddMembers() &&
       getState().activeUTubID !== null &&
       getState().members.length <= 1 &&
       !getState().multiSelectMode,

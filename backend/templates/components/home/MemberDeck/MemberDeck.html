@@ -29,6 +29,10 @@
 	</div>
 
 	<div id="MemberDeckContent" class="flex-column content">
+		<!-- Refusal notice (non-live, so nothing is read twice): non-live and never focusable. The
+		     spoken announcement lives in #MemberRowActionAnnouncement below. -->
+		<div id="MemberDeckNotice" class="hidden"></div>
+
 		<!-- Create Member Form -->
 		{% include 'components/home/MemberDeck/CreateMemberForm.html' %}
 

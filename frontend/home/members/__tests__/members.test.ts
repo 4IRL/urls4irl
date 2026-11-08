@@ -2,7 +2,12 @@ import {
   createMockJqXHRChainable,
   createMockXhr,
 } from "../../../__tests__/helpers/mock-jquery.js";
-import { createOwnerBadge, createMemberBadge } from "../members.js";
+import {
+  createOwnerBadge,
+  createMemberBadge,
+  swapMemberRoleInRow,
+} from "../members.js";
+import { APP_CONFIG } from "../../../lib/config.js";
 import { removeMemberShowModal } from "../delete.js";
 import { createMemberHideInput } from "../create.js";
 import { updateMemberDeck } from "../deck.js";
@@ -104,7 +109,7 @@ describe("createMemberBadge", () => {
         memberID: 42,
         username: "Bob",
         memberRole: "member",
-        isCurrentUserOwner: false,
+        viewerRole: "member",
         utubID: 10,
       });
       expect(el.attr("memberid")).toBe("42");
@@ -115,7 +120,7 @@ describe("createMemberBadge", () => {
         memberID: 1,
         username: "Bob",
         memberRole: "member",
-        isCurrentUserOwner: false,
+        viewerRole: "member",
         utubID: 10,
       });
       expect(el.hasClass("member")).toBe(true);
@@ -131,7 +136,7 @@ describe("createMemberBadge", () => {
         memberID: 1,
         username: "Bob",
         memberRole: "member",
-        isCurrentUserOwner: false,
+        viewerRole: "member",
         utubID: 10,
       });
       expect(el.find("b").text()).toBe("Bob");
@@ -146,7 +151,7 @@ describe("createMemberBadge", () => {
         memberID: 1,
         username: payload,
         memberRole: "member",
-        isCurrentUserOwner: false,
+        viewerRole: "member",
         utubID: 10,
       });
       expect(el.find("b").text()).toBe(payload);
@@ -163,7 +168,7 @@ describe("createMemberBadge", () => {
         memberID: 5,
         username: payload,
         memberRole: "member",
-        isCurrentUserOwner: true,
+        viewerRole: "owner",
         utubID: 10,
       });
       expect(el.find(".memberRowKebab").attr("aria-label")).toBe(
@@ -179,7 +184,7 @@ describe("createMemberBadge", () => {
         memberID: 3,
         username: "Bob",
         memberRole: "cocreator",
-        isCurrentUserOwner: false,
+        viewerRole: "member",
         utubID: 10,
       });
       expect(el.find("svg.bi-diamond-half.memberRole").length).toBe(1);
@@ -193,7 +198,7 @@ describe("createMemberBadge", () => {
         memberID: 3,
         username: "Bob",
         memberRole: "creator",
-        isCurrentUserOwner: false,
+        viewerRole: "member",
         utubID: 10,
       });
       expect(el.find("svg.bi-diamond-fill.memberRole").length).toBe(1);
@@ -207,7 +212,7 @@ describe("createMemberBadge", () => {
         memberID: 3,
         username: "Bob",
         memberRole: "member",
-        isCurrentUserOwner: false,
+        viewerRole: "member",
         utubID: 10,
       });
       expect(el.find("svg.bi-people-fill.memberRole").length).toBe(1);
@@ -223,7 +228,7 @@ describe("createMemberBadge", () => {
         memberID: 5,
         username: "Bob",
         memberRole: "member",
-        isCurrentUserOwner: true,
+        viewerRole: "owner",
         utubID: 10,
       });
       expect(el.find(".memberRowKebab").length).toBe(1);
@@ -234,7 +239,7 @@ describe("createMemberBadge", () => {
         memberID: 5,
         username: "Bob",
         memberRole: "member",
-        isCurrentUserOwner: true,
+        viewerRole: "owner",
         utubID: 10,
       });
       // The standalone remove button is folded into the kebab menu.
@@ -250,7 +255,7 @@ describe("createMemberBadge", () => {
         memberID: 5,
         username: "Bob",
         memberRole: "member",
-        isCurrentUserOwner: true,
+        viewerRole: "owner",
         utubID: 10,
       });
       // MEMBER_ROW_ACTIONS_ARIA_LABEL ("Actions for {{ username }}") is resolved
@@ -265,7 +270,7 @@ describe("createMemberBadge", () => {
         memberID: 5,
         username: "Bob",
         memberRole: "member",
-        isCurrentUserOwner: true,
+        viewerRole: "owner",
         utubID: 10,
       });
       const roleItem = el.find(".memberRowMenuItemRole");
@@ -279,7 +284,7 @@ describe("createMemberBadge", () => {
         memberID: 6,
         username: "Cara",
         memberRole: "cocreator",
-        isCurrentUserOwner: true,
+        viewerRole: "owner",
         utubID: 10,
       });
       const roleItem = el.find(".memberRowMenuItemRole");
@@ -294,7 +299,7 @@ describe("createMemberBadge", () => {
         memberID: 5,
         username: "Bob",
         memberRole: "member",
-        isCurrentUserOwner: false,
+        viewerRole: "member",
         utubID: 10,
       });
       expect(el.find(".memberRowKebab").length).toBe(0);
@@ -305,11 +310,273 @@ describe("createMemberBadge", () => {
         memberID: 5,
         username: "Bob",
         memberRole: "member",
-        isCurrentUserOwner: false,
+        viewerRole: "member",
         utubID: 10,
       });
       expect(el.find(".memberRowMenu").length).toBe(0);
     });
+  });
+});
+
+describe("createMemberBadge - co-owner viewer", () => {
+  const MEMBER_ROLE = "member";
+  const CO_OWNER_ROLE = "cocreator";
+
+  function coOwnerRow({
+    memberRole,
+    memberID = 5,
+  }: {
+    memberRole: string;
+    memberID?: number;
+  }) {
+    return createMemberBadge({
+      memberID,
+      username: "Bob",
+      memberRole,
+      viewerRole: "co_owner",
+      utubID: 10,
+    });
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    document.body.innerHTML = REMOVE_MODAL_HTML;
+    ($.fn as unknown as Record<string, unknown>).modal = function (
+      this: JQuery,
+    ) {
+      return this;
+    };
+  });
+
+  it("renders one co-owner kebab on a plain-member row, sharing the owner kebab's base class", () => {
+    const el = coOwnerRow({ memberRole: MEMBER_ROLE });
+    const kebab = el.find(".memberRowKebab");
+    expect(kebab.length).toBe(1);
+    expect(kebab.hasClass("memberRowKebab--coOwner")).toBe(true);
+    expect(kebab.attr("aria-label")).toBe("Actions for Bob");
+  });
+
+  it("builds a menu with exactly one item, Remove member: no role item, no divider", () => {
+    const el = coOwnerRow({ memberRole: MEMBER_ROLE });
+    const items = el.find(".memberRowMenu .memberRowMenuItem");
+    expect(items.length).toBe(1);
+    expect(items.hasClass("danger")).toBe(true);
+    expect(items.find("span").text()).toBe("Remove member");
+    expect(el.find(".memberRowMenuItemRole").length).toBe(0);
+    expect(el.find(".memberRowMenuDivider").length).toBe(0);
+  });
+
+  it("gives no kebab to another co-owner's row", () => {
+    const el = coOwnerRow({ memberRole: CO_OWNER_ROLE });
+    expect(el.find(".memberRowKebab").length).toBe(0);
+    expect(el.find(".memberRowMenu").length).toBe(0);
+  });
+
+  it("gives no kebab to a row with an unknown role (fail closed)", () => {
+    for (const memberRole of ["", "admin", "creator", "MEMBER"]) {
+      const el = coOwnerRow({ memberRole });
+      expect(el.find(".memberRowKebab").length).toBe(0);
+    }
+  });
+
+  it("keeps the owner's full menu unchanged: role item, divider and Remove", () => {
+    const el = createMemberBadge({
+      memberID: 5,
+      username: "Bob",
+      memberRole: MEMBER_ROLE,
+      viewerRole: "owner",
+      utubID: 10,
+    });
+    expect(el.find(".memberRowKebab").hasClass("memberRowKebab--coOwner")).toBe(
+      false,
+    );
+    expect(el.find(".memberRowMenuItemRole").length).toBe(1);
+    expect(el.find(".memberRowMenuDivider").length).toBe(1);
+    expect(el.find(".memberRowMenuItem.danger").length).toBe(1);
+  });
+
+  it("a plain-member viewer never gets a kebab", () => {
+    const el = createMemberBadge({
+      memberID: 5,
+      username: "Bob",
+      memberRole: MEMBER_ROLE,
+      viewerRole: "member",
+      utubID: 10,
+    });
+    expect(el.find(".memberRowKebab").length).toBe(0);
+  });
+
+  it("uses the shared kebab classes only: no size override class beyond --coOwner", () => {
+    const el = coOwnerRow({ memberRole: MEMBER_ROLE });
+    expect(Array.from(el.find(".memberRowKebab")[0].classList).sort()).toEqual([
+      "align-center",
+      "flex-row",
+      "memberRowKebab",
+      "memberRowKebab--coOwner",
+    ]);
+  });
+
+  it("confirming a co-owner's Remove uses the remove copy, removes the row and keeps the viewer in the UTub", () => {
+    vi.mocked(getState).mockReturnValue({
+      members: [{ id: 5 }],
+      utubs: [],
+      urls: [],
+      isCurrentUserOwner: false,
+      isCoCreator: true,
+      activeUTubID: 10,
+      settings: null,
+    } as unknown as ReturnType<typeof getState>);
+    ($.fn as unknown as Record<string, unknown>).fadeOut = function (
+      this: JQuery,
+      _duration: unknown,
+      callback?: () => void,
+    ) {
+      if (typeof callback === "function") callback();
+      return this;
+    };
+    document.body.insertAdjacentHTML(
+      "beforeend",
+      `<div id="listMembers"></div><button id="memberBtnCreate" class="hidden"></button>`,
+    );
+    $("#listMembers").append(coOwnerRow({ memberRole: MEMBER_ROLE }));
+    vi.mocked(ajaxCall).mockReturnValue(
+      createMockJqXHRChainable({
+        done: (cb: unknown) => {
+          (
+            cb as (
+              _response: unknown,
+              _textStatus: unknown,
+              xhr: JQuery.jqXHR,
+            ) => void
+          )({}, "success", createMockXhr({ status: 200 }));
+        },
+      }),
+    );
+
+    $(".memberRowMenuItem.danger").trigger("click");
+    expect($("#confirmModalTitle").text()).toBe(
+      "Are you sure you want to remove this member from the UTub?",
+    );
+    expect($("#modalSubmit").text()).toBe("Remove member");
+    $("#modalSubmit").trigger("click");
+
+    expect(ajaxCall).toHaveBeenCalledWith(
+      "delete",
+      APP_CONFIG.routes.removeMember(10, 5),
+      [],
+    );
+    expect($('.member[memberid="5"]').length).toBe(0);
+    expect(vi.mocked(hideInputsAndUpdateUTubDeck)).not.toHaveBeenCalled();
+    // The co-owner keeps the add button: it matches canAddMembers for the viewer.
+    expect($("#memberBtnCreate").hasClass("hidden")).toBe(false);
+  });
+});
+
+describe("swapMemberRoleInRow - co-owner viewer kebab sync", () => {
+  function seedRow({ memberRole }: { memberRole: string }): void {
+    document.body.innerHTML = `<div id="listMembers"></div>`;
+    $("#listMembers").append(
+      createMemberBadge({
+        memberID: 5,
+        username: "Bob",
+        memberRole,
+        viewerRole: "co_owner",
+        utubID: 10,
+      }),
+    );
+  }
+
+  function viewerState(patch: Record<string, unknown>) {
+    vi.mocked(getState).mockReturnValue({
+      members: [],
+      activeUTubID: 10,
+      isCurrentUserOwner: false,
+      isCoCreator: true,
+      ...patch,
+    } as unknown as ReturnType<typeof getState>);
+  }
+
+  it("removes the co-owner kebab when the row is promoted to co-owner", () => {
+    viewerState({});
+    seedRow({ memberRole: "member" });
+    expect($(".member[memberid=5] .memberRowKebab--coOwner").length).toBe(1);
+
+    swapMemberRoleInRow({ memberID: 5, targetRole: "cocreator" });
+
+    expect($(".member[memberid=5] .memberRowKebab").length).toBe(0);
+    expect($(".member[memberid=5] .memberRowMenu").length).toBe(0);
+  });
+
+  describe("focus on promotion", () => {
+    beforeEach(() => {
+      // jsdom has no layout: model connected elements as visible.
+      Object.defineProperty(HTMLElement.prototype, "offsetParent", {
+        configurable: true,
+        get() {
+          return this.isConnected ? document.body : null;
+        },
+      });
+    });
+
+    afterEach(() => {
+      delete (HTMLElement.prototype as unknown as Record<string, unknown>)
+        .offsetParent;
+    });
+
+    it("moves focus from the removed kebab to the row, never body", () => {
+      viewerState({});
+      seedRow({ memberRole: "member" });
+      (
+        $(".member[memberid=5] .memberRowKebab--coOwner")[0] as HTMLElement
+      ).focus();
+
+      swapMemberRoleInRow({ memberID: 5, targetRole: "cocreator" });
+
+      expect(document.activeElement).not.toBe(document.body);
+      expect(document.activeElement).toBe($(".member[memberid=5]")[0]);
+    });
+
+    it("moves focus from a removed open-menu item to the row, never body", () => {
+      viewerState({});
+      seedRow({ memberRole: "member" });
+      ($(".member[memberid=5] .memberRowMenuItem")[0] as HTMLElement).focus();
+
+      swapMemberRoleInRow({ memberID: 5, targetRole: "cocreator" });
+
+      expect(document.activeElement).not.toBe(document.body);
+      expect(document.activeElement).toBe($(".member[memberid=5]")[0]);
+    });
+  });
+
+  it("adds the co-owner kebab when the row is demoted to a plain member", () => {
+    viewerState({});
+    seedRow({ memberRole: "cocreator" });
+    expect($(".member[memberid=5] .memberRowKebab").length).toBe(0);
+
+    swapMemberRoleInRow({ memberID: 5, targetRole: "member" });
+
+    const kebab = $(".member[memberid=5] .memberRowKebab--coOwner");
+    expect(kebab.length).toBe(1);
+    expect(kebab.attr("aria-label")).toBe("Actions for Bob");
+    expect($(".member[memberid=5] .memberRowMenuItem").length).toBe(1);
+  });
+
+  it("does not double-add the kebab when the row is already a plain member", () => {
+    viewerState({});
+    seedRow({ memberRole: "member" });
+
+    swapMemberRoleInRow({ memberID: 5, targetRole: "member" });
+
+    expect($(".member[memberid=5] .memberRowKebab").length).toBe(1);
+  });
+
+  it("leaves a plain-member viewer's rows without a kebab", () => {
+    viewerState({ isCoCreator: false });
+    seedRow({ memberRole: "cocreator" });
+
+    swapMemberRoleInRow({ memberID: 5, targetRole: "member" });
+
+    expect($(".member[memberid=5] .memberRowKebab").length).toBe(0);
   });
 });
 
@@ -349,7 +616,7 @@ describe("removeMemberFail - is429Handled early-return", () => {
     });
     vi.mocked(ajaxCall).mockReturnValue(chainable);
 
-    removeMemberShowModal(5, true, 1);
+    removeMemberShowModal({ memberID: 5, utubID: 1, intent: "remove" });
     $("#modalSubmit").trigger("click");
 
     expect(vi.mocked(is429Handled)).toHaveBeenCalledWith(rateLimitedXhr);
@@ -512,7 +779,7 @@ describe("leaveUTubSuccess - UTub deck dispatch on successful leave", () => {
     vi.mocked(ajaxCall).mockReturnValue(chainable);
 
     // Pass isCreator=false to route the done callback through leaveUTubSuccess
-    removeMemberShowModal(5, false, utubID);
+    removeMemberShowModal({ memberID: 5, utubID: utubID, intent: "leave" });
     $("#modalSubmit").trigger("click");
   }
 
@@ -535,53 +802,29 @@ describe("leaveUTubSuccess - UTub deck dispatch on successful leave", () => {
   });
 });
 
-describe("createMemberBadge - hides the #memberSelfBtnDelete hover tooltip", () => {
+describe("createMemberBadge - leaves #memberSelfBtnDelete to createLeaveUTubAsMemberIcon", () => {
   beforeEach(() => {
-    document.body.innerHTML = `
-      ${REMOVE_MODAL_HTML}
-      <button id="memberSelfBtnDelete" data-bs-toggle="tooltip"></button>
-    `;
+    document.body.innerHTML = `<button id="memberSelfBtnDelete" data-bs-toggle="tooltip"></button>`;
     vi.clearAllMocks();
-    ($.fn as unknown as Record<string, unknown>).modal = function (
-      this: JQuery,
-    ) {
-      return this;
+  });
+
+  it("binds nothing on the leave button when building a non-owner viewer's member row", () => {
+    createMemberBadge({
+      memberID: 5,
+      username: "Bob",
+      memberRole: "member",
+      viewerRole: "member",
+      utubID: 10,
+    });
+
+    const jqueryInternals = $ as unknown as {
+      _data: (element: Element, name: string) => unknown;
     };
-  });
-
-  it("hides the tooltip when the leave-UTub button bound by the member branch is clicked", () => {
-    createMemberBadge({
-      memberID: 5,
-      username: "Bob",
-      memberRole: "member",
-      isCurrentUserOwner: false,
-      utubID: 10,
-    });
-
+    expect(
+      jqueryInternals._data($("#memberSelfBtnDelete")[0], "events"),
+    ).toBeUndefined();
     $("#memberSelfBtnDelete").trigger("click.removeMember");
-
-    expect(tooltipInstance.hide).toHaveBeenCalled();
-  });
-
-  it("still opens the leave modal and does not throw when no tooltip instance exists", () => {
-    // Touch devices never construct a Tooltip, so getInstance() returns null and
-    // the `?.` guard must no-op without breaking the leave-modal flow.
-    vi.mocked(bootstrap.Tooltip.getInstance).mockReturnValueOnce(null);
-    createMemberBadge({
-      memberID: 5,
-      username: "Bob",
-      memberRole: "member",
-      isCurrentUserOwner: false,
-      utubID: 10,
-    });
-
-    expect(() =>
-      $("#memberSelfBtnDelete").trigger("click.removeMember"),
-    ).not.toThrow();
-
     expect(tooltipInstance.hide).not.toHaveBeenCalled();
-    expect($("#confirmModalTitle").text()).toBe(
-      "Are you sure you want to leave this UTub?",
-    );
+    expect(vi.mocked(bootstrap.Tooltip.getInstance)).not.toHaveBeenCalled();
   });
 });

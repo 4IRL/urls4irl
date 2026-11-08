@@ -15,6 +15,10 @@ import {
 } from "./members.js";
 import { compareMembers } from "./sort.js";
 import { closeMemberRowMenuInRow } from "./row-menu.js";
+import { canAddMembers, viewerRoleFor } from "../utubs/policy.js";
+import { withMemberControlFocusFallback } from "./focus-fallback.js";
+import { clearMemberDeckNotice } from "./notice.js";
+import { seedMemberDeckPolicySnapshot } from "./policy-attrs.js";
 import { setupShowCreateMemberFormEventListeners } from "./create.js";
 import { createLeaveUTubAsMemberIcon } from "./delete.js";
 import {
@@ -198,7 +202,10 @@ export function updateMemberDeck(
           memberID: member.id,
           username: member.username,
           memberRole: member.memberRole,
-          isCurrentUserOwner,
+          viewerRole: viewerRoleFor({
+            isCurrentUserOwner,
+            isCoCreator: getState().isCoCreator,
+          }),
           utubID,
         }),
       );
@@ -233,15 +240,47 @@ export function setMemberDeckOnUTubSelected(
   currentUserID: number,
   utubID: number,
 ): void {
+  // The rebuild destroys every row: focus that sat on a row or kebab falls back
+  // to the deck header, never <body>.
+  withMemberControlFocusFallback({
+    coverList: true,
+    write: () =>
+      buildMemberDeck({
+        dictMembers,
+        utubOwnerUserID,
+        isCurrentUserOwner,
+        currentUserID,
+        utubID,
+      }),
+  });
+  // Re-seed the policy baseline so a UTub change is never read as a flip.
+  seedMemberDeckPolicySnapshot();
+}
+
+function buildMemberDeck({
+  dictMembers,
+  utubOwnerUserID,
+  isCurrentUserOwner,
+  currentUserID,
+  utubID,
+}: {
+  dictMembers: MemberItem[];
+  utubOwnerUserID: number;
+  isCurrentUserOwner: boolean;
+  currentUserID: number;
+  utubID: number;
+}): void {
   resetMemberDeck();
   $("#displayMemberWrap").showClassFlex();
   const parent = $("#listMembers");
 
-  // Co-owners can add members too (DD-1), so gate the add affordance on
-  // owner-OR-co-creator rather than the literal owner flag alone.
-  const canManageMembers = isCurrentUserOwner || getState().isCoCreator;
-
-  if (canManageMembers) setupShowCreateMemberFormEventListeners(utubID);
+  // The add affordance follows the shared rule: owner or co-owner, or a plain
+  // member while the owner allows it.
+  const { isCoCreator, settings } = getState();
+  const viewerRole = viewerRoleFor({ isCurrentUserOwner, isCoCreator });
+  if (canAddMembers({ isCurrentUserOwner, isCoCreator, settings })) {
+    setupShowCreateMemberFormEventListeners(utubID);
+  }
 
   // Paint in the resolved sort (written to the store before UTUB_SELECTED; a kept
   // local edit wins over the payload). This is also how an ownership transfer
@@ -265,7 +304,7 @@ export function setMemberDeckOnUTubSelected(
           memberID: utubMemberUserID,
           username: utubMemberUsername,
           memberRole: utubMember.memberRole,
-          isCurrentUserOwner,
+          viewerRole,
           utubID,
         }),
       );
@@ -275,7 +314,7 @@ export function setMemberDeckOnUTubSelected(
   // TODO: Move leaving of UTub badge creation here so that createMemberBadge does one thing
   // VERIFY where it is being used first
   if (!isCurrentUserOwner) {
-    createLeaveUTubAsMemberIcon(isCurrentUserOwner, currentUserID, utubID);
+    createLeaveUTubAsMemberIcon({ currentUserID, utubID });
   }
 
   // Stripe the freshly-built rows, (re)bind the filter listeners for this UTub,
@@ -286,11 +325,12 @@ export function setMemberDeckOnUTubSelected(
   showMemberFilterBar();
 
   // Subheader prompt
-  setMemberDeckForUTub(canManageMembers);
+  setMemberDeckForUTub();
 }
 
 export function setMemberDeckWhenNoUTubSelected(): void {
   resetMemberDeck();
+  clearMemberDeckNotice();
 
   $("#memberBtnCreate").hideClass();
   // The leave button lives in the UTub deck now; it is hidden via
@@ -303,19 +343,20 @@ export function setMemberDeckWhenNoUTubSelected(): void {
   $("#MemberDeckCount").text("");
 }
 
-export function setMemberDeckForUTub(canManageMembers: boolean = true): void {
+export function setMemberDeckForUTub(): void {
   const numOfMembers = $("#listMembers").find("span.member").length + 1; // plus 1 for owner
+  // The one shared add rule, read from the store: no caller can force it on.
+  const canAdd = canAddMembers();
 
   log("setMemberDeckForUTub — permission-gated UI", {
-    canManageMembers,
+    canAdd,
     numOfMembers,
-    showingAddButton: canManageMembers,
   });
 
-  // Ability to add members is limited to the UTub owner and co-owners (DD-1). The
-  // leave/delete actions live in the UTub deck (setUTubDeckOnUTubSelected) and are
-  // not managed here.
-  if (canManageMembers) {
+  // Owners and co-owners always add; a plain member only while the owner allows
+  // it. The leave/delete actions live in the UTub deck (setUTubDeckOnUTubSelected)
+  // and are not managed here.
+  if (canAdd) {
     $("#memberBtnCreate").showClassNormal();
   } else {
     $("#memberBtnCreate").hideClass();

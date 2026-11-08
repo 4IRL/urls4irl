@@ -133,6 +133,18 @@
     outline-offset: 2px;
 }
 
+/* The co-owner's Remove-only kebab (and its menu) is built on every plain-member
+   row for a co-owner viewer but shown only while the owner allows co-owners to
+   remove. Fail closed: anything other than exactly "true" hides it. display:none
+   (not opacity) so a hidden kebab is neither focusable nor read. It shares the
+   .memberRowKebab sizing and the member-add-open dimming; no size override. */
+#MemberDeck:not([data-co-owners-can-remove="true"]) .memberRowKebab--coOwner,
+#MemberDeck:not([data-co-owners-can-remove="true"])
+    .memberRowKebab--coOwner
+    + .memberRowMenu {
+    display: none;
+}
+
 /* Floating menu card, anchored to the row's bottom-right (the row is
    position:relative). Hidden at rest; .open reveals it as a vertical stack. */
 .memberRowMenu {
@@ -234,6 +246,9 @@
 
 #MemberDeck .button-container {
     align-items: center;
+    /* Same 2px flex gap the UTub and Tag headers carry (plus each icon's 4px
+       margin), so the header icons are 6px apart in all three left decks. */
+    gap: 2px;
 }
 
 /* The member name-filter box lives in its own subheader band
@@ -738,4 +753,23 @@
     .transferPickerCheck {
         transition: none;
     }
+}
+
+/* Refusal notice at the top of the Members deck content (non-live, never
+   focusable; the spoken text lives in #MemberRowActionAnnouncement). The red
+   border and tint carry the error cue; the text uses the theme's primary colour
+   because --removeIconColor text is only ~3.2:1 (dark) / ~3.9:1 (light) on it. */
+#MemberDeckNotice {
+    color: var(--textPrimary);
+    background-color: var(--removeMemberColorLighter);
+    border: 2px solid var(--removeMemberColor);
+    border-radius: 5px;
+    padding: 5px 8px;
+    margin: 5px 0;
+    word-break: break-word;
+}
+
+/* Explicit so the hide holds regardless of the global .hidden rule's specificity. */
+#MemberDeckNotice.hidden {
+    display: none;
 }

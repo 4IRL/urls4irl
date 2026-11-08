@@ -12,6 +12,13 @@ import { TAG_SHEET_TOGGLE_TRIGGER } from "../../types/metrics-dim-values.js";
 import { UI_EVENTS } from "../../types/metrics-events.js";
 import { closeTagSheet, isTagSheetOpen } from "../tags/sheet.js";
 import { setMemberDeckForUTub } from "./deck.js";
+import {
+  bindMemberRowModalFocusRestore,
+  disarmMemberRowModalFocusRestore,
+} from "./row-menu.js";
+import { announceMemberRowAction, showMemberDeckNotice } from "./notice.js";
+import { learnPolicyOff } from "../utubs/policy.js";
+import { updateUTubOnFindingStaleData } from "../utubs/stale-data.js";
 import { hideInputs } from "../btns-forms.js";
 import { getState, setState } from "../../store/app-store.js";
 import { deselectAllURLs } from "../urls/cards/selection.js";
@@ -24,16 +31,25 @@ import {
 } from "../utubs/deck.js";
 import { setUIWhenNoUTubSelected } from "../init.js";
 
+// "remove": the viewer removes another member (owner, or co-owner while allowed).
+// "leave": the viewer removes themselves.
+export type RemoveIntent = "remove" | "leave";
+
+// Mirrors UTubMembersErrorCodes.CO_OWNER_REMOVE_NOT_ALLOWED (backend/members/constants.py).
+export const CO_OWNER_REMOVE_NOT_ALLOWED_ERROR_CODE = 8;
+
 let _memberActionConfirmed: boolean = false;
-let _removeMemberIsCreator: boolean = false;
+let _removeMemberIntent: RemoveIntent = "leave";
 
 const log = debug("members");
 
-export function createLeaveUTubAsMemberIcon(
-  isCurrentUserOwner: boolean,
-  currentUserID: number,
-  utubID: number,
-): void {
+export function createLeaveUTubAsMemberIcon({
+  currentUserID,
+  utubID,
+}: {
+  currentUserID: number;
+  utubID: number;
+}): void {
   $("#memberSelfBtnDelete").offAndOnExact(
     "click.removeMember",
     function (this: HTMLElement) {
@@ -42,7 +58,11 @@ export function createLeaveUTubAsMemberIcon(
       hideTooltip(this);
       hideInputs();
       deselectAllURLs();
-      removeMemberShowModal(currentUserID, isCurrentUserOwner, utubID);
+      removeMemberShowModal({
+        memberID: currentUserID,
+        utubID,
+        intent: "leave",
+      });
     },
   );
 }
@@ -53,27 +73,34 @@ function removeMemberHideModal(): void {
 }
 
 // Show confirmation modal for removal of the selected member from current UTub
-export function removeMemberShowModal(
-  memberID: number,
-  isCreator: boolean,
-  utubID: number,
-): void {
+export function removeMemberShowModal({
+  memberID,
+  utubID,
+  intent,
+}: {
+  memberID: number;
+  utubID: number;
+  intent: RemoveIntent;
+}): void {
+  const isRemovingAnother = intent === "remove";
   _memberActionConfirmed = false;
-  _removeMemberIsCreator = isCreator;
+  _removeMemberIntent = intent;
+  // Leave never inherits a focus restore a cancelled Remove left armed.
+  if (!isRemovingAnother) disarmMemberRowModalFocusRestore();
   emit({
-    event: isCreator
+    event: isRemovingAnother
       ? UI_EVENTS.UI_MEMBER_REMOVE_OPEN
       : UI_EVENTS.UI_MEMBER_LEAVE_OPEN,
   });
 
-  const modalTitle = isCreator
+  const modalTitle = isRemovingAnother
     ? "Are you sure you want to remove this member from the UTub?"
     : "Are you sure you want to leave this UTub?";
-  const modalBody = isCreator
+  const modalBody = isRemovingAnother
     ? `${APP_CONFIG.strings.MEMBER_DELETE_WARNING}`
     : `${APP_CONFIG.strings.MEMBER_LEAVE_WARNING}`;
-  const buttonTextDismiss = isCreator ? "Keep member" : "Stay in UTub";
-  const buttonTextSubmit = isCreator ? "Remove member" : "Leave UTub";
+  const buttonTextDismiss = isRemovingAnother ? "Keep member" : "Stay in UTub";
+  const buttonTextSubmit = isRemovingAnother ? "Remove member" : "Leave UTub";
 
   $("#confirmModalTitle").text(modalTitle);
 
@@ -95,20 +122,21 @@ export function removeMemberShowModal(
       event.preventDefault();
       _memberActionConfirmed = true;
       emit({
-        event: isCreator
+        event: isRemovingAnother
           ? UI_EVENTS.UI_MEMBER_REMOVE_CONFIRM
           : UI_EVENTS.UI_MEMBER_LEAVE_CONFIRM,
       });
-      removeMember(memberID, isCreator, utubID);
+      removeMember({ memberID, intent, utubID });
     })
     .text(buttonTextSubmit);
 
   $("#confirmModal").offAndOnExact("hidden.bs.modal.memberAction", function () {
     if (!_memberActionConfirmed) {
       emit({
-        event: _removeMemberIsCreator
-          ? UI_EVENTS.UI_MEMBER_REMOVE_CANCEL
-          : UI_EVENTS.UI_MEMBER_LEAVE_CANCEL,
+        event:
+          _removeMemberIntent === "remove"
+            ? UI_EVENTS.UI_MEMBER_REMOVE_CANCEL
+            : UI_EVENTS.UI_MEMBER_LEAVE_CANCEL,
       });
     }
   });
@@ -119,14 +147,18 @@ export function removeMemberShowModal(
 }
 
 // Handles post request and response for removing a member from current UTub, after confirmation
-function removeMember(
-  memberID: number,
-  isCreator: boolean,
-  utubID: number,
-): void {
+function removeMember({
+  memberID,
+  intent,
+  utubID,
+}: {
+  memberID: number;
+  intent: RemoveIntent;
+  utubID: number;
+}): void {
   $("#modalSubmit").prop("disabled", true);
 
-  log("removeMember submitted", { memberID, isCreator, utubID });
+  log("removeMember submitted", { memberID, intent, utubID });
 
   const postURL = APP_CONFIG.routes.removeMember(utubID, memberID);
 
@@ -139,7 +171,7 @@ function removeMember(
     xhr: JQuery.jqXHR,
   ) {
     if (xhr.status === 200) {
-      if (isCreator) {
+      if (intent === "remove") {
         removeMemberSuccess(memberID);
       } else {
         leaveUTubSuccess(utubID);
@@ -148,7 +180,7 @@ function removeMember(
   });
 
   request.fail(function (xhr: JQuery.jqXHR) {
-    removeMemberFail(xhr);
+    removeMemberFail({ xhr, memberID, utubID });
   });
 }
 
@@ -227,7 +259,71 @@ export function leaveUTubSuccess(utubID: number): void {
   }, 0);
 }
 
-function removeMemberFail(xhr: JQuery.jqXHR): void {
+type RemoveRefusalBody = { errorCode?: number; message?: string } | undefined;
+
+// The three 403s a stale or refused co-owner Remove can get. Matched by errorCode
+// (setting off) or by message (no errorCode). Every other 403 keeps the redirect.
+function removeRefusalFor(xhr: JQuery.jqXHR): {
+  message: string;
+  learnOff: boolean;
+} | null {
+  if (xhr.status !== 403) return null;
+  const body = xhr.responseJSON as RemoveRefusalBody;
+  if (body?.errorCode === CO_OWNER_REMOVE_NOT_ALLOWED_ERROR_CODE) {
+    return {
+      message: APP_CONFIG.strings.CO_OWNER_REMOVE_NOT_ALLOWED,
+      learnOff: true,
+    };
+  }
+  if (body?.message === APP_CONFIG.strings.CO_OWNER_CANNOT_REMOVE_CO_OWNER) {
+    return {
+      message: APP_CONFIG.strings.CO_OWNER_CANNOT_REMOVE_CO_OWNER,
+      learnOff: false,
+    };
+  }
+  if (body?.message === APP_CONFIG.strings.INVALID_PERMISSION_TO_REMOVE) {
+    return {
+      message: APP_CONFIG.strings.INVALID_PERMISSION_TO_REMOVE,
+      learnOff: false,
+    };
+  }
+  return null;
+}
+
+// Closes the modal and shows the refusal: one notice, one assertive announcement,
+// a focus landing on the row (else the deck header), and a reconcile with the
+// server so a stale viewer role or target row converges. Never redirects.
+function handleRemoveRefusal({
+  message,
+  learnOff,
+  memberID,
+  utubID,
+}: {
+  message: string;
+  learnOff: boolean;
+  memberID: number;
+  utubID: number;
+}): void {
+  // The kebab may be hidden by the learn below; arm the one-shot restore so focus
+  // lands on the row (else the header) when the modal finishes closing.
+  bindMemberRowModalFocusRestore(memberID);
+  $("#confirmModal").modal("hide");
+  if (getState().activeUTubID !== utubID) return;
+  if (learnOff) learnPolicyOff({ utubID, key: "members.co_owners_can_remove" });
+  showMemberDeckNotice({ message });
+  announceMemberRowAction({ message, politeness: "assertive" });
+  void updateUTubOnFindingStaleData({ utubID });
+}
+
+function removeMemberFail({
+  xhr,
+  memberID,
+  utubID,
+}: {
+  xhr: JQuery.jqXHR;
+  memberID: number;
+  utubID: number;
+}): void {
   $("#modalSubmit").prop("disabled", false);
   if (is429Handled(xhr)) return;
   if (isUtubLockedHandled(xhr)) return;
@@ -238,6 +334,12 @@ function removeMemberFail(xhr: JQuery.jqXHR): void {
   ) {
     // Handle invalid CSRF token error response
     $("body").html(xhr.responseText);
+    return;
+  }
+
+  const refusal = removeRefusalFor(xhr);
+  if (refusal !== null) {
+    handleRemoveRefusal({ ...refusal, memberID, utubID });
     return;
   }
 

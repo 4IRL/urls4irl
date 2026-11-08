@@ -17,6 +17,7 @@ import {
   leaveUTubSuccess,
   removeMemberShowModal,
 } from "../delete.js";
+import { createMemberBadge } from "../members.js";
 import { bootstrap } from "../../../lib/globals.js";
 import { APP_CONFIG } from "../../../lib/config.js";
 
@@ -128,7 +129,7 @@ describe("leaveUTubSuccess — indirect via removeMemberShowModal + ajax success
     vi.mocked(ajaxCall).mockReturnValue(chainable);
 
     // memberID irrelevant for the leave path; isCreator=false routes to leaveUTubSuccess.
-    removeMemberShowModal(9, false, utubID);
+    removeMemberShowModal({ memberID: 9, utubID: utubID, intent: "leave" });
     $("#modalSubmit").trigger("click");
   }
 
@@ -267,7 +268,7 @@ describe("removeMemberSuccess — creator-removes-member success branch", () => 
       }),
     );
 
-    removeMemberShowModal(9, true, 42);
+    removeMemberShowModal({ memberID: 9, utubID: 42, intent: "remove" });
     $("#modalSubmit").trigger("click");
 
     expect(applyRowCountDelta).toHaveBeenCalledWith({
@@ -298,7 +299,7 @@ describe("removeMemberSuccess — creator-removes-member success branch", () => 
     });
     vi.mocked(ajaxCall).mockReturnValue(chainable);
 
-    removeMemberShowModal(9, true, 42);
+    removeMemberShowModal({ memberID: 9, utubID: 42, intent: "remove" });
     $("#modalSubmit").trigger("click");
 
     expect(emit).toHaveBeenCalledWith(AppEvents.MEMBER_DECK_CHANGED);
@@ -343,7 +344,7 @@ describe("removeMemberSuccess — creator-removes-member success branch", () => 
       }),
     );
 
-    removeMemberShowModal(9, true, 42);
+    removeMemberShowModal({ memberID: 9, utubID: 42, intent: "remove" });
     $("#modalSubmit").trigger("click");
 
     const removed = $('.urlRow[utuburlid="1"] .urlDateAddedBadgeStacked');
@@ -399,14 +400,14 @@ describe("removeMemberSuccess — creator-removes-member success branch", () => 
     const before = $("#listURLs").html();
 
     expect(() => {
-      removeMemberShowModal(9, true, 42);
+      removeMemberShowModal({ memberID: 9, utubID: 42, intent: "remove" });
       $("#modalSubmit").trigger("click");
     }).not.toThrow();
     expect($("#listURLs").html()).toBe(before);
 
     // A member with no URLs in the store is likewise a no-op.
     expect(() => {
-      removeMemberShowModal(6, true, 42);
+      removeMemberShowModal({ memberID: 6, utubID: 42, intent: "remove" });
       $("#modalSubmit").trigger("click");
     }).not.toThrow();
     expect($("#listURLs").html()).toBe(before);
@@ -424,7 +425,7 @@ describe("createLeaveUTubAsMemberIcon — hides the #memberSelfBtnDelete tooltip
   });
 
   it("hides the tooltip when the leave-UTub button is clicked", () => {
-    createLeaveUTubAsMemberIcon(false, 9, 42);
+    createLeaveUTubAsMemberIcon({ currentUserID: 9, utubID: 42 });
     $("#memberSelfBtnDelete").trigger("click.removeMember");
 
     expect(tooltipInstance.hide).toHaveBeenCalled();
@@ -434,7 +435,7 @@ describe("createLeaveUTubAsMemberIcon — hides the #memberSelfBtnDelete tooltip
     // Touch devices never construct a Tooltip, so getInstance() returns null and
     // the `?.` guard must no-op without breaking the leave-modal flow.
     vi.mocked(bootstrap.Tooltip.getInstance).mockReturnValueOnce(null);
-    createLeaveUTubAsMemberIcon(false, 9, 42);
+    createLeaveUTubAsMemberIcon({ currentUserID: 9, utubID: 42 });
 
     expect(() =>
       $("#memberSelfBtnDelete").trigger("click.removeMember"),
@@ -444,5 +445,62 @@ describe("createLeaveUTubAsMemberIcon — hides the #memberSelfBtnDelete tooltip
     expect($("#confirmModalTitle").text()).toBe(
       "Are you sure you want to leave this UTub?",
     );
+  });
+});
+
+describe("createLeaveUTubAsMemberIcon — single binder for Leave", () => {
+  beforeEach(() => {
+    document.body.innerHTML = `
+      ${LEAVE_UTUB_HTML}
+      <button id="memberSelfBtnDelete" data-bs-toggle="tooltip"></button>
+      <div id="listMembers"></div>
+    `;
+    vi.clearAllMocks();
+    installJqueryOverrides();
+    vi.mocked(ajaxCall).mockReturnValue(createMockJqXHRChainable({}));
+  });
+
+  function expectLeaveTargetsOwnID(): void {
+    $("#memberSelfBtnDelete").trigger("click.removeMember");
+    expect($("#confirmModalTitle").text()).toBe(
+      "Are you sure you want to leave this UTub?",
+    );
+    $("#modalSubmit").trigger("click");
+    expect(ajaxCall).toHaveBeenCalledWith(
+      "delete",
+      APP_CONFIG.routes.removeMember(42, 9),
+      [],
+    );
+  }
+
+  it("targets the viewer's own id with the leave copy after a combobox-style member append", () => {
+    createLeaveUTubAsMemberIcon({ currentUserID: 9, utubID: 42 });
+    $("#listMembers").append(
+      createMemberBadge({
+        memberID: 77,
+        username: "Added",
+        memberRole: "member",
+        viewerRole: "member",
+        utubID: 42,
+      }),
+    );
+
+    expectLeaveTargetsOwnID();
+  });
+
+  it("targets the viewer's own id with the leave copy after the refresh-diff builder appends a co-owner row", () => {
+    // The refresh diff (deck.ts addElement) appends through createMemberBadge too.
+    createLeaveUTubAsMemberIcon({ currentUserID: 9, utubID: 42 });
+    $("#listMembers").append(
+      createMemberBadge({
+        memberID: 88,
+        username: "Fresh",
+        memberRole: APP_CONFIG.constants.MEMBER_ROLES.CO_CREATOR,
+        viewerRole: "member",
+        utubID: 42,
+      }),
+    );
+
+    expectLeaveTargetsOwnID();
   });
 });

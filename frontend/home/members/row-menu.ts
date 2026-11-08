@@ -4,7 +4,8 @@ import { debug } from "../../lib/debug.js";
 import { AppEvents, on } from "../../lib/event-bus.js";
 
 // The app's first per-row overflow (kebab) menu. Each non-owner member row (owner
-// viewer only) gets a kebab trigger + a floating `role="menu"` card built in
+// viewer: full menu; co-owner viewer: plain-member rows, Remove only) gets a kebab
+// trigger + a floating `role="menu"` card built in
 // members.ts's createMemberBadge; this module owns the shared open/close/toggle,
 // keyboard, and outside-dismiss behavior. Open/close is expressed as the `.open`
 // class + the `hidden` attribute on the menu and `aria-expanded` on the trigger.
@@ -214,26 +215,38 @@ function isFocusable(element: Element | null | undefined): boolean {
 // distinctly from delete.ts's own .memberAction handler so the two coexist on
 // #confirmModal without clobbering each other. A row removed by a successful
 // removal — or one whose kebab is unfocusable inside a collapsed deck — falls
-// back to the Member deck header button rather than dropping focus to <body>.
+// back to the row itself, else the Member deck header button, rather than
+// dropping focus to <body>. One-shot: the handler unbinds itself on its first
+// fire, so one arm serves exactly one close (see disarmMemberRowModalFocusRestore).
+const FOCUS_RESTORE_EVENT = "hidden.bs.modal.memberRowFocusRestore";
+
+// Drops a pending focus restore, e.g. before the Leave modal opens, so a cancelled
+// Remove's armed handler cannot move focus to the old row on a later close.
+export function disarmMemberRowModalFocusRestore(): void {
+  $("#confirmModal").off(FOCUS_RESTORE_EVENT);
+}
+
 export function bindMemberRowModalFocusRestore(memberID: number): void {
-  $("#confirmModal").offAndOnExact(
-    "hidden.bs.modal.memberRowFocusRestore",
-    function () {
-      // Attribute value quoted: a bare numeric value is not a valid CSS
-      // identifier, so an unquoted selector only matched via jQuery's Sizzle
-      // fallback after querySelectorAll threw.
-      const trigger = $(`.member[memberid="${memberID}"] .memberRowKebab`);
-      // The kebab lives inside the Member deck's `.content`, which is
-      // visibility:hidden while the deck is collapsed — the row can still exist
-      // (length > 0) without being focusable, so focusing it would silently
-      // drop focus to <body>. Fall back to the deck's own header button.
-      if (trigger.length > 0 && isFocusable(trigger[0])) {
-        trigger.trigger("focus");
-      } else {
-        $("#MemberDeckHeaderAndCaret").trigger("focus");
-      }
-    },
-  );
+  $("#confirmModal").offAndOnExact(FOCUS_RESTORE_EVENT, function () {
+    disarmMemberRowModalFocusRestore();
+    // Attribute value quoted: a bare numeric value is not a valid CSS
+    // identifier, so an unquoted selector only matched via jQuery's Sizzle
+    // fallback after querySelectorAll threw.
+    const row = $(`.member[memberid="${memberID}"]`);
+    const trigger = row.find(KEBAB_SELECTOR);
+    // The kebab lives inside the Member deck's `.content`, which is
+    // visibility:hidden while the deck is collapsed — the row can still exist
+    // (length > 0) without being focusable, so focusing it would silently
+    // drop focus to <body>.
+    if (trigger.length > 0 && isFocusable(trigger[0])) {
+      trigger.trigger("focus");
+    } else if (row.length > 0 && isFocusable(row[0])) {
+      // A hidden co-owner kebab (the switch just went off) lands on its row.
+      row.attr("tabindex", "-1").trigger("focus");
+    } else {
+      $("#MemberDeckHeaderAndCaret").trigger("focus");
+    }
+  });
 }
 
 // Close any open kebab menu when the visible member-row set changes (DD-5, from

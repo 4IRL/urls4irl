@@ -2,6 +2,7 @@ import { createMemberBadge } from "../members.js";
 import {
   bindMemberRowModalFocusRestore,
   closeMemberRowMenuInRow,
+  disarmMemberRowModalFocusRestore,
 } from "../row-menu.js";
 import { removeMemberShowModal } from "../delete.js";
 import { modifyMemberRoleShowModal } from "../role.js";
@@ -30,7 +31,17 @@ function buildOwnerRow(
     memberID,
     username,
     memberRole: "member",
-    isCurrentUserOwner: true,
+    viewerRole: "owner",
+    utubID: 10,
+  });
+}
+
+function buildCoOwnerRow(memberID: number): JQuery<HTMLSpanElement> {
+  return createMemberBadge({
+    memberID,
+    username: "Bob",
+    memberRole: "member",
+    viewerRole: "co_owner",
     utubID: 10,
   });
 }
@@ -113,7 +124,11 @@ describe("member row kebab menu (row-menu.ts)", () => {
     kebab.trigger("click");
     row.find(".memberRowMenuItem.danger").trigger("click");
 
-    expect(vi.mocked(removeMemberShowModal)).toHaveBeenCalledWith(5, true, 10);
+    expect(vi.mocked(removeMemberShowModal)).toHaveBeenCalledWith({
+      memberID: 5,
+      utubID: 10,
+      intent: "remove",
+    });
   });
 
   it("closes the menu before opening the remove modal (DD-16)", () => {
@@ -223,6 +238,8 @@ describe("member row kebab menu (row-menu.ts)", () => {
     $("#listMembers").append(row);
     // decks.css never loads into happy-dom — stand the collapsed deck's
     // inherited visibility:hidden up directly on the kebab.
+    // CSS visibility inherits, so the row is hidden together with its kebab.
+    (row.get(0) as HTMLElement).style.visibility = "hidden";
     (row.find(".memberRowKebab").get(0) as HTMLElement).style.visibility =
       "hidden";
 
@@ -245,6 +262,67 @@ describe("member row kebab menu (row-menu.ts)", () => {
     expect(document.activeElement).toBe(
       document.getElementById("MemberDeckHeaderAndCaret"),
     );
+  });
+
+  it("a hidden co-owner kebab lands focus on its surviving row (tabindex=-1), not the header", () => {
+    document.body.innerHTML = `<div id="listMembers"></div><div id="confirmModal"></div><button type="button" id="MemberDeckHeaderAndCaret"></button>`;
+    const row = buildCoOwnerRow(5);
+    $("#listMembers").append(row);
+    // The CSS hide rule is display:none, so the kebab is not focusable; the row is.
+    (row.find(".memberRowKebab").get(0) as HTMLElement).style.visibility =
+      "hidden";
+
+    bindMemberRowModalFocusRestore(5);
+    $("#confirmModal").trigger("hidden.bs.modal");
+
+    expect(document.activeElement).toBe(row.get(0));
+    expect(row.attr("tabindex")).toBe("-1");
+  });
+
+  it("is one-shot: a second hidden.bs.modal does not move focus", () => {
+    document.body.innerHTML = `<div id="listMembers"></div><div id="confirmModal"></div><button type="button" id="MemberDeckHeaderAndCaret"></button><button type="button" id="elsewhere"></button>`;
+    const row = buildOwnerRow(5);
+    $("#listMembers").append(row);
+
+    bindMemberRowModalFocusRestore(5);
+    $("#confirmModal").trigger("hidden.bs.modal");
+    expect(document.activeElement).toBe(row.find(".memberRowKebab").get(0));
+
+    document.getElementById("elsewhere")!.focus();
+    $("#confirmModal").trigger("hidden.bs.modal");
+
+    expect(document.activeElement).toBe(document.getElementById("elsewhere"));
+  });
+
+  it("disarmMemberRowModalFocusRestore drops a pending restore (Leave after a cancelled Remove)", () => {
+    document.body.innerHTML = `<div id="listMembers"></div><div id="confirmModal"></div><button type="button" id="MemberDeckHeaderAndCaret"></button><button type="button" id="leaveBtn"></button>`;
+    $("#listMembers").append(buildOwnerRow(5));
+
+    bindMemberRowModalFocusRestore(5);
+    disarmMemberRowModalFocusRestore();
+    document.getElementById("leaveBtn")!.focus();
+    $("#confirmModal").trigger("hidden.bs.modal");
+
+    expect(document.activeElement).toBe(document.getElementById("leaveBtn"));
+  });
+
+  it("a co-owner's Remove closes the menu, arms the focus restore and requests the remove intent", () => {
+    document.body.innerHTML = `<div id="listMembers"></div><div id="confirmModal"></div><button type="button" id="MemberDeckHeaderAndCaret"></button>`;
+    const row = buildCoOwnerRow(5);
+    $("#listMembers").append(row);
+    row.find(".memberRowKebab").trigger("click");
+    expect(row.find(".memberRowMenu").hasClass("open")).toBe(true);
+
+    row.find(".memberRowMenuItem.danger").trigger("click");
+
+    expect(row.find(".memberRowMenu").hasClass("open")).toBe(false);
+    expect(vi.mocked(removeMemberShowModal)).toHaveBeenCalledWith({
+      memberID: 5,
+      utubID: 10,
+      intent: "remove",
+    });
+    $("#confirmModal").trigger("hidden.bs.modal");
+    expect(document.activeElement).toBe(row.find(".memberRowKebab").get(0));
   });
 
   it("ArrowUp from the first menu item wraps focus to the last item", () => {

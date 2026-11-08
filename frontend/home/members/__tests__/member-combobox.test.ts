@@ -541,6 +541,19 @@ describe("member-combobox — add-button gate on close (DD-1)", () => {
   });
 });
 
+describe("member-combobox — refusal notice clears on add-open", () => {
+  it("showMemberCombobox empties and hides an earlier refusal notice", () => {
+    document.body.innerHTML = `${MEMBER_DECK_HTML}<div id="MemberDeckNotice">You can no longer add members.</div>`;
+    seed({ candidates: [BOB], members: [] });
+    expect($("#MemberDeckNotice").hasClass("hidden")).toBe(false);
+
+    showMemberCombobox(7);
+
+    expect($("#MemberDeckNotice").text()).toBe("");
+    expect($("#MemberDeckNotice").hasClass("hidden")).toBe(true);
+  });
+});
+
 describe("member-combobox — UTub-switch reset (DD-8)", () => {
   it("resetMemberDeck tears down the combobox and clears combobox store state", () => {
     seed({ candidates: [BOB], members: [] });

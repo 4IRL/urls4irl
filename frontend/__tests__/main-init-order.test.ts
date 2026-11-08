@@ -140,6 +140,11 @@ vi.mock("../home/members/list-settings-section.js", () => ({
     "registerMembersListSettingsSection",
   ),
 }));
+vi.mock("../home/members/permissions-settings-section.js", () => ({
+  registerMembersPermissionsSettingsSection: track(
+    "registerMembersPermissionsSettingsSection",
+  ),
+}));
 vi.mock("../home/tags/personal-settings-section.js", () => ({
   registerTagsPersonalSettingsSection: track(
     "registerTagsPersonalSettingsSection",
@@ -150,6 +155,9 @@ vi.mock("../home/tags/display-subscriptions.js", () => ({
 }));
 vi.mock("../home/urls/deck-view-attrs.js", () => ({
   initUrlDeckPolicyAttrs: track("initUrlDeckPolicyAttrs"),
+}));
+vi.mock("../home/members/policy-attrs.js", () => ({
+  initMemberDeckPolicyAttrs: track("initMemberDeckPolicyAttrs"),
 }));
 vi.mock("../home/utubs/refresh-on-focus.js", () => ({
   initUTubRefreshOnFocus: track("initUTubRefreshOnFocus"),
@@ -191,6 +199,12 @@ describe("main.ts init order", () => {
   it("starts the deck policy attributes right after initURLDeck", () => {
     expect(callOrder.indexOf("initUrlDeckPolicyAttrs")).toBe(
       callOrder.indexOf("initURLDeck") + 1,
+    );
+  });
+
+  it("starts the member deck policy attributes right after the URL deck's", () => {
+    expect(callOrder.indexOf("initMemberDeckPolicyAttrs")).toBe(
+      callOrder.indexOf("initUrlDeckPolicyAttrs") + 1,
     );
   });
 

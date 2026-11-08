@@ -19,6 +19,8 @@ import {
 import { loadCoMemberCandidates } from "./co-member-fetch.js";
 import { submitStagedMembers } from "./member-combobox-submit.js";
 import { closeMemberNameFilter } from "./search.js";
+import { clearMemberDeckNotice } from "./notice.js";
+import { canAddMembers } from "../utubs/policy.js";
 import { isMobile } from "../mobile.js";
 
 import type { MemberCandidate } from "../../types/member.js";
@@ -804,6 +806,8 @@ function createCloseMemberIcon(): JQuery {
  */
 export function showMemberCombobox(utubID: number): void {
   setState({ coMemberCandidatesLoaded: false });
+  // A new add-open clears any earlier refusal notice.
+  clearMemberDeckNotice();
   closeMemberNameFilter();
   setOpenForm(HOME_FORM.MEMBER_INVITE);
   emit({ event: UI_EVENTS.UI_MEMBER_INVITE_OPEN });
@@ -913,13 +917,16 @@ export function hideAndResetMemberCombobox(): void {
   // re-show the add button after the deck was reset.
   const activeUTubID = getState().activeUTubID;
   if (activeUTubID !== null) {
-    memberBtnCreate.offAndOnExact("click", () =>
-      showMemberCombobox(activeUTubID),
-    );
     $("#displayMemberWrap").showClassFlex();
-    // The UTub owner and co-owners may add members (DD-1).
-    if (!(getState().isCurrentUserOwner || getState().isCoCreator)) {
-      memberBtnCreate.hideClass();
+    // The opener is bound and shown only for a viewer who may add (owner,
+    // co-owner, or a plain member while the owner allows it); otherwise it is
+    // unbound and hidden.
+    if (canAddMembers()) {
+      memberBtnCreate.offAndOnExact("click", () =>
+        showMemberCombobox(activeUTubID),
+      );
+    } else {
+      memberBtnCreate.off("click").hideClass();
     }
   }
 
