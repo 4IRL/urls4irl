@@ -21,7 +21,7 @@ const KEEP_NONE = {
   keepMemberSettings: false,
   keepMemberSort: false,
   keepTagDisplay: false,
-  forceShortLinksOff: false,
+  forceOffKeys: [] as string[],
 };
 const mockShouldKeepSettings = vi.fn((..._args: unknown[]) => KEEP_NONE);
 const mockCaptureSettingsVersions = vi.fn(() => ({
@@ -487,7 +487,7 @@ describe("window-events", () => {
           keepMemberSettings: false,
           keepMemberSort: false,
           keepTagDisplay: false,
-          forceShortLinksOff: false,
+          forceOffKeys: [],
         });
       });
       expect(mockOpenTrash).not.toHaveBeenCalled();
@@ -524,7 +524,7 @@ describe("window-events", () => {
         keepMemberSettings: true,
         keepMemberSort: true,
         keepTagDisplay: true,
-        forceShortLinksOff: true,
+        forceOffKeys: ["urls.allow_short_links"],
       });
       vi.spyOn($.fn, "width").mockReturnValue(1200);
 
@@ -541,7 +541,7 @@ describe("window-events", () => {
           keepMemberSettings: true,
           keepMemberSort: true,
           keepTagDisplay: true,
-          forceShortLinksOff: true,
+          forceOffKeys: ["urls.allow_short_links"],
         });
       });
       expect(mockShouldKeepSettings).toHaveBeenCalledWith({
@@ -578,7 +578,7 @@ describe("window-events", () => {
           keepMemberSettings: false,
           keepMemberSort: false,
           keepTagDisplay: false,
-          forceShortLinksOff: false,
+          forceOffKeys: [],
         });
       });
 
@@ -677,7 +677,7 @@ describe("window-events", () => {
           keepMemberSettings: false,
           keepMemberSort: false,
           keepTagDisplay: false,
-          forceShortLinksOff: false,
+          forceOffKeys: [],
         });
       });
 
@@ -721,7 +721,7 @@ describe("window-events", () => {
             keepMemberSettings: false,
             keepMemberSort: false,
             keepTagDisplay: false,
-            forceShortLinksOff: false,
+            forceOffKeys: [],
           });
         });
         expect(mockSetMobileUIWhenUTubDeckSelected).toHaveBeenCalled();
@@ -758,7 +758,7 @@ describe("window-events", () => {
             keepMemberSettings: false,
             keepMemberSort: false,
             keepTagDisplay: false,
-            forceShortLinksOff: false,
+            forceOffKeys: [],
           });
         });
         expect(
@@ -792,7 +792,7 @@ describe("window-events", () => {
             keepMemberSettings: false,
             keepMemberSort: false,
             keepTagDisplay: false,
-            forceShortLinksOff: false,
+            forceOffKeys: [],
           });
         });
         expect(mockSetMobileUIWhenMemberDeckSelected).toHaveBeenCalled();
@@ -841,7 +841,7 @@ describe("window-events", () => {
             keepMemberSettings: false,
             keepMemberSort: false,
             keepTagDisplay: false,
-            forceShortLinksOff: false,
+            forceOffKeys: [],
           });
         });
         expect(mockSetMobileUIWhenMemberDeckSelected).not.toHaveBeenCalled();
@@ -890,7 +890,7 @@ describe("window-events", () => {
             keepMemberSettings: false,
             keepMemberSort: false,
             keepTagDisplay: false,
-            forceShortLinksOff: false,
+            forceOffKeys: [],
           });
         });
         resolveOlder(olderUTub);
@@ -928,7 +928,7 @@ describe("window-events", () => {
             keepMemberSettings: false,
             keepMemberSort: false,
             keepTagDisplay: false,
-            forceShortLinksOff: false,
+            forceOffKeys: [],
           });
         });
         expect(mockSetCurrentMobilePanel).toHaveBeenCalledWith({
@@ -963,7 +963,7 @@ describe("window-events", () => {
             keepMemberSettings: false,
             keepMemberSort: false,
             keepTagDisplay: false,
-            forceShortLinksOff: false,
+            forceOffKeys: [],
           });
         });
         expect(mockOpenTagSheet).not.toHaveBeenCalled();
@@ -1132,7 +1132,7 @@ describe("window-events", () => {
             keepMemberSettings: false,
             keepMemberSort: false,
             keepTagDisplay: false,
-            forceShortLinksOff: false,
+            forceOffKeys: [],
           });
         });
         resolveOlder(olderUTub);
@@ -1215,7 +1215,7 @@ describe("window-events", () => {
           keepMemberSettings: false,
           keepMemberSort: false,
           keepTagDisplay: false,
-          forceShortLinksOff: false,
+          forceOffKeys: [],
         });
       });
 
@@ -1509,7 +1509,7 @@ describe("window-events", () => {
           keepMemberSettings: false,
           keepMemberSort: false,
           keepTagDisplay: false,
-          forceShortLinksOff: false,
+          forceOffKeys: [],
         });
       });
 
@@ -1544,7 +1544,7 @@ describe("window-events", () => {
           keepMemberSettings: false,
           keepMemberSort: false,
           keepTagDisplay: false,
-          forceShortLinksOff: false,
+          forceOffKeys: [],
         });
       });
       // The recognized `panel` param must not trip the malformed-params redirect.
@@ -1577,7 +1577,7 @@ describe("window-events", () => {
           keepMemberSettings: false,
           keepMemberSort: false,
           keepTagDisplay: false,
-          forceShortLinksOff: false,
+          forceOffKeys: [],
         });
       });
       expect(mockSetMobileUIWhenMemberDeckSelected).toHaveBeenCalled();
@@ -1617,7 +1617,7 @@ describe("window-events", () => {
           keepMemberSettings: false,
           keepMemberSort: false,
           keepTagDisplay: false,
-          forceShortLinksOff: false,
+          forceOffKeys: [],
         });
       });
       // Desktop shows all panels — no panel-specific mobile routing, no tracking.
@@ -1656,7 +1656,7 @@ describe("window-events", () => {
           keepMemberSettings: false,
           keepMemberSort: false,
           keepTagDisplay: false,
-          forceShortLinksOff: false,
+          forceOffKeys: [],
         });
       });
       expect(mockSetMobileUIWhenUTubDeckSelected).toHaveBeenCalled();
@@ -1689,7 +1689,7 @@ describe("window-events", () => {
           keepMemberSettings: false,
           keepMemberSort: false,
           keepTagDisplay: false,
-          forceShortLinksOff: false,
+          forceOffKeys: [],
         });
       });
       expect(mockSetMobileUIWhenMemberDeckSelected).toHaveBeenCalled();
@@ -1719,7 +1719,7 @@ describe("window-events", () => {
           keepMemberSettings: false,
           keepMemberSort: false,
           keepTagDisplay: false,
-          forceShortLinksOff: false,
+          forceOffKeys: [],
         });
       });
       expect(mockSetMobileUIWhenUTubDeckSelected).toHaveBeenCalled();
@@ -1749,7 +1749,7 @@ describe("window-events", () => {
           keepMemberSettings: false,
           keepMemberSort: false,
           keepTagDisplay: false,
-          forceShortLinksOff: false,
+          forceOffKeys: [],
         });
       });
       // Sheet does not auto-reopen on reload — land on the underlying url-deck.

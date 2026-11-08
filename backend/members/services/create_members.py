@@ -1,4 +1,4 @@
-from flask import current_app
+from flask import current_app, g
 from flask_login import current_user
 from redis import Redis
 
@@ -11,10 +11,12 @@ from backend.app_logger import (
 from backend.extensions.metrics.writer import record_event
 from backend.members.constants import (
     MEMBER_ADD_DAILY_CAP,
+    MEMBER_ADD_DAILY_CAP_MEMBER,
     MemberAddSource,
     UTubMembersErrorCodes,
 )
 from backend.members.data_models import ValidatedMember
+from backend.members.services.member_permissions import member_add_refusal_response
 from backend.metrics.events import EventName
 from backend.models.users import Users
 from backend.models.utub_members import Utub_Members
@@ -77,16 +79,33 @@ def create_utub_member(
         tuple[Response, int]:
         - Response: JSON response on create
         - int: HTTP status code 200 (Success), 400 (User not found, already a
-          member, or the per-user daily add cap was reached), 403 (the caller is
-          no longer a manager once the UTub row is locked, or the UTub is locked)
+          member, or the per-user daily add cap was reached: 100 for managers,
+          25 for plain members), 403 (a plain member while ``members_can_add``
+          is off, before or after the row lock, errorCode 7; or the UTub is
+          locked)
     """
+    # Cheap pre-lock refusal on the already-loaded row: a plain member is turned
+    # away without taking the row lock while adding is off. The post-lock check
+    # below is the authority.
+    refusal: FlaskResponse | None = member_add_refusal_response(
+        current_utub, is_manager=g.is_manager
+    )
+    if refusal is not None:
+        return refusal
+
     auth_error: FlaskResponse | None = lock_and_reauthorize(
         current_utub,
-        required_access=UtubAccess.MANAGER,
+        required_access=UtubAccess.MEMBER_ADD,
         error_code=UTubMembersErrorCodes.UTUB_IS_LOCKED,
+        not_authorized_error_code=UTubMembersErrorCodes.MEMBER_ADD_NOT_ALLOWED,
     )
     if auth_error is not None:
         return auth_error
+
+    # The cap follows the fresh role (g.is_manager is recomputed under the lock).
+    daily_cap: int = (
+        MEMBER_ADD_DAILY_CAP if g.is_manager else MEMBER_ADD_DAILY_CAP_MEMBER
+    )
 
     # Per-user fail-open Redis daily counter. Placed BEFORE the username lookup
     # so every attempt reaching the oracle burns a slot regardless of outcome
@@ -99,7 +118,7 @@ def create_utub_member(
     if redis_client is not None:
         try:
             current_count = int(redis_client.get(rate_limit_key) or 0)
-            if current_count >= MEMBER_ADD_DAILY_CAP:
+            if current_count >= daily_cap:
                 warning_log(f"User={current_user.id} hit the daily add-member cap")
                 return build_message_error_response(
                     message=MEMBER_FAILURE.MEMBER_ADD_RATE_LIMITED,

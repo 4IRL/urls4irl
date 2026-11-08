@@ -13,6 +13,7 @@ from backend.schemas.utub_settings import (
     UtubSettings,
     UtubSettingsPatchError,
     merge_utub_settings,
+    patch_requires_owner,
     resolve_utub_settings,
     utub_settings_overrides_changed,
 )
@@ -304,6 +305,33 @@ def test_urls_scheme_is_lowercased() -> None:
 def test_urls_extra_key_rejected() -> None:
     with pytest.raises(ValidationError):
         _validate_urls({"nope": 1}, frozenset({"nope"}))
+
+
+@pytest.mark.parametrize(
+    "patch, expected",
+    [
+        ({"members": {"members_can_add": True}}, True),
+        ({"members": {"co_owners_can_remove": False}}, True),
+        ({"members": {"unknown_key": True}}, True),
+        ({"urls": {"unknown_key": True}}, False),
+        ({"urls": {"allow_short_links": False}}, False),
+        ({"unknown_section": {"a": 1}}, False),
+        ({"members": {}}, False),
+        ({}, False),
+    ],
+    ids=[
+        "owner_only_key",
+        "owner_only_key_false",
+        "unknown_key_in_members",
+        "unknown_key_in_urls",
+        "known_urls_key",
+        "unknown_section",
+        "empty_members_section",
+        "empty_patch",
+    ],
+)
+def test_patch_requires_owner(patch: dict[str, dict[str, Any]], expected: bool) -> None:
+    assert patch_requires_owner(patch) is expected
 
 
 def test_wire_keys_are_snake_case() -> None:

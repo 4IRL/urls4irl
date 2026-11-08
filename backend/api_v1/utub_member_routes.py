@@ -8,11 +8,11 @@ with three changes:
   - tags=[OPEN_API.MOBILE_API] + 401/403 added to status_codes
 """
 
+from flask import g
 from flask_login import current_user
 
 from backend import limiter
 from backend.api_common.auth_decorators import (
-    api_utub_manager_required,
     api_utub_membership_required,
     api_utub_owner_required,
 )
@@ -27,6 +27,7 @@ from backend.members.constants import (
 from backend.members.services.co_member_search import get_co_member_candidates
 from backend.members.services.create_members import create_utub_member
 from backend.members.services.delete_members import remove_member_or_self_from_utub
+from backend.members.services.member_permissions import member_add_refusal_response
 from backend.members.services.modify_member_role import (
     modify_member_role as modify_member_role_service,
 )
@@ -49,7 +50,7 @@ from backend.utils.strings.user_strs import MEMBER_FAILURE
 
 
 @api_v1.route("/utubs/<int:utub_id>/members", methods=["POST"])
-@api_utub_manager_required
+@api_utub_membership_required
 @api_route(
     request_schema=AddMemberRequest,
     response_schema=AddMemberResponseSchema,
@@ -57,7 +58,7 @@ from backend.utils.strings.user_strs import MEMBER_FAILURE
     error_code=UTubMembersErrorCodes.INVALID_FORM_INPUT,
     ajax_required=False,
     tags=[OPEN_API.MOBILE_API],
-    description="Add a member to a UTub",
+    description="Add a member to a UTub (managers, or members while the owner allows adding)",
     status_codes={
         200: AddMemberResponseSchema,
         400: ErrorResponse,
@@ -73,7 +74,7 @@ def api_v1_create_member(
     current_utub: Utubs,
     add_member_request: AddMemberRequest,
 ) -> FlaskResponse:
-    """Add a user to a UTub by username. Caller must be UTub creator."""
+    """Add a user by username. Managers always; members while the owner allows it."""
     return create_utub_member(
         username=add_member_request.username,
         current_utub=current_utub,
@@ -87,7 +88,7 @@ def api_v1_create_member(
     response_schema=MemberModifiedResponseSchema,
     ajax_required=False,
     tags=[OPEN_API.MOBILE_API],
-    description="Remove a member from a UTub",
+    description="Remove a member from a UTub. Co-owners can remove only plain members, and only while the owner allows it",
     status_codes={
         200: MemberModifiedResponseSchema,
         400: ErrorResponse,
@@ -103,7 +104,8 @@ def api_v1_remove_member(
 ) -> FlaskResponse:
     """Remove a member from a UTub.
 
-    Creator can remove any member except themselves.
+    Creator can remove any member except themselves. Co-owners can remove plain
+    members only, and only while the owner's ``co_owners_can_remove`` setting is on.
     Any member can remove themselves from a UTub they did not create.
     """
     return remove_member_or_self_from_utub(user_id, current_utub)
@@ -176,24 +178,29 @@ def api_v1_transfer_utub_ownership(
 
 
 @api_v1.route("/utubs/<int:utub_id>/co-members", methods=["GET"])
-@api_utub_manager_required
+@api_utub_membership_required
 @api_route(
     response_schema=CoMemberListSchema,
     ajax_required=False,
     tags=[OPEN_API.MOBILE_API],
-    description="Get co-member add candidates for a UTub (creator only)",
+    description="Get co-member add candidates for a UTub (managers, or members while the owner allows adding)",
     status_codes={
         200: CoMemberListSchema,
         401: ErrorResponse,
         403: ErrorResponse,
         404: ErrorResponse,
+        429: ErrorResponse,
     },
 )
+@limiter.limit(MEMBER_ADD_RATE_LIMIT, methods=["GET"])
 def api_v1_get_co_member_candidates(
     utub_id: int,
     current_utub: Utubs,
 ) -> FlaskResponse:
-    """Return co-member add candidates for a UTub. Caller must be UTub creator."""
+    """Return co-member add candidates. Managers always; members while allowed."""
+    refusal = member_add_refusal_response(current_utub, is_manager=g.is_manager)
+    if refusal is not None:
+        return refusal
     return APIResponse(
         data=get_co_member_candidates(current_user.id, current_utub),
         status_code=200,

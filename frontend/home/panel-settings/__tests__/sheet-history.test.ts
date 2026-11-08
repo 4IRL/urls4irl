@@ -90,7 +90,7 @@ vi.mock("../../utubs/selectors.js", () => ({
   shouldKeepSettings: () => ({
     keepSettings: false,
     keepMemberSettings: false,
-    forceShortLinksOff: false,
+    forceOffKeys: [],
   }),
 }));
 vi.mock("../../utubs/utils.js", () => ({

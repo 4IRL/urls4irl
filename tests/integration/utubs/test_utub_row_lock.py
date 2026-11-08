@@ -1,13 +1,11 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
-from typing import Any
 from unittest import mock
 
 import pytest
 from flask import g
-from sqlalchemy import event, text
-from sqlalchemy.engine import Connection
+from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 from werkzeug.exceptions import NotFound
 
@@ -28,7 +26,13 @@ from backend.utubs.guards import (
     lock_trashed_utub_for_creator,
     lock_utub_for_update,
 )
-from tests.utils_for_test import is_string_in_logs, set_member_role
+from tests.utils_for_test import (
+    is_string_in_logs,
+    lock_utub,
+    set_member_role,
+    set_members_settings,
+    statements_while,
+)
 
 pytestmark = pytest.mark.utubs
 
@@ -41,10 +45,18 @@ def _raw(statement: str) -> None:
 
 
 def _reauthorize(
-    utub: Utubs, caller_id: int, access: UtubAccess
+    utub: Utubs,
+    caller_id: int,
+    access: UtubAccess,
+    not_authorized_error_code: int | None = None,
 ) -> FlaskResponse | None:
     with mock.patch("backend.utubs.guards.current_user", SimpleNamespace(id=caller_id)):
-        return lock_and_reauthorize(utub, required_access=access, error_code=ERROR_CODE)
+        return lock_and_reauthorize(
+            utub,
+            required_access=access,
+            error_code=ERROR_CODE,
+            not_authorized_error_code=not_authorized_error_code,
+        )
 
 
 def test_lock_utub_for_update_refreshes_stale_creator(
@@ -107,25 +119,8 @@ def test_lock_utub_for_update_emits_for_no_key_update(
     WHEN it is locked
     THEN a SELECT on the Utubs table with FOR NO KEY UPDATE is emitted
     """
-    statements: list[str] = []
-
-    def capture(
-        conn: Connection,
-        cursor: Any,
-        statement: str,
-        parameters: Any,
-        context: Any,
-        executemany: bool,
-    ) -> None:
-        statements.append(statement)
-
     with app.app_context():
-        connection = db.session.connection()
-        event.listen(connection, "before_cursor_execute", capture)
-        try:
-            lock_utub_for_update(utub_id=UTUB_ID)
-        finally:
-            event.remove(connection, "before_cursor_execute", capture)
+        statements = statements_while(lambda: lock_utub_for_update(utub_id=UTUB_ID))
 
     assert any(
         'FROM "Utubs"' in statement and "FOR NO KEY UPDATE" in statement
@@ -438,6 +433,128 @@ def test_lock_and_reauthorize_no_log_on_happy_path(
 NOT_IN_TRASH_CODE = UTubErrorCodes.NOT_IN_TRASH
 
 
+def test_lock_and_reauthorize_member_add_manager_allowed_with_setting_off(
+    app, add_multiple_users_to_utub_without_logging_in
+):
+    """
+    GIVEN members_can_add is off (the default)
+    WHEN the owner re-authorizes for MEMBER_ADD
+    THEN None is returned
+    """
+    with app.app_context():
+        utub: Utubs = Utubs.query.get(UTUB_ID)
+
+        with app.test_request_context():
+            assert _reauthorize(utub, 1, UtubAccess.MEMBER_ADD) is None
+            assert g.is_manager is True
+
+
+def test_lock_and_reauthorize_member_add_plain_member_allowed_with_setting_on(
+    app, add_multiple_users_to_utub_without_logging_in
+):
+    """
+    GIVEN members_can_add is on
+    WHEN a plain member re-authorizes for MEMBER_ADD
+    THEN None is returned and g.is_manager is False
+    """
+    set_members_settings(app, UTUB_ID, {"members_can_add": True})
+
+    with app.app_context():
+        utub: Utubs = Utubs.query.get(UTUB_ID)
+
+        with app.test_request_context():
+            assert _reauthorize(utub, 2, UtubAccess.MEMBER_ADD) is None
+            assert g.is_manager is False
+
+
+def test_lock_and_reauthorize_member_add_denied_with_error_code_and_log(
+    app, add_multiple_users_to_utub_without_logging_in, caplog
+):
+    """
+    GIVEN members_can_add is off
+    WHEN a plain member re-authorizes for MEMBER_ADD with a not-authorized code
+    THEN a 403 carrying that errorCode is returned and the member-adder label is logged
+    """
+    with app.app_context():
+        utub: Utubs = Utubs.query.get(UTUB_ID)
+
+        with app.test_request_context():
+            response, status_code = _reauthorize(
+                utub, 2, UtubAccess.MEMBER_ADD, not_authorized_error_code=7
+            )
+
+        assert status_code == 403
+        body = response.get_json()
+        assert body[STD_JSON.MESSAGE] == UTUB_FAILURE.NOT_AUTHORIZED
+        assert body[STD_JSON.ERROR_CODE] == 7
+        assert is_string_in_logs("User=2 not member adder: UTub.id=1", caplog.records)
+
+
+def test_lock_and_reauthorize_member_add_locked_utub_ordering(
+    app, add_multiple_users_to_utub_without_logging_in
+):
+    """
+    GIVEN an admin-locked UTub
+    WHEN a plain member re-authorizes for MEMBER_ADD
+    THEN with the setting off they get NOT_AUTHORIZED (the lock is not disclosed),
+        and with it on they get the locked response
+    """
+    lock_utub(app, UTUB_ID)
+
+    with app.app_context():
+        utub: Utubs = Utubs.query.get(UTUB_ID)
+
+        with app.test_request_context():
+            response, status_code = _reauthorize(utub, 2, UtubAccess.MEMBER_ADD)
+            assert status_code == 403
+            assert response.get_json()[STD_JSON.MESSAGE] == UTUB_FAILURE.NOT_AUTHORIZED
+
+    set_members_settings(app, UTUB_ID, {"members_can_add": True})
+
+    with app.app_context():
+        utub = Utubs.query.get(UTUB_ID)
+
+        with app.test_request_context():
+            response, status_code = _reauthorize(utub, 2, UtubAccess.MEMBER_ADD)
+            assert status_code == 403
+            assert response.get_json()[STD_JSON.MESSAGE] == UTUB_FAILURE.UTUB_IS_LOCKED
+
+
+def test_lock_and_reauthorize_unknown_access_level_denies(
+    app, add_multiple_users_to_utub_without_logging_in
+):
+    """
+    GIVEN an access level the guard has no branch for
+    WHEN even the owner re-authorizes with it
+    THEN it is denied (fail closed)
+    """
+    with app.app_context():
+        utub: Utubs = Utubs.query.get(UTUB_ID)
+
+        with app.test_request_context():
+            _, status_code = _reauthorize(utub, 1, "unhandled")  # type: ignore[arg-type]
+
+        assert status_code == 403
+
+
+def test_lock_and_reauthorize_without_error_code_has_no_error_code_in_body(
+    app, add_multiple_users_to_utub_without_logging_in
+):
+    """
+    GIVEN a caller that omits not_authorized_error_code
+    WHEN the authorization fails
+    THEN the 403 body carries no errorCode
+    """
+    with app.app_context():
+        utub: Utubs = Utubs.query.get(UTUB_ID)
+
+        with app.test_request_context():
+            response, status_code = _reauthorize(utub, 2, UtubAccess.MANAGER)
+
+        assert status_code == 403
+        assert response.get_json().get(STD_JSON.ERROR_CODE) is None
+
+
 def _lock_trashed(
     caller_id: int, *, reject_locked: bool = True
 ) -> Utubs | FlaskResponse:
@@ -500,29 +617,6 @@ def test_lock_trashed_utub_for_creator_non_creator_denied(
             _assert_not_in_trash(_lock_trashed(caller_id))
 
 
-def _statements_while(action: Any) -> list[str]:
-    """Run ``action`` and return the SQL statements emitted on the session connection."""
-    statements: list[str] = []
-
-    def capture(
-        conn: Connection,
-        cursor: Any,
-        statement: str,
-        parameters: Any,
-        context: Any,
-        executemany: bool,
-    ) -> None:
-        statements.append(statement)
-
-    connection = db.session.connection()
-    event.listen(connection, "before_cursor_execute", capture)
-    try:
-        action()
-    finally:
-        event.remove(connection, "before_cursor_execute", capture)
-    return statements
-
-
 @pytest.mark.parametrize("caller_id", (2, 3, 99999))
 def test_lock_trashed_utub_for_creator_non_creator_never_takes_row_lock(
     app, add_multiple_users_to_utub_without_logging_in, caller_id
@@ -537,7 +631,7 @@ def test_lock_trashed_utub_for_creator_non_creator_never_takes_row_lock(
 
         with app.test_request_context():
             results: list[Utubs | FlaskResponse] = []
-            statements = _statements_while(
+            statements = statements_while(
                 lambda: results.append(_lock_trashed(caller_id))
             )
 
@@ -558,7 +652,7 @@ def test_lock_trashed_utub_for_creator_creator_takes_row_lock(
 
         with app.test_request_context():
             results: list[Utubs | FlaskResponse] = []
-            statements = _statements_while(lambda: results.append(_lock_trashed(1)))
+            statements = statements_while(lambda: results.append(_lock_trashed(1)))
 
             assert isinstance(results[0], Utubs)
             assert any(

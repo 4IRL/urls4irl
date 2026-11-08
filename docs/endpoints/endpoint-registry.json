@@ -2238,8 +2238,9 @@
     {
       "blueprint": "api_v1",
       "decorators": [
-        "api_utub_manager_required",
-        "api_route"
+        "api_utub_membership_required",
+        "api_route",
+        "limiter.limit(MEMBER_ADD_RATE_LIMIT, methods=['GET'])"
       ],
       "endpoint": "api_v1.api_v1_get_co_member_candidates",
       "handler": "backend/api_v1/utub_member_routes.py:api_v1_get_co_member_candidates",
@@ -2261,11 +2262,13 @@
           "200": "backend.schemas.users.CoMemberListSchema",
           "401": "backend.schemas.errors.ErrorResponse",
           "403": "backend.schemas.errors.ErrorResponse",
-          "404": "backend.schemas.errors.ErrorResponse"
+          "404": "backend.schemas.errors.ErrorResponse",
+          "429": "backend.schemas.errors.ErrorResponse"
         }
       },
       "services": [
-        "backend.members.services.co_member_search:get_co_member_candidates"
+        "backend.members.services.co_member_search:get_co_member_candidates",
+        "backend.members.services.member_permissions:member_add_refusal_response"
       ],
       "templates": []
     },
@@ -2486,7 +2489,7 @@
     {
       "blueprint": "api_v1",
       "decorators": [
-        "api_utub_manager_required",
+        "api_utub_membership_required",
         "api_route",
         "limiter.limit(MEMBER_ADD_RATE_LIMIT, methods=['POST'])"
       ],
@@ -4389,8 +4392,9 @@
     {
       "blueprint": "members",
       "decorators": [
-        "utub_manager_required",
-        "api_route"
+        "utub_membership_required",
+        "api_route",
+        "limiter.limit(MEMBER_ADD_RATE_LIMIT, methods=['GET'])"
       ],
       "endpoint": "members.get_co_member_candidates_route",
       "handler": "backend/members/routes.py:get_co_member_candidates_route",
@@ -4413,11 +4417,13 @@
         "status_codes": {
           "200": "backend.schemas.users.CoMemberListSchema",
           "403": "backend.schemas.errors.ErrorResponse",
-          "404": "backend.schemas.errors.ErrorResponse"
+          "404": "backend.schemas.errors.ErrorResponse",
+          "429": "backend.schemas.errors.ErrorResponse"
         }
       },
       "services": [
-        "backend.members.services.co_member_search:get_co_member_candidates"
+        "backend.members.services.co_member_search:get_co_member_candidates",
+        "backend.members.services.member_permissions:member_add_refusal_response"
       ],
       "templates": []
     },
@@ -4670,7 +4676,7 @@
     {
       "blueprint": "members",
       "decorators": [
-        "utub_manager_required",
+        "utub_membership_required",
         "api_route",
         "limiter.limit(MEMBER_ADD_RATE_LIMIT, methods=['POST'])"
       ],

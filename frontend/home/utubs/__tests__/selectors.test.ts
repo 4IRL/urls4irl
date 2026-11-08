@@ -161,7 +161,7 @@ describe("getSelectedUTubInfo — out-of-order UTub responses", () => {
     });
     expect(getState().settings).toEqual({
       utubs: {},
-      members: {},
+      members: { co_owners_can_remove: false, members_can_add: false },
       tags: {},
       urls: {
         default_url_scheme: "https",
@@ -174,7 +174,10 @@ describe("getSelectedUTubInfo — out-of-order UTub responses", () => {
   it("forces allow_short_links off for a same-UTub rebuild in flight across a policy 403", async () => {
     setState({ activeUTubID: 1 });
     selectUTub(1, $(".UTubSelector[utubid='1']"));
-    setState({ policyLearnedVersion: 1 });
+    setState({
+      policyLearnedVersion: 1,
+      learnedOffPolicies: { "urls.allow_short_links": 1 },
+    });
 
     firstRequest.resolve(
       makeUtubDetail({

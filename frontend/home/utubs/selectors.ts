@@ -14,6 +14,7 @@ import {
   resolveUtubSettings,
   type ResolvedUtubSettings,
 } from "../../types/settings.js";
+import { LEARNABLE_POLICY_KEYS, type LearnablePolicyKey } from "./policy.js";
 import { KEYS } from "../../lib/constants.js";
 import { showNewPageOnAJAXHTMLResponse } from "../../lib/page-utils.js";
 import { emit, AppEvents } from "../../lib/event-bus.js";
@@ -186,9 +187,9 @@ export interface SettingsWriteDecision {
   // A tag display default was edited or saved in flight: keep the store's six
   // values. Global like the member sort, whichever UTub the response belongs to.
   keepTagDisplay: boolean;
-  // A short-link policy 403 was learned in flight: an incoming
-  // `allow_short_links: true` predates it and must be applied as false.
-  forceShortLinksOff: boolean;
+  // Policy keys whose 403 was learned in flight: an incoming `true` for any of
+  // them predates the learn and must be applied as false. Only those keys.
+  forceOffKeys: LearnablePolicyKey[];
 }
 
 export function shouldKeepSettings({
@@ -208,24 +209,42 @@ export function shouldKeepSettings({
       state.memberSettingsVersion !== captured.memberSettingsVersion,
     keepMemberSort: state.memberSortVersion !== captured.memberSortVersion,
     keepTagDisplay: state.tagDisplayVersion !== captured.tagDisplayVersion,
-    forceShortLinksOff:
-      isSameUTub &&
-      state.policyLearnedVersion !== captured.policyLearnedVersion,
+    forceOffKeys: isSameUTub
+      ? LEARNABLE_POLICY_KEYS.filter(
+          (key) =>
+            (state.learnedOffPolicies[key] ?? 0) >
+            captured.policyLearnedVersion,
+        )
+      : [],
   };
 }
 
-// Resolves an incoming settings payload for a store write, forcing the
-// short-link policy off when a policy 403 was learned while it was in flight.
+// Resolves an incoming settings payload for a store write, forcing each policy
+// key learned off while it was in flight to false (and only those keys).
 export function resolveIncomingSettings({
   settings,
-  forceShortLinksOff,
+  forceOffKeys,
 }: {
   settings: UtubDetail["settings"];
-  forceShortLinksOff: boolean;
+  forceOffKeys: LearnablePolicyKey[];
 }): ResolvedUtubSettings {
   const resolved = resolveUtubSettings(settings);
-  if (!forceShortLinksOff) return resolved;
-  return { ...resolved, urls: { ...resolved.urls, allow_short_links: false } };
+  const urls = { ...resolved.urls };
+  const members = { ...resolved.members };
+  for (const key of forceOffKeys) {
+    switch (key) {
+      case "urls.allow_short_links":
+        urls.allow_short_links = false;
+        break;
+      case "members.members_can_add":
+        members.members_can_add = false;
+        break;
+      case "members.co_owners_can_remove":
+        members.co_owners_can_remove = false;
+        break;
+    }
+  }
+  return { ...resolved, urls, members };
 }
 
 export type TagDisplayDefaults = Pick<
@@ -274,14 +293,14 @@ export function buildSelectedUTub({
   keepMemberSettings = false,
   keepMemberSort = false,
   keepTagDisplay = false,
-  forceShortLinksOff = false,
+  forceOffKeys = [],
 }: {
   selectedUTub: UtubDetail;
   keepSettings?: boolean;
   keepMemberSettings?: boolean;
   keepMemberSort?: boolean;
   keepTagDisplay?: boolean;
-  forceShortLinksOff?: boolean;
+  forceOffKeys?: LearnablePolicyKey[];
 }): void {
   // One preferences object built from the store at write time, so the member
   // sort and the tag defaults never overwrite each other. Invalid or kept
@@ -323,7 +342,7 @@ export function buildSelectedUTub({
       : {
           settings: resolveIncomingSettings({
             settings: selectedUTub.settings,
-            forceShortLinksOff,
+            forceOffKeys,
           }),
         }),
     ...(keepMemberSettings

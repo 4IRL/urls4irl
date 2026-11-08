@@ -36,6 +36,10 @@ MEMBER_ADD_RATE_LIMIT: str = "30/minute"
 # regardless of its outcome, so repeated enumeration probing is bounded.
 MEMBER_ADD_DAILY_CAP: int = 100
 
+# Daily cap for plain members adding while the owner allows it. The counter key
+# is shared with managers; each call compares it with the caller's fresh-role cap.
+MEMBER_ADD_DAILY_CAP_MEMBER: int = 25
+
 
 class MemberAddSource(StrEnum):
     SEARCH_RESULT = "search_result"
@@ -69,3 +73,5 @@ class UTubMembersErrorCodes(IntEnum):
     CANNOT_MODIFY_OWNER = 4
     TARGET_NOT_A_MEMBER = 5
     TARGET_ALREADY_OWNER = 6
+    MEMBER_ADD_NOT_ALLOWED = 7
+    CO_OWNER_REMOVE_NOT_ALLOWED = 8

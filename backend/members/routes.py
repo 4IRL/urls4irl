@@ -1,9 +1,8 @@
-from flask import Blueprint
+from flask import Blueprint, g
 from flask_login import current_user
 
 from backend import limiter
 from backend.api_common.auth_decorators import (
-    utub_manager_required,
     utub_membership_required,
     utub_owner_required,
 )
@@ -17,6 +16,7 @@ from backend.members.constants import (
 from backend.members.services.co_member_search import get_co_member_candidates
 from backend.members.services.create_members import create_utub_member
 from backend.members.services.delete_members import remove_member_or_self_from_utub
+from backend.members.services.member_permissions import member_add_refusal_response
 from backend.members.services.modify_member_role import (
     modify_member_role as modify_member_role_service,
 )
@@ -45,7 +45,7 @@ members = Blueprint("members", __name__)
 @api_route(
     response_schema=MemberModifiedResponseSchema,
     tags=[OPEN_API.MEMBERS],
-    description="Remove a member from a UTub",
+    description="Remove a member from a UTub. Co-owners can remove only plain members, and only while the owner allows it",
     status_codes={
         200: MemberModifiedResponseSchema,
         400: ErrorResponse,
@@ -56,6 +56,8 @@ members = Blueprint("members", __name__)
 def remove_member(utub_id: int, user_id: int, current_utub: Utubs) -> FlaskResponse:
     """
     Remove a user from a Utubs. The creator of the Utubs can remove anyone but themselves.
+    Co-owners can remove plain members only, and only while the owner's
+    ``co_owners_can_remove`` setting is on.
     Any user can remove themselves from a UTub they did not create.
 
     Args:
@@ -136,14 +138,14 @@ def transfer_utub_ownership(
 
 
 @members.route("/utubs/<int:utub_id>/members", methods=["POST"])
-@utub_manager_required
+@utub_membership_required
 @api_route(
     request_schema=AddMemberRequest,
     response_schema=AddMemberResponseSchema,
     error_message=MEMBER_FAILURE.UNABLE_TO_ADD_MEMBER,
     error_code=UTubMembersErrorCodes.INVALID_FORM_INPUT,
     tags=[OPEN_API.MEMBERS],
-    description="Add a member to a UTub",
+    description="Add a member to a UTub (managers, or members while the owner allows adding)",
     status_codes={
         200: AddMemberResponseSchema,
         400: ErrorResponse,
@@ -157,7 +159,7 @@ def create_member(
     utub_id: int, current_utub: Utubs, add_member_request: AddMemberRequest
 ) -> FlaskResponse:
     """
-    Creator of utub wants to add a user to the utub.
+    A manager, or a plain member while the owner allows it, adds a user to the utub.
 
     Args:
         utub_id (int): The utub to which this user is being added
@@ -170,26 +172,32 @@ def create_member(
 
 
 @members.route("/utubs/<int:utub_id>/co-members", methods=["GET"])
-@utub_manager_required
+@utub_membership_required
 @api_route(
     response_schema=CoMemberListSchema,
     ajax_required=True,
     tags=[OPEN_API.MEMBERS],
-    description="Get co-member add candidates for a UTub (creator only)",
+    description="Get co-member add candidates for a UTub (managers, or members while the owner allows adding)",
     status_codes={
         200: CoMemberListSchema,
         403: ErrorResponse,
         404: ErrorResponse,
+        429: ErrorResponse,
     },
 )
+@limiter.limit(MEMBER_ADD_RATE_LIMIT, methods=["GET"])
 def get_co_member_candidates_route(utub_id: int, current_utub: Utubs) -> FlaskResponse:
     """
-    Return the co-member add candidates for the given UTub. Only the creator,
-    who is the only member able to open the add-member UI, can load candidates.
+    Return the co-member add candidates for the given UTub. Managers always can;
+    plain members only while the owner's ``members_can_add`` setting is on.
+    Read-only and unlocked, so a decision one request stale is acceptable.
 
     Args:
         utub_id (int): The UTub to load co-member candidates for
     """
+    refusal = member_add_refusal_response(current_utub, is_manager=g.is_manager)
+    if refusal is not None:
+        return refusal
     return APIResponse(
         data=get_co_member_candidates(current_user.id, current_utub),
         status_code=200,

@@ -1353,7 +1353,7 @@ def test_get_utub_detail_stored_override_merged_with_defaults(
     response_json = _get_detail_json(client, utub_id)
     assert response_json[MODELS.SETTINGS] == {
         "utubs": {},
-        "members": {},
+        "members": DEFAULT_SETTINGS_DICT["members"],
         "tags": {},
         "urls": {**URLS_DEFAULTS, STUB_KEY: True},
     }

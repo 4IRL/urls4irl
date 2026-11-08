@@ -63,7 +63,7 @@ function settingsWith(
 ): ResolvedUtubSettings {
   return {
     utubs: {},
-    members: {},
+    members: { co_owners_can_remove: false, members_can_add: false },
     tags: {},
     ...overrides,
     urls: { ...URLS_DEFAULTS, ...overrides.urls },
@@ -665,7 +665,11 @@ describe("resyncSettings", () => {
 
   it("forces allow_short_links off when a policy 403 landed mid-flight", async () => {
     vi.mocked(fetchUTubForRefresh).mockImplementation(async () => {
-      setState({ policyLearnedVersion: getState().policyLearnedVersion + 1 });
+      const nextVersion = getState().policyLearnedVersion + 1;
+      setState({
+        policyLearnedVersion: nextVersion,
+        learnedOffPolicies: { "urls.allow_short_links": nextVersion },
+      });
       return ok({ urls: { allow_short_links: true } });
     });
 

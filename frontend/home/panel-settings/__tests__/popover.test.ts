@@ -1769,6 +1769,273 @@ describe("panel settings popover", () => {
     });
   });
 
+  describe("role-scoped sections", () => {
+    const OWNER_ONLY = "Only the UTub owner can change this";
+    const MANAGERS_ONLY = "Only UTub managers can change this";
+
+    function setRole(role: "owner" | "co-owner" | "member"): void {
+      setState({
+        isCurrentUserOwner: role === "owner",
+        isCoCreator: role === "co-owner",
+      });
+    }
+
+    function noteOf(sectionId: string): HTMLElement {
+      return popover().querySelector(
+        `[data-section-id="${sectionId}"] .panelSettingsReadOnlyNote`,
+      ) as HTMLElement;
+    }
+
+    function registerPair(): { own: Harness; mgr: Harness } {
+      const own = registerControlled({
+        id: "own",
+        panel: "members",
+        title: "Own",
+        writeAccess: "owner",
+      });
+      const mgr = registerControlled({
+        id: "mgr",
+        panel: "members",
+        title: "Mgr",
+      });
+      return { own, mgr };
+    }
+
+    it("shows a co-owner the owner-only note and no write access on an owner-only section", () => {
+      initPopover();
+      const { own, mgr } = registerPair();
+      selectUTub();
+      setRole("co-owner");
+      openGear("members");
+
+      expect(lastCtx(own).canWrite).toBe(false);
+      expect(noteOf("own").hidden).toBe(false);
+      expect(noteOf("own").textContent).toBe(OWNER_ONLY);
+      expect(lastCtx(mgr).canWrite).toBe(true);
+      expect(noteOf("mgr").hidden).toBe(true);
+    });
+
+    it("links the note id through the section context", () => {
+      initPopover();
+      const { own } = registerPair();
+      selectUTub();
+      openGear("members");
+
+      expect(lastCtx(own).readOnlyNoteId).toBe(noteOf("own").id);
+      expect(noteOf("own").id).not.toBe("");
+    });
+
+    it("an owner-only 403 makes only owner-only sections read-only and announces the owner text", async () => {
+      initPopover();
+      const { own, mgr } = registerPair();
+      selectUTub();
+      openGear("members");
+
+      lastCtx(own).submit({ patch: { a: 1 } });
+      await settle();
+      own.pending[0].resolve({ outcome: "forbidden" });
+      await settle();
+
+      expect(lastCtx(own).canWrite).toBe(false);
+      expect(noteOf("own").textContent).toBe(OWNER_ONLY);
+      expect(announced()).toBe(OWNER_ONLY);
+      expect(lastCtx(mgr).canWrite).toBe(true);
+      expect(noteOf("mgr").hidden).toBe(true);
+
+      lastCtx(mgr).submit({ patch: { b: 1 } });
+      await settle();
+      expect(mgr.section.save).toHaveBeenCalledTimes(1);
+    });
+
+    it("a pending debounced manager-class edit survives an owner-only 403", async () => {
+      initPopover();
+      const { own, mgr } = registerPair();
+      selectUTub();
+      openGear("members");
+
+      lastCtx(own).submit({ patch: { a: 1 } });
+      await settle();
+      lastCtx(mgr).submit({ patch: { b: 1 }, debounce: true });
+      own.pending[0].resolve({ outcome: "forbidden" });
+      await settle();
+      await vi.advanceTimersByTimeAsync(DEBOUNCE_MS * 2);
+
+      expect(mgr.section.save).toHaveBeenCalledTimes(1);
+    });
+
+    it("a lock outranks a per-class 403 in the note, and every force clears on reopen", async () => {
+      initPopover();
+      const { own, mgr } = registerPair();
+      selectUTub();
+      openGear("members");
+
+      lastCtx(own).submit({ patch: { a: 1 } });
+      await settle();
+      own.pending[0].resolve({ outcome: "forbidden" });
+      await settle();
+      expect(noteOf("own").textContent).toBe(OWNER_ONLY);
+      expect(noteOf("mgr").hidden).toBe(true);
+
+      lastCtx(mgr).submit({ patch: { b: 1 } });
+      await settle();
+      mgr.pending[0].resolve({ outcome: "locked" });
+      await settle();
+      expect(noteOf("own").textContent).toBe("UTub is locked");
+      expect(noteOf("mgr").textContent).toBe("UTub is locked");
+
+      openGear("members");
+      openGear("members");
+      expect(lastCtx(own).canWrite).toBe(true);
+      expect(lastCtx(mgr).canWrite).toBe(true);
+    });
+
+    it("a manager-class 403 leaves an owner-only section writable", async () => {
+      initPopover();
+      const { own, mgr } = registerPair();
+      selectUTub();
+      openGear("members");
+
+      lastCtx(mgr).submit({ patch: { a: 1 } });
+      await settle();
+      mgr.pending[0].resolve({ outcome: "forbidden" });
+      await settle();
+
+      expect(lastCtx(mgr).canWrite).toBe(false);
+      expect(noteOf("mgr").textContent).toBe(MANAGERS_ONLY);
+      expect(announced()).toBe(MANAGERS_ONLY);
+      expect(lastCtx(own).canWrite).toBe(true);
+    });
+
+    it("a lock outcome forces every utub section read-only", async () => {
+      initPopover();
+      const { own, mgr } = registerPair();
+      selectUTub();
+      openGear("members");
+
+      lastCtx(own).submit({ patch: { a: 1 } });
+      await settle();
+      own.pending[0].resolve({ outcome: "locked" });
+      await settle();
+
+      expect(lastCtx(own).canWrite).toBe(false);
+      expect(lastCtx(mgr).canWrite).toBe(false);
+      expect(noteOf("mgr").textContent).toBe("UTub is locked");
+    });
+
+    it("does not render a visibleTo 'managers' section for a plain member, and drops its group", () => {
+      initPopover();
+      registerControlled({
+        id: "hidden",
+        panel: "members",
+        title: "Hidden",
+        visibleTo: "managers",
+      });
+      registerControlled({
+        id: "sort",
+        panel: "members",
+        scope: "user",
+        userKind: "global",
+      });
+      selectUTub();
+      setRole("member");
+      openGear("members");
+
+      expect(popover().querySelector('[data-section-id="hidden"]')).toBeNull();
+      expect(popover().querySelector('[data-group="utub"]')).toBeNull();
+      expect(
+        popover().querySelector('[data-section-id="sort"]'),
+      ).not.toBeNull();
+    });
+
+    it("does not render a visibleTo 'managers' section for a plain member on the sheet", () => {
+      breakpoint.cross({ matches: true });
+      initPopover();
+      registerControlled({
+        id: "hidden",
+        panel: "members",
+        visibleTo: "managers",
+      });
+      registerControlled({
+        id: "sort",
+        panel: "members",
+        scope: "user",
+        userKind: "global",
+      });
+      selectUTub();
+      setRole("member");
+      openGear("members");
+
+      const body = el("panelSettingsSheetBody");
+      expect(body.querySelector('[data-section-id="hidden"]')).toBeNull();
+      expect(body.querySelector('[data-group="utub"]')).toBeNull();
+      expect(body.querySelector('[data-section-id="sort"]')).not.toBeNull();
+    });
+
+    it("renders the managers-only section for a co-owner", () => {
+      initPopover();
+      registerControlled({
+        id: "hidden",
+        panel: "members",
+        visibleTo: "managers",
+      });
+      selectUTub();
+      setRole("co-owner");
+      openGear("members");
+
+      expect(
+        popover().querySelector('[data-section-id="hidden"]'),
+      ).not.toBeNull();
+    });
+
+    it("keeps the gear while any section is visible and drops it when none is, following role flips with the popover closed", () => {
+      initPopover();
+      registerControlled({
+        id: "hidden",
+        panel: "members",
+        visibleTo: "managers",
+      });
+      selectUTub();
+      expect(isGearVisible("members")).toBe(true);
+
+      setRole("member");
+      expect(isGearVisible("members")).toBe(false);
+
+      setRole("co-owner");
+      expect(isGearVisible("members")).toBe(true);
+    });
+
+    it("keeps the gear for a plain member when a visible-to-all section exists", () => {
+      initPopover();
+      registerControlled({
+        id: "hidden",
+        panel: "members",
+        visibleTo: "managers",
+      });
+      registerControlled({
+        id: "sort",
+        panel: "members",
+        scope: "user",
+        userKind: "global",
+      });
+      selectUTub();
+      setRole("member");
+      expect(isGearVisible("members")).toBe(true);
+    });
+
+    it("does not open for a plain member when every section is hidden", () => {
+      initPopover();
+      registerControlled({
+        id: "hidden",
+        panel: "members",
+        visibleTo: "managers",
+      });
+      selectUTub();
+      setRole("member");
+      openGear("members");
+      expect(isOpen()).toBe(false);
+    });
+  });
+
   describe("UTubs popover exemptions", () => {
     beforeEach(() => {
       initPopover();

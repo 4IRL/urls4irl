@@ -80,6 +80,10 @@ export interface AppState {
   // compare it (via captureSettingsVersions) so a response that predates the
   // policy write cannot restore `true`.
   policyLearnedVersion: number;
+  // Per-key record of the learned-off policies: a settings key (for example
+  // "urls.allow_short_links") maps to the `policyLearnedVersion` it was learned
+  // at. Reset when the active UTub changes.
+  learnedOffPolicies: Record<string, number>;
   // Co-member add candidates for the active UTub, hydrated once when the add UI
   // opens (see loadCoMemberCandidates). Held only for the active UTub and
   // cleared on UTub switch / reset so it never leaks across UTubs.
@@ -117,6 +121,7 @@ function createInitialState(): AppState {
     memberSortVersion: 0,
     tagDisplayVersion: 0,
     policyLearnedVersion: 0,
+    learnedOffPolicies: {},
     coMemberCandidates: [],
     coMemberCandidatesLoaded: false,
     preferences: {
@@ -196,6 +201,7 @@ export function setState(partial: Partial<AppState>): void {
   }
   const previousSettings = previous.settings;
   const previousMemberSettings = previous.memberSettings;
+  const previousLearned = previous.learnedOffPolicies;
   Object.assign(_state, partial);
 
   // No UTub, no settings: a changed active UTub never keeps the previous
@@ -215,6 +221,17 @@ export function setState(partial: Partial<AppState>): void {
   ) {
     _state.memberSettings = null;
     if (previousMemberSettings !== null) changedKeys.push("memberSettings");
+  }
+
+  if (
+    "activeUTubID" in partial &&
+    changedKeys.includes("activeUTubID") &&
+    !("learnedOffPolicies" in partial)
+  ) {
+    _state.learnedOffPolicies = {};
+    if (Object.keys(previousLearned).length > 0) {
+      changedKeys.push("learnedOffPolicies");
+    }
   }
 
   if (changedKeys.length === 0) return;

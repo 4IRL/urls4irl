@@ -562,6 +562,20 @@ const appConfig = {
     MEMBERS_LIST_SETTINGS_SECTION_TITLE: "Your member list",
     MEMBERS_LIST_SORT_LABEL: "Sort members by",
     MEMBERS_TRANSFER_SECTION_TITLE: "Ownership",
+    MEMBERS_PERMISSIONS_SECTION_TITLE: "Member permissions",
+    MEMBERS_PERMISSIONS_CO_OWNERS_REMOVE_LABEL: "Co-owners can remove members",
+    MEMBERS_PERMISSIONS_CO_OWNERS_REMOVE_DESC:
+      "Co-owners can remove members who aren't co-owners.",
+    MEMBERS_PERMISSIONS_MEMBERS_ADD_LABEL: "Members can add members",
+    MEMBERS_PERMISSIONS_MEMBERS_ADD_DESC:
+      "Members can add people they share other UTubs with, or by exact username. Up to 25 a day.",
+    MEMBERS_PERMISSIONS_CO_OWNERS_REMOVE_ON_NOTICE:
+      "Co-owners can now remove members",
+    MEMBERS_PERMISSIONS_CO_OWNERS_REMOVE_OFF_NOTICE:
+      "Co-owners can no longer remove members",
+    MEMBERS_PERMISSIONS_MEMBERS_ADD_ON_NOTICE: "Members can now add members",
+    MEMBERS_PERMISSIONS_MEMBERS_ADD_OFF_NOTICE:
+      "Members can no longer add members",
     MEMBERS_LIST_SORT_DESC: "In all your UTubs. The owner always stays on top.",
     MEMBERS_LIST_SORT_OPTION_NAME_AZ: "Name A–Z",
     MEMBERS_LIST_SORT_OPTION_ROLE: "Role, then name",
@@ -601,6 +615,14 @@ const appConfig = {
     MEMBER_ADD_SUMMARY_ADDED: "{{ count }} members added",
     MEMBER_ADD_SUMMARY_FAILED_ONE: "1 member couldn't be added",
     MEMBER_ADD_SUMMARY_FAILED: "{{ count }} members couldn't be added",
+    CO_OWNER_REMOVE_NOT_ALLOWED:
+      "The UTub owner turned off removing members for co-owners.",
+    CO_OWNER_CANNOT_REMOVE_CO_OWNER: "Co-owners can't remove other co-owners.",
+    INVALID_PERMISSION_TO_REMOVE:
+      "Not allowed to remove a member from this UTub.",
+    MEMBER_ADD_NOT_ALLOWED: "The UTub owner turned off adding members.",
+    MEMBER_ADD_NOW_ALLOWED_ANNOUNCEMENT: "You can now add members.",
+    MEMBER_ADD_NO_LONGER_ALLOWED_ANNOUNCEMENT: "You can no longer add members.",
     UTUB_CREATE_MSG: "Create a UTub",
     FIELD_SAVED: "Saved",
     FIELD_SAVED_LABEL_UTUB_NAME: "UTub name",
@@ -616,6 +638,7 @@ const appConfig = {
     PANEL_SETTINGS_CLOSED: "Settings closed",
     PANEL_SETTINGS_UTUB_LOCKED: "UTub is locked",
     PANEL_SETTINGS_MANAGERS_ONLY: "Only UTub managers can change this",
+    PANEL_SETTINGS_OWNER_ONLY: "Only the UTub owner can change this",
     PANEL_SETTINGS_SCOPE_UTUB: "Shared with this UTub",
     PANEL_SETTINGS_SCOPE_USER: "Just for you",
     PANEL_SETTINGS_EMPTY: "No settings available",

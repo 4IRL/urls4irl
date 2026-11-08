@@ -37,7 +37,7 @@ from tests.integration.system.metrics_helpers import (
     parse_dims,
 )
 from tests.models_for_test import valid_users
-from tests.utils_for_test import set_member_role
+from tests.utils_for_test import lock_utub, set_member_role, set_members_settings
 
 pytestmark = pytest.mark.mobile_api
 
@@ -189,7 +189,7 @@ def test_add_member_not_creator_is_403(
     """
     GIVEN user 2 is a member (not creator) of UTub id=1
     WHEN user 2 tries to add another member
-    THEN 403
+    THEN 403 with errorCode MEMBER_ADD_NOT_ALLOWED (adding is off by default)
     """
     user_2_token = token_for_user(app, user_id=2)
     user_3_username = valid_users[2]["username"]
@@ -203,6 +203,10 @@ def test_add_member_not_creator_is_403(
     assert response.status_code == 403
     response_json = response.get_json()
     assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert (
+        response_json[STD_JSON.ERROR_CODE]
+        == UTubMembersErrorCodes.MEMBER_ADD_NOT_ALLOWED
+    )
 
 
 def test_add_member_missing_body_is_400(
@@ -529,6 +533,7 @@ def test_remove_member_co_creator_can_remove_another_member(
     THEN 200 — the co-owner's right to remove other members is preserved (DD-1)
     """
     set_member_role(app, utub_id=1, user_id=2, role=Member_Role.CO_CREATOR)
+    set_members_settings(app, 1, {"co_owners_can_remove": True})
     user_2_headers = make_bearer_headers(token_for_user(app, user_id=2))
 
     with app.app_context():
@@ -550,6 +555,206 @@ def test_remove_member_co_creator_can_remove_another_member(
         assert (
             Utub_Members.query.filter_by(utub_id=1).count() == initial_member_count - 1
         )
+
+
+def _co_owner_delete(
+    app: Flask,
+    api_client: FlaskClient,
+    make_bearer_headers,
+    user_id: int,
+):
+    return api_client.delete(
+        _remove_member_url(app, utub_id=1, user_id=user_id),
+        headers=make_bearer_headers(token_for_user(app, user_id=2)),
+    )
+
+
+def _assert_co_owner_switch_off_refusal(response) -> None:
+    assert response.status_code == 403
+    response_json = response.get_json()
+    assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert response_json[STD_JSON.MESSAGE] == MEMBER_FAILURE.CO_OWNER_REMOVE_NOT_ALLOWED
+    assert (
+        int(response_json[STD_JSON.ERROR_CODE])
+        == UTubMembersErrorCodes.CO_OWNER_REMOVE_NOT_ALLOWED
+    )
+
+
+def test_remove_member_co_creator_with_switch_off_is_refused(
+    app: Flask,
+    api_client: FlaskClient,
+    add_multiple_users_to_utub_without_logging_in,
+    make_bearer_headers,
+):
+    """
+    GIVEN the default (off) co-owner removal switch and user 2 a co-owner
+    WHEN user 2 removes plain member user 3, a co-owner user 3, or a non-member id
+    THEN each is 403 with errorCode CO_OWNER_REMOVE_NOT_ALLOWED and the member stays
+    """
+    set_member_role(app, utub_id=1, user_id=2, role=Member_Role.CO_CREATOR)
+
+    plain = _co_owner_delete(app, api_client, make_bearer_headers, user_id=3)
+    _assert_co_owner_switch_off_refusal(plain)
+
+    missing = _co_owner_delete(app, api_client, make_bearer_headers, user_id=9999)
+    _assert_co_owner_switch_off_refusal(missing)
+
+    set_member_role(app, utub_id=1, user_id=3, role=Member_Role.CO_CREATOR)
+    co_owner = _co_owner_delete(app, api_client, make_bearer_headers, user_id=3)
+    _assert_co_owner_switch_off_refusal(co_owner)
+
+    with app.app_context():
+        assert Utub_Members.query.get((1, 3)) is not None
+
+
+def test_remove_member_co_creator_cannot_remove_co_creator_with_switch_on(
+    app: Flask,
+    api_client: FlaskClient,
+    add_multiple_users_to_utub_without_logging_in,
+    make_bearer_headers,
+):
+    """
+    GIVEN the switch on and users 2 and 3 both co-owners
+    WHEN co-owner 2 removes co-owner 3
+    THEN 403 CO_OWNER_CANNOT_REMOVE_CO_OWNER with no errorCode; the target stays
+    """
+    set_member_role(app, utub_id=1, user_id=2, role=Member_Role.CO_CREATOR)
+    set_member_role(app, utub_id=1, user_id=3, role=Member_Role.CO_CREATOR)
+    set_members_settings(app, 1, {"co_owners_can_remove": True})
+
+    response = _co_owner_delete(app, api_client, make_bearer_headers, user_id=3)
+
+    assert response.status_code == 403
+    response_json = response.get_json()
+    assert (
+        response_json[STD_JSON.MESSAGE]
+        == MEMBER_FAILURE.CO_OWNER_CANNOT_REMOVE_CO_OWNER
+    )
+    assert response_json.get(STD_JSON.ERROR_CODE) is None
+    with app.app_context():
+        assert Utub_Members.query.get((1, 3)) is not None
+
+
+@pytest.mark.parametrize("switch_on", [False, True])
+def test_remove_member_co_creator_can_leave_and_cannot_remove_owner(
+    app: Flask,
+    api_client: FlaskClient,
+    add_multiple_users_to_utub_without_logging_in,
+    make_bearer_headers,
+    switch_on,
+):
+    """
+    GIVEN a co-owner (user 2) and the switch off or on
+    WHEN user 2 removes the owner
+    THEN CANNOT_REMOVE_OWNER either way
+    AND WHEN user 2 removes themself THEN 200 either way
+    """
+    set_member_role(app, utub_id=1, user_id=2, role=Member_Role.CO_CREATOR)
+    set_members_settings(app, 1, {"co_owners_can_remove": switch_on})
+
+    owner_response = _co_owner_delete(app, api_client, make_bearer_headers, user_id=1)
+    assert owner_response.status_code == 403
+    assert (
+        owner_response.get_json()[STD_JSON.MESSAGE]
+        == MEMBER_FAILURE.CANNOT_REMOVE_OWNER
+    )
+
+    self_response = _co_owner_delete(app, api_client, make_bearer_headers, user_id=2)
+    assert self_response.status_code == 200
+    with app.app_context():
+        assert Utub_Members.query.get((1, 2)) is None
+
+
+def test_remove_member_locked_utub_wins_over_switch_off(
+    app: Flask,
+    api_client: FlaskClient,
+    add_multiple_users_to_utub_without_logging_in,
+    make_bearer_headers,
+):
+    """
+    GIVEN a locked UTub with the switch off and user 2 a co-owner
+    WHEN user 2 removes plain member user 3
+    THEN the locked response (UTUB_IS_LOCKED), not CO_OWNER_REMOVE_NOT_ALLOWED
+    """
+    set_member_role(app, utub_id=1, user_id=2, role=Member_Role.CO_CREATOR)
+    lock_utub(app, 1)
+
+    response = _co_owner_delete(app, api_client, make_bearer_headers, user_id=3)
+
+    assert response.status_code == 403
+    assert (
+        int(response.get_json()[STD_JSON.ERROR_CODE])
+        == UTubMembersErrorCodes.UTUB_IS_LOCKED
+    )
+
+
+def test_remove_member_plain_member_cannot_remove_with_switch_on(
+    app: Flask,
+    api_client: FlaskClient,
+    add_multiple_users_to_utub_without_logging_in,
+    make_bearer_headers,
+):
+    """
+    GIVEN the switch on and user 2 a plain member
+    WHEN user 2 removes user 3
+    THEN 403 INVALID_PERMISSION_TO_REMOVE and user 3 stays
+    """
+    set_members_settings(app, 1, {"co_owners_can_remove": True})
+
+    response = _co_owner_delete(app, api_client, make_bearer_headers, user_id=3)
+
+    assert response.status_code == 403
+    assert (
+        response.get_json()[STD_JSON.MESSAGE]
+        == MEMBER_FAILURE.INVALID_PERMISSION_TO_REMOVE
+    )
+    with app.app_context():
+        assert Utub_Members.query.get((1, 3)) is not None
+
+
+def test_remove_member_switch_turned_off_after_on_is_refused(
+    app: Flask,
+    api_client: FlaskClient,
+    add_multiple_users_to_utub_without_logging_in,
+    make_bearer_headers,
+):
+    """
+    GIVEN the switch turned on, then off by the owner before the co-owner's request
+    WHEN co-owner user 2 removes plain member user 3
+    THEN 403 CO_OWNER_REMOVE_NOT_ALLOWED and user 3 stays
+    """
+    set_member_role(app, utub_id=1, user_id=2, role=Member_Role.CO_CREATOR)
+    set_members_settings(app, 1, {"co_owners_can_remove": True})
+    set_members_settings(app, 1, {"co_owners_can_remove": False})
+
+    response = _co_owner_delete(app, api_client, make_bearer_headers, user_id=3)
+
+    _assert_co_owner_switch_off_refusal(response)
+    with app.app_context():
+        assert Utub_Members.query.get((1, 3)) is not None
+
+
+def test_remove_member_owner_removes_co_creator_regardless_of_switch(
+    app: Flask,
+    api_client: FlaskClient,
+    add_multiple_users_to_utub_without_logging_in,
+    make_bearer_headers,
+):
+    """
+    GIVEN the switch off and user 3 a co-owner
+    WHEN the owner removes user 3
+    THEN 200
+    """
+    set_member_role(app, utub_id=1, user_id=3, role=Member_Role.CO_CREATOR)
+
+    response = api_client.delete(
+        _remove_member_url(app, utub_id=1, user_id=3),
+        headers=make_bearer_headers(token_for_user(app, user_id=1)),
+    )
+
+    assert response.status_code == 200
+    with app.app_context():
+        assert Utub_Members.query.get((1, 3)) is None
 
 
 def test_remove_member_co_creator_cannot_remove_literal_owner(

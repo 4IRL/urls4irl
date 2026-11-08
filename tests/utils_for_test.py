@@ -5,6 +5,8 @@ from typing import Any, NamedTuple
 
 import sqlalchemy
 from flask import Flask
+from sqlalchemy import event
+from sqlalchemy.engine import Connection
 
 from backend import create_app, db, oauth
 from backend.config import ConfigTest
@@ -259,6 +261,43 @@ def unlock_utub(app: Flask, utub_id: int) -> None:
     with app.app_context():
         utub: Utubs = Utubs.query.get(utub_id)
         utub.is_locked = False
+        db.session.commit()
+
+
+def statements_while(action: Any) -> list[str]:
+    """Run ``action`` and return the SQL statements emitted on the session connection."""
+    statements: list[str] = []
+
+    def capture(
+        conn: Connection,
+        cursor: Any,
+        statement: str,
+        parameters: Any,
+        context: Any,
+        executemany: bool,
+    ) -> None:
+        statements.append(statement)
+
+    connection = db.session.connection()
+    event.listen(connection, "before_cursor_execute", capture)
+    try:
+        action()
+    finally:
+        event.remove(connection, "before_cursor_execute", capture)
+    return statements
+
+
+def set_members_settings(app: Flask, utub_id: int, members: dict[str, bool]) -> None:
+    """Seed a UTub's stored ``members`` settings section, in place.
+
+    Args:
+        app (Flask): The Flask client for providing an app context
+        utub_id (int): The ID of the UTub to update
+        members (dict[str, bool]): Stored overrides, e.g. {"co_owners_can_remove": True}
+    """
+    with app.app_context():
+        utub: Utubs = Utubs.query.get(utub_id)
+        utub.settings = {"members": members}
         db.session.commit()
 
 

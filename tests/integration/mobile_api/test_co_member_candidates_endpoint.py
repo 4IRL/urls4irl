@@ -19,6 +19,7 @@ from flask.testing import FlaskClient
 
 from backend import db
 from backend.api_v1.services.tokens import create_access_token
+from backend.members.constants import UTubMembersErrorCodes
 from backend.models.users import Users
 from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utubs import Utubs
@@ -202,7 +203,7 @@ def test_co_member_candidates_non_creator_is_403(
     """
     GIVEN user 1 is a member (not creator) of a UTub created by user 2
     WHEN user 1 GETs that UTub's co-members
-    THEN 403 (creator-only endpoint)
+    THEN 403 errorCode 7 (adding is off by default, so suggestions are refused)
     """
     user_1_token = _token_for_user(app, user_id=1)
 
@@ -221,6 +222,10 @@ def test_co_member_candidates_non_creator_is_403(
     assert response.status_code == 403
     response_json = response.get_json()
     assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert (
+        response_json[STD_JSON.ERROR_CODE]
+        == UTubMembersErrorCodes.MEMBER_ADD_NOT_ALLOWED
+    )
 
 
 def test_co_member_candidates_nonexistent_utub_is_404(

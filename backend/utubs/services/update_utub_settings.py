@@ -8,6 +8,7 @@ from backend.schemas.errors import build_field_error_response
 from backend.schemas.utub_settings import (
     UtubSettingsPatchError,
     merge_utub_settings,
+    patch_requires_owner,
     utub_settings_overrides_changed,
 )
 from backend.schemas.utubs import UtubSettingsUpdatedResponseSchema
@@ -24,7 +25,8 @@ def update_utub_settings_if_changed(
 
     Commits only when the resulting overrides differ from the stored ones.
     ``Utubs.last_updated`` is deliberately not bumped: settings are
-    configuration, not UTub content.
+    configuration, not UTub content. A patch touching an owner-only key (the
+    ``members`` keys) requires the UTub owner; otherwise a manager suffices.
 
     Args:
         current_utub (Utubs): The UTub whose settings are being updated
@@ -33,9 +35,12 @@ def update_utub_settings_if_changed(
     Returns:
         FlaskResponse: The full resolved settings on 200, or a 400/403/404 error
     """
+    required_access = (
+        UtubAccess.OWNER if patch_requires_owner(patch) else UtubAccess.MANAGER
+    )
     auth_error: FlaskResponse | None = lock_and_reauthorize(
         current_utub,
-        required_access=UtubAccess.MANAGER,
+        required_access=required_access,
         error_code=UTubErrorCodes.UTUB_IS_LOCKED,
     )
     if auth_error is not None:

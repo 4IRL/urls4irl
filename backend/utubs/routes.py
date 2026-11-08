@@ -366,7 +366,7 @@ def update_utub_desc(
     error_message=UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_SETTINGS,
     error_code=UTubErrorCodes.INVALID_FORM_INPUT,
     tags=[OPEN_API.UTUBS],
-    description="Partially update a UTub's per-panel settings. Metrics: API_HIT only (no DOMAIN event).",
+    description="Partially update a UTub's per-panel settings. The members keys are owner-only. Metrics: API_HIT only (no DOMAIN event).",
     status_codes={
         200: UtubSettingsUpdatedResponseSchema,
         400: ErrorResponse,
@@ -381,7 +381,8 @@ def update_utub_settings(
 ) -> FlaskResponse:
     """
     Creator or co-owner wants to update the per-panel settings of their UTub.
-    Only the sections present in the request are merged.
+    Only the sections present in the request are merged. A patch touching the
+    owner-only members keys requires the UTub owner.
 
     Args:
         utub_id (int): The ID of the UTub that will have its settings updated
