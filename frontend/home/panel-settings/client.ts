@@ -644,7 +644,7 @@ export async function resyncSettings({
       log("resyncSettings — active UTub changed mid-flight", { utubID });
       return false;
     }
-    const { keepSettings, forceShortLinksOff } = shouldKeepSettings({
+    const { keepSettings, forceOffKeys } = shouldKeepSettings({
       selectedUTub: result.data,
       captured,
     });
@@ -658,7 +658,7 @@ export async function resyncSettings({
     setState({
       settings: resolveIncomingSettings({
         settings: result.data.settings,
-        forceShortLinksOff,
+        forceOffKeys,
       }),
     });
     return true;

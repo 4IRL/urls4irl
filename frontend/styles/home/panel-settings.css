@@ -7,14 +7,34 @@
 
 /* ------------------------------- Gear button ------------------------------- */
 
-/* 44px hit area via padding around the unchanged 30px icon; the negative margin
-   hands the extra 14px back so neighbouring icons keep their rhythm. `.hidden`
-   (display:none !important) collapses the gear to zero width, margin included. */
+/* Desktop: a plain 30px icon. `.hidden` (display:none !important) collapses it to
+   zero width. */
 .panelSettingsGear {
     flex: 0 0 auto;
-    padding: 7px;
-    margin: -7px;
     cursor: pointer;
+}
+
+/* The left decks' header icons each carry a 4px left margin (plus a 2px flex gap in
+   the UTub/Tag decks, none in Members), so the gear needs it too or it sits tight
+   against the previous icon (touching it in Members). The URL deck spaces its icons
+   with a 6px gap alone, so it takes none. Fine pointers only: the touch rule below
+   owns the margin there. */
+@media not all and (any-pointer: coarse) {
+    #utubBtnSettings,
+    #memberBtnSettings,
+    #utubTagBtnSettings {
+        margin-left: 4px;
+    }
+}
+
+/* Touch: 44px hit area via padding around the unchanged 30px icon; the negative
+   margin hands the extra 14px back. Desktop must not use it: it would cancel 7px
+   of the header gap and push the gear off the icon column. */
+@media (any-pointer: coarse) {
+    .panelSettingsGear {
+        padding: 7px;
+        margin: -7px;
+    }
 }
 
 .panelSettingsGear > svg {

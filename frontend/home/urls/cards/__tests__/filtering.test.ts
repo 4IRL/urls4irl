@@ -24,7 +24,12 @@ vi.mock("../../../tags/display-settings.js", () => ({
 }));
 
 vi.mock("../../../../store/app-store.js", () => ({
-  getState: vi.fn(() => ({ selectedTagIDs: [], urls: [], tags: [] })),
+  getState: vi.fn(() => ({
+    selectedTagIDs: [],
+    urls: [],
+    tags: [],
+    learnedOffPolicies: {},
+  })),
   setState: vi.fn(),
   resetStore: vi.fn(),
 }));
@@ -213,6 +218,7 @@ describe("Tag Filter Empty State", () => {
       tags: [],
       urls: [],
       isCoCreator: false,
+      learnedOffPolicies: {},
       preferences: { memberSort: "name_az" },
     } as unknown as ReturnType<typeof getState>);
 

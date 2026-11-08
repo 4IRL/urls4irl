@@ -11,7 +11,7 @@ import { closeAllMemberRowMenus } from "../members/row-menu.js";
 import { dismissActiveTip, maybeShowNextTip } from "../onboarding/nudges.js";
 import { fitUTubHeaderAndSubheader } from "../utubs/header-fit.js";
 import { announceSettingsStatus } from "./announce.js";
-import { canWriteSection } from "./permissions.js";
+import { canWriteSection, isSectionVisible } from "./permissions.js";
 import { computePopoverPlacement } from "./placement.js";
 import { createSaveQueue } from "./queue.js";
 import type { SaveQueue } from "./queue.js";
@@ -31,6 +31,7 @@ import type {
   SaveStatus,
   SectionContext,
   SectionPatch,
+  WriteAccess,
 } from "./types.js";
 
 const log = debug("panel-settings");
@@ -80,8 +81,6 @@ const COLLAPSE_DECK_BY_PANEL: Readonly<
   members: "members",
   tags: "tags",
 };
-
-type ForcedReadOnlyReason = "locked" | "forbidden";
 
 interface SectionEntry {
   section: PanelSection;
@@ -140,7 +139,10 @@ interface OpenPopover {
 
 let _queue: SaveQueue | null = null;
 let _current: OpenPopover | null = null;
-let _forcedReadOnly: ForcedReadOnlyReason | null = null;
+// Forced read-only state: a lock refuses every utub section; a 403 refuses only
+// the write class (manager / owner) of the section that was refused.
+let _forcedLocked = false;
+const _forcedForbidden = new Set<WriteAccess>();
 let _disposers: Array<() => void> = [];
 let _breakpointQuery: MediaQueryList | null = null;
 let _closeFlagTimer: ReturnType<typeof setTimeout> | null = null;
@@ -313,7 +315,41 @@ function isManager({ state }: { state: AppState }): boolean {
   return state.isCurrentUserOwner || state.isCoCreator;
 }
 
+// Registered sections the viewer's role may see. Every render, gear-presence and
+// open check goes through this, never the raw registry list.
+function visibleSections({
+  panel,
+  state,
+}: {
+  panel: PanelId;
+  state: AppState;
+}): PanelSection[] {
+  return getSections(panel).filter((section) =>
+    isSectionVisible({ section, state }),
+  );
+}
+
 // ------------------------------------------------------- section context
+
+function clearForcedReadOnly(): void {
+  _forcedLocked = false;
+  _forcedForbidden.clear();
+}
+
+function writeAccessOf({ section }: { section: PanelSection }): WriteAccess {
+  return section.writeAccess ?? "manager";
+}
+
+function isForced({ section }: { section: PanelSection }): boolean {
+  return (
+    section.scope === "utub" &&
+    (_forcedLocked || _forcedForbidden.has(writeAccessOf({ section })))
+  );
+}
+
+function noteIdOf({ section }: { section: PanelSection }): string {
+  return `panelSettingsNote-${section.id}`;
+}
 
 function readOnlyNoteFor({
   section,
@@ -322,10 +358,19 @@ function readOnlyNoteFor({
 }): string | null {
   if (section.scope !== "utub") return null;
   const state = getState();
-  if (_forcedReadOnly === "forbidden" || !isManager({ state })) {
-    return APP_CONFIG.strings.PANEL_SETTINGS_MANAGERS_ONLY;
-  }
-  if (_forcedReadOnly === "locked" || state.isCurrentUTubLocked) {
+  // Fail closed: anything but "manager" is treated as owner-only.
+  const ownerOnly = writeAccessOf({ section }) !== "manager";
+  const refusedText = ownerOnly
+    ? APP_CONFIG.strings.PANEL_SETTINGS_OWNER_ONLY
+    : APP_CONFIG.strings.PANEL_SETTINGS_MANAGERS_ONLY;
+  const rolePermitted = ownerOnly
+    ? state.isCurrentUserOwner
+    : isManager({ state });
+  if (!rolePermitted) return refusedText;
+  // A lock outranks a per-class 403.
+  if (_forcedLocked) return APP_CONFIG.strings.PANEL_SETTINGS_UTUB_LOCKED;
+  if (_forcedForbidden.has(writeAccessOf({ section }))) return refusedText;
+  if (state.isCurrentUTubLocked) {
     return APP_CONFIG.strings.PANEL_SETTINGS_UTUB_LOCKED;
   }
   return null;
@@ -333,10 +378,13 @@ function readOnlyNoteFor({
 
 function contextFor({ section }: { section: PanelSection }): SectionContext {
   const state = getState();
-  const forced = section.scope === "utub" && _forcedReadOnly !== null;
+  const forced = isForced({ section });
   return {
     settings: section.scope === "utub" ? state.settings : null,
     canWrite: canWriteSection({ section, state }) && !forced,
+    ...(section.scope === "utub"
+      ? { readOnlyNoteId: noteIdOf({ section }) }
+      : {}),
     submit: ({ patch, debounce }) => submit({ section, patch, debounce }),
   };
 }
@@ -614,6 +662,7 @@ function createEntry({
 
   const noteElement = document.createElement("p");
   noteElement.className = "panelSettingsReadOnlyNote";
+  noteElement.id = noteIdOf({ section });
   noteElement.hidden = true;
 
   // Status and note sit outside the collapse region so an error stays visible
@@ -790,7 +839,7 @@ function createGroupEntry({
 
 function renderAllSections({ popover }: { popover: OpenPopover }): void {
   const element = popover.container;
-  const sections = getSections(popover.panel);
+  const sections = visibleSections({ panel: popover.panel, state: getState() });
   for (const [sectionId, entry] of popover.entries) {
     if (!sections.some((section) => section.id === sectionId)) {
       teardownEntry({ entry });
@@ -1029,12 +1078,25 @@ function buildSink(): QueueSink {
       }, SAVED_DWELL_MS);
     },
 
-    forceReadOnly({ reason, utubID }) {
+    forceReadOnly({ reason, utubID, writeAccess }) {
       const popover = _current;
       if (popover === null || isOtherUTub({ utubID })) return;
-      const alreadyForced = _forcedReadOnly === reason;
-      _forcedReadOnly = reason;
+      const alreadyForced =
+        reason === "locked" ? _forcedLocked : _forcedForbidden.has(writeAccess);
+      if (reason === "locked") {
+        _forcedLocked = true;
+      } else {
+        _forcedForbidden.add(writeAccess);
+      }
       for (const entry of popover.entries.values()) {
+        // A 403 touches only the refused class; a lock touches every section.
+        if (
+          reason === "forbidden" &&
+          (entry.section.scope !== "utub" ||
+            writeAccessOf({ section: entry.section }) !== writeAccess)
+        ) {
+          continue;
+        }
         stopSaving({ entry });
         if (entry.section.scope === "utub") renderSectionBody({ entry });
       }
@@ -1043,7 +1105,9 @@ function buildSink(): QueueSink {
         message:
           reason === "locked"
             ? APP_CONFIG.strings.PANEL_SETTINGS_UTUB_LOCKED
-            : APP_CONFIG.strings.PANEL_SETTINGS_MANAGERS_ONLY,
+            : writeAccess === "owner"
+              ? APP_CONFIG.strings.PANEL_SETTINGS_OWNER_ONLY
+              : APP_CONFIG.strings.PANEL_SETTINGS_MANAGERS_ONLY,
       });
     },
 
@@ -1063,8 +1127,8 @@ function buildSink(): QueueSink {
       renderSectionBody({ entry });
     },
 
-    isForcedReadOnly() {
-      return _forcedReadOnly !== null;
+    isForcedReadOnly({ section }) {
+      return isForced({ section });
     },
   };
 }
@@ -1150,7 +1214,7 @@ function openPopover({ gear }: { gear: HTMLElement }): void {
   const element = surface === "sheet" ? sheetElement() : popoverElement();
   const panel = gear.dataset.panel;
   if (!element || !isKnownPanel(panel)) return;
-  if (getSections(panel).length === 0) return;
+  if (visibleSections({ panel, state: getState() }).length === 0) return;
   // A sheet close or Tag sheet close is still unwinding its history entry: the
   // tap is dropped (before any internal close) and stays dropped.
   if (surface === "sheet" && isPanelSettingsSheetSelfBackPending()) return;
@@ -1173,7 +1237,7 @@ function openPopover({ gear }: { gear: HTMLElement }): void {
 
   if (_closeFlagTimer !== null) clearTimeout(_closeFlagTimer);
   _closeFlagTimer = null;
-  _forcedReadOnly = null;
+  clearForcedReadOnly();
 
   let container: HTMLElement;
   if (surface === "sheet") {
@@ -1241,7 +1305,7 @@ function closePopover({
     active === null || active === document.body || element.contains(active);
 
   _current = null;
-  _forcedReadOnly = null;
+  clearForcedReadOnly();
   for (const entry of popover.entries.values()) {
     teardownEntry({ entry });
   }
@@ -1316,7 +1380,7 @@ function recomputeGears(): void {
     gear.setAttribute("aria-controls", controls);
     const visible =
       isKnownPanel(panel) &&
-      getSections(panel).length > 0 &&
+      visibleSections({ panel, state }).length > 0 &&
       (panel === "utubs" || state.activeUTubID !== null);
     if (gear.classList.contains(HIDDEN_CLASS) === visible) {
       gear.classList.toggle(HIDDEN_CLASS, !visible);
@@ -1409,7 +1473,7 @@ export function reconcilePanelSettings({
     for (const entry of popover.entries.values()) {
       if (entry.section.scope === "utub") renderSectionBody({ entry });
     }
-    if (state.isCurrentUTubLocked && _forcedReadOnly !== "locked") {
+    if (state.isCurrentUTubLocked && !_forcedLocked) {
       say({ message: APP_CONFIG.strings.PANEL_SETTINGS_UTUB_LOCKED });
     }
   }
@@ -1453,7 +1517,9 @@ function onSectionsChanged(): void {
   // A section registered or unregistered while open. Pending saves of a section
   // that went away still complete (the queue holds its section object); only its
   // DOM is dropped here.
-  if (getSections(popover.panel).length === 0) {
+  if (
+    visibleSections({ panel: popover.panel, state: getState() }).length === 0
+  ) {
     closePopover({ kind: "forced" });
     return;
   }
@@ -1544,7 +1610,7 @@ export function resetPopover(): void {
   }
   resetSettingsSheet();
   _queue = null;
-  _forcedReadOnly = null;
+  clearForcedReadOnly();
   _breakpointQuery = null;
   _titles.clear();
   _collapsedSections = null;

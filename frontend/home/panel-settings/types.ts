@@ -2,7 +2,9 @@
 // against these and may not edit the shell, except for additive extensions
 // (URLs panel phases): an optional `notice` on a saved result, folded into the
 // single "Saved" announcement, and an optional `rerenderOn` selector list on a
-// per-utub user section, which the shell diffs to know when to re-render it.
+// per-utub user section, which the shell diffs to know when to re-render it;
+// and, on a section, an optional `writeAccess` ("manager" | "owner", scope
+// 'utub' only) and `visibleTo` ("all" | "managers"), both failing closed.
 import type { AppState } from "../../store/app-store.js";
 import type {
   PanelId,
@@ -23,6 +25,11 @@ export interface SectionContext {
   /** UTub slice's last-saved value for scope 'utub'; null for scope 'user'. */
   settings: UtubSettings | null;
   canWrite: boolean;
+  /**
+   * Scope 'utub' only. Id of the read-only note element; the section's render
+   * adds it to its controls' aria-describedby.
+   */
+  readOnlyNoteId?: string;
   submit({
     patch,
     debounce,
@@ -34,6 +41,12 @@ export interface SectionContext {
 
 export type UserKind = "global" | "per-utub";
 
+/** Who may write a scope 'utub' section; absent means "manager". */
+export type WriteAccess = "manager" | "owner";
+
+/** Who sees a section; absent means "all". */
+export type SectionVisibility = "all" | "managers";
+
 export interface PanelSection {
   id: string;
   panel: PanelId;
@@ -41,6 +54,10 @@ export interface PanelSection {
   scope: SettingsScope;
   /** Required for scope 'user'. */
   userKind?: UserKind;
+  /** Scope 'utub' only; absent means "manager". */
+  writeAccess?: WriteAccess;
+  /** Absent means "all". */
+  visibleTo?: SectionVisibility;
   /**
    * Scope 'user', userKind 'per-utub' only: selectors for the store values the
    * render depends on. The shell re-renders the section (when idle) whenever
@@ -82,12 +99,15 @@ export interface QueueSink {
     savedPatch?: SectionPatch;
     notice?: string;
   }): void;
+  // `writeAccess` is the refused section's class; it scopes a "forbidden" force.
   forceReadOnly({
     reason,
     utubID,
+    writeAccess,
   }: {
     reason: "locked" | "forbidden";
     utubID: number | null;
+    writeAccess: WriteAccess;
   }): void;
   announce({
     sectionId,
@@ -105,5 +125,5 @@ export interface QueueSink {
     sectionId: string;
     utubID: number | null;
   }): void;
-  isForcedReadOnly(): boolean;
+  isForcedReadOnly({ section }: { section: PanelSection }): boolean;
 }

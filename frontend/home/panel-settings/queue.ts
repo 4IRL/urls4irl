@@ -14,6 +14,7 @@ import type {
   QueueSink,
   SaveResult,
   SectionPatch,
+  WriteAccess,
 } from "./types.js";
 
 const log = debug("panel-settings");
@@ -112,13 +113,21 @@ export function createSaveQueue({ sink }: { sink: QueueSink }): SaveQueue {
   function dropKeysForUTub({
     utubID,
     utubScopeOnly = false,
+    writeAccess,
   }: {
     utubID: number;
     utubScopeOnly?: boolean;
+    writeAccess?: WriteAccess;
   }): void {
     for (const state of keys.values()) {
       if (state.utubID !== utubID) continue;
       if (utubScopeOnly && state.section.scope !== "utub") continue;
+      if (
+        writeAccess !== undefined &&
+        (state.section.writeAccess ?? "manager") !== writeAccess
+      ) {
+        continue;
+      }
       dropPending({ state });
     }
   }
@@ -263,8 +272,20 @@ export function createSaveQueue({ sink }: { sink: QueueSink }): SaveQueue {
       case "forbidden":
       case "locked": {
         if (utubID === null) return;
-        dropKeysForUTub({ utubID, utubScopeOnly: true });
-        sink.forceReadOnly({ reason: result.outcome, utubID });
+        const refusedAccess = section.writeAccess ?? "manager";
+        // A 403 refuses one write class; a lock refuses every utub section.
+        dropKeysForUTub({
+          utubID,
+          utubScopeOnly: true,
+          ...(result.outcome === "forbidden"
+            ? { writeAccess: refusedAccess }
+            : {}),
+        });
+        sink.forceReadOnly({
+          reason: result.outcome,
+          utubID,
+          writeAccess: refusedAccess,
+        });
         updateUTubOnFindingStaleData({ utubID }).catch((error: unknown) => {
           log("convergence refresh failed", { utubID, error });
         });
@@ -322,7 +343,7 @@ export function createSaveQueue({ sink }: { sink: QueueSink }): SaveQueue {
       }
       if (
         !canWriteSection({ section, state: getState() }) ||
-        (section.scope === "utub" && sink.isForcedReadOnly())
+        (section.scope === "utub" && sink.isForcedReadOnly({ section }))
       ) {
         log("enqueue — write not permitted, dropping", {
           sectionId: section.id,

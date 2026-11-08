@@ -111,6 +111,21 @@ describe("panel settings registry", () => {
         () => makeSection({ scope: "utub", panel: "utubs" }),
       ],
       [
+        "an unknown writeAccess",
+        () => makeSection({ writeAccess: "admin" as never }),
+      ],
+      [
+        "writeAccess on a scope 'user' section",
+        () =>
+          makeSection({
+            scope: "user",
+            panel: "members",
+            userKind: "global",
+            writeAccess: "owner",
+          }),
+      ],
+      ["an unknown visibleTo", () => makeSection({ visibleTo: "x" as never })],
+      [
         "per-utub userKind on the utubs panel",
         () =>
           makeSection({
@@ -134,6 +149,19 @@ describe("panel settings registry", () => {
         expect(getSections("urls")).toEqual([]);
       },
     );
+
+    it("accepts valid writeAccess and visibleTo values", () => {
+      registerSection(
+        makeSection({ id: "own", writeAccess: "owner", visibleTo: "managers" }),
+      );
+      registerSection(
+        makeSection({ id: "mgr", writeAccess: "manager", visibleTo: "all" }),
+      );
+      expect(getSections("urls").map((section) => section.id)).toEqual([
+        "own",
+        "mgr",
+      ]);
+    });
 
     it("rejects a duplicate id", () => {
       const original = makeSection({ id: "dup" });

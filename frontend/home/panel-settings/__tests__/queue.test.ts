@@ -734,6 +734,7 @@ describe("createSaveQueue", () => {
         expect(sink.forceReadOnly).toHaveBeenCalledWith({
           reason: outcome,
           utubID: UTUB_ID,
+          writeAccess: "manager",
         });
         expect(updateUTubOnFindingStaleData).toHaveBeenCalledTimes(1);
         expect(updateUTubOnFindingStaleData).toHaveBeenCalledWith({
@@ -745,6 +746,96 @@ describe("createSaveQueue", () => {
         expect(userSection.save).toHaveBeenCalledTimes(1);
       },
     );
+
+    describe("owner-only 403 scoping", () => {
+      function ownerAndManagerSections() {
+        const owner = controlledSection({
+          id: "owner-sec",
+          panel: "members",
+          writeAccess: "owner",
+        });
+        const manager = makeSection({ id: "mgr-sec", panel: "urls" });
+        return { owner, manager };
+      }
+
+      it("forbidden on an owner-only section drops only owner-only keys and leaves the manager class writable", async () => {
+        let forcedOwner = false;
+        const sink = makeSink({
+          forceReadOnly: vi.fn(({ writeAccess }) => {
+            if (writeAccess === "owner") forcedOwner = true;
+          }),
+          isForcedReadOnly: vi.fn(
+            ({ section }) =>
+              forcedOwner && (section.writeAccess ?? "manager") === "owner",
+          ),
+        });
+        const queue = createSaveQueue({ sink });
+        const { owner, manager } = ownerAndManagerSections();
+
+        queue.enqueue({ section: owner.section, patch: { a: 1 } });
+        await settle();
+        queue.enqueue({ section: owner.section, patch: { more: 1 } });
+        queue.enqueue({
+          section: manager,
+          patch: { b: 1 },
+          debounce: true,
+        });
+        owner.pending[0].resolve({ outcome: "forbidden" });
+        await settle();
+
+        expect(sink.forceReadOnly).toHaveBeenCalledWith({
+          reason: "forbidden",
+          utubID: UTUB_ID,
+          writeAccess: "owner",
+        });
+        // The pending manager-class edit survives and is sent.
+        await vi.advanceTimersByTimeAsync(DEBOUNCE_MS * 2);
+        expect(manager.save).toHaveBeenCalledTimes(1);
+        // The pending owner-only key was dropped.
+        expect(owner.section.save).toHaveBeenCalledTimes(1);
+        // A later manager-class enqueue is accepted; an owner-only one is not.
+        queue.enqueue({ section: manager, patch: { c: 1 } });
+        queue.enqueue({ section: owner.section, patch: { d: 1 } });
+        await settle();
+        expect(manager.save).toHaveBeenCalledTimes(2);
+        expect(owner.section.save).toHaveBeenCalledTimes(1);
+      });
+
+      it("locked still drops and blocks every utub-scope section", async () => {
+        let locked = false;
+        const sink = makeSink({
+          forceReadOnly: vi.fn(({ reason }) => {
+            if (reason === "locked") locked = true;
+          }),
+          isForcedReadOnly: vi.fn(() => locked),
+        });
+        const queue = createSaveQueue({ sink });
+        const { owner, manager } = ownerAndManagerSections();
+
+        queue.enqueue({ section: owner.section, patch: { a: 1 } });
+        await settle();
+        queue.enqueue({ section: owner.section, patch: { more: 1 } });
+        queue.enqueue({
+          section: manager,
+          patch: { b: 1 },
+          debounce: true,
+        });
+        owner.pending[0].resolve({ outcome: "locked" });
+        await settle();
+        await vi.advanceTimersByTimeAsync(DEBOUNCE_MS * 2);
+        queue.enqueue({ section: manager, patch: { c: 1 } });
+        queue.enqueue({ section: owner.section, patch: { d: 1 } });
+        await settle();
+        expect(owner.section.save).toHaveBeenCalledTimes(1);
+
+        expect(sink.forceReadOnly).toHaveBeenCalledWith({
+          reason: "locked",
+          utubID: UTUB_ID,
+          writeAccess: "owner",
+        });
+        expect(manager.save).not.toHaveBeenCalled();
+      });
+    });
 
     it("does not call updateUTubOnFindingStaleData for any other outcome", async () => {
       const { queue } = setup();
