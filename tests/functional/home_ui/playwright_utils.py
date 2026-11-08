@@ -1,7 +1,8 @@
 import re
 
-from playwright.sync_api import Page, expect
+from playwright.sync_api import Locator, Page, expect
 
+from backend.utils.strings.user_strs import MEMBERS_LIST_SORT_LABEL
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.playwright_utils import (
     Decks,
@@ -12,6 +13,20 @@ from tests.functional.playwright_utils import (
 )
 
 _MAIN_PANEL_COLLAPSED_CLASS = "lhs-collapsed"
+
+
+def sort_select(*, page: Page) -> Locator:
+    """The member-sort combobox inside the open settings popover."""
+    return page.locator(HPL.PANEL_SETTINGS_POPOVER).get_by_role(
+        "combobox", name=MEMBERS_LIST_SORT_LABEL, exact=True
+    )
+
+
+def open_members_settings(*, page: Page) -> None:
+    """Open the Members gear popover and wait for the sort select."""
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_MEMBER_SETTINGS_GEAR)
+    expect(page.locator(HPL.PANEL_SETTINGS_POPOVER)).to_be_visible()
+    expect(sort_select(page=page)).to_be_visible()
 
 
 def collapse_deck(

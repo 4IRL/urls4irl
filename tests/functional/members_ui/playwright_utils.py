@@ -3,13 +3,22 @@ import re
 from typing import Callable
 
 from flask import Flask
-from playwright.sync_api import Locator, Page, Route, expect
+from playwright.sync_api import Locator, Page, Response, Route, expect
 
 from backend import db
+from backend.cli.mock_constants import USERNAME_BASE
 from backend.models.users import Users
 from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utubs import Utubs
+from tests.functional.db_utils import (
+    get_utub_this_user_created,
+    set_member_role_in_utub,
+    set_utub_settings,
+)
 from tests.functional.locators import HomePageLocators as HPL
+from tests.functional.playwright_login_utils import (
+    login_user_and_select_utub_by_utubid,
+)
 from tests.functional.playwright_utils import (
     clear_then_send_keys,
     wait_for_css_transitions_to_finish,
@@ -37,6 +46,74 @@ _MEMBER_ROLE_PATCH_URL_RE = re.compile(r"/utubs/\d+/members/\d+$")
 # a forced 400 for the target-already-owner / already-transferred guarded case.
 # Distinct from the per-member role PATCH regex above (no trailing `/members/id`).
 _TRANSFER_OWNER_PATCH_URL_RE = re.compile(r"/utubs/\d+/owner$")
+
+# Matches ONLY the UTub settings PATCH (`/utubs/<id>/settings`), never the
+# per-user `/utubs/<id>/member-settings` PATCH.
+_UTUB_SETTINGS_PATCH_URL_RE = re.compile(r"/utubs/\d+/settings$")
+
+# The mock users the member-permission acceptance tests act as and on.
+OWNER_ID = 1
+CO_OWNER_ID = 2
+TARGET_ID = 3
+SUGGESTED_ID = 4
+OUTSIDER_ID = 5
+SUGGESTED_NAME = f"{USERNAME_BASE}{SUGGESTED_ID}"
+OUTSIDER_NAME = f"{USERNAME_BASE}{OUTSIDER_ID}"
+
+# Anchored to the URL path so an error page that merely contains "/home" fails.
+_HOME_URL_RE = re.compile(r"/home(\?|$)")
+
+
+def is_settings_patch(response: Response) -> bool:
+    """True for the UTub settings PATCH response."""
+    return (
+        response.request.method == "PATCH"
+        and _UTUB_SETTINGS_PATCH_URL_RE.search(response.url) is not None
+    )
+
+
+def seed_policy(
+    *,
+    app: Flask,
+    utub_id: int,
+    co_owners_can_remove: bool = False,
+    members_can_add: bool = False,
+) -> None:
+    """Write both member-permission switches into the UTub's settings."""
+    set_utub_settings(
+        app,
+        utub_id,
+        {
+            "members": {
+                "co_owners_can_remove": co_owners_can_remove,
+                "members_can_add": members_can_add,
+            }
+        },
+    )
+
+
+def login_as(
+    *, app: Flask, page: Page, user_id: int, role: Member_Role | None = None
+) -> int:
+    """Seed ``user_id``'s role in the owner's UTub (when given), log them in on
+    that UTub and wait for the member rows. Returns the UTub id."""
+    utub_id = get_utub_this_user_created(app, OWNER_ID).id
+    if role is not None:
+        set_member_role_in_utub(app, user_id, utub_id, role)
+    login_user_and_select_utub_by_utubid(
+        app=app, page=page, user_id=user_id, utub_id=utub_id
+    )
+    wait_until_visible_css_selector(page=page, css_selector=HPL.MEMBER_ROW_ROLE_ICON)
+    return utub_id
+
+
+def expect_notice(*, page: Page, text: str) -> None:
+    """The deck refusal notice is visible with ``text`` and the page did not
+    redirect to the error page."""
+    notice = page.locator(HPL.MEMBER_DECK_NOTICE)
+    expect(notice).to_be_visible()
+    expect(notice).to_contain_text(text)
+    expect(page).to_have_url(_HOME_URL_RE)
 
 
 def open_member_name_filter(*, page: Page) -> Locator:
@@ -582,3 +659,88 @@ def leave_utub_as_member(*, page: Page, utub_to_leave: Utubs) -> None:
         page=page,
         css_selector=f'{HPL.SELECTORS_UTUB}[utubid="{utub_to_leave.id}"]',
     )
+
+
+def member_row(*, page: Page, member_id: int) -> Locator:
+    """The deck row (`.member`) of ``member_id``."""
+    return page.locator(f'{HPL.BADGES_MEMBERS}[memberid="{member_id}"]')
+
+
+def co_owner_kebab(*, page: Page, member_id: int) -> Locator:
+    """The co-owner viewer's Remove-only kebab on ``member_id``'s row."""
+    return member_row(page=page, member_id=member_id).locator(
+        HPL.MEMBER_ROW_KEBAB_CO_OWNER
+    )
+
+
+def computed_styles(*, locator: Locator, properties: list[str]) -> dict[str, str]:
+    """Computed CSS values (read straight from the browser, which jsdom cannot
+    give) of the element ``locator`` resolves to."""
+    return locator.evaluate(
+        """(element, properties) => {
+            const style = getComputedStyle(element);
+            return Object.fromEntries(
+                properties.map((name) => [name, style.getPropertyValue(name)])
+            );
+        }""",
+        properties,
+    )
+
+
+def text_contrast_ratio(*, locator: Locator) -> float:
+    """WCAG contrast ratio of the element's computed text colour against its
+    effective background: its own (possibly translucent) background colour
+    composited over the nearest opaque ancestor background."""
+    return locator.evaluate(
+        """(element) => {
+            const parse = (value) => {
+                const match = value.match(/rgba?\\(([^)]+)\\)/);
+                if (match === null) throw new Error("unparsed colour: " + value);
+                const parts = match[1].split(/[ ,\\/]+/).filter(Boolean).map(Number);
+                return [parts[0], parts[1], parts[2], parts.length > 3 ? parts[3] : 1];
+            };
+            const blend = (top, bottom) =>
+                [0, 1, 2].map((i) => top[i] * top[3] + bottom[i] * (1 - top[3]));
+            let background = [0, 0, 0, 1];
+            const layers = [];
+            for (let node = element; node !== null; node = node.parentElement) {
+                const layer = parse(getComputedStyle(node).backgroundColor);
+                if (layer[3] > 0) layers.push(layer);
+                if (layer[3] === 1) break;
+            }
+            for (const layer of layers.reverse()) {
+                background = [...blend(layer, background), 1];
+            }
+            const luminance = (rgb) => {
+                const [red, green, blue] = rgb.slice(0, 3).map((channel) => {
+                    const unit = channel / 255;
+                    return unit <= 0.03928 ? unit / 12.92 : ((unit + 0.055) / 1.055) ** 2.4;
+                });
+                return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
+            };
+            const text = luminance(parse(getComputedStyle(element).color));
+            const behind = luminance(background);
+            const [lighter, darker] = text > behind ? [text, behind] : [behind, text];
+            return (lighter + 0.05) / (darker + 0.05);
+        }"""
+    )
+
+
+def element_box(*, locator: Locator) -> dict[str, float]:
+    """The rendered width and height of ``locator`` (fails if not rendered)."""
+    box = locator.bounding_box()
+    assert box is not None, "element is not rendered"
+    return {"width": box["width"], "height": box["height"]}
+
+
+def open_co_owner_menu_and_click_remove(*, page: Page, member_id: int) -> None:
+    """Open the co-owner kebab on ``member_id``'s row and click its Remove item.
+
+    The menu holds only that item (no role item, no divider)."""
+    row = member_row(page=page, member_id=member_id)
+    row.locator(HPL.MEMBER_ROW_KEBAB_CO_OWNER).click()
+    menu_items = row.locator(f"{HPL.MEMBER_ROW_MENU} .memberRowMenuItem")
+    expect(menu_items).to_have_count(1)
+    remove_item = row.locator(HPL.MEMBER_ROW_MENU_REMOVE)
+    expect(remove_item).to_be_visible()
+    remove_item.click()

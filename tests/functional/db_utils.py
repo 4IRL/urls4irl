@@ -925,3 +925,35 @@ def count_live_urls_and_members(app: Flask, utub_id: int) -> tuple[int, int]:
             Utub_Members.utub_id == utub_id
         ).count()
         return url_count, member_count
+
+
+def is_user_member_of_utub(app: Flask, user_id: int, utub_id: int) -> bool:
+    """True when ``user_id`` currently has a membership row in ``utub_id``."""
+    with app.app_context():
+        return (
+            Utub_Members.query.filter(
+                Utub_Members.user_id == user_id, Utub_Members.utub_id == utub_id
+            ).first()
+            is not None
+        )
+
+
+def isolate_user_from_viewer(app: Flask, user_id: int, viewer_id: int) -> None:
+    """Make ``user_id`` share no UTub with ``viewer_id``, so the user is a pure
+    outsider (an exact-username add, never a co-member suggestion).
+
+    Removes ``user_id`` from every UTub they did not create, and removes
+    ``viewer_id`` from the UTubs ``user_id`` created."""
+    with app.app_context():
+        created_by_user = [
+            utub.id for utub in Utubs.query.filter(Utubs.utub_creator == user_id).all()
+        ]
+        Utub_Members.query.filter(
+            Utub_Members.user_id == user_id,
+            Utub_Members.utub_id.notin_(created_by_user),
+        ).delete(synchronize_session=False)
+        Utub_Members.query.filter(
+            Utub_Members.user_id == viewer_id,
+            Utub_Members.utub_id.in_(created_by_user),
+        ).delete(synchronize_session=False)
+        db.session.commit()
