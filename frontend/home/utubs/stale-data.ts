@@ -128,7 +128,7 @@ export async function updateUTubOnFindingStaleData({
     keepMemberSettings,
     keepMemberSort,
     keepTagDisplay,
-    forceShortLinksOff,
+    forceOffKeys,
   } = shouldKeepSettings({
     selectedUTub: utub,
     captured,
@@ -179,7 +179,7 @@ export async function updateUTubOnFindingStaleData({
   if (!keepSettings) {
     const incomingSettings = resolveIncomingSettings({
       settings: utub.settings,
-      forceShortLinksOff,
+      forceOffKeys,
     });
     if (
       JSON.stringify(incomingSettings) !== JSON.stringify(currentState.settings)

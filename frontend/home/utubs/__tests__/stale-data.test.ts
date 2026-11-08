@@ -195,6 +195,7 @@ function seedStore(
     memberSortVersion: 0,
     tagDisplayVersion: 0,
     policyLearnedVersion: 0,
+    learnedOffPolicies: {} as Record<string, number>,
     ...overrides,
   };
 }
@@ -476,6 +477,7 @@ describe("updateUTubOnFindingStaleData", () => {
       );
       const pending = updateUTubOnFindingStaleData({ utubID: UTUB_ID });
       storeState.value.policyLearnedVersion = 1;
+      storeState.value.learnedOffPolicies = { "urls.allow_short_links": 1 };
 
       resolveFetch();
       await pending;

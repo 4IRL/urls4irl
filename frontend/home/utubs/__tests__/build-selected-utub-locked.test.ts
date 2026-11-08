@@ -441,12 +441,13 @@ describe("buildSelectedUTub — locked-UTub affordances", () => {
       expect(getState().preferences.memberSort).toBe("role_then_name");
     });
 
-    it("shouldKeepSettings truth table covers keepSettings, keepMemberSettings and forceShortLinksOff independently", () => {
+    it("shouldKeepSettings truth table covers keepSettings, keepMemberSettings and forceOffKeys independently", () => {
       setState({
         activeUTubID: 1,
         settingsVersion: 3,
         memberSettingsVersion: 6,
         policyLearnedVersion: 5,
+        learnedOffPolicies: { "urls.allow_short_links": 5 },
       });
       const sameID = makeUtubDetail({ id: 1 });
       const otherID = makeUtubDetail({ id: 9 });
@@ -472,28 +473,28 @@ describe("buildSelectedUTub — locked-UTub affordances", () => {
         keepMemberSettings: false,
         keepMemberSort: false,
         keepTagDisplay: false,
-        forceShortLinksOff: false,
+        forceOffKeys: [],
       });
       expect(decide(sameID, 3, 4)).toEqual({
         keepSettings: false,
         keepMemberSettings: false,
         keepMemberSort: false,
         keepTagDisplay: false,
-        forceShortLinksOff: true,
+        forceOffKeys: ["urls.allow_short_links"],
       });
       expect(decide(sameID, 2, 4)).toEqual({
         keepSettings: true,
         keepMemberSettings: false,
         keepMemberSort: false,
         keepTagDisplay: false,
-        forceShortLinksOff: true,
+        forceOffKeys: ["urls.allow_short_links"],
       });
       expect(decide(sameID, 3, 5)).toEqual({
         keepSettings: false,
         keepMemberSettings: false,
         keepMemberSort: false,
         keepTagDisplay: false,
-        forceShortLinksOff: false,
+        forceOffKeys: [],
       });
       // A member-settings bump alone keeps only the member slice.
       expect(decide(sameID, 3, 5, 5)).toEqual({
@@ -501,7 +502,7 @@ describe("buildSelectedUTub — locked-UTub affordances", () => {
         keepMemberSettings: true,
         keepMemberSort: false,
         keepTagDisplay: false,
-        forceShortLinksOff: false,
+        forceOffKeys: [],
       });
       // Both bumped: each is kept independently.
       expect(decide(sameID, 2, 5, 5)).toEqual({
@@ -509,7 +510,7 @@ describe("buildSelectedUTub — locked-UTub affordances", () => {
         keepMemberSettings: true,
         keepMemberSort: false,
         keepTagDisplay: false,
-        forceShortLinksOff: false,
+        forceOffKeys: [],
       });
       // A different UTub keeps neither.
       expect(decide(otherID, 2, 4, 5)).toEqual({
@@ -517,7 +518,7 @@ describe("buildSelectedUTub — locked-UTub affordances", () => {
         keepMemberSettings: false,
         keepMemberSort: false,
         keepTagDisplay: false,
-        forceShortLinksOff: false,
+        forceOffKeys: [],
       });
     });
 
@@ -596,7 +597,7 @@ describe("buildSelectedUTub — locked-UTub affordances", () => {
       expect(getState().memberSettings).toBeNull();
     });
 
-    it("forceShortLinksOff applies incoming settings with allow_short_links false", () => {
+    it("forceOffKeys applies incoming settings with allow_short_links false", () => {
       buildSelectedUTub({
         selectedUTub: makeUtubDetail({
           id: 1,
@@ -604,14 +605,63 @@ describe("buildSelectedUTub — locked-UTub affordances", () => {
         }),
         keepMemberSort: false,
         keepTagDisplay: false,
-        forceShortLinksOff: true,
+        forceOffKeys: ["urls.allow_short_links"],
       });
 
       expect(getState().settings?.urls.allow_short_links).toBe(false);
       expect(getState().settings?.urls.default_url_scheme).toBe("https");
     });
 
-    it("without forceShortLinksOff the incoming allow_short_links is adopted", () => {
+    it("forces off only the learned key and leaves the others as the payload says", () => {
+      buildSelectedUTub({
+        selectedUTub: makeUtubDetail({
+          id: 1,
+          settings: {
+            urls: { allow_short_links: true },
+            members: { members_can_add: true, co_owners_can_remove: true },
+          } as never,
+        }),
+        forceOffKeys: ["members.members_can_add"],
+      });
+
+      expect(getState().settings?.members.members_can_add).toBe(false);
+      expect(getState().settings?.members.co_owners_can_remove).toBe(true);
+      expect(getState().settings?.urls.allow_short_links).toBe(true);
+    });
+
+    it("shouldKeepSettings reports each learned key independently and a newer payload clears them", () => {
+      setState({
+        activeUTubID: 1,
+        policyLearnedVersion: 3,
+        learnedOffPolicies: { "members.members_can_add": 3 },
+      });
+      const decide = (policyLearnedVersion: number) =>
+        shouldKeepSettings({
+          selectedUTub: makeUtubDetail({ id: 1 }),
+          captured: {
+            settingsVersion: 0,
+            memberSettingsVersion: 0,
+            memberSortVersion: 0,
+            tagDisplayVersion: 0,
+            policyLearnedVersion,
+          },
+        }).forceOffKeys;
+
+      expect(decide(2)).toEqual(["members.members_can_add"]);
+      expect(decide(3)).toEqual([]);
+    });
+
+    it("a UTub change resets the learned-off map", () => {
+      setState({
+        activeUTubID: 1,
+        learnedOffPolicies: { "members.members_can_add": 1 },
+      });
+      setState({ activeUTubID: 2 });
+
+      expect(getState().learnedOffPolicies).toEqual({});
+    });
+
+    it("without forceOffKeys the incoming allow_short_links is adopted", () => {
       buildSelectedUTub({
         selectedUTub: makeUtubDetail({
           id: 1,

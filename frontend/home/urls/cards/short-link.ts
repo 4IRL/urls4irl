@@ -11,6 +11,7 @@ import type { UtubUrlItem } from "../../../types/url.js";
 
 import { $ } from "../../../lib/globals.js";
 import { getState, setState } from "../../../store/app-store.js";
+import { learnPolicyOff } from "../../utubs/policy.js";
 import { APP_CONFIG } from "../../../lib/config.js";
 import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
 import { debug } from "../../../lib/debug.js";
@@ -290,15 +291,7 @@ function isShortLinksDisabledResponse(xhr: JQuery.jqXHR): boolean {
 // still reconciles). Fails closed: a stale UTub or an unsupplied (null) slice
 // gets no write, and nothing is seeded into the slice.
 function learnShortLinksDisabled({ utubID }: { utubID: number }): void {
-  const { activeUTubID, settings, policyLearnedVersion } = getState();
-  if (activeUTubID !== utubID || settings === null) return;
-  setState({
-    settings: {
-      ...settings,
-      urls: { ...settings.urls, allow_short_links: false },
-    },
-    policyLearnedVersion: policyLearnedVersion + 1,
-  });
+  learnPolicyOff({ utubID, key: "urls.allow_short_links" });
 }
 
 // A stale mint failure still reports its (real) error and drops a card the

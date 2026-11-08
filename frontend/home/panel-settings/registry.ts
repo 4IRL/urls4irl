@@ -52,6 +52,23 @@ function validationError({
   if (section.scope === "utub" && section.panel === "utubs") {
     return "scope 'utub' is not allowed on the utubs panel";
   }
+  if (
+    section.writeAccess !== undefined &&
+    section.writeAccess !== "manager" &&
+    section.writeAccess !== "owner"
+  ) {
+    return "unknown writeAccess";
+  }
+  if (section.writeAccess !== undefined && section.scope !== "utub") {
+    return "writeAccess is only allowed on scope 'utub'";
+  }
+  if (
+    section.visibleTo !== undefined &&
+    section.visibleTo !== "all" &&
+    section.visibleTo !== "managers"
+  ) {
+    return "unknown visibleTo";
+  }
   if (_sections.some((existing) => existing.id === section.id)) {
     return "duplicate section id";
   }
