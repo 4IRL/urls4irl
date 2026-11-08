@@ -71,6 +71,7 @@ def initiate_github_login() -> WerkzeugResponse:
     if not hasattr(oauth, "github"):
         return redirect(url_for(ROUTES.SPLASH.SPLASH_PAGE))
 
+    # Untrusted: validated at the callback by verify_and_provide_next_page.
     session[OAUTH_NEXT_SESSION_KEY] = request.args.get("next")
     redirect_uri = url_for(OAUTH_ROUTES.GITHUB_CALLBACK, _external=True)
     return oauth.github.authorize_redirect(redirect_uri)

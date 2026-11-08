@@ -17,6 +17,7 @@ per-test Authlib client setup is needed.
 
 from __future__ import annotations
 
+from html import unescape
 from typing import Any, Callable
 from unittest import mock
 from urllib.parse import parse_qs, urlencode, urlparse
@@ -33,6 +34,7 @@ from backend import db
 from backend.metrics.events import EventName
 from backend.models.user_oauth_identities import UserOAuthIdentity
 from backend.models.users import Users
+from backend.models.utub_invite_links import Utub_Invite_Links
 from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utubs import Utubs
 from backend.splash.constants import (
@@ -46,6 +48,7 @@ from backend.splash.services.oauth.constants import OAUTH_PENDING_LINK_SESSION_K
 from backend.testing.fake_oauth_provider import fake_oauth
 from backend.utils.all_routes import OAUTH_ROUTES, ROUTES
 from backend.utils.strings import model_strs
+from backend.utils.strings.invite_link_strs import INVITE_LINK_PAGE
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.oauth_strs import (
     CONSENT_DECLINED_MESSAGE as _CONSENT_DECLINED_MESSAGE,
@@ -68,6 +71,7 @@ from tests.integration.system.metrics_helpers import (
     parse_dims,
 )
 from tests.models_for_test import valid_user_1
+from tests.utils_for_test import add_invite_link
 
 pytestmark = pytest.mark.splash
 
@@ -137,6 +141,31 @@ _MULTI_PROVIDER_EMAIL = "multiprovideruser@example.com"
 
 _NEXT_TARGET_UTUB_NAME = "OAuth Next Target"
 _UNAUTHORIZED_UTUB_ID = 999_999
+
+_UNKNOWN_INVITE_TOKEN = "Z" * 22
+
+
+def _seed_invite_token(app: Flask, *, revoked: bool = False) -> str:
+    """Creates a UTub owned by a separate user (so the logging-in user is a
+    non-member) plus an invite link on it; returns its token."""
+    with app.app_context():
+        owner = Users(
+            username="inviteowner",
+            email="inviteowner@example.com",
+            plaintext_password="P@ssword123!",
+        )
+        owner.email_validated = True
+        db.session.add(owner)
+        db.session.commit()
+    utub_id = _seed_utub_membership(
+        app, user_email="inviteowner@example.com", utub_name=_NEXT_TARGET_UTUB_NAME
+    )
+    with app.app_context():
+        creator_id = Users.query.filter_by(email="inviteowner@example.com").one().id
+    invite_id = add_invite_link(app, utub_id, creator_id, revoked=revoked)
+    with app.app_context():
+        return db.session.get(Utub_Invite_Links, invite_id).token
+
 
 _LOGIN_SUCCESS_METHOD_DIM_KEY = "method"
 _LOGIN_FAILURE_REASON_DIM_KEY = "reason"
@@ -489,6 +518,76 @@ def test_github_login_redirects_with_expected_callback_redirect_uri(
     mock_authorize_redirect.assert_called_once()
     location_query_params = parse_qs(urlparse(response.location).query)
     assert location_query_params["redirect_uri"] == [expected_redirect_uri]
+
+
+@pytest.mark.parametrize(
+    "case",
+    ["invite", "invite_register", "malformed", "dead", "unknown", "no_next"],
+)
+@mock.patch(_AUTHORIZE_ACCESS_TOKEN_TARGET)
+@mock.patch(_GITHUB_GET_TARGET)
+@mock.patch(_AUTHORIZE_REDIRECT_TARGET)
+def test_github_login_invite_next_through_callback(
+    mock_authorize_redirect: mock.MagicMock,
+    mock_github_get: mock.MagicMock,
+    mock_authorize_access_token: mock.MagicMock,
+    app: Flask,
+    load_login_page,
+    case: str,
+):
+    """
+    GIVEN a linked github user and an invite link
+    WHEN `GET /oauth/github/login` carries an invite `next` and the callback completes
+    THEN the user lands on the bare /invite/<token> (a dead or unknown token then
+        shows the uniform 404 page); a malformed or absent `next` lands on /home
+    """
+    mock_authorize_redirect.return_value = redirect(_MOCK_CONSENT_REDIRECT_URL)
+    mock_authorize_access_token.return_value = _FAKE_TOKEN
+    mock_github_get.side_effect = _default_github_get_side_effect(
+        github_id=_EXISTING_GITHUB_ID, login=_EXISTING_LOGIN, email=_EXISTING_EMAIL
+    )
+    _seed_existing_oauth_user(
+        app,
+        subject=_EXISTING_SUBJECT,
+        email=_EXISTING_EMAIL,
+        username=_EXISTING_USERNAME,
+    )
+    token = _seed_invite_token(app, revoked=case == "dead")
+    if case == "unknown":
+        token = _UNKNOWN_INVITE_TOKEN
+    next_values = {
+        "invite": f"/invite/{token}",
+        "invite_register": f"/invite/{token}/register",
+        "malformed": f"/invite/{token}/join",
+        "dead": f"/invite/{token}",
+        "unknown": f"/invite/{token}",
+        "no_next": None,
+    }
+    expected_locations = {
+        "malformed": url_for(ROUTES.UTUBS.HOME),
+        "no_next": url_for(ROUTES.UTUBS.HOME),
+    }
+    expected_location = expected_locations.get(case, f"/invite/{token}")
+    client, _ = load_login_page
+
+    login_kwargs = {} if next_values[case] is None else {"next": next_values[case]}
+    login_response = client.get(url_for(OAUTH_ROUTES.GITHUB_LOGIN, **login_kwargs))
+    assert login_response.status_code == 302
+
+    response = client.get(
+        _callback_url(code=_FAKE_CODE, state=_FAKE_STATE), follow_redirects=True
+    )
+
+    assert len(response.history) == 1
+    assert response.history[0].location == expected_location
+    assert current_user.is_authenticated
+    if case in ("dead", "unknown"):
+        assert response.status_code == 404
+        assert INVITE_LINK_PAGE.DEAD_HEADING in unescape(
+            response.get_data(as_text=True)
+        )
+    else:
+        assert response.status_code == 200
 
 
 @mock.patch(_AUTHORIZE_ACCESS_TOKEN_TARGET)
