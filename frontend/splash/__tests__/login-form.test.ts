@@ -151,6 +151,37 @@ describe("login-form metrics — UI_LOGIN_SUBMIT", () => {
   });
 });
 
+describe("login-form next forwarding", () => {
+  beforeEach(() => {
+    document.body.innerHTML = LOGIN_MODAL_HTML;
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    window.history.replaceState({}, "", "/");
+  });
+
+  function submitAndGetUrl(search: string): string {
+    window.history.replaceState({}, "", `/${search}`);
+    const ajaxSpy = vi.spyOn($, "ajax").mockReturnValue(createMockJqXHR());
+    const $modal = $("#LoginModal");
+    initLoginForm($modal);
+    $modal.find("#submit").trigger("click");
+    return String(ajaxSpy.mock.calls[0]?.[0]?.url);
+  }
+
+  it("appends a single next to the login POST", () => {
+    expect(submitAndGetUrl("?next=/invite/abc")).toBe(
+      "/login?next=%2Finvite%2Fabc",
+    );
+  });
+
+  it.each(["", "?next=a&b=c", "?b=c"])("does not append for %j", (search) => {
+    expect(submitAndGetUrl(search)).toBe("/login");
+  });
+});
+
 describe("login-form double-submit guard", () => {
   beforeEach(() => {
     document.body.innerHTML = LOGIN_MODAL_HTML;

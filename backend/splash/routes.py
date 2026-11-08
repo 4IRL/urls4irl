@@ -20,6 +20,10 @@ from backend.app_logger import (
     safe_add_log,
     warning_log,
 )
+from backend.invite_links.next_target import (
+    invite_next_redirect_path,
+    parse_invite_next,
+)
 from backend.models.email_validations import Email_Validations
 from backend.models.users import Users
 from backend.schemas.base import (
@@ -118,8 +122,17 @@ def splash_page() -> WerkzeugResponse | str:
     # DD-9: an already-logged-in browser is redirected to HOME before any banner
     # renders here, so forward the confirm-outcome code so HOME can surface it.
     email_change_status = request.args.get(EMAIL_CHANGE_STATUS_QUERY_PARAM, "")
+    # Only exactly one `next` key with exactly one value counts, matching the client
+    # `size === 1 && get("next") !== null` gate; format-only, never checks liveness.
+    invite_target = (
+        parse_invite_next(request.args.get("next"))
+        if len(request.args) == 1 and len(request.args.getlist("next")) == 1
+        else None
+    )
     if current_user.is_authenticated:
         safe_add_log(f"User={current_user} already logged in")
+        if invite_target and current_user.email_validated:
+            return redirect(invite_next_redirect_path(invite_target))
         return redirect(
             url_for(
                 ROUTES.UTUBS.HOME,
@@ -139,6 +152,7 @@ def splash_page() -> WerkzeugResponse | str:
     return render_template(
         "pages/splash.html",
         email_change_banner=email_change_banner,
+        auth_modal_hint=invite_target.hint if invite_target else None,
     )
 
 

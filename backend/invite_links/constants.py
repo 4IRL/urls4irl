@@ -7,6 +7,10 @@ INVITE_LINK_TOKEN_LENGTH: int = 22
 INVITE_LINK_TOKEN_PATTERN: str = rf"^[A-Za-z0-9_-]{{{INVITE_LINK_TOKEN_LENGTH}}}\Z"
 INVITE_LINK_DEFAULT_TTL: timedelta = timedelta(days=7)
 
+# Shared by the invite page's splash URL builder and the `next` parser.
+INVITE_PATH_PREFIX: str = "/invite/"
+INVITE_REGISTER_HINT_SEGMENT: str = "register"
+
 # DD-5 closed sets; the request schema Literals must mirror these exactly.
 INVITE_LINK_EXPIRY_DAYS_VALUES: tuple[int, ...] = (1, 7, 30)
 INVITE_LINK_MAX_USES_VALUES: tuple[int, ...] = (1, 5, 10, 25)

@@ -12,6 +12,7 @@ import {
   switchModal,
 } from "./init.js";
 import { openConfirmEmailModal } from "./confirm-email-form.js";
+import { getForwardableNextQuery } from "./next-param.js";
 import { VALIDATION_FORM } from "../types/metrics-dim-values.js";
 import { debug } from "../lib/debug.js";
 
@@ -54,10 +55,10 @@ function handleLogin(event: JQuery.TriggeredEvent, $modal: JQuery): void {
   // Allow user to attach a query param `next` if browser URL currently includes it
   // This allows for User to be given a link to a UTubID but they haven't logged in recently
   let url: string = APP_CONFIG.routes.login;
-  const searchParams = new URLSearchParams(window.location.search);
-  const nextQueryParam = searchParams.get("next");
-  if (searchParams.size === 1 && nextQueryParam !== null) {
-    url = `${url}?${searchParams.toString()}`;
+  const forwardable = getForwardableNextQuery(window.location.search);
+  const nextQueryParam = forwardable === null ? null : forwardable.value;
+  if (forwardable !== null) {
+    url = `${url}?${forwardable.query}`;
   }
 
   const username: string = String($modal.find("#username").val() ?? "");

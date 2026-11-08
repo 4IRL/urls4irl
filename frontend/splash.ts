@@ -12,6 +12,10 @@ import { initNavbar } from "./splash/navbar.js";
 import { initSplash } from "./splash/init.js";
 import { initResetPasswordForm } from "./splash/reset-password-form.js";
 import { initConfirmLinkForm } from "./splash/confirm-link-form.js";
+import {
+  applyNextToOAuthLinks,
+  openAuthModalFromHint,
+} from "./splash/auth-handoff.js";
 import { announce, initConfirmEmailForm } from "./splash/confirm-email-form.js";
 
 // Register jQuery plugins globally
@@ -84,4 +88,8 @@ $(document).ready(function () {
 
   // Check if confirm-link modal is present and initialize it
   initConfirmLinkIfPresent();
+
+  // Last: the .modal.show guard must see any modal the initialisers opened
+  applyNextToOAuthLinks();
+  openAuthModalFromHint();
 });

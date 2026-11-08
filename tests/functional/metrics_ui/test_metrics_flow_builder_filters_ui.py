@@ -486,9 +486,16 @@ def test_server_rejection_maps_to_the_exact_filter_row(
     builder_field(page, 2, "label").fill("API")
     builder_field(page, 2, "stream").select_option("api")
     builder_field(page, 2, "api_endpoint").select_option(API_ENDPOINT)
-    builder_field(page, 2, "api_method").select_option(API_METHOD)
+    # Let the step settle: its change-driven preview response is the last async
+    # re-render, so a filter row added before it can be dropped under load.
+    with page.expect_response(
+        lambda response: "/admin/metrics/flows/preview" in response.url
+    ):
+        builder_field(page, 2, "api_method").select_option(API_METHOD)
     builder_step(page, 2).locator(MDL.FLOW_BUILDER_ADD_FILTER_BUTTON).click()
-    row = _step_filter_rows(page, 2).nth(0)
+    rows = _step_filter_rows(page, 2)
+    expect(rows).to_have_count(1)
+    row = rows.nth(0)
     _choose(row.locator(MDL.FLOW_BUILDER_FILTER_DIM), "status_code")
     status_input = row.locator(MDL.FLOW_BUILDER_FILTER_VALUE)
     # The live preview (300 ms debounce, then a request) marks controls on its own
