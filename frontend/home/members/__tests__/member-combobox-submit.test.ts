@@ -5,6 +5,7 @@ import { getState, resetStore, setState } from "../../../store/app-store.js";
 import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
 import { createMockJqXHR } from "../../../__tests__/helpers/mock-jquery.js";
 import { applyRowCountDelta } from "../../utubs/row-counts.js";
+import { learnMemberAddRefused } from "../add-refusal.js";
 
 import type { MemberCandidate, MemberItem } from "../../../types/member.js";
 
@@ -23,6 +24,14 @@ vi.mock("../co-member-fetch.js", () => ({
   loadCoMemberCandidates: vi.fn(),
   cancelCoMemberCandidatesFetch: vi.fn(),
 }));
+
+vi.mock("../add-refusal.js", async () => {
+  const actual =
+    await vi.importActual<typeof import("../add-refusal.js")>(
+      "../add-refusal.js",
+    );
+  return { ...actual, learnMemberAddRefused: vi.fn() };
+});
 
 vi.mock("../deck.js", () => ({
   setMemberDeckForUTub: vi.fn(),
@@ -73,6 +82,7 @@ const MEMBER_DECK_HTML = `
     <button id="memberBtnCreate" class="green-clickable hidden"></button>
     <span id="MemberSearchAnnouncement" aria-live="polite"></span>
     <span id="MobilePanelAnnouncement" aria-live="polite"></span>
+    <span id="MemberRowActionAnnouncement" aria-live="polite"></span>
     <div id="createMemberWrap" class="hidden"></div>
     <div id="displayMemberWrap" class="hidden">
       <div id="UTubOwner"></div>
@@ -390,6 +400,135 @@ describe("member-combobox-submit — mixed outcomes", () => {
   });
 });
 
+describe("member-combobox-submit — add not allowed (403 errorCode 7)", () => {
+  const notAllowed = { status: 403, responseJSON: { errorCode: 7 } };
+
+  it("marks the chip failed, never redirects, learns once and writes one combined announcement", async () => {
+    seed({});
+    const wrap = mount();
+    stageTwoChips(wrap);
+
+    const firstDeferred = createMockJqXHR();
+    const secondDeferred = createMockJqXHR();
+    vi.mocked(ajaxCall)
+      .mockReturnValueOnce(firstDeferred)
+      .mockReturnValueOnce(secondDeferred);
+    const locationAssignSpy = vi
+      .spyOn(window.location, "assign")
+      .mockImplementation(() => {});
+    let refocused = false;
+    wrap.find(".memberAddComboboxInput").on("focus", () => {
+      refocused = true;
+    });
+    // The real learn flips the ability and the subscription empties the wrap.
+    vi.mocked(learnMemberAddRefused).mockImplementationOnce(() => {
+      $("#createMemberWrap").empty();
+    });
+
+    const settle = submitStagedMembers({ utubID: 7, wrap });
+    firstDeferred.reject(notAllowed);
+    secondDeferred.reject(notAllowed);
+    await settle;
+
+    expect(locationAssignSpy).not.toHaveBeenCalled();
+    const chips = wrap.find(".memberAddStagedChipFailed");
+    expect(chips.length).toBe(2);
+    expect(chips.first().attr("title")).toBe(
+      APP_CONFIG.strings.MEMBER_ADD_NOT_ALLOWED,
+    );
+    expect(vi.mocked(learnMemberAddRefused)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(learnMemberAddRefused)).toHaveBeenCalledWith({
+      utubID: 7,
+      announce: false,
+    });
+    const live = $("#MemberRowActionAnnouncement");
+    expect(live.attr("aria-live")).toBe("assertive");
+    expect(live.text()).toBe(
+      `${APP_CONFIG.strings.MEMBER_ADD_SUMMARY_FAILED.replace("{{ count }}", () => "2")} ${APP_CONFIG.strings.MEMBER_ADD_NOT_ALLOWED}`,
+    );
+    expect(refocused).toBe(false);
+  });
+
+  it("mixed batch (one added, one refused): exact combined text, summary kept out of the combobox", async () => {
+    seed({});
+    const wrap = mount();
+    stageTwoChips(wrap);
+
+    const firstDeferred = createMockJqXHR();
+    const secondDeferred = createMockJqXHR();
+    vi.mocked(ajaxCall)
+      .mockReturnValueOnce(firstDeferred)
+      .mockReturnValueOnce(secondDeferred);
+    const live = $("#MemberRowActionAnnouncement");
+
+    const settle = submitStagedMembers({ utubID: 7, wrap });
+    firstDeferred.resolve(
+      {
+        utubID: 7,
+        member: {
+          id: 1,
+          username: "Bob",
+          memberRole: "member",
+          joinedAt: "2026-01-02T03:04:05.123Z",
+        },
+      },
+      "success",
+      okXhr,
+    );
+    secondDeferred.reject(notAllowed);
+    await settle;
+
+    const expected = `${APP_CONFIG.strings.MEMBER_ADD_SUMMARY_ADDED_ONE}, ${APP_CONFIG.strings.MEMBER_ADD_SUMMARY_FAILED_ONE} ${APP_CONFIG.strings.MEMBER_ADD_NOT_ALLOWED}`;
+    expect(live.text()).toBe(expected);
+    expect(live.attr("aria-live")).toBe("assertive");
+    expect(wrap.find(".memberAddComboboxMsg").text()).toBe("");
+  });
+
+  it("keeps focus in the combobox when the learn does not close it", async () => {
+    seed({});
+    const wrap = mount();
+    stageTwoChips(wrap);
+
+    const firstDeferred = createMockJqXHR();
+    const secondDeferred = createMockJqXHR();
+    vi.mocked(ajaxCall)
+      .mockReturnValueOnce(firstDeferred)
+      .mockReturnValueOnce(secondDeferred);
+    let refocused = false;
+    wrap.find(".memberAddComboboxInput").on("focus", () => {
+      refocused = true;
+    });
+
+    const settle = submitStagedMembers({ utubID: 7, wrap });
+    firstDeferred.reject(notAllowed);
+    secondDeferred.reject(notAllowed);
+    await settle;
+
+    // learnMemberAddRefused is mocked here, so nothing closed the combobox.
+    expect(refocused).toBe(true);
+  });
+
+  it("learns nothing when the viewer already switched to another UTub", async () => {
+    seed({});
+    const wrap = mount();
+    stageTwoChips(wrap);
+
+    const firstDeferred = createMockJqXHR();
+    const secondDeferred = createMockJqXHR();
+    vi.mocked(ajaxCall)
+      .mockReturnValueOnce(firstDeferred)
+      .mockReturnValueOnce(secondDeferred);
+
+    const settle = submitStagedMembers({ utubID: 7, wrap });
+    setState({ activeUTubID: 8 });
+    firstDeferred.reject(notAllowed);
+    secondDeferred.reject(notAllowed);
+    await settle;
+
+    expect(vi.mocked(learnMemberAddRefused)).not.toHaveBeenCalled();
+  });
+});
+
 describe("member-combobox-submit — 429 short-circuit", () => {
   it("settles the 429 chip without a status marker and excludes it from the summary", async () => {
     seed({});
@@ -606,8 +745,61 @@ describe("member-combobox-submit — dedupe on switch-away-and-back", () => {
       memberID: 2,
       username: "Ghost",
       memberRole: "member",
-      isCurrentUserOwner: true,
+      viewerRole: "owner",
       utubID: 7,
     });
+  });
+});
+
+describe("member-combobox-submit — viewer role for the added badge", () => {
+  it("passes viewerRole co_owner when the adding viewer is a co-owner", async () => {
+    seed({ isOwner: false });
+    setState({ isCoCreator: true });
+    const wrap = mount();
+    stageTwoChips(wrap);
+
+    const firstDeferred = createMockJqXHR();
+    const secondDeferred = createMockJqXHR();
+    vi.mocked(ajaxCall)
+      .mockReturnValueOnce(firstDeferred)
+      .mockReturnValueOnce(secondDeferred);
+
+    const { createMemberBadge } = await import("../members.js");
+
+    const settle = submitStagedMembers({ utubID: 7, wrap });
+
+    firstDeferred.resolve(
+      {
+        utubID: 7,
+        member: {
+          id: 1,
+          username: "Bob",
+          memberRole: "member",
+          joinedAt: "2026-01-02T03:04:05.123Z",
+        },
+      },
+      "success",
+      okXhr,
+    );
+    secondDeferred.resolve(
+      {
+        utubID: 7,
+        member: {
+          id: 2,
+          username: "Ghost",
+          memberRole: "member",
+          joinedAt: "2026-01-02T03:04:06.123Z",
+        },
+      },
+      "success",
+      okXhr,
+    );
+
+    await settle;
+
+    expect(vi.mocked(createMemberBadge)).toHaveBeenCalledTimes(2);
+    for (const call of vi.mocked(createMemberBadge).mock.calls) {
+      expect(call[0].viewerRole).toBe("co_owner");
+    }
   });
 });

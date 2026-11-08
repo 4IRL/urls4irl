@@ -1,8 +1,8 @@
 import { $ } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
-import { hideTooltip } from "../../lib/tooltips.js";
 import { getState } from "../../store/app-store.js";
 import { removeMemberShowModal } from "./delete.js";
+import { withMemberControlFocusFallback } from "./focus-fallback.js";
 import { modifyMemberRoleShowModal } from "./role.js";
 import {
   bindMemberRowMenu,
@@ -10,8 +10,11 @@ import {
   closeAllMemberRowMenus,
 } from "./row-menu.js";
 import { makeUTubRoleIcon } from "../utubs/selectors.js";
-import { hideInputs } from "../btns-forms.js";
-import { deselectAllURLs } from "../urls/cards/selection.js";
+import {
+  VIEWER_ROLE,
+  viewerRoleFor,
+  type ViewerRole,
+} from "../utubs/policy.js";
 
 // Inline SVG icons (bootstrap-icons font is NOT loaded in this app — `<i class="bi
 // …">` renders nothing — so every glyph must be inline <svg> with explicit path
@@ -102,6 +105,36 @@ export function swapMemberRoleInRow({
   // Swap only the label <span> so the item's leading icon is preserved.
   roleItem.find("span").text(label);
   roleItem.attr("aria-label", label);
+
+  // A co-owner viewer's Remove-only kebab follows the target's role: demotion to
+  // a plain member adds it, promotion to co-owner removes it. The owner's kebab
+  // (role item + Remove) is untouched.
+  const { isCurrentUserOwner, isCoCreator, activeUTubID } = getState();
+  if (
+    viewerRoleFor({ isCurrentUserOwner, isCoCreator }) !== VIEWER_ROLE.CO_OWNER
+  ) {
+    return;
+  }
+  const coOwnerKebab = row.find(".memberRowKebab--coOwner");
+  if (targetRole === APP_CONFIG.constants.MEMBER_ROLES.MEMBER) {
+    if (coOwnerKebab.length === 0 && activeUTubID !== null) {
+      appendCoOwnerRemoveKebab({
+        memberRight: row.find(".member-right"),
+        memberID,
+        username: row.find("b").first().text(),
+        utubID: activeUTubID,
+      });
+    }
+  } else {
+    // The removed kebab (or an item of its open menu) may hold focus: fall back
+    // to the row, then the deck header, never <body>.
+    withMemberControlFocusFallback({
+      write: () => {
+        coOwnerKebab.siblings(".memberRowMenu").remove();
+        coOwnerKebab.remove();
+      },
+    });
+  }
 }
 
 // Creates member list item
@@ -124,17 +157,77 @@ export function createOwnerBadge(
   return memberSpan;
 }
 
+// The kebab (overflow) trigger. The member-naming aria-label is set through the
+// attr-setter (not interpolated into the HTML string) so a username containing a
+// double-quote cannot break out of the attribute and inject markup. Backend
+// filtering is not a guarantee at this sink: usernames are not HTML-escaped, the
+// nh3 filter rejects well-formed tags but a bare `"` still reaches the client, and
+// the OAuth/CLI registration paths bypass the Pydantic username schema entirely.
+// So every user-controlled value is set through .attr()/.text(), never an HTML
+// string.
+function buildKebabButton({
+  username,
+}: {
+  username: string;
+}): JQuery<HTMLButtonElement> {
+  const kebabBtn = $(
+    `<button type="button" class="memberRowKebab flex-row align-center" aria-haspopup="menu" aria-expanded="false">${KEBAB_ICON_SVG}</button>`,
+  ) as JQuery<HTMLButtonElement>;
+  kebabBtn.attr(
+    "aria-label",
+    APP_CONFIG.strings.MEMBER_ROW_ACTIONS_ARIA_LABEL.replace(
+      "{{ username }}",
+      username,
+    ),
+  );
+  kebabBtn.enableTab();
+  return kebabBtn;
+}
+
+// The co-owner viewer's Remove-only kebab + menu (no role item, no divider),
+// shared by createMemberBadge and swapMemberRoleInRow so the two cannot drift.
+function appendCoOwnerRemoveKebab({
+  memberRight,
+  memberID,
+  username,
+  utubID,
+}: {
+  memberRight: JQuery<HTMLElement>;
+  memberID: number;
+  username: string;
+  utubID: number;
+}): void {
+  const kebabBtn = buildKebabButton({ username });
+  kebabBtn.addClass("memberRowKebab--coOwner");
+  const rowMenu = $(
+    `<div class="memberRowMenu" role="menu" hidden>` +
+      `<button type="button" role="menuitem" class="memberRowMenuItem danger">` +
+      `${REMOVE_MEMBER_ICON_SVG}<span>${APP_CONFIG.strings.MEMBER_REMOVE_ACTION}</span>` +
+      `</button>` +
+      `</div>`,
+  ) as JQuery<HTMLDivElement>;
+  memberRight.append(kebabBtn).append(rowMenu);
+  bindMemberRowMenu({ kebab: kebabBtn, menu: rowMenu, memberID });
+  rowMenu
+    .find(".memberRowMenuItem.danger")
+    .offAndOnExact("click.memberRowMenuRemove", function () {
+      closeAllMemberRowMenus();
+      bindMemberRowModalFocusRestore(memberID);
+      removeMemberShowModal({ memberID, utubID, intent: "remove" });
+    });
+}
+
 export function createMemberBadge({
   memberID,
   username,
   memberRole,
-  isCurrentUserOwner,
+  viewerRole,
   utubID,
 }: {
   memberID: number;
   username: string;
   memberRole: string;
-  isCurrentUserOwner: boolean;
+  viewerRole: ViewerRole;
   utubID: number;
 }): JQuery<HTMLSpanElement> {
   const memberSpan = $(document.createElement("span"));
@@ -154,28 +247,19 @@ export function createMemberBadge({
   );
   $(memberSpan).append(memberRight);
 
-  if (isCurrentUserOwner) {
+  // A plain-member or unknown-role viewer's row has no actions; Leave is bound
+  // by createLeaveUTubAsMemberIcon.
+  if (viewerRole === VIEWER_ROLE.CO_OWNER) {
+    // Fail closed: only a strictly plain-member row gets the Remove-only kebab.
+    // CSS shows it only while #MemberDeck[data-co-owners-can-remove="true"].
+    if (memberRole === APP_CONFIG.constants.MEMBER_ROLES.MEMBER) {
+      appendCoOwnerRemoveKebab({ memberRight, memberID, username, utubID });
+    }
+  } else if (viewerRole === VIEWER_ROLE.OWNER) {
     // Owner viewer: fold the row's actions into a kebab (overflow) menu. Step 3
     // ships it with only "Remove member" (reusing removeMemberShowModal); the
     // grant/revoke item is added in Step 4.
-    const kebabBtn = $(
-      `<button type="button" class="memberRowKebab flex-row align-center" aria-haspopup="menu" aria-expanded="false">${KEBAB_ICON_SVG}</button>`,
-    ) as JQuery<HTMLButtonElement>;
-    // Set the member-naming aria-label via the attr-setter (not interpolated into
-    // the HTML string above) so a username containing a double-quote cannot break
-    // out of the attribute and inject markup. Backend filtering is not a guarantee
-    // at this sink: usernames are not HTML-escaped, the nh3 filter rejects
-    // well-formed tags but a bare `"` still reaches the client, and the OAuth/CLI
-    // registration paths bypass the Pydantic username schema entirely. So every
-    // user-controlled value is set through .attr()/.text(), never an HTML string.
-    kebabBtn.attr(
-      "aria-label",
-      APP_CONFIG.strings.MEMBER_ROW_ACTIONS_ARIA_LABEL.replace(
-        "{{ username }}",
-        username,
-      ),
-    );
-    kebabBtn.enableTab();
+    const kebabBtn = buildKebabButton({ username });
 
     // Role-toggle label reflects the row's CURRENT role (Revoke if already a
     // co-owner, otherwise Make). The dedicated .memberRowMenuItemRole class (not
@@ -234,21 +318,8 @@ export function createMemberBadge({
       .offAndOnExact("click.memberRowMenuRemove", function () {
         closeAllMemberRowMenus();
         bindMemberRowModalFocusRestore(memberID);
-        removeMemberShowModal(memberID, isCurrentUserOwner, utubID);
+        removeMemberShowModal({ memberID, utubID, intent: "remove" });
       });
-  } else {
-    // Leave UTub if member
-    $("#memberSelfBtnDelete").offAndOnExact(
-      "click.removeMember",
-      function (this: HTMLElement) {
-        // The confirmation modal covers this button while a hover tooltip may
-        // still be open — hide it first so the bubble cannot linger detached.
-        hideTooltip(this);
-        hideInputs();
-        deselectAllURLs();
-        removeMemberShowModal(memberID, isCurrentUserOwner, utubID);
-      },
-    );
   }
 
   return memberSpan;

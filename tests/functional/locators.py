@@ -125,6 +125,25 @@ class HomePageLocators(GenericPageLocator):
     URLS_SETTINGS_SHEET_READ_ONLY_NOTE = (
         f"{PANEL_SETTINGS_SHEET} .panelSettingsReadOnlyNote:not([hidden])"
     )
+    # Owner's "Member permissions" switches in the Members settings section.
+    MEMBERS_PERMISSIONS_CO_OWNERS_REMOVE_SWITCH = (
+        "#membersPermissionsCoOwnersRemoveSwitch"
+    )
+    MEMBERS_PERMISSIONS_MEMBERS_ADD_SWITCH = "#membersPermissionsMembersAddSwitch"
+    MEMBERS_PERMISSIONS_SECTION = (
+        "section.panelSettingsSection[data-section-id='members-permissions']"
+    )
+    MEMBERS_PERMISSIONS_NOTE = "#panelSettingsNote-members-permissions"
+    MEMBERS_PERMISSIONS_SHEET_CO_OWNERS_REMOVE_SWITCH = (
+        f"{PANEL_SETTINGS_SHEET} {MEMBERS_PERMISSIONS_CO_OWNERS_REMOVE_SWITCH}"
+    )
+    MEMBERS_PERMISSIONS_SHEET_MEMBERS_ADD_SWITCH = (
+        f"{PANEL_SETTINGS_SHEET} {MEMBERS_PERMISSIONS_MEMBERS_ADD_SWITCH}"
+    )
+    # Co-owner viewer's Remove-only row kebab (built on plain-member rows, shown
+    # by #MemberDeck[data-co-owners-can-remove="true"]) and the deck refusal notice.
+    MEMBER_ROW_KEBAB_CO_OWNER = ".memberRowKebab--coOwner"
+    MEMBER_DECK_NOTICE = "#MemberDeckNotice"
     # Personal member-list sort select in the Members settings section.
     MEMBERS_SETTINGS_SORT_SELECT = "#members-list-sort"
     MEMBERS_SETTINGS_SHEET_SORT_SELECT = (

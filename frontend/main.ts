@@ -53,7 +53,9 @@ import { registerUrlsPersonalSettingsSection } from "./home/urls/personal-settin
 import { registerUtubListSettingsSection } from "./home/utubs/list-settings-section.js";
 import { registerUtubPinsSection } from "./home/utubs/pins-section.js";
 import { registerMembersListSettingsSection } from "./home/members/list-settings-section.js";
+import { registerMembersPermissionsSettingsSection } from "./home/members/permissions-settings-section.js";
 import { initUrlDeckPolicyAttrs } from "./home/urls/deck-view-attrs.js";
+import { initMemberDeckPolicyAttrs } from "./home/members/policy-attrs.js";
 import { loadInitialTrashCount, renderTrashCount } from "./home/trash/count.js";
 import { initTrashTabs } from "./home/trash/tabs.js";
 import { initTrashPanel } from "./home/trash/panel.js";
@@ -87,6 +89,7 @@ $(document).ready(() => {
   registerUtubListSettingsSection();
   registerUtubPinsSection();
   registerMembersListSettingsSection();
+  registerMembersPermissionsSettingsSection();
   registerTagsPersonalSettingsSection();
   initLeftPanelToggle();
   setCreateUTubEventListeners();
@@ -96,6 +99,7 @@ $(document).ready(() => {
   initUpdateAllTags();
   initURLDeck();
   initUrlDeckPolicyAttrs();
+  initMemberDeckPolicyAttrs();
   initTagDragDrop();
   initTagMatchMode();
   initTagDisplaySubscriptions();

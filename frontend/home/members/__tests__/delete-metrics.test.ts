@@ -63,7 +63,7 @@ describe("delete-metrics — UI_MEMBER_REMOVE_* / UI_MEMBER_LEAVE_*", () => {
     it("emits ui_member_remove_open when the modal is shown", async () => {
       const { emit } = await import("../../../lib/metrics-client.js");
 
-      removeMemberShowModal(5, true, 1);
+      removeMemberShowModal({ memberID: 5, utubID: 1, intent: "remove" });
 
       expect(emit).toHaveBeenCalledWith({
         event: UI_EVENTS.UI_MEMBER_REMOVE_OPEN,
@@ -73,7 +73,7 @@ describe("delete-metrics — UI_MEMBER_REMOVE_* / UI_MEMBER_LEAVE_*", () => {
     it("emits ui_member_remove_confirm when the modal submit is clicked", async () => {
       const { emit } = await import("../../../lib/metrics-client.js");
 
-      removeMemberShowModal(5, true, 1);
+      removeMemberShowModal({ memberID: 5, utubID: 1, intent: "remove" });
       vi.mocked(emit).mockClear();
 
       $("#modalSubmit").trigger("click");
@@ -86,7 +86,7 @@ describe("delete-metrics — UI_MEMBER_REMOVE_* / UI_MEMBER_LEAVE_*", () => {
     it("emits ui_member_remove_cancel when the modal is dismissed without confirming", async () => {
       const { emit } = await import("../../../lib/metrics-client.js");
 
-      removeMemberShowModal(5, true, 1);
+      removeMemberShowModal({ memberID: 5, utubID: 1, intent: "remove" });
       vi.mocked(emit).mockClear();
 
       $("#confirmModal").trigger("hidden.bs.modal.memberAction");
@@ -99,7 +99,7 @@ describe("delete-metrics — UI_MEMBER_REMOVE_* / UI_MEMBER_LEAVE_*", () => {
     it("does not emit ui_member_remove_cancel when the modal hides after confirm", async () => {
       const { emit } = await import("../../../lib/metrics-client.js");
 
-      removeMemberShowModal(5, true, 1);
+      removeMemberShowModal({ memberID: 5, utubID: 1, intent: "remove" });
       $("#modalSubmit").trigger("click");
       vi.mocked(emit).mockClear();
 
@@ -115,7 +115,7 @@ describe("delete-metrics — UI_MEMBER_REMOVE_* / UI_MEMBER_LEAVE_*", () => {
     it("emits ui_member_leave_open when the modal is shown", async () => {
       const { emit } = await import("../../../lib/metrics-client.js");
 
-      removeMemberShowModal(5, false, 1);
+      removeMemberShowModal({ memberID: 5, utubID: 1, intent: "leave" });
 
       expect(emit).toHaveBeenCalledWith({
         event: UI_EVENTS.UI_MEMBER_LEAVE_OPEN,
@@ -125,7 +125,7 @@ describe("delete-metrics — UI_MEMBER_REMOVE_* / UI_MEMBER_LEAVE_*", () => {
     it("emits ui_member_leave_confirm when the modal submit is clicked", async () => {
       const { emit } = await import("../../../lib/metrics-client.js");
 
-      removeMemberShowModal(5, false, 1);
+      removeMemberShowModal({ memberID: 5, utubID: 1, intent: "leave" });
       vi.mocked(emit).mockClear();
 
       $("#modalSubmit").trigger("click");
@@ -138,7 +138,7 @@ describe("delete-metrics — UI_MEMBER_REMOVE_* / UI_MEMBER_LEAVE_*", () => {
     it("emits ui_member_leave_cancel when the modal is dismissed without confirming", async () => {
       const { emit } = await import("../../../lib/metrics-client.js");
 
-      removeMemberShowModal(5, false, 1);
+      removeMemberShowModal({ memberID: 5, utubID: 1, intent: "leave" });
       vi.mocked(emit).mockClear();
 
       $("#confirmModal").trigger("hidden.bs.modal.memberAction");
@@ -151,7 +151,7 @@ describe("delete-metrics — UI_MEMBER_REMOVE_* / UI_MEMBER_LEAVE_*", () => {
     it("does not emit ui_member_leave_cancel when the modal hides after confirm", async () => {
       const { emit } = await import("../../../lib/metrics-client.js");
 
-      removeMemberShowModal(5, false, 1);
+      removeMemberShowModal({ memberID: 5, utubID: 1, intent: "leave" });
       $("#modalSubmit").trigger("click");
       vi.mocked(emit).mockClear();
 
@@ -167,11 +167,11 @@ describe("delete-metrics — UI_MEMBER_REMOVE_* / UI_MEMBER_LEAVE_*", () => {
     it("resets the confirmed flag so a cancel after re-open emits the cancel event", async () => {
       const { emit } = await import("../../../lib/metrics-client.js");
 
-      removeMemberShowModal(5, true, 1);
+      removeMemberShowModal({ memberID: 5, utubID: 1, intent: "remove" });
       $("#modalSubmit").trigger("click");
       $("#confirmModal").trigger("hidden.bs.modal.memberAction");
 
-      removeMemberShowModal(5, true, 1);
+      removeMemberShowModal({ memberID: 5, utubID: 1, intent: "remove" });
       vi.mocked(emit).mockClear();
 
       $("#confirmModal").trigger("hidden.bs.modal.memberAction");
@@ -185,11 +185,11 @@ describe("delete-metrics — UI_MEMBER_REMOVE_* / UI_MEMBER_LEAVE_*", () => {
       const { emit } = await import("../../../lib/metrics-client.js");
 
       // First open with isCreator=true; dismiss to satisfy hidden listener
-      removeMemberShowModal(5, true, 1);
+      removeMemberShowModal({ memberID: 5, utubID: 1, intent: "remove" });
       $("#confirmModal").trigger("hidden.bs.modal.memberAction");
 
       // Re-open with isCreator=false; cancel should emit leave_cancel
-      removeMemberShowModal(5, false, 1);
+      removeMemberShowModal({ memberID: 5, utubID: 1, intent: "leave" });
       vi.mocked(emit).mockClear();
       $("#confirmModal").trigger("hidden.bs.modal.memberAction");
 

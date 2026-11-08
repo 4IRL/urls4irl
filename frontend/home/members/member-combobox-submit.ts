@@ -6,6 +6,12 @@ import { AppEvents, emit as emitAppEvent } from "../../lib/event-bus.js";
 import { getState, setState } from "../../store/app-store.js";
 import { applyRowCountDelta } from "../utubs/row-counts.js";
 import { createMemberBadge } from "./members.js";
+import { viewerRoleFor } from "../utubs/policy.js";
+import {
+  isMemberAddNotAllowedResponse,
+  learnMemberAddRefused,
+} from "./add-refusal.js";
+import { announceMemberRowAction } from "./notice.js";
 import { reorderMemberDeck, setMemberDeckForUTub } from "./deck.js";
 import { reapplyMemberFilter } from "./search.js";
 import {
@@ -41,6 +47,9 @@ type ChipSettleResult = {
   // Present only for a 400: the failure reason, carried by the chip's title
   // tooltip and reused in the batched aria-live summary.
   errorText?: string;
+  // True for a 403 errorCode 7 (the owner turned off member adds): the batch
+  // learns it once, after every chip settles.
+  addNotAllowed?: boolean;
 };
 
 /**
@@ -147,6 +156,15 @@ function submitOneChip({
         return;
       }
 
+      // errorCode 7 → this chip is rejected with the not-allowed reason; the
+      // batch learns it once after settle and never redirects.
+      if (isMemberAddNotAllowedResponse(xhr)) {
+        const errorText = APP_CONFIG.strings.MEMBER_ADD_NOT_ALLOWED;
+        markChipFailedWithMessage({ chipEl, message: errorText });
+        resolve({ chip, outcome: "rejected", errorText, addNotAllowed: true });
+        return;
+      }
+
       // 400 → red ✗ marker on this chip + reason in its title tooltip (siblings
       // unaffected). Anything else (403 HTML / unknown) → the existing redirect.
       const errorText = markChipFailed(chipEl, xhr);
@@ -180,6 +198,10 @@ function applyPostSettleSideEffects({
 }): void {
   const summary = buildSummaryMessage(results);
   const fulfilled = results.filter((result) => result.outcome === "fulfilled");
+  const anyRefused = results.some((result) => result.addNotAllowed === true);
+  // Nothing is learned for a UTub the viewer already left: the store now
+  // describes another UTub.
+  const addRefused = stillOnBatchUTub && anyRefused;
 
   if (stillOnBatchUTub) {
     // Dedupe by id against members already in the store: when the creator
@@ -205,7 +227,8 @@ function applyPostSettleSideEffects({
         urlDelta: 0,
         memberDelta: addedMembers.length,
       });
-      const isOwner = getState().isCurrentUserOwner;
+      const { isCurrentUserOwner, isCoCreator } = getState();
+      const viewerRole = viewerRoleFor({ isCurrentUserOwner, isCoCreator });
       const listMembers = $("#listMembers");
       addedMembers.forEach((member) => {
         listMembers.append(
@@ -213,13 +236,13 @@ function applyPostSettleSideEffects({
             memberID: member.id,
             username: member.username,
             memberRole: member.memberRole,
-            isCurrentUserOwner: isOwner,
+            viewerRole,
             utubID: batchUtubID,
           }),
         );
       });
       // Deck subheader count + filter re-stripe run ONCE total, after the appends.
-      setMemberDeckForUTub(true);
+      setMemberDeckForUTub();
       reapplyMemberFilter();
       // The appended badges land at the end; move them into the viewer's sort
       // order. The filter pass above stripes once; the reorder restripes only
@@ -237,7 +260,11 @@ function applyPostSettleSideEffects({
     }
     // Announce the batched summary ONCE to the combobox's OWN aria-live region
     // (never the filter's #MemberSearchAnnouncement).
-    if (summary) wrap.find(".memberAddComboboxMsg").text(summary);
+    // A batch with a refused chip writes one combined announcement outside the
+    // combobox (it is torn down below), so the in-combobox summary is skipped.
+    if (summary && !addRefused) {
+      wrap.find(".memberAddComboboxMsg").text(summary);
+    }
   } else if (summary) {
     // Creator switched UTubs while the batch was in flight: the combobox this
     // batch was staged against may already be torn down (resetMemberDeck). No
@@ -264,8 +291,28 @@ function applyPostSettleSideEffects({
   const render = wrap.data(RENDER_KEY) as (() => void) | undefined;
   if (render) render();
 
-  // Explicit post-settle refocus target (WCAG 2.4.3).
-  wrap.find(".memberAddComboboxInput").trigger("focus");
+  // Explicit post-settle refocus target (WCAG 2.4.3). Skipped when the batch
+  // learns a refusal: the learn below normally closes the combobox and focus
+  // lands on the deck header instead (refocused afterwards if it stays open).
+  if (!addRefused) wrap.find(".memberAddComboboxInput").trigger("focus");
+
+  // Very last: the learn's setState fires the revoke subscription synchronously,
+  // which empties #createMemberWrap. The batch owns the single announcement (the
+  // summary plus the reason, one write), so the learn does not announce.
+  if (addRefused) {
+    announceMemberRowAction({
+      message: [summary, APP_CONFIG.strings.MEMBER_ADD_NOT_ALLOWED]
+        .filter((part) => part !== "")
+        .join(" "),
+      politeness: "assertive",
+    });
+    learnMemberAddRefused({ utubID: batchUtubID, announce: false });
+    // The learn closes the combobox only when it flips the add ability. When it
+    // does not (a demoted co-owner, or no settings loaded), keep focus in it.
+    if (wrap.closest("#createMemberWrap").length > 0) {
+      wrap.find(".memberAddComboboxInput").trigger("focus");
+    }
+  }
 }
 
 /**
@@ -374,12 +421,23 @@ function markChipFailed(chipEl: JQuery, xhr: JQuery.jqXHR): string | null {
   } else if (responseJSON.message) {
     message = responseJSON.message;
   }
+  markChipFailedWithMessage({ chipEl, message });
+  return message;
+}
+
+/** Applies the failed skin (warning icon, title tooltip carrying the reason). */
+function markChipFailedWithMessage({
+  chipEl,
+  message,
+}: {
+  chipEl: JQuery;
+  message: string;
+}): void {
   chipEl
     .removeClass("memberAddStagedChipAdded")
     .addClass("memberAddStagedChipFailed");
   setChipStatusIcon(chipEl, STATUS_ICON_FAILED);
   if (message) chipEl.attr("title", message);
-  return message;
 }
 
 /** Existing redirect path for a fatal (non-400) failure — mirrors submitStagedTagsFail. */

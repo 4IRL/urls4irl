@@ -292,8 +292,17 @@ def test_transfer_picker_keyboard_open_navigate_escape(
         page=page, css_selector=HPL.MEMBERS_SETTINGS_SORT_SELECT
     )
 
-    # The gear moves focus to the first control (the sort select); the action is
-    # the next stop in the tab order and carries its own accessible name.
+    # The gear moves focus to the first control (the owner's first permissions
+    # switch); the sort select follows the two switches, and the action is the
+    # next stop after it and carries its own accessible name.
+    expect(
+        page.locator(HPL.MEMBERS_PERMISSIONS_CO_OWNERS_REMOVE_SWITCH)
+    ).to_be_focused()
+    page.keyboard.press("Tab")
+    expect(page.locator(HPL.MEMBERS_PERMISSIONS_MEMBERS_ADD_SWITCH)).to_be_focused()
+    # Section toggles sit between the switches and the sort select, so land on
+    # the select directly; the action is the very next stop after it.
+    page.locator(HPL.MEMBERS_SETTINGS_SORT_SELECT).focus()
     expect(page.locator(HPL.MEMBERS_SETTINGS_SORT_SELECT)).to_be_focused()
     page.keyboard.press("Tab")
     trigger = page.locator(HPL.MEMBER_BTN_TRANSFER_OWNER)

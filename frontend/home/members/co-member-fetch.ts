@@ -1,6 +1,11 @@
+import { $ } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { ajaxCall, is429Handled } from "../../lib/ajax.js";
 import { setState } from "../../store/app-store.js";
+import {
+  isMemberAddNotAllowedResponse,
+  learnMemberAddRefused,
+} from "./add-refusal.js";
 
 import type { SuccessResponse } from "../../types/api-helpers.d.ts";
 
@@ -48,6 +53,19 @@ export function loadCoMemberCandidates(
       // browser follows) surfaces as status 0; a newer fetch owns the store,
       // so this stale one must not degrade it to empty.
       if (xhr.status === 0) return;
+      // The owner turned add off: learn it (hides the add UI), explain why and
+      // reconcile with the server. Never degrades the slice or redirects.
+      if (isMemberAddNotAllowedResponse(xhr)) {
+        learnMemberAddRefused({ utubID, announce: true });
+        // The learn closes the combobox when it flips the add ability. If the
+        // combobox survived (a demoted co-owner until the refresh lands), settle
+        // the slice so its "Loading matches…" hint clears.
+        if ($("#createMemberWrap").find(".memberAddComboboxWrap").length > 0) {
+          setState({ coMemberCandidates: [], coMemberCandidatesLoaded: true });
+          onSettle?.();
+        }
+        return;
+      }
       setState({ coMemberCandidates: [], coMemberCandidatesLoaded: true });
       onSettle?.();
     })

@@ -100,7 +100,9 @@ def test_co_owner_viewer_sees_no_kebabs(
     """
     GIVEN a user is a CO_CREATOR (co-owner) of a UTub they did not create
     WHEN they view the members panel
-    THEN no member row shows a kebab (owner-only affordance), yet role icons render
+    AND the owner has not enabled "co-owners can remove members" (the default)
+    THEN no member row shows a kebab (the Remove-only co-owner kebabs are built
+         but hidden by CSS), yet role icons render
     """
     app = provide_app
 
@@ -115,7 +117,9 @@ def test_co_owner_viewer_sees_no_kebabs(
     )
 
     wait_until_visible_css_selector(page=page, css_selector=HPL.MEMBER_ROW_ROLE_ICON)
-    assert page.locator(HPL.MEMBER_ROW_KEBAB).count() == 0
+    kebabs = page.locator(HPL.MEMBER_ROW_KEBAB)
+    for index in range(kebabs.count()):
+        expect(kebabs.nth(index)).to_be_hidden()
     assert page.locator(HPL.MEMBER_ROW_ROLE_ICON).count() > 0
 
 

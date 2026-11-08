@@ -6,9 +6,12 @@ import {
   updateMemberDeck,
 } from "../deck.js";
 import { applyDeckDiff } from "../../../logic/apply-deck-diff.js";
-import { swapMemberRoleInRow } from "../members.js";
+import { createMemberBadge, swapMemberRoleInRow } from "../members.js";
 import { makeUTubRoleIcon } from "../../utubs/selectors.js";
 import { getState, resetStore, setState } from "../../../store/app-store.js";
+import { resolveUtubSettings } from "../../../types/settings.js";
+import { setupShowCreateMemberFormEventListeners } from "../create.js";
+import { showMemberDeckNotice } from "../notice.js";
 
 vi.mock("../../../logic/apply-deck-diff.js", () => ({
   applyDeckDiff: vi.fn(),
@@ -47,6 +50,7 @@ const MEMBER_DECK_HTML = `
     <button id="memberNameFilterBtn" class="hidden" aria-expanded="false"></button>
     <button id="memberNameFilterBtnClose" class="hidden"></button>
     <button id="memberBtnCreate" class="hidden"></button>
+    <div id="MemberDeckNotice" class="hidden"></div>
     <button id="memberSelfBtnDelete" class="hidden"></button>
     <div id="SearchMemberWrap">
       <input id="MemberNameSearch" type="search" value="" />
@@ -64,9 +68,19 @@ describe("Member deck visibility on UTub selection", () => {
   beforeEach(() => {
     document.body.innerHTML = MEMBER_DECK_HTML;
     resetStore();
+    // jsdom has no layout, so every element reads as unfocusable; report all
+    // as rendered. Removed in afterEach so a failed expect cannot leak the patch.
+    Object.defineProperty(HTMLElement.prototype, "offsetParent", {
+      configurable: true,
+      get() {
+        return document.body;
+      },
+    });
   });
 
   afterEach(() => {
+    delete (HTMLElement.prototype as unknown as Record<string, unknown>)
+      .offsetParent;
     resetStore();
   });
 
@@ -102,7 +116,7 @@ describe("Member deck visibility on UTub selection", () => {
       .jQuery("#listMembers")
       .append(`<span class="member">a</span><span class="member">b</span>`);
 
-    setMemberDeckForUTub(true);
+    setMemberDeckForUTub();
 
     expect(window.jQuery("#MemberDeckCount").text()).toBe("(3)");
   });
@@ -111,7 +125,8 @@ describe("Member deck visibility on UTub selection", () => {
     window.jQuery("#listMembers").append(`<span class="member">a</span>`);
     window.jQuery("#memberBtnCreate").removeClass("hidden");
 
-    setMemberDeckForUTub(false);
+    // Default store: not owner, not co-owner, no settings -> cannot add.
+    setMemberDeckForUTub();
 
     expect(window.jQuery("#MemberDeckCount").text()).toBe("(2)");
     // The leave button lives in the UTub deck now and is not managed here.
@@ -152,6 +167,129 @@ describe("Member deck visibility on UTub selection", () => {
     );
 
     expect(window.jQuery("#memberBtnCreate").hasClass("hidden")).toBe(true);
+  });
+
+  it("shows the add-member button and binds the opener for a plain member while members_can_add is on", () => {
+    resetStore();
+    vi.mocked(setupShowCreateMemberFormEventListeners).mockClear();
+    setState({
+      isCoCreator: false,
+      settings: resolveUtubSettings({
+        members: { members_can_add: true },
+      } as never),
+    });
+
+    setMemberDeckOnUTubSelected(
+      [{ id: 1, username: "owner", memberRole: "creator", joinedAt: null }],
+      1,
+      false,
+      1,
+      42,
+    );
+
+    expect(setupShowCreateMemberFormEventListeners).toHaveBeenCalledTimes(1);
+    expect(setupShowCreateMemberFormEventListeners).toHaveBeenCalledWith(42);
+    expect(window.jQuery("#memberBtnCreate").hasClass("hidden")).toBe(false);
+  });
+
+  it("does not bind the opener for a plain member while members_can_add is off", () => {
+    resetStore();
+    setState({
+      settings: resolveUtubSettings({
+        members: { members_can_add: false },
+      } as never),
+    });
+    vi.mocked(setupShowCreateMemberFormEventListeners).mockClear();
+
+    setMemberDeckOnUTubSelected(
+      [{ id: 1, username: "owner", memberRole: "creator", joinedAt: null }],
+      1,
+      false,
+      1,
+      42,
+    );
+
+    expect(setupShowCreateMemberFormEventListeners).not.toHaveBeenCalled();
+  });
+
+  it("setMemberDeckForUTub reads the store, so a revoked plain member cannot be forced on", () => {
+    resetStore();
+    window.jQuery("#memberBtnCreate").removeClass("hidden");
+
+    setMemberDeckForUTub();
+
+    expect(window.jQuery("#memberBtnCreate").hasClass("hidden")).toBe(true);
+  });
+
+  it("falls back to the deck header when the rebuild destroys the focused row", () => {
+    resetStore();
+    window
+      .jQuery("#listMembers")
+      .append(
+        `<span class="member" memberid="9"><button class="memberRowKebab" id="kebab9">k</button></span>`,
+      );
+    (document.getElementById("kebab9") as HTMLElement).focus();
+
+    setMemberDeckOnUTubSelected(
+      [{ id: 1, username: "owner", memberRole: "creator", joinedAt: null }],
+      1,
+      true,
+      1,
+      42,
+    );
+
+    expect(document.activeElement?.id).toBe("MemberDeckHeaderAndCaret");
+  });
+
+  it("falls back to the deck header when the rebuild destroys a focused bare row", () => {
+    resetStore();
+    window
+      .jQuery("#listMembers")
+      .append(
+        `<span class="member" memberid="9" tabindex="-1" id="row9">r</span>`,
+      );
+    (document.getElementById("row9") as HTMLElement).focus();
+    expect(document.activeElement?.id).toBe("row9");
+
+    setMemberDeckOnUTubSelected(
+      [{ id: 1, username: "owner", memberRole: "creator", joinedAt: null }],
+      1,
+      true,
+      1,
+      42,
+    );
+
+    expect(document.activeElement?.id).toBe("MemberDeckHeaderAndCaret");
+  });
+
+  it("clears the refusal notice when no UTub is selected", () => {
+    window.jQuery("#MemberDeckNotice").text("stale").removeClass("hidden");
+    setMemberDeckWhenNoUTubSelected();
+    expect(window.jQuery("#MemberDeckNotice").text()).toBe("");
+  });
+
+  it("keeps the refusal notice through a same-UTub rebuild and an updateMemberDeck diff", () => {
+    resetStore();
+    setState({ activeUTubID: 42 });
+    showMemberDeckNotice({ message: "Not allowed" });
+
+    setMemberDeckOnUTubSelected(
+      [{ id: 1, username: "owner", memberRole: "creator", joinedAt: null }],
+      1,
+      false,
+      1,
+      42,
+    );
+    expect(window.jQuery("#MemberDeckNotice").hasClass("hidden")).toBe(false);
+    expect(window.jQuery("#MemberDeckNotice").text()).toBe("Not allowed");
+
+    updateMemberDeck(
+      [{ id: 1, username: "owner", memberRole: "creator", joinedAt: null }],
+      false,
+      42,
+    );
+    expect(window.jQuery("#MemberDeckNotice").hasClass("hidden")).toBe(false);
+    expect(window.jQuery("#MemberDeckNotice").text()).toBe("Not allowed");
   });
 });
 
@@ -234,6 +372,58 @@ describe("updateMemberDeck — targeted role swap via real applyDeckDiff (DD-17/
     });
     expect(
       getState().members.find((member) => member.id === 101)?.memberRole,
+    ).toBe("member");
+  });
+});
+
+describe("updateMemberDeck — addElement carries the viewer's role to the badge", () => {
+  beforeEach(() => {
+    document.body.innerHTML = MEMBER_DECK_HTML;
+    resetStore();
+    vi.mocked(applyDeckDiff).mockReset();
+    vi.mocked(createMemberBadge).mockClear();
+  });
+
+  afterEach(() => {
+    vi.mocked(applyDeckDiff).mockReset();
+    resetStore();
+  });
+
+  const NEW_MEMBER = {
+    id: 9,
+    username: "Dana",
+    memberRole: "member",
+    joinedAt: null,
+  };
+
+  function addedViewerRole({
+    isCurrentUserOwner,
+    isCoCreator,
+  }: {
+    isCurrentUserOwner: boolean;
+    isCoCreator: boolean;
+  }): unknown {
+    setState({ isCurrentUserOwner, isCoCreator });
+    updateMemberDeck([NEW_MEMBER], isCurrentUserOwner, 42);
+    vi.mocked(applyDeckDiff).mock.calls[0][0].addElement(NEW_MEMBER);
+    return vi.mocked(createMemberBadge).mock.calls[0][0].viewerRole;
+  }
+
+  it("is co_owner for a co-owner viewer", () => {
+    expect(
+      addedViewerRole({ isCurrentUserOwner: false, isCoCreator: true }),
+    ).toBe("co_owner");
+  });
+
+  it("is owner for the owner viewer", () => {
+    expect(
+      addedViewerRole({ isCurrentUserOwner: true, isCoCreator: false }),
+    ).toBe("owner");
+  });
+
+  it("is member for a plain-member viewer", () => {
+    expect(
+      addedViewerRole({ isCurrentUserOwner: false, isCoCreator: false }),
     ).toBe("member");
   });
 });

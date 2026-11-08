@@ -5,6 +5,7 @@ import {
 import { APP_CONFIG } from "../../../lib/config.js";
 import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
 import { setState } from "../../../store/app-store.js";
+import { learnMemberAddRefused } from "../add-refusal.js";
 
 // co-member-fetch.ts is the members-deck twin of cross-utub-search.ts's fetch
 // path (abort-and-replace over a single module-scoped in-flight jqXHR). This
@@ -19,6 +20,14 @@ vi.mock("../../../lib/ajax.js", () => ({
 vi.mock("../../../store/app-store.js", () => ({
   setState: vi.fn(),
 }));
+
+vi.mock("../add-refusal.js", async () => {
+  const actual =
+    await vi.importActual<typeof import("../add-refusal.js")>(
+      "../add-refusal.js",
+    );
+  return { ...actual, learnMemberAddRefused: vi.fn() };
+});
 
 // A jqXHR whose .done fires synchronously with `{ members }`.
 function buildDoneXhr(members: unknown[]): JQuery.jqXHR {
@@ -37,14 +46,20 @@ function buildDoneXhr(members: unknown[]): JQuery.jqXHR {
 }
 
 // A jqXHR whose .fail fires synchronously with `{ status }`.
-function buildFailXhr(status: number): JQuery.jqXHR {
+function buildFailXhr(status: number, errorCode?: number): JQuery.jqXHR {
   return {
     done: vi.fn().mockReturnThis(),
     fail: vi.fn(function (
       this: JQuery.jqXHR,
-      cb: (xhr: { status: number }) => void,
+      cb: (xhr: {
+        status: number;
+        responseJSON?: { errorCode: number };
+      }) => void,
     ) {
-      cb({ status });
+      cb({
+        status,
+        responseJSON: errorCode === undefined ? undefined : { errorCode },
+      });
       return this;
     }),
     always: vi.fn().mockReturnThis(),
@@ -65,6 +80,7 @@ function buildPendingXhr(): JQuery.jqXHR {
 
 beforeEach(() => {
   // Reset the module-scoped in-flight guard between tests, then clear mock state.
+  document.body.innerHTML = "";
   cancelCoMemberCandidatesFetch();
   vi.clearAllMocks();
   vi.mocked(is429Handled).mockReturnValue(false);
@@ -121,6 +137,50 @@ describe("co-member-fetch — loadCoMemberCandidates", () => {
 
     loadCoMemberCandidates(7, onSettle);
 
+    expect(vi.mocked(setState)).toHaveBeenCalledWith({
+      coMemberCandidates: [],
+      coMemberCandidatesLoaded: true,
+    });
+    expect(onSettle).toHaveBeenCalledTimes(1);
+  });
+
+  it("403 errorCode 7: learns the refusal and returns before the degrade path", () => {
+    vi.mocked(ajaxCall).mockReturnValue(buildFailXhr(403, 7));
+    const onSettle = vi.fn();
+
+    loadCoMemberCandidates(7, onSettle);
+
+    expect(vi.mocked(learnMemberAddRefused)).toHaveBeenCalledWith({
+      utubID: 7,
+      announce: true,
+    });
+    expect(vi.mocked(setState)).not.toHaveBeenCalled();
+    expect(onSettle).not.toHaveBeenCalled();
+  });
+
+  it("403 errorCode 7 with the combobox still open settles the slice", () => {
+    document.body.innerHTML = `<div id="createMemberWrap"><div class="memberAddComboboxWrap"></div></div>`;
+    vi.mocked(ajaxCall).mockReturnValue(buildFailXhr(403, 7));
+    const onSettle = vi.fn();
+
+    loadCoMemberCandidates(7, onSettle);
+
+    expect(vi.mocked(learnMemberAddRefused)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(setState)).toHaveBeenCalledWith({
+      coMemberCandidates: [],
+      coMemberCandidatesLoaded: true,
+    });
+    expect(onSettle).toHaveBeenCalledTimes(1);
+    document.body.innerHTML = "";
+  });
+
+  it("403 with another error code still degrades like a generic failure", () => {
+    vi.mocked(ajaxCall).mockReturnValue(buildFailXhr(403, 3));
+    const onSettle = vi.fn();
+
+    loadCoMemberCandidates(7, onSettle);
+
+    expect(vi.mocked(learnMemberAddRefused)).not.toHaveBeenCalled();
     expect(vi.mocked(setState)).toHaveBeenCalledWith({
       coMemberCandidates: [],
       coMemberCandidatesLoaded: true,

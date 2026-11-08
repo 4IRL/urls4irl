@@ -56,7 +56,7 @@ function seedMemberRow(
       memberID,
       username,
       memberRole,
-      isCurrentUserOwner: true,
+      viewerRole: "owner",
       utubID: 1,
     }),
   );
@@ -363,7 +363,7 @@ describe("modifyMemberRole — live reorder, position clause and scroll", () => 
           memberID: member.id,
           username: member.username,
           memberRole: member.memberRole,
-          isCurrentUserOwner: true,
+          viewerRole: "owner",
           utubID: 1,
         }),
       );

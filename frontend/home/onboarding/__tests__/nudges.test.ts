@@ -1132,6 +1132,85 @@ describe("onboarding nudges — registry, eligibility, sequencing & init wiring"
     expect(contentArg[".tooltip-inner"]).toContain("Invite a member");
   });
 
+  it("(addMember eligibility) a plain member sees the tip only while members_can_add is on", async () => {
+    const { initOnboardingNudges, _resetOnboardingNudgesForTests } =
+      await import("../nudges.js");
+    const { resolveUtubSettings } = await import("../../../types/settings.js");
+    const { bootstrap } = await import("../../../lib/globals.js");
+    const anchor = document.querySelector("#memberBtnCreate") as HTMLElement;
+    const tip = bootstrap.Tooltip.getOrCreateInstance(anchor);
+    const plainMemberState = {
+      utubs: [A_UTUB],
+      activeUTubID: 1,
+      urls: [A_URL],
+      tags: [A_TAG],
+      members: [M_SELF],
+      isCurrentUserOwner: false,
+      isCoCreator: false,
+    };
+
+    nudgeStorage.markTipSeen("createUtub");
+    nudgeStorage.markTipSeen("addUrl");
+    setState({
+      ...plainMemberState,
+      settings: resolveUtubSettings({
+        members: { members_can_add: false },
+      } as never),
+    });
+    initOnboardingNudges();
+    expect(tip.show).not.toHaveBeenCalled();
+
+    _resetOnboardingNudgesForTests();
+    nudgeStorage.markTipSeen("createUtub");
+    nudgeStorage.markTipSeen("addUrl");
+    setState({
+      settings: resolveUtubSettings({
+        members: { members_can_add: true },
+      } as never),
+    });
+    initOnboardingNudges();
+    expect(tip.show).toHaveBeenCalledTimes(1);
+  });
+
+  it("(addMember revoke) dismissAddMemberTipIfActive hides the live tip without marking it seen, and no-ops for another tip", async () => {
+    const {
+      initOnboardingNudges,
+      dismissAddMemberTipIfActive,
+      _resetOnboardingNudgesForTests,
+    } = await import("../nudges.js");
+    const { resolveUtubSettings } = await import("../../../types/settings.js");
+    const { bootstrap } = await import("../../../lib/globals.js");
+    const anchor = document.querySelector("#memberBtnCreate") as HTMLElement;
+    const tip = bootstrap.Tooltip.getOrCreateInstance(anchor);
+
+    // No active tip: a no-op.
+    _resetOnboardingNudgesForTests();
+    dismissAddMemberTipIfActive();
+    expect(tip.hide).not.toHaveBeenCalled();
+
+    nudgeStorage.markTipSeen("createUtub");
+    nudgeStorage.markTipSeen("addUrl");
+    setState({
+      utubs: [A_UTUB],
+      activeUTubID: 1,
+      urls: [A_URL],
+      tags: [A_TAG],
+      members: [M_SELF],
+      isCurrentUserOwner: false,
+      isCoCreator: false,
+      settings: resolveUtubSettings({
+        members: { members_can_add: true },
+      } as never),
+    });
+    initOnboardingNudges();
+    expect(tip.show).toHaveBeenCalledTimes(1);
+
+    dismissAddMemberTipIfActive();
+
+    expect(tip.hide).toHaveBeenCalled();
+    expect(nudgeStorage.hasSeenTip("addMember")).toBe(false);
+  });
+
   it("(sequencing) addTag precedes addMember; once addTag is seen the next re-eval shows addMember", async () => {
     const { initOnboardingNudges, dismissActiveTip } =
       await import("../nudges.js");
