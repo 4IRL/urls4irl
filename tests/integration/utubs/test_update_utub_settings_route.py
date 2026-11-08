@@ -1007,3 +1007,264 @@ def test_plain_member_cannot_patch_allow_short_links(
 
     assert response.status_code == 403
     assert _stored_settings(app) is None
+
+
+# --------------------------------------------------------------------------
+# Owner-only members keys
+# --------------------------------------------------------------------------
+
+MEMBERS_KEYS = ("co_owners_can_remove", "members_can_add")
+
+
+def _assert_not_authorized(response: TestResponse) -> None:
+    assert response.status_code == 403
+    assert response.json[STD_JSON.MESSAGE] == UTUB_FAILURE.NOT_AUTHORIZED
+    assert STD_JSON.ERROR_CODE not in response.json
+
+
+@pytest.mark.parametrize("key", MEMBERS_KEYS)
+def test_owner_can_set_each_members_key(
+    add_multiple_users_to_utub_without_logging_in,
+    login_first_user_without_register,
+    key,
+):
+    """
+    GIVEN the UTub owner
+    WHEN they PATCH one members key to true
+    THEN 200 with full resolved settings, and only the sent key is stored
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+
+    response = _patch(app, client, csrf_token, {"members": {key: True}})
+
+    assert response.status_code == 200
+    expected = {**DEFAULT_SETTINGS_DICT["members"], key: True}
+    assert response.json[MODELS.SETTINGS] == {
+        **DEFAULT_SETTINGS_DICT,
+        "members": expected,
+    }
+    assert _stored_settings(app) == {"members": {key: True}}
+
+
+@pytest.mark.parametrize("key", MEMBERS_KEYS)
+def test_co_owner_cannot_patch_members_key(
+    add_multiple_users_to_utub_without_logging_in, app, key
+):
+    """
+    GIVEN a co-owner
+    WHEN they PATCH an owner-only members key
+    THEN 403 NOT_AUTHORIZED with no errorCode and nothing stored
+    """
+    _seed_roles(app)
+
+    with _client_for(app, CO_OWNER_ID) as (client, csrf_token):
+        response = _patch(app, client, csrf_token, {"members": {key: True}})
+
+    _assert_not_authorized(response)
+    assert _stored_settings(app) is None
+
+
+def test_co_owner_mixed_urls_and_members_patch_is_refused_whole(
+    add_multiple_users_to_utub_without_logging_in, app, monkeypatch
+):
+    """
+    GIVEN a co-owner
+    WHEN they PATCH urls and members keys together
+    THEN 403 and the urls change is not stored
+    """
+    patch_settings_model(monkeypatch)
+    _seed_roles(app)
+
+    with _client_for(app, CO_OWNER_ID) as (client, csrf_token):
+        response = _patch(
+            app,
+            client,
+            csrf_token,
+            {"urls": {STUB_KEY: True}, "members": {"members_can_add": True}},
+        )
+
+    _assert_not_authorized(response)
+    assert _stored_settings(app) is None
+
+
+def test_unknown_members_key_is_role_403_for_co_owner(
+    add_multiple_users_to_utub_without_logging_in, app
+):
+    """
+    GIVEN an unknown key in the members section
+    WHEN a co-owner PATCHes it
+    THEN the role 403 is returned, not a 400
+    """
+    _seed_roles(app)
+
+    with _client_for(app, CO_OWNER_ID) as (client, csrf_token):
+        response = _patch(app, client, csrf_token, {"members": {"unknown_key": True}})
+
+    _assert_not_authorized(response)
+    assert _stored_settings(app) is None
+
+
+def test_unknown_members_key_is_400_for_owner(
+    add_multiple_users_to_utub_without_logging_in,
+    login_first_user_without_register,
+):
+    """
+    GIVEN an unknown key in the members section
+    WHEN the owner PATCHes it
+    THEN a 400 naming members.unknown_key is returned
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+
+    response = _patch(app, client, csrf_token, {"members": {"unknown_key": True}})
+
+    _assert_400(response, {"members.unknown_key"})
+    assert _stored_settings(app) is None
+
+
+def test_owner_non_boolean_members_value_returns_400(
+    add_multiple_users_to_utub_without_logging_in,
+    login_first_user_without_register,
+):
+    """
+    GIVEN the owner
+    WHEN they PATCH a non-boolean members value
+    THEN 400 with the dotted key and nothing stored
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+
+    response = _patch(app, client, csrf_token, {"members": {"members_can_add": "x"}})
+
+    _assert_400(response, {"members.members_can_add"})
+    assert _stored_settings(app) is None
+
+
+def test_locked_utub_members_patch_co_owner_gets_not_authorized(
+    add_multiple_users_to_utub_without_logging_in, app
+):
+    """
+    GIVEN a locked UTub
+    WHEN a co-owner PATCHes a members key
+    THEN NOT_AUTHORIZED is returned, not UTUB_IS_LOCKED
+    """
+    _seed_roles(app)
+    lock_utub(app, UTUB_ID_VALUE)
+
+    with _client_for(app, CO_OWNER_ID) as (client, csrf_token):
+        response = _patch(
+            app, client, csrf_token, {"members": {"members_can_add": True}}
+        )
+
+    _assert_not_authorized(response)
+    assert _stored_settings(app) is None
+
+
+def test_locked_utub_members_patch_owner_gets_utub_is_locked(
+    add_multiple_users_to_utub_without_logging_in,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a locked UTub
+    WHEN the owner PATCHes a members key
+    THEN UTUB_IS_LOCKED is returned and nothing is stored
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+    lock_utub(app, UTUB_ID_VALUE)
+
+    response = _patch(app, client, csrf_token, {"members": {"members_can_add": True}})
+
+    assert response.status_code == 403
+    assert response.json[STD_JSON.ERROR_CODE] == UTubErrorCodes.UTUB_IS_LOCKED
+    assert _stored_settings(app) is None
+
+
+def test_co_owner_urls_only_patch_still_succeeds(
+    add_multiple_users_to_utub_without_logging_in, app, monkeypatch
+):
+    """
+    GIVEN a co-owner
+    WHEN they PATCH urls keys alone
+    THEN 200 (members keys being owner-only does not affect other sections)
+    """
+    patch_settings_model(monkeypatch)
+    _seed_roles(app)
+
+    with _client_for(app, CO_OWNER_ID) as (client, csrf_token):
+        response = _patch(app, client, csrf_token, {"urls": {STUB_KEY: True}})
+
+    assert response.status_code == 200
+
+
+@pytest.mark.parametrize(
+    "removed, expected_status",
+    [(False, 403), (True, 404)],
+    ids=["plain_member", "non_member"],
+)
+def test_plain_or_non_member_members_patch_refused(
+    add_multiple_users_to_utub_without_logging_in, app, removed, expected_status
+):
+    """
+    GIVEN a plain member or a removed member
+    WHEN they PATCH a members key
+    THEN the plain member gets 403 and the non-member 404
+    """
+    if removed:
+        remove_member(app, UTUB_ID_VALUE, PLAIN_MEMBER_ID)
+
+    with _client_for(app, PLAIN_MEMBER_ID) as (client, csrf_token):
+        response = _patch(
+            app, client, csrf_token, {"members": {"members_can_add": True}}
+        )
+
+    assert response.status_code == expected_status
+    assert _stored_settings(app) is None
+
+
+@pytest.mark.parametrize(
+    "actor_id, expected_status",
+    [(CO_OWNER_ID, 200), (CREATOR_ID, 403)],
+    ids=["new_owner", "former_owner"],
+)
+def test_ownership_transfer_moves_members_key_authority(
+    add_multiple_users_to_utub_without_logging_in, app, actor_id, expected_status
+):
+    """
+    GIVEN ownership transferred from the creator to the co-owner
+    WHEN the new owner and the former owner PATCH a members key
+    THEN the new owner gets 200 and the former owner (now co-owner) gets 403
+    """
+    _seed_roles(app)
+    set_member_role(app, UTUB_ID_VALUE, CREATOR_ID, Member_Role.CO_CREATOR)
+    set_member_role(app, UTUB_ID_VALUE, CO_OWNER_ID, Member_Role.CREATOR)
+    with app.app_context():
+        utub: Utubs = Utubs.query.get(UTUB_ID_VALUE)
+        utub.utub_creator = CO_OWNER_ID
+        db.session.commit()
+
+    with _client_for(app, actor_id) as (client, csrf_token):
+        response = _patch(
+            app, client, csrf_token, {"members": {"members_can_add": True}}
+        )
+
+    assert response.status_code == expected_status
+    if expected_status == 403:
+        _assert_not_authorized(response)
+        assert _stored_settings(app) is None
+    else:
+        assert _stored_settings(app) == {"members": {"members_can_add": True}}
+
+
+def test_detail_payload_shows_members_keys_false_by_default(
+    add_multiple_users_to_utub_without_logging_in,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a UTub with no stored settings
+    WHEN the detail is fetched
+    THEN both members keys are false
+    """
+    client, _, _, app = login_first_user_without_register
+
+    assert _get_detail_settings(app, client)["members"] == {
+        "co_owners_can_remove": False,
+        "members_can_add": False,
+    }

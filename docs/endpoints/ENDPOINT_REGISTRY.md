@@ -516,9 +516,9 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 ### `GET /api/v1/utubs/<int:utub_id>/co-members` — `api_v1.api_v1_get_co_member_candidates`
 
 - **Handler:** `backend/api_v1/utub_member_routes.py:api_v1_get_co_member_candidates`
-- **Decorators:** `api_utub_manager_required`, `api_route`
-- **Service:** `backend.members.services.co_member_search:get_co_member_candidates`
-- **Schema:** response: `backend.schemas.users.CoMemberListSchema`; status: 200 `backend.schemas.users.CoMemberListSchema`, 401 `backend.schemas.errors.ErrorResponse`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`
+- **Decorators:** `api_utub_membership_required`, `api_route`, `limiter.limit(MEMBER_ADD_RATE_LIMIT, methods=['GET'])`
+- **Service:** `backend.members.services.co_member_search:get_co_member_candidates`, `backend.members.services.member_permissions:member_add_refusal_response`
+- **Schema:** response: `backend.schemas.users.CoMemberListSchema`; status: 200 `backend.schemas.users.CoMemberListSchema`, 401 `backend.schemas.errors.ErrorResponse`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`, 429 `backend.schemas.errors.ErrorResponse`
 - **Template:** —
 - **JS:** no-js: mobile-api
 
@@ -579,7 +579,7 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 ### `POST /api/v1/utubs/<int:utub_id>/members` — `api_v1.api_v1_create_member`
 
 - **Handler:** `backend/api_v1/utub_member_routes.py:api_v1_create_member`
-- **Decorators:** `api_utub_manager_required`, `api_route`, `limiter.limit(MEMBER_ADD_RATE_LIMIT, methods=['POST'])`
+- **Decorators:** `api_utub_membership_required`, `api_route`, `limiter.limit(MEMBER_ADD_RATE_LIMIT, methods=['POST'])`
 - **Service:** `backend.members.services.create_members:create_utub_member`
 - **Schema:** request: `backend.schemas.requests.members.AddMemberRequest`; response: `backend.schemas.users.AddMemberResponseSchema`; status: 200 `backend.schemas.users.AddMemberResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 401 `backend.schemas.errors.ErrorResponse`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`, 429 `backend.schemas.errors.ErrorResponse`
 - **Template:** —
@@ -801,16 +801,16 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 ### `GET /utubs/<int:utub_id>/co-members` — `members.get_co_member_candidates_route`
 
 - **Handler:** `backend/members/routes.py:get_co_member_candidates_route`
-- **Decorators:** `utub_manager_required`, `api_route`
-- **Service:** `backend.members.services.co_member_search:get_co_member_candidates`
-- **Schema:** response: `backend.schemas.users.CoMemberListSchema`; status: 200 `backend.schemas.users.CoMemberListSchema`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`
+- **Decorators:** `utub_membership_required`, `api_route`, `limiter.limit(MEMBER_ADD_RATE_LIMIT, methods=['GET'])`
+- **Service:** `backend.members.services.co_member_search:get_co_member_candidates`, `backend.members.services.member_permissions:member_add_refusal_response`
+- **Schema:** response: `backend.schemas.users.CoMemberListSchema`; status: 200 `backend.schemas.users.CoMemberListSchema`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`, 429 `backend.schemas.errors.ErrorResponse`
 - **Template:** —
 - **JS:** keys: `coMemberCandidates`
 
 ### `POST /utubs/<int:utub_id>/members` — `members.create_member`
 
 - **Handler:** `backend/members/routes.py:create_member`
-- **Decorators:** `utub_manager_required`, `api_route`, `limiter.limit(MEMBER_ADD_RATE_LIMIT, methods=['POST'])`
+- **Decorators:** `utub_membership_required`, `api_route`, `limiter.limit(MEMBER_ADD_RATE_LIMIT, methods=['POST'])`
 - **Service:** `backend.members.services.create_members:create_utub_member`
 - **Schema:** request: `backend.schemas.requests.members.AddMemberRequest`; response: `backend.schemas.users.AddMemberResponseSchema`; status: 200 `backend.schemas.users.AddMemberResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`, 429 `backend.schemas.errors.ErrorResponse`
 - **Template:** —

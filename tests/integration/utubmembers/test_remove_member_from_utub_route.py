@@ -24,7 +24,11 @@ from backend.utils.strings.url_validation_strs import URL_VALIDATION
 from backend.utils.strings.user_strs import MEMBER_FAILURE, MEMBER_SUCCESS
 from backend.utils.strings.utub_strs import UTUB_FAILURE
 from tests.integration.system.metrics_helpers import count_counter_keys
-from tests.utils_for_test import is_string_in_logs, set_member_role
+from tests.utils_for_test import (
+    is_string_in_logs,
+    set_member_role,
+    set_members_settings,
+)
 
 pytestmark = pytest.mark.members
 
@@ -1375,6 +1379,8 @@ def test_co_creator_can_remove_another_member(
     set_member_role(
         app, utub_id=current_utub_id, user_id=2, role=Member_Role.CO_CREATOR
     )
+    # Co-owner removal is off by default; the owner turns it on
+    set_members_settings(app, current_utub_id, {"co_owners_can_remove": True})
 
     with app.app_context():
         current_utub = Utubs.query.get(current_utub_id)

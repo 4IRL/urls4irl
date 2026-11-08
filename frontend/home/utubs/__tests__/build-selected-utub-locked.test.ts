@@ -189,7 +189,7 @@ describe("buildSelectedUTub — locked-UTub affordances", () => {
     const populated = { utubs: { sample: 1 } } as never;
     const emptyShape = {
       utubs: {},
-      members: {},
+      members: { co_owners_can_remove: false, members_can_add: false },
       tags: {},
       urls: {
         default_url_scheme: "https",

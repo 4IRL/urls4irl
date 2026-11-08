@@ -9,6 +9,7 @@ from sqlalchemy import and_
 from backend import db
 from backend.api_common.responses import FlaskResponse
 from backend.app_logger import critical_log
+from backend.members.services.member_permissions import can_add_members
 from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utubs import Utubs
 from backend.schemas.errors import build_message_error_response
@@ -21,6 +22,7 @@ class UtubAccess(Enum):
     """Minimum role a caller must still hold once the UTub row is locked."""
 
     MEMBER = "member"
+    MEMBER_ADD = "member_add"
     MANAGER = "manager"
     OWNER = "owner"
 
@@ -148,7 +150,11 @@ def get_utub_member_ids(*, utub_id: int) -> set[int]:
 
 
 def lock_and_reauthorize(
-    current_utub: Utubs, *, required_access: UtubAccess, error_code: int
+    current_utub: Utubs,
+    *,
+    required_access: UtubAccess,
+    error_code: int,
+    not_authorized_error_code: int | None = None,
 ) -> FlaskResponse | None:
     """Lock the UTub row, then re-check the caller's authorization on fresh state.
 
@@ -161,14 +167,18 @@ def lock_and_reauthorize(
     2. Re-read the caller's membership; abort 404 if it is gone. Recompute
        ``g.is_manager`` from the fresh role.
     3. Check the required role (OWNER: caller is the fresh ``utub_creator``;
-       MANAGER: fresh ``g.is_manager``); on failure log critically and return
-       403 ``NOT_AUTHORIZED``.
+       MANAGER: fresh ``g.is_manager``; MEMBER_ADD: a fresh manager, or a plain
+       member while ``members_can_add`` reads true on the locked row); on
+       failure log critically and return 403 ``NOT_AUTHORIZED`` (carrying
+       ``not_authorized_error_code`` as ``errorCode`` when given).
     4. Last, ``reject_if_utub_locked``.
 
     Args:
         current_utub (Utubs): The UTub loaded (unlocked) by the route guard.
         required_access (UtubAccess): Minimum role the caller must still hold.
         error_code (int): Domain error code for the locked-UTub response.
+        not_authorized_error_code (int | None): Optional errorCode carried by
+            the 403 not-authorized response.
 
     Returns:
         An error response tuple to return from the service, or None when the
@@ -199,13 +209,18 @@ def lock_and_reauthorize(
         # Current membership was already verified by the fresh lookup above.
         authorized = True
         role_label = "member"
+    elif required_access is UtubAccess.MEMBER_ADD:
+        authorized = can_add_members(utub, is_manager=g.is_manager)
+        role_label = "member adder"
 
     if not authorized:
         critical_log(
             f"User={current_user.id} not {role_label}: UTub.id={utub.id} | UTub.name={utub.name}"
         )
         return build_message_error_response(
-            message=UTUB_FAILURE.NOT_AUTHORIZED, status_code=403
+            message=UTUB_FAILURE.NOT_AUTHORIZED,
+            error_code=not_authorized_error_code,
+            status_code=403,
         )
 
     return reject_if_utub_locked(utub, error_code=error_code)

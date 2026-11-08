@@ -567,6 +567,10 @@ def test_add_valid_users_to_utub_as_member(
 
     assert add_user_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert add_user_response_json[STD_JSON.MESSAGE] == MEMBER_FAILURE.NOT_AUTHORIZED
+    assert (
+        add_user_response_json[STD_JSON.ERROR_CODE]
+        == UTubMembersErrorCodes.MEMBER_ADD_NOT_ALLOWED
+    )
 
     with app.app_context():
         assert Utub_Members.query.get((only_utub.id, missing_user_id)) is None
@@ -1128,12 +1132,14 @@ def test_add_user_as_member_invalid_log(
         headers={"X-CSRFToken": csrf_token},
     )
 
-    # Assert correct status code
+    # Pre-lock refusal: 403 errorCode 7, and nothing critical is logged
     assert added_user_response.status_code == 403
-    assert is_string_in_logs(
-        f"User={user.id} not manager: UTub.id={utub_id_of_current_user}",
-        caplog.records,
+    assert (
+        added_user_response.json[STD_JSON.ERROR_CODE]
+        == UTubMembersErrorCodes.MEMBER_ADD_NOT_ALLOWED
     )
+    assert not is_string_in_logs("not manager", caplog.records)
+    assert not any(record.levelname == "CRITICAL" for record in caplog.records)
 
 
 # ===========================================================================

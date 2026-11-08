@@ -14,10 +14,11 @@ from backend.invite_links.services.lifecycle import (
 )
 from backend.members.constants import UTubMembersErrorCodes
 from backend.metrics.events import EventName
-from backend.models.utub_members import Utub_Members
+from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utubs import Utubs
 from backend.schemas.errors import build_message_error_response
 from backend.schemas.users import MemberModifiedResponseSchema, UserSchema
+from backend.schemas.utub_settings import resolve_utub_settings
 from backend.utils.strings.user_strs import MEMBER_FAILURE, MEMBER_SUCCESS
 from backend.utubs.guards import UtubAccess, get_fresh_membership, lock_and_reauthorize
 
@@ -47,6 +48,9 @@ def remove_member_or_self_from_utub(
             - 403 (on a non-owner trying to remove the literal owner, or a member trying to
               remove someone else)
             - 403 (also when the UTub is locked)
+            - 403 (a co-owner removing someone else while the owner's
+              ``co_owners_can_remove`` switch is off, errorCode 8; or a co-owner
+              removing another co-owner, with no errorCode)
             - 404 (on member being removed not existing in UTub, or the caller's
               membership or the UTub is gone once the row is locked)
     """
@@ -90,12 +94,47 @@ def remove_member_or_self_from_utub(
             status_code=403,
         )
 
+    # A co-owner is a fresh manager who is not the fresh owner. Fail closed:
+    # the removal is allowed only when the locked row's switch is exactly True.
+    co_owner_removing_another: bool = (
+        is_manager and not is_owner and current_user.id != user_id_to_remove
+    )
+
+    if co_owner_removing_another and (
+        resolve_utub_settings(current_utub.settings).members.co_owners_can_remove
+        is not True
+    ):
+        db.session.rollback()
+        warning_log(
+            f"User={current_user.id} (co-owner) tried removing a member from "
+            f"UTub.id={current_utub.id} while co-owner removal is off"
+        )
+        return build_message_error_response(
+            message=MEMBER_FAILURE.CO_OWNER_REMOVE_NOT_ALLOWED,
+            error_code=UTubMembersErrorCodes.CO_OWNER_REMOVE_NOT_ALLOWED,
+            status_code=403,
+        )
+
     user_to_remove_in_utub: Utub_Members | None = get_fresh_membership(
         utub_id=current_utub.id, user_id=user_id_to_remove
     )
 
     if user_to_remove_in_utub is None:
         return _handle_removing_nonexistent_member()
+
+    if (
+        co_owner_removing_another
+        and user_to_remove_in_utub.member_role != Member_Role.MEMBER
+    ):
+        db.session.rollback()
+        warning_log(
+            f"User={current_user.id} (co-owner) tried removing a co-owner "
+            f"(User={user_id_to_remove}) from UTub.id={current_utub.id}"
+        )
+        return build_message_error_response(
+            message=MEMBER_FAILURE.CO_OWNER_CANNOT_REMOVE_CO_OWNER,
+            status_code=403,
+        )
 
     return _remove_member_from_utub(
         user_to_remove=user_to_remove_in_utub, current_utub=current_utub
