@@ -12,6 +12,7 @@ from backend.invite_links.constants import INVITE_LINK_DEFAULT_TTL
 from backend.invite_links.token_generator import generate_invite_token
 from backend.models.short_links import Short_Links
 from backend.models.urls import Urls
+from backend.models.users import Users
 from backend.models.utub_invite_links import Utub_Invite_Links
 from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utub_tags import Utub_Tags
@@ -337,6 +338,43 @@ def add_invite_link(
         db.session.add(invite)
         db.session.commit()
         return invite.id
+
+
+UNKNOWN_INVITE_TOKEN = "Z" * 22
+
+
+def seed_invite_token_on_foreign_utub(app: Flask, *, revoked: bool = False) -> str:
+    """Create a UTub owned by a separate user (so a logging-in user is a non-member)
+    plus an invite link on it.
+
+    Args:
+        app (Flask): The Flask client for providing an app context
+        revoked (bool): Whether the invite link is revoked
+
+    Returns:
+        str: The invite link token
+    """
+    with app.app_context():
+        owner = Users(
+            username="inviteowner",
+            email="inviteowner@example.com",
+            plaintext_password="P@ssword123!",
+        )
+        owner.email_validated = True
+        db.session.add(owner)
+        db.session.flush()
+        new_utub = Utubs(
+            name="OAuth Next Target", utub_creator=owner.id, utub_description=""
+        )
+        creator_to_utub = Utub_Members(member_role=Member_Role.CREATOR)
+        creator_to_utub.to_user = owner
+        new_utub.members.append(creator_to_utub)
+        db.session.add(new_utub)
+        db.session.commit()
+        utub_id, creator_id = new_utub.id, owner.id
+    invite_id = add_invite_link(app, utub_id, creator_id, revoked=revoked)
+    with app.app_context():
+        return db.session.get(Utub_Invite_Links, invite_id).token
 
 
 def remove_member(app: Flask, utub_id: int, user_id: int) -> None:

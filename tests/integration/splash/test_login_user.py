@@ -33,6 +33,7 @@ from tests.integration.system.metrics_helpers import (
 )
 from tests.models_for_test import invalid_user_1, valid_user_1, valid_user_3
 from tests.utils_for_test import (
+    UNKNOWN_INVITE_TOKEN,
     add_invite_link,
     get_csrf_token,
     is_string_in_logs,
@@ -930,7 +931,6 @@ def test_login_user_to_trashed_utub_id_redirects_to_home(
 
 _INVITE_UTUB_ID = 1
 _INVITE_CREATOR_ID = 1
-_UNKNOWN_INVITE_TOKEN = "Z" * 22
 
 
 def _seed_invite_token(app: Flask, *, revoked: bool = False) -> str:
@@ -988,7 +988,7 @@ def test_login_with_dead_invite_next_lands_on_uniform_dead_page(
     token = (
         _seed_invite_token(app, revoked=True)
         if dead == "revoked"
-        else _UNKNOWN_INVITE_TOKEN
+        else UNKNOWN_INVITE_TOKEN
     )
     with client:
         response = _login_with_next(app, client, f"/invite/{token}")

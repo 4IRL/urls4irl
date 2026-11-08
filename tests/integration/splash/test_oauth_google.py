@@ -27,7 +27,6 @@ from backend import db
 from backend.metrics.events import EventName
 from backend.models.user_oauth_identities import UserOAuthIdentity
 from backend.models.users import Users
-from backend.models.utub_invite_links import Utub_Invite_Links
 from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utubs import Utubs
 from backend.splash.constants import (
@@ -61,7 +60,10 @@ from tests.integration.system.metrics_helpers import (
     parse_dims,
 )
 from tests.models_for_test import valid_user_1
-from tests.utils_for_test import add_invite_link
+from tests.utils_for_test import (
+    UNKNOWN_INVITE_TOKEN,
+    seed_invite_token_on_foreign_utub,
+)
 
 pytestmark = pytest.mark.splash
 
@@ -103,31 +105,6 @@ _METRICS_COLLISION_PASSWORD = "P@ssword123!"
 
 _NEXT_TARGET_UTUB_NAME = "OAuth Next Target"
 _UNAUTHORIZED_UTUB_ID = 999_999
-
-_UNKNOWN_INVITE_TOKEN = "Z" * 22
-
-
-def _seed_invite_token(app: Flask, *, revoked: bool = False) -> str:
-    """Creates a UTub owned by a separate user (so the logging-in user is a
-    non-member) plus an invite link on it; returns its token."""
-    with app.app_context():
-        owner = Users(
-            username="inviteowner",
-            email="inviteowner@example.com",
-            plaintext_password="P@ssword123!",
-        )
-        owner.email_validated = True
-        db.session.add(owner)
-        db.session.commit()
-    utub_id = _seed_utub_membership(
-        app, user_email="inviteowner@example.com", utub_name=_NEXT_TARGET_UTUB_NAME
-    )
-    with app.app_context():
-        creator_id = Users.query.filter_by(email="inviteowner@example.com").one().id
-    invite_id = add_invite_link(app, utub_id, creator_id, revoked=revoked)
-    with app.app_context():
-        return db.session.get(Utub_Invite_Links, invite_id).token
-
 
 _LOGIN_SUCCESS_METHOD_DIM_KEY = "method"
 _LOGIN_FAILURE_REASON_DIM_KEY = "reason"
@@ -483,9 +460,9 @@ def test_google_login_invite_next_through_callback(
         email=_EXISTING_EMAIL,
         username=_EXISTING_USERNAME,
     )
-    token = _seed_invite_token(app, revoked=case == "dead")
+    token = seed_invite_token_on_foreign_utub(app, revoked=case == "dead")
     if case == "unknown":
-        token = _UNKNOWN_INVITE_TOKEN
+        token = UNKNOWN_INVITE_TOKEN
     next_values = {
         "invite": f"/invite/{token}",
         "invite_register": f"/invite/{token}/register",
