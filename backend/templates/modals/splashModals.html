@@ -1,4 +1,4 @@
-<div id="splashConfig" style="display: none;"></div>
+<div id="splashConfig" style="display: none;"{% if auth_modal_hint %} data-auth-modal-hint="{{ auth_modal_hint }}"{% endif %}></div>
 
 <div class="modal fade" id="LoginModal" tabindex="-1" aria-labelledby="LoginModalLabel" style="display: none;" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered" role="document">

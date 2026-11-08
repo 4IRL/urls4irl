@@ -1,11 +1,16 @@
 import re
 from typing import NamedTuple
-from urllib.parse import urlsplit
+from urllib.parse import quote, unquote, urlencode, urlsplit
 
 import pytest
 from flask import Flask
 from playwright.sync_api import Page, Response, expect
 
+from backend import db
+from backend.cli.mock_constants import EMAIL_SUFFIX
+from backend.models.user_oauth_identities import UserOAuthIdentity
+from backend.models.users import Users
+from backend.models.utub_members import Utub_Members
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.db_utils import get_utub_this_user_created
 from tests.functional.invite_links_ui.db_utils import (
@@ -15,10 +20,13 @@ from tests.functional.invite_links_ui.db_utils import (
 )
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.locators import InvitePageLocators as IPL
+from tests.functional.locators import SplashPageLocators as SPL
 from tests.functional.playwright_utils import (
     current_base_url,
     get_selected_utub_id,
+    input_login_fields,
     login_user_to_home_page,
+    wait_for_modal_ready,
 )
 
 pytestmark = pytest.mark.invite_links_ui
@@ -416,3 +424,179 @@ def test_unconfirmed_email_viewer_is_treated_as_anonymous_on_a_dead_link(
     expect(page.locator(IPL.HEADING)).to_have_text(UTS.INVITE_DEAD_HEADING)
     expect(page.locator(IPL.LINK_GO_TO_APP)).to_have_text(UTS.INVITE_GO_TO_APP_LABEL)
     expect(page.locator(IPL.MAIN)).not_to_contain_text(scenario.utub_name)
+
+
+def _assert_oauth_hrefs_end_with(*, page: Page, next_value: str) -> None:
+    suffix = f"?next={quote(next_value, safe='')}"
+    for css_selector in (
+        SPL.LOGIN_BUTTON_GOOGLE_OAUTH,
+        SPL.LOGIN_BUTTON_GITHUB_OAUTH,
+        SPL.REGISTER_BUTTON_GOOGLE_OAUTH,
+        SPL.REGISTER_BUTTON_GITHUB_OAUTH,
+    ):
+        expect(page.locator(css_selector)).to_have_attribute(
+            "href", re.compile(f"{re.escape(suffix)}$")
+        )
+        href = page.locator(css_selector).get_attribute("href")
+        assert href is not None and href.count("next=") == 1, (css_selector, href)
+
+
+def _assert_visitor_is_not_member(*, app: Flask, utub_id: int) -> None:
+    with app.app_context():
+        assert (
+            Utub_Members.query.filter_by(utub_id=utub_id, user_id=VISITOR_ID).count()
+            == 0
+        )
+
+
+def test_log_in_link_opens_login_modal_with_oauth_next(
+    page: Page,
+    create_test_users,
+    create_test_utubs,
+    provide_app: Flask,
+):
+    """
+    GIVEN a live invite link and an anonymous visitor on its page
+    WHEN the visitor clicks Log in
+    THEN the splash opens with the Login modal shown and every OAuth button
+         carrying the invite as `next`
+    """
+    scenario = _seed_invite(app=provide_app, page=page)
+    page.goto(scenario.url)
+
+    page.locator(IPL.LINK_LOG_IN).click()
+
+    page.wait_for_url(re.compile(r"/\?next="))
+    assert unquote(urlsplit(page.url).query) == f"next=/invite/{scenario.token}"
+    wait_for_modal_ready(page=page, modal_selector=SPL.LOGIN_MODAL)
+    _assert_oauth_hrefs_end_with(page=page, next_value=f"/invite/{scenario.token}")
+
+
+def test_create_account_link_opens_register_modal_with_oauth_next(
+    page: Page,
+    create_test_users,
+    create_test_utubs,
+    provide_app: Flask,
+):
+    """
+    GIVEN a live invite link and an anonymous visitor on its page
+    WHEN the visitor clicks Create account
+    THEN the splash opens with the Register modal shown and every OAuth button
+         carrying the register hint as `next`
+    """
+    scenario = _seed_invite(app=provide_app, page=page)
+    page.goto(scenario.url)
+
+    page.locator(IPL.LINK_CREATE_ACCOUNT).click()
+
+    page.wait_for_url(re.compile(r"/\?next="))
+    wait_for_modal_ready(page=page, modal_selector=SPL.REGISTER_MODAL)
+    _assert_oauth_hrefs_end_with(
+        page=page, next_value=f"/invite/{scenario.token}/register"
+    )
+
+
+def test_password_login_from_auto_opened_modal_lands_on_invite_join(
+    page: Page,
+    create_test_users,
+    create_test_utubs,
+    provide_app: Flask,
+):
+    """
+    GIVEN a live invite link and an anonymous visitor who clicked Log in
+    WHEN the visitor logs in with a password from the auto-opened modal
+    THEN the visitor lands on the bare invite page showing Join, and is not a
+         member until Join is pressed
+    """
+    scenario = _seed_invite(app=provide_app, page=page)
+    page.goto(scenario.url)
+    page.locator(IPL.LINK_LOG_IN).click()
+    wait_for_modal_ready(page=page, modal_selector=SPL.LOGIN_MODAL)
+
+    input_login_fields(
+        page=page,
+        username=UTS.TEST_USERNAME_2,
+        password=UTS.TEST_USERNAME_2 + EMAIL_SUFFIX,
+    )
+    page.locator(SPL.LOGIN_BUTTON_SUBMIT).click()
+
+    page.wait_for_url(scenario.url)
+    expect(page.locator(IPL.BUTTON_JOIN)).to_have_text(UTS.INVITE_JOIN_LABEL)
+    _assert_visitor_is_not_member(app=provide_app, utub_id=scenario.utub_id)
+
+
+def test_non_invite_next_opens_no_modal_and_leaves_oauth_hrefs(
+    page: Page,
+    create_test_users,
+    create_test_utubs,
+    provide_app: Flask,
+):
+    """
+    GIVEN an anonymous visitor on `/?next=/not-an-invite`
+    WHEN the splash loads
+    THEN no modal opens (no hint is rendered) and the OAuth hrefs carry only the
+         page's own single `next`
+    """
+    page.goto(f"{current_base_url(page=page)}/?next=/not-an-invite")
+
+    expect(page.locator(SPL.SPLASH_CONFIG_ANONYMOUS)).to_be_attached()
+    expect(page.locator(SPL.SPLASH_CONFIG_ANONYMOUS)).not_to_have_attribute(
+        "data-auth-modal-hint", re.compile(".+")
+    )
+    # Hrefs are rewritten in the same on-load tick as the hint check, so waiting
+    # on them first proves the on-load code ran before asserting no modal opened.
+    _assert_oauth_hrefs_end_with(page=page, next_value="/not-an-invite")
+    expect(page.locator(".modal.show")).to_have_count(0)
+
+
+def test_github_oauth_from_auto_opened_login_modal_lands_on_invite(
+    page: Page,
+    create_test_users,
+    create_test_utubs,
+    provide_app: Flask,
+):
+    """
+    GIVEN a live invite link and a returning GitHub-linked user who is not a member
+    WHEN the visitor clicks Log in, then Sign in with GitHub
+    THEN the OAuth callback returns the visitor to the bare invite page
+    """
+    with provide_app.app_context():
+        user = Users(
+            username=UTS.OAUTH_GITHUB_RETURNING_USER_USERNAME,
+            email=UTS.OAUTH_GITHUB_RETURNING_USER_EMAIL,
+            plaintext_password=None,
+        )
+        user.oauth_identities.append(
+            UserOAuthIdentity(
+                provider="github",
+                provider_subject=UTS.OAUTH_GITHUB_RETURNING_USER_SUBJECT,
+            )
+        )
+        user.email_validated = True
+        db.session.add(user)
+        db.session.commit()
+
+    scenario = _seed_invite(app=provide_app, page=page)
+    page.goto(scenario.url)
+    page.locator(IPL.LINK_LOG_IN).click()
+    wait_for_modal_ready(page=page, modal_selector=SPL.LOGIN_MODAL)
+
+    # The auto-opened modal covers the navbar, so set the fake identity
+    # directly instead of login_with_github_ui's navbar click.
+    splash_url = page.url
+    page.goto(
+        f"{current_base_url(page=page)}/fake-oauth/set-identity?"
+        + urlencode(
+            {
+                "subject": UTS.OAUTH_GITHUB_RETURNING_USER_SUBJECT,
+                "email": UTS.OAUTH_GITHUB_RETURNING_USER_EMAIL,
+                "login": UTS.OAUTH_GITHUB_RETURNING_USER_LOGIN,
+            }
+        )
+    )
+    page.goto(splash_url)
+    wait_for_modal_ready(page=page, modal_selector=SPL.LOGIN_MODAL)
+    page.locator(SPL.LOGIN_BUTTON_GITHUB_OAUTH).click()
+
+    page.wait_for_url(scenario.url)
+    expect(page.locator(IPL.BUTTON_JOIN)).to_have_text(UTS.INVITE_JOIN_LABEL)

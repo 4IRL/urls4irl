@@ -7,6 +7,10 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.app_logger import safe_add_log, warning_log
 from backend.extensions.metrics.writer import record_event
+from backend.invite_links.next_target import (
+    invite_next_redirect_path,
+    parse_invite_next,
+)
 from backend.metrics.events import EventName
 from backend.models.users import Users
 from backend.models.utub_members import Utub_Members
@@ -128,9 +132,23 @@ def login_user_to_u4i(username: str, password: str) -> FlaskResponse:
 
 
 def verify_and_provide_next_page(request_args: dict[str, str]) -> str:
+    """Validate the post-login `next` and return a safe redirect path.
+
+    Accepted shapes (the args must be exactly one `next` param):
+    - `/invite/<token>` or `/invite/<token>/register`: returns the bare
+      `/invite/<token>`; no lookup is done, so liveness is never revealed.
+    - `/home?UTubID=<id>` for a UTub the current user belongs to.
+
+    Anything else fails closed and returns `""`.
+    """
     url = ""
     if _has_invalid_next_query_param(request_args):
         return url
+
+    invite_target = parse_invite_next(request_args["next"])
+    if invite_target is not None:
+        safe_add_log("Routing user to invite page")
+        return invite_next_redirect_path(invite_target)
 
     rel_url = urlparse(request_args.get("next"))
     if rel_url.path != url_for(ROUTES.UTUBS.HOME):

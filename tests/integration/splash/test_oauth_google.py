@@ -11,6 +11,7 @@ credentials), so no per-test Authlib client setup is needed.
 
 from __future__ import annotations
 
+from html import unescape
 from unittest import mock
 from urllib.parse import parse_qs, urlencode, urlparse
 
@@ -39,6 +40,7 @@ from backend.splash.services.oauth.constants import OAUTH_PENDING_LINK_SESSION_K
 from backend.testing.fake_oauth_provider import fake_oauth
 from backend.utils.all_routes import OAUTH_ROUTES, ROUTES
 from backend.utils.strings import model_strs
+from backend.utils.strings.invite_link_strs import INVITE_LINK_PAGE
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.oauth_strs import (
     CONSENT_DECLINED_MESSAGE as _CONSENT_DECLINED_MESSAGE,
@@ -58,6 +60,10 @@ from tests.integration.system.metrics_helpers import (
     parse_dims,
 )
 from tests.models_for_test import valid_user_1
+from tests.utils_for_test import (
+    UNKNOWN_INVITE_TOKEN,
+    seed_invite_token_on_foreign_utub,
+)
 
 pytestmark = pytest.mark.splash
 
@@ -423,6 +429,73 @@ def test_google_login_preserves_next_query_param_through_callback(
     assert response.history[0].location == expected_next
     assert current_user.is_authenticated
     mock_authorize_access_token.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    "case",
+    ["invite", "invite_register", "malformed", "dead", "unknown", "no_next"],
+)
+@mock.patch(_AUTHORIZE_ACCESS_TOKEN_TARGET)
+@mock.patch(_AUTHORIZE_REDIRECT_TARGET)
+def test_google_login_invite_next_through_callback(
+    mock_authorize_redirect: mock.MagicMock,
+    mock_authorize_access_token: mock.MagicMock,
+    app: Flask,
+    load_login_page,
+    case: str,
+):
+    """
+    GIVEN a linked google user and an invite link
+    WHEN `GET /oauth/google/login` carries an invite `next` and the callback completes
+    THEN the user lands on the bare /invite/<token> (a dead or unknown token then
+        shows the uniform 404 page); a malformed or absent `next` lands on /home
+    """
+    mock_authorize_redirect.return_value = redirect(_MOCK_CONSENT_REDIRECT_URL)
+    mock_authorize_access_token.return_value = _build_mocked_token(
+        subject=_EXISTING_SUBJECT, email=_EXISTING_EMAIL
+    )
+    _seed_existing_oauth_user(
+        app,
+        subject=_EXISTING_SUBJECT,
+        email=_EXISTING_EMAIL,
+        username=_EXISTING_USERNAME,
+    )
+    token = seed_invite_token_on_foreign_utub(app, revoked=case == "dead")
+    if case == "unknown":
+        token = UNKNOWN_INVITE_TOKEN
+    next_values = {
+        "invite": f"/invite/{token}",
+        "invite_register": f"/invite/{token}/register",
+        "malformed": f"/invite/{token}/join",
+        "dead": f"/invite/{token}",
+        "unknown": f"/invite/{token}",
+        "no_next": None,
+    }
+    expected_locations = {
+        "malformed": url_for(ROUTES.UTUBS.HOME),
+        "no_next": url_for(ROUTES.UTUBS.HOME),
+    }
+    expected_location = expected_locations.get(case, f"/invite/{token}")
+    client, _ = load_login_page
+
+    login_kwargs = {} if next_values[case] is None else {"next": next_values[case]}
+    login_response = client.get(url_for(OAUTH_ROUTES.GOOGLE_LOGIN, **login_kwargs))
+    assert login_response.status_code == 302
+
+    response = client.get(
+        _callback_url(code=_FAKE_CODE, state=_FAKE_STATE), follow_redirects=True
+    )
+
+    assert len(response.history) == 1
+    assert response.history[0].location == expected_location
+    assert current_user.is_authenticated
+    if case in ("dead", "unknown"):
+        assert response.status_code == 404
+        assert INVITE_LINK_PAGE.DEAD_HEADING in unescape(
+            response.get_data(as_text=True)
+        )
+    else:
+        assert response.status_code == 200
 
 
 @mock.patch(_AUTHORIZE_ACCESS_TOKEN_TARGET)

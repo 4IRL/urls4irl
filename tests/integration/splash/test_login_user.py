@@ -1,9 +1,12 @@
 from copy import deepcopy
+from html import unescape
 from unittest.mock import MagicMock
 from urllib.parse import urlparse
 
 import pytest
 from flask import Flask, request, url_for
+from flask.testing import FlaskClient
+from flask.wrappers import Response
 from flask_login import current_user
 from werkzeug.security import check_password_hash
 
@@ -11,13 +14,16 @@ from backend import db
 from backend.metrics.events import EventName
 from backend.models.user_oauth_identities import UserOAuthIdentity
 from backend.models.users import Users
+from backend.models.utub_invite_links import Utub_Invite_Links
 from backend.models.utub_members import Utub_Members
 from backend.splash.constants import LoginErrorCodes
 from backend.splash.services import user_login
 from backend.utils.all_routes import ROUTES
 from backend.utils.constants import USER_CONSTANTS
 from backend.utils.strings.html_identifiers import IDENTIFIERS
+from backend.utils.strings.invite_link_strs import INVITE_LINK_PAGE
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
+from backend.utils.strings.model_strs import MODELS as MODEL_STRS
 from backend.utils.strings.splash_form_strs import LOGIN_FORM
 from backend.utils.strings.user_strs import USER_FAILURE
 from tests.integration.system.metrics_helpers import (
@@ -25,8 +31,14 @@ from tests.integration.system.metrics_helpers import (
     find_counter_keys,
     parse_dims,
 )
-from tests.models_for_test import invalid_user_1, valid_user_1
-from tests.utils_for_test import get_csrf_token, is_string_in_logs, trash_utub
+from tests.models_for_test import invalid_user_1, valid_user_1, valid_user_3
+from tests.utils_for_test import (
+    UNKNOWN_INVITE_TOKEN,
+    add_invite_link,
+    get_csrf_token,
+    is_string_in_logs,
+    trash_utub,
+)
 
 _LOGIN_FAILURE_REASON_DIM_KEY = "reason"
 
@@ -913,3 +925,172 @@ def test_login_user_to_trashed_utub_id_redirects_to_home(
     assert response.json["redirectUrl"] == expected_redirect_url
     assert is_string_in_logs(f"Logging User.id={user_id} in", caplog.records)
     assert not is_string_in_logs(f"Routing user to UTub.id={utub_id}", caplog.records)
+
+
+# --- Invite `next` handoff ---------------------------------------------------------
+
+_INVITE_UTUB_ID = 1
+_INVITE_CREATOR_ID = 1
+
+
+def _seed_invite_token(app: Flask, *, revoked: bool = False) -> str:
+    invite_id = add_invite_link(
+        app, _INVITE_UTUB_ID, _INVITE_CREATOR_ID, revoked=revoked
+    )
+    with app.app_context():
+        return db.session.get(Utub_Invite_Links, invite_id).token
+
+
+def _login_with_next(
+    app: Flask, client: FlaskClient, next_value: str, extra: str = ""
+) -> Response:
+    """POST a password login for user 3 with the given raw ``next`` query string."""
+    with app.app_context():
+        splash_response = client.get(url_for(ROUTES.SPLASH.SPLASH_PAGE))
+        csrf_token_str = get_csrf_token(splash_response.data, meta_tag=True)
+        login_url = url_for(ROUTES.SPLASH.LOGIN, next=next_value)
+    return client.post(
+        login_url + extra,
+        json={
+            LOGIN_FORM.USERNAME: valid_user_3[LOGIN_FORM.USERNAME],
+            LOGIN_FORM.PASSWORD: valid_user_3[LOGIN_FORM.PASSWORD],
+        },
+        headers={"X-CSRFToken": csrf_token_str},
+    )
+
+
+@pytest.mark.parametrize("suffix", ["", "/register"])
+def test_login_with_invite_next_redirects_to_bare_invite(
+    app: Flask, client: FlaskClient, every_user_makes_a_unique_utub, suffix: str
+):
+    """
+    GIVEN a live invite and a registered user
+    WHEN "/login" is POST'd with next=/invite/<token> or /invite/<token>/register
+    THEN the redirect is the bare /invite/<token>
+    """
+    token = _seed_invite_token(app)
+    with client:
+        response = _login_with_next(app, client, f"/invite/{token}{suffix}")
+
+    assert response.status_code == 200
+    assert response.json["redirectUrl"] == f"/invite/{token}"
+
+
+@pytest.mark.parametrize("dead", ["revoked", "unknown"])
+def test_login_with_dead_invite_next_lands_on_uniform_dead_page(
+    app: Flask, client: FlaskClient, every_user_makes_a_unique_utub, dead: str
+):
+    """
+    GIVEN a revoked or unknown invite token
+    WHEN "/login" is POST'd with next=/invite/<token> and the redirect is followed
+    THEN the redirect is still the invite path and it renders the uniform dead 404
+    """
+    token = (
+        _seed_invite_token(app, revoked=True)
+        if dead == "revoked"
+        else UNKNOWN_INVITE_TOKEN
+    )
+    with client:
+        response = _login_with_next(app, client, f"/invite/{token}")
+        assert response.json["redirectUrl"] == f"/invite/{token}"
+        followed = client.get(response.json["redirectUrl"])
+
+    assert followed.status_code == 404
+    assert INVITE_LINK_PAGE.DEAD_HEADING in unescape(followed.get_data(as_text=True))
+
+
+def test_login_with_live_invite_next_shows_join_without_joining(
+    app: Flask, client: FlaskClient, every_user_makes_a_unique_utub
+):
+    """
+    GIVEN a live invite and a non-member user
+    WHEN they log in with the invite next and follow the redirect
+    THEN the Join form is shown, no membership is added and the use count is unchanged
+    """
+    token = _seed_invite_token(app)
+    with client:
+        response = _login_with_next(app, client, f"/invite/{token}")
+        followed = client.get(response.json["redirectUrl"])
+
+    assert followed.status_code == 200
+    assert 'id="inviteJoinForm"' in followed.get_data(as_text=True)
+    with app.app_context():
+        assert (
+            Utub_Members.query.filter_by(
+                utub_id=_INVITE_UTUB_ID, user_id=valid_user_3[MODEL_STRS.ID]
+            ).first()
+            is None
+        )
+        assert Utub_Invite_Links.query.filter_by(token=token).one().use_count == 0
+
+
+_REJECTED_INVITE_NEXTS = [
+    "/invite/{t}A",
+    "/invite/{t}/",
+    "/invite/{t}/join",
+    "/invite/{t}/register/x",
+    "/invite/{t}?x=1",
+    "/invite/{t}#f",
+    "//evil.example/invite/{t}",
+    "https://evil.example/invite/{t}",
+    "/INVITE/{t}",
+    "/invite/short",
+    "/invite/{t}.",
+    "/invite/{t}/register/",
+    "/invite/{t}%2Fregister",
+    "",
+]
+
+
+@pytest.mark.parametrize("template", _REJECTED_INVITE_NEXTS)
+def test_login_with_malformed_invite_next_redirects_home(
+    app: Flask, client: FlaskClient, every_user_makes_a_unique_utub, template: str
+):
+    """
+    GIVEN a malformed or non-invite next
+    WHEN "/login" is POST'd
+    THEN the redirect is exactly /home
+    """
+    token = _seed_invite_token(app)
+    with client:
+        response = _login_with_next(app, client, template.format(t=token))
+        expected = url_for(ROUTES.UTUBS.HOME)
+
+    assert response.status_code == 200
+    assert response.json["redirectUrl"] == expected
+
+
+def test_login_with_invite_next_and_sibling_param_redirects_home(
+    app: Flask, client: FlaskClient, every_user_makes_a_unique_utub
+):
+    """
+    GIVEN a valid invite next plus a second query param
+    WHEN "/login" is POST'd
+    THEN the redirect is exactly /home
+    """
+    token = _seed_invite_token(app)
+    with client:
+        response = _login_with_next(app, client, f"/invite/{token}", extra="&x=1")
+        expected = url_for(ROUTES.UTUBS.HOME)
+
+    assert response.json["redirectUrl"] == expected
+
+
+def test_login_unvalidated_user_with_invite_next_gets_401(
+    app: Flask, client: FlaskClient, every_user_makes_a_unique_utub
+):
+    """
+    GIVEN a user whose email is unconfirmed
+    WHEN "/login" is POST'd with a valid invite next
+    THEN the response is 401, no session exists and next is never processed
+    """
+    token = _seed_invite_token(app)
+    with app.app_context():
+        db.session.get(Users, valid_user_3[MODEL_STRS.ID]).email_validated = False
+        db.session.commit()
+    with client:
+        response = _login_with_next(app, client, f"/invite/{token}")
+        assert current_user.is_authenticated is False
+
+    assert response.status_code == 401
+    assert "redirectUrl" not in response.json
