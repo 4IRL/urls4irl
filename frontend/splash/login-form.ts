@@ -55,13 +55,10 @@ function handleLogin(event: JQuery.TriggeredEvent, $modal: JQuery): void {
   // Allow user to attach a query param `next` if browser URL currently includes it
   // This allows for User to be given a link to a UTubID but they haven't logged in recently
   let url: string = APP_CONFIG.routes.login;
-  const forwardableQuery = getForwardableNextQuery(window.location.search);
-  const nextQueryParam =
-    forwardableQuery === null
-      ? null
-      : new URLSearchParams(forwardableQuery).get("next");
-  if (forwardableQuery !== null) {
-    url = `${url}?${forwardableQuery}`;
+  const forwardable = getForwardableNextQuery(window.location.search);
+  const nextQueryParam = forwardable === null ? null : forwardable.value;
+  if (forwardable !== null) {
+    url = `${url}?${forwardable.query}`;
   }
 
   const username: string = String($modal.find("#username").val() ?? "");

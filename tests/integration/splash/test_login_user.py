@@ -933,7 +933,7 @@ _INVITE_CREATOR_ID = 1
 _UNKNOWN_INVITE_TOKEN = "Z" * 22
 
 
-def _seed_invite_token(app: Flask, revoked: bool = False) -> str:
+def _seed_invite_token(app: Flask, *, revoked: bool = False) -> str:
     invite_id = add_invite_link(
         app, _INVITE_UTUB_ID, _INVITE_CREATOR_ID, revoked=revoked
     )
@@ -1035,6 +1035,9 @@ _REJECTED_INVITE_NEXTS = [
     "https://evil.example/invite/{t}",
     "/INVITE/{t}",
     "/invite/short",
+    "/invite/{t}.",
+    "/invite/{t}/register/",
+    "/invite/{t}%2Fregister",
     "",
 ]
 

@@ -33,10 +33,11 @@ function setSearch(search: string): void {
 }
 
 describe("getForwardableNextQuery", () => {
-  it("returns the query for a single next", () => {
-    expect(getForwardableNextQuery("?next=/invite/x")).toBe(
-      "next=%2Finvite%2Fx",
-    );
+  it("returns the value and query for a single next", () => {
+    expect(getForwardableNextQuery("?next=/invite/x")).toEqual({
+      value: "/invite/x",
+      query: "next=%2Finvite%2Fx",
+    });
   });
 
   it.each(["", "?next=a&b=c", "?b=c"])("returns null for %j", (search) => {

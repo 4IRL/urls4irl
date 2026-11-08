@@ -521,8 +521,15 @@ def test_github_login_redirects_with_expected_callback_redirect_uri(
 
 
 @pytest.mark.parametrize(
-    "case",
-    ["invite", "invite_register", "malformed", "dead", "unknown", "no_next"],
+    "case,next_template,expected_home",
+    [
+        ("invite", "/invite/{t}", False),
+        ("invite_register", "/invite/{t}/register", False),
+        ("malformed", "/invite/{t}/join", True),
+        ("dead", "/invite/{t}", False),
+        ("unknown", "/invite/{t}", False),
+        ("no_next", None, True),
+    ],
 )
 @mock.patch(_AUTHORIZE_ACCESS_TOKEN_TARGET)
 @mock.patch(_GITHUB_GET_TARGET)
@@ -534,6 +541,8 @@ def test_github_login_invite_next_through_callback(
     app: Flask,
     load_login_page,
     case: str,
+    next_template: str | None,
+    expected_home: bool,
 ):
     """
     GIVEN a linked github user and an invite link
@@ -555,22 +564,14 @@ def test_github_login_invite_next_through_callback(
     token = _seed_invite_token(app, revoked=case == "dead")
     if case == "unknown":
         token = _UNKNOWN_INVITE_TOKEN
-    next_values = {
-        "invite": f"/invite/{token}",
-        "invite_register": f"/invite/{token}/register",
-        "malformed": f"/invite/{token}/join",
-        "dead": f"/invite/{token}",
-        "unknown": f"/invite/{token}",
-        "no_next": None,
-    }
-    expected_locations = {
-        "malformed": url_for(ROUTES.UTUBS.HOME),
-        "no_next": url_for(ROUTES.UTUBS.HOME),
-    }
-    expected_location = expected_locations.get(case, f"/invite/{token}")
+    expected_location = (
+        url_for(ROUTES.UTUBS.HOME) if expected_home else f"/invite/{token}"
+    )
     client, _ = load_login_page
 
-    login_kwargs = {} if next_values[case] is None else {"next": next_values[case]}
+    login_kwargs = (
+        {} if next_template is None else {"next": next_template.format(t=token)}
+    )
     login_response = client.get(url_for(OAUTH_ROUTES.GITHUB_LOGIN, **login_kwargs))
     assert login_response.status_code == 302
 

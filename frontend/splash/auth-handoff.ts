@@ -13,9 +13,9 @@ const OTHER_MODAL_PENDING_SELECTOR =
 
 /** Forward the page's single `next` onto every present OAuth anchor. */
 export function applyNextToOAuthLinks(): void {
-  const query = getForwardableNextQuery(window.location.search);
-  if (query === null) return;
-  const nextValue = new URLSearchParams(query).get("next") ?? "";
+  const forwardable = getForwardableNextQuery(window.location.search);
+  if (forwardable === null) return;
+  const nextValue = forwardable.value;
 
   for (const selector of OAUTH_ANCHOR_SELECTORS) {
     const anchor = document.querySelector<HTMLAnchorElement>(selector);

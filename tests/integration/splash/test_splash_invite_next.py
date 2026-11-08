@@ -143,6 +143,7 @@ def test_authenticated_valid_invite_next_redirects_to_bare_invite(
     [
         f"next=/invite/{TOKEN}&x=1",
         f"next=/invite/{TOKEN}&next=/invite/{TOKEN_2}",
+        f"next=/invite/{TOKEN}&email_change_status=confirmed",
         f"next=/invite/{TOKEN[:21]}",
         "next=%2F%2Fevil.example",
         "",
@@ -159,6 +160,25 @@ def test_authenticated_other_cases_redirect_home(
     client, _, _, _ = login_first_user_without_register
 
     response = client.get(f"/?{query}")
+
+    assert response.status_code == 302
+    assert urlsplit(response.location).path == url_for(ROUTES.UTUBS.HOME)
+
+
+def test_authenticated_unvalidated_email_invite_next_redirects_home(
+    register_first_user, login_first_user_without_register
+):
+    """
+    GIVEN a logged in user whose email is not validated
+    WHEN they load / with a valid invite next
+    THEN they get a 302 to HOME, never the invite
+    """
+    client, _, user, app = login_first_user_without_register
+    with app.app_context():
+        db.session.get(Users, user.id).email_validated = False
+        db.session.commit()
+
+    response = client.get(f"/?next={quote(f'/invite/{TOKEN}', safe='')}")
 
     assert response.status_code == 302
     assert urlsplit(response.location).path == url_for(ROUTES.UTUBS.HOME)
