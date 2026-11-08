@@ -785,7 +785,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** @description Add a member to a UTub */
+    /** @description Add a member to a UTub (managers, or members while the owner allows adding) */
     post: operations["apiV1CreateMember"];
     delete?: never;
     options?: never;
@@ -803,7 +803,7 @@ export interface paths {
     get?: never;
     put?: never;
     post?: never;
-    /** @description Remove a member from a UTub */
+    /** @description Remove a member from a UTub. Co-owners can remove only plain members, and only while the owner allows it */
     delete: operations["apiV1RemoveMember"];
     options?: never;
     head?: never;
@@ -835,7 +835,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** @description Get co-member add candidates for a UTub (creator only) */
+    /** @description Get co-member add candidates for a UTub (managers, or members while the owner allows adding) */
     get: operations["apiV1GetCoMemberCandidates"];
     put?: never;
     post?: never;
@@ -1013,7 +1013,7 @@ export interface paths {
     get?: never;
     put?: never;
     post?: never;
-    /** @description Remove a member from a UTub */
+    /** @description Remove a member from a UTub. Co-owners can remove only plain members, and only while the owner allows it */
     delete: operations["removeMember"];
     options?: never;
     head?: never;
@@ -1047,7 +1047,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** @description Add a member to a UTub */
+    /** @description Add a member to a UTub (managers, or members while the owner allows adding) */
     post: operations["createMember"];
     delete?: never;
     options?: never;
@@ -1062,7 +1062,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** @description Get co-member add candidates for a UTub (creator only) */
+    /** @description Get co-member add candidates for a UTub (managers, or members while the owner allows adding) */
     get: operations["getCoMemberCandidatesRoute"];
     put?: never;
     post?: never;
@@ -1975,7 +1975,7 @@ export interface paths {
     delete?: never;
     options?: never;
     head?: never;
-    /** @description Partially update a UTub's per-panel settings. Metrics: API_HIT only (no DOMAIN event). */
+    /** @description Partially update a UTub's per-panel settings. The members keys are owner-only. Metrics: API_HIT only (no DOMAIN event). */
     patch: operations["updateUtubSettings"];
     trace?: never;
   };
@@ -2844,7 +2844,7 @@ export interface components {
      * @description Error codes for UTubMembersErrorCodes
      * @enum {integer}
      */
-    UTubMembersErrorCodes: 1 | 2 | 3 | 4 | 5 | 6;
+    UTubMembersErrorCodes: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
     UserSchema: {
       /** @description Unique user ID */
       id: number;
@@ -3072,8 +3072,19 @@ export interface components {
        */
       disable_swipe_delete: boolean;
     };
-    /** @description Settings for the members panel (no settings yet). */
-    MembersSettings: Record<string, never>;
+    /** @description Settings for the members panel: who may remove and add members. */
+    MembersSettings: {
+      /**
+       * @description Whether co-owners can remove plain members from this UTub
+       * @default false
+       */
+      co_owners_can_remove: boolean;
+      /**
+       * @description Whether plain members can add members to this UTub
+       * @default false
+       */
+      members_can_add: boolean;
+    };
     /** @description The viewer's six resolved all-UTubs tag display defaults. */
     TagDisplayDefaultsSchema: {
       /**
@@ -8378,6 +8389,15 @@ export interface operations {
           "application/json": components["schemas"]["ErrorResponse"];
         };
       };
+      /** @description Too many requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
     };
   };
   apiV1GetUtubs: {
@@ -9378,6 +9398,15 @@ export interface operations {
       };
       /** @description Not found */
       404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Too many requests */
+      429: {
         headers: {
           [name: string]: unknown;
         };

@@ -161,7 +161,7 @@ describe("getSelectedUTubInfo — out-of-order UTub responses", () => {
     });
     expect(getState().settings).toEqual({
       utubs: {},
-      members: {},
+      members: { co_owners_can_remove: false, members_can_add: false },
       tags: {},
       urls: {
         default_url_scheme: "https",

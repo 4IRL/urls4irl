@@ -584,7 +584,7 @@ ALL_API_ROUTES = [
         AddMemberRequest,
         AddMemberResponseSchema,
         [OPEN_API.MEMBERS],
-        "Add a member to a UTub",
+        "Add a member to a UTub (managers, or members while the owner allows adding)",
         {
             200: AddMemberResponseSchema,
             400: ErrorResponse,
@@ -598,7 +598,7 @@ ALL_API_ROUTES = [
         None,
         MemberModifiedResponseSchema,
         [OPEN_API.MEMBERS],
-        "Remove a member from a UTub",
+        "Remove a member from a UTub. Co-owners can remove only plain members, and only while the owner allows it",
         {
             200: MemberModifiedResponseSchema,
             400: ErrorResponse,

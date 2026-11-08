@@ -127,6 +127,22 @@ MEMBER_ROLE_CHANGE_REVOKE_POSITION = "Now listed under members."
 MEMBERS_LIST_SETTINGS_SECTION_TITLE = "Your member list"
 MEMBERS_LIST_SORT_LABEL = "Sort members by"
 MEMBERS_TRANSFER_SECTION_TITLE = "Ownership"
+MEMBERS_PERMISSIONS_SECTION_TITLE = "Member permissions"
+MEMBERS_PERMISSIONS_CO_OWNERS_REMOVE_LABEL = "Co-owners can remove members"
+MEMBERS_PERMISSIONS_CO_OWNERS_REMOVE_DESC = (
+    "Co-owners can remove members who aren't co-owners."
+)
+MEMBERS_PERMISSIONS_MEMBERS_ADD_LABEL = "Members can add members"
+MEMBERS_PERMISSIONS_MEMBERS_ADD_DESC = (
+    "Members can add people they share other UTubs with, or by exact username. "
+    "Up to 25 a day."
+)
+MEMBERS_PERMISSIONS_CO_OWNERS_REMOVE_ON_NOTICE = "Co-owners can now remove members"
+MEMBERS_PERMISSIONS_CO_OWNERS_REMOVE_OFF_NOTICE = (
+    "Co-owners can no longer remove members"
+)
+MEMBERS_PERMISSIONS_MEMBERS_ADD_ON_NOTICE = "Members can now add members"
+MEMBERS_PERMISSIONS_MEMBERS_ADD_OFF_NOTICE = "Members can no longer add members"
 MEMBERS_LIST_SORT_DESC = "In all your UTubs. The owner always stays on top."
 MEMBERS_LIST_SORT_OPTION_NAME_AZ = "Name A–Z"
 MEMBERS_LIST_SORT_OPTION_ROLE = "Role, then name"
@@ -235,6 +251,18 @@ TARGET_ALREADY_OWNER = "That member is already the UTub owner."
 # username-oracle probing; not a security boundary. Mirrors
 # USERNAME_CHANGE_RATE_LIMITED.
 MEMBER_ADD_RATE_LIMITED = "You've added too many members today. Please try again later."
+# Member-permission policy copy. The owner's "co-owners can remove members" and
+# "members can add members" switches (UtubSettings.members) gate these actions.
+CO_OWNER_REMOVE_NOT_ALLOWED = (
+    "The UTub owner turned off removing members for co-owners."
+)
+CO_OWNER_CANNOT_REMOVE_CO_OWNER = "Co-owners can't remove other co-owners."
+# Frontend notice text only; the 403 body for a refused add stays NOT_AUTHORIZED.
+MEMBER_ADD_NOT_ALLOWED = "The UTub owner turned off adding members."
+# Live-flip announcements when the viewer's effective add ability changes.
+MEMBER_ADD_NOW_ALLOWED_ANNOUNCEMENT = "You can now add members."
+MEMBER_ADD_NO_LONGER_ALLOWED_ANNOUNCEMENT = "You can no longer add members."
+# Live-flip announcements when a co-owner viewer's effective remove ability changes.
 EMAIL_TAKEN = "That email address is already in use."
 USERNAME_TAKEN = "That username is already taken. Please choose another."
 USER_NOT_EXIST = "That user does not exist. Note this is case sensitive."
@@ -338,3 +366,6 @@ class MEMBER_FAILURE(FAILURE_GENERAL):
     UNABLE_TO_TRANSFER_OWNERSHIP = UNABLE_TO_TRANSFER_OWNERSHIP
     TARGET_ALREADY_OWNER = TARGET_ALREADY_OWNER
     MEMBER_ADD_RATE_LIMITED = MEMBER_ADD_RATE_LIMITED
+    CO_OWNER_REMOVE_NOT_ALLOWED = CO_OWNER_REMOVE_NOT_ALLOWED
+    CO_OWNER_CANNOT_REMOVE_CO_OWNER = CO_OWNER_CANNOT_REMOVE_CO_OWNER
+    MEMBER_ADD_NOT_ALLOWED = MEMBER_ADD_NOT_ALLOWED

@@ -7,6 +7,7 @@ from flask import Flask, url_for
 from flask.testing import FlaskClient
 
 from backend import db
+from backend.members.constants import UTubMembersErrorCodes
 from backend.models.users import Users
 from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utubs import Utubs
@@ -135,7 +136,7 @@ def test_co_member_candidates_non_creator_forbidden(
     register_multiple_users,
     login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
 ) -> None:
-    """A member who is not the creator of the target UTub gets 403."""
+    """A plain member gets 403 errorCode 7 while the owner has adding off."""
     logged_in_client, _, _, app = login_first_user_without_register
 
     with app.app_context():
@@ -153,6 +154,7 @@ def test_co_member_candidates_non_creator_forbidden(
     assert response.status_code == 403
     body = response.get_json()
     assert body[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert body[STD_JSON.ERROR_CODE] == UTubMembersErrorCodes.MEMBER_ADD_NOT_ALLOWED
 
 
 def test_co_member_candidates_nonexistent_utub_404(

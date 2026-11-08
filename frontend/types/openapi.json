@@ -4399,7 +4399,7 @@
             "bearerAuth": []
           }
         ],
-        "description": "Add a member to a UTub",
+        "description": "Add a member to a UTub (managers, or members while the owner allows adding)",
         "parameters": [
           {
             "name": "utub_id",
@@ -4504,7 +4504,7 @@
             "bearerAuth": []
           }
         ],
-        "description": "Remove a member from a UTub",
+        "description": "Remove a member from a UTub. Co-owners can remove only plain members, and only while the owner allows it",
         "parameters": [
           {
             "name": "utub_id",
@@ -4789,7 +4789,7 @@
             "bearerAuth": []
           }
         ],
-        "description": "Get co-member add candidates for a UTub (creator only)",
+        "description": "Get co-member add candidates for a UTub (managers, or members while the owner allows adding)",
         "parameters": [
           {
             "name": "utub_id",
@@ -4840,6 +4840,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
             "content": {
               "application/json": {
                 "schema": {
@@ -5877,7 +5887,7 @@
             "csrfToken": []
           }
         ],
-        "description": "Remove a member from a UTub",
+        "description": "Remove a member from a UTub. Co-owners can remove only plain members, and only while the owner allows it",
         "parameters": [
           {
             "name": "utub_id",
@@ -6135,7 +6145,7 @@
             "csrfToken": []
           }
         ],
-        "description": "Add a member to a UTub",
+        "description": "Add a member to a UTub (managers, or members while the owner allows adding)",
         "parameters": [
           {
             "name": "utub_id",
@@ -6230,7 +6240,7 @@
             "sessionAuth": []
           }
         ],
-        "description": "Get co-member add candidates for a UTub (creator only)",
+        "description": "Get co-member add candidates for a UTub (managers, or members while the owner allows adding)",
         "parameters": [
           {
             "name": "utub_id",
@@ -6271,6 +6281,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
             "content": {
               "application/json": {
                 "schema": {
@@ -10788,7 +10808,7 @@
             "csrfToken": []
           }
         ],
-        "description": "Partially update a UTub's per-panel settings. Metrics: API_HIT only (no DOMAIN event).",
+        "description": "Partially update a UTub's per-panel settings. The members keys are owner-only. Metrics: API_HIT only (no DOMAIN event).",
         "parameters": [
           {
             "name": "utub_id",
@@ -13104,14 +13124,16 @@
       },
       "UTubMembersErrorCodes": {
         "type": "integer",
-        "enum": [1, 2, 3, 4, 5, 6],
+        "enum": [1, 2, 3, 4, 5, 6, 7, 8],
         "x-enum-varnames": [
           "UNKNOWN_EXCEPTION",
           "INVALID_FORM_INPUT",
           "UTUB_IS_LOCKED",
           "CANNOT_MODIFY_OWNER",
           "TARGET_NOT_A_MEMBER",
-          "TARGET_ALREADY_OWNER"
+          "TARGET_ALREADY_OWNER",
+          "MEMBER_ADD_NOT_ALLOWED",
+          "CO_OWNER_REMOVE_NOT_ALLOWED"
         ],
         "description": "Error codes for UTubMembersErrorCodes"
       },
@@ -13573,8 +13595,19 @@
       },
       "MembersSettings": {
         "additionalProperties": false,
-        "description": "Settings for the members panel (no settings yet).",
-        "properties": {},
+        "description": "Settings for the members panel: who may remove and add members.",
+        "properties": {
+          "co_owners_can_remove": {
+            "default": false,
+            "description": "Whether co-owners can remove plain members from this UTub",
+            "type": "boolean"
+          },
+          "members_can_add": {
+            "default": false,
+            "description": "Whether plain members can add members to this UTub",
+            "type": "boolean"
+          }
+        },
         "type": "object"
       },
       "TagDisplayDefaultsSchema": {

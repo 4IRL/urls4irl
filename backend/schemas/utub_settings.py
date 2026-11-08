@@ -11,7 +11,7 @@ default later reaches every UTub that never overrode it.
 
 from __future__ import annotations
 
-from typing import Any, Self, cast
+from typing import Any, ClassVar, Self, cast
 
 from pydantic import (
     BaseModel,
@@ -39,6 +39,9 @@ class SettingsSection(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    # Keys only the UTub owner may change; non-empty also makes unknown keys owner-only.
+    OWNER_ONLY_KEYS: ClassVar[frozenset[str]] = frozenset()
+
     def normalize(self, patched_keys: frozenset[str]) -> Self:
         """Adjust dependent keys after field validation.
 
@@ -59,7 +62,20 @@ class UtubsSettings(SettingsSection):
 
 
 class MembersSettings(SettingsSection):
-    """Settings for the members panel (no settings yet)."""
+    """Settings for the members panel: who may remove and add members."""
+
+    OWNER_ONLY_KEYS: ClassVar[frozenset[str]] = frozenset(
+        {"co_owners_can_remove", "members_can_add"}
+    )
+
+    co_owners_can_remove: bool = Field(
+        default=False,
+        description="Whether co-owners can remove plain members from this UTub",
+    )
+    members_can_add: bool = Field(
+        default=False,
+        description="Whether plain members can add members to this UTub",
+    )
 
 
 class TagsSettings(SettingsSection):
@@ -247,6 +263,27 @@ def merge_utub_settings(
     if errors:
         raise UtubSettingsPatchError(errors)
     return model.model_construct(**sections), (new_overrides or None)
+
+
+def patch_requires_owner(patch: dict[str, dict[str, Any]]) -> bool:
+    """Whether a patch touches an owner-only key.
+
+    A section that declares owner-only keys also treats keys it does not know
+    as owner-only, so a non-owner probing with junk gets the role refusal, not
+    a 400. Unknown sections are not owner-only (the merge 400s them).
+    """
+    model = get_settings_model()
+    for name, patch_section in patch.items():
+        if name not in model.model_fields:
+            continue
+        section_cls = _section_class(model, name)
+        owner_only = section_cls.OWNER_ONLY_KEYS
+        if not owner_only:
+            continue
+        for key in patch_section:
+            if key in owner_only or key not in section_cls.model_fields:
+                return True
+    return False
 
 
 def _canonical_overrides(overrides: Any) -> dict[str, Any]:
