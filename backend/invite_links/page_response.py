@@ -13,12 +13,15 @@ from urllib.parse import quote, urlencode
 
 from flask import Response, make_response, redirect, render_template, request
 
+from backend.invite_links.constants import (
+    INVITE_PATH_PREFIX,
+    INVITE_REGISTER_HINT_SEGMENT,
+)
 from backend.utils.constants import provide_config_for_constants
 from backend.utils.strings.config_strs import CONFIG_ENVS
 from backend.utils.strings.invite_link_strs import INVITE_LINK_PAGE
 
 _INVITE_PAGE_TEMPLATE = "pages/invite.html"
-_INVITE_PATH_PREFIX = "/invite/"
 
 InvitePageKind = Literal["join_ready", "login_required", "dead", "error"]
 
@@ -116,8 +119,8 @@ def build_invite_splash_urls(token: str) -> tuple[str, str]:
     Args:
         token (str): The invite token from the request path.
     """
-    login_path = f"{_INVITE_PATH_PREFIX}{token}"
-    register_path = f"{login_path}/register"
+    login_path = f"{INVITE_PATH_PREFIX}{token}"
+    register_path = f"{login_path}/{INVITE_REGISTER_HINT_SEGMENT}"
     return (
         "/?" + urlencode({"next": login_path}, safe="/"),
         "/?" + urlencode({"next": register_path}, safe="/"),
