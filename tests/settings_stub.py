@@ -20,7 +20,11 @@ URLS_DEFAULTS: dict[str, Any] = {
 
 DEFAULT_SETTINGS_DICT: dict[str, dict[str, Any]] = {
     "utubs": {},
-    "members": {"co_owners_can_remove": False, "members_can_add": False},
+    "members": {
+        "co_owners_can_remove": False,
+        "members_can_add": False,
+        "hide_member_list": False,
+    },
     "tags": {},
     "urls": dict(URLS_DEFAULTS),
 }

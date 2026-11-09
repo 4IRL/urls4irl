@@ -312,6 +312,7 @@ def test_urls_extra_key_rejected() -> None:
     [
         ({"members": {"members_can_add": True}}, True),
         ({"members": {"co_owners_can_remove": False}}, True),
+        ({"members": {"hide_member_list": True}}, True),
         ({"members": {"unknown_key": True}}, True),
         ({"urls": {"unknown_key": True}}, False),
         ({"urls": {"allow_short_links": False}}, False),
@@ -322,6 +323,7 @@ def test_urls_extra_key_rejected() -> None:
     ids=[
         "owner_only_key",
         "owner_only_key_false",
+        "owner_only_hide_member_list",
         "unknown_key_in_members",
         "unknown_key_in_urls",
         "known_urls_key",

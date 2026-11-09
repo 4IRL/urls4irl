@@ -78,7 +78,11 @@ describe("Members permissions settings section", () => {
       ctxFor({
         settings: {
           ...EMPTY_UTUB_SETTINGS,
-          members: { co_owners_can_remove: true, members_can_add: false },
+          members: {
+            co_owners_can_remove: true,
+            members_can_add: false,
+            hide_member_list: false,
+          },
         },
       }),
     );

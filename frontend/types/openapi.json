@@ -13606,6 +13606,11 @@
             "default": false,
             "description": "Whether plain members can add members to this UTub",
             "type": "boolean"
+          },
+          "hide_member_list": {
+            "default": false,
+            "description": "Whether plain members see only the owner, co-owners and themselves",
+            "type": "boolean"
           }
         },
         "type": "object"

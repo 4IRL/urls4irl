@@ -3084,6 +3084,11 @@ export interface components {
        * @default false
        */
       members_can_add: boolean;
+      /**
+       * @description Whether plain members see only the owner, co-owners and themselves
+       * @default false
+       */
+      hide_member_list: boolean;
     };
     /** @description The viewer's six resolved all-UTubs tag display defaults. */
     TagDisplayDefaultsSchema: {

@@ -65,7 +65,7 @@ class MembersSettings(SettingsSection):
     """Settings for the members panel: who may remove and add members."""
 
     OWNER_ONLY_KEYS: ClassVar[frozenset[str]] = frozenset(
-        {"co_owners_can_remove", "members_can_add"}
+        {"co_owners_can_remove", "members_can_add", "hide_member_list"}
     )
 
     co_owners_can_remove: bool = Field(
@@ -75,6 +75,10 @@ class MembersSettings(SettingsSection):
     members_can_add: bool = Field(
         default=False,
         description="Whether plain members can add members to this UTub",
+    )
+    hide_member_list: bool = Field(
+        default=False,
+        description="Whether plain members see only the owner, co-owners and themselves",
     )
 
 
