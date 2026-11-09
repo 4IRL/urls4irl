@@ -4778,14 +4778,14 @@ export interface components {
        * @description When the URL is permanently deleted (ISO 8601)
        */
       expiresAt: string;
-      /** @description User ID of whoever put the URL in Trash (effective) */
-      deletedByUserID: number;
-      /** @description Username of whoever put the URL in Trash (effective) */
-      deletedByUsername: string;
-      /** @description User ID of the member who added the URL */
-      addedByUserID: number;
-      /** @description Username of the member who added the URL */
-      addedByUsername: string;
+      /** @description User ID of whoever put the URL in Trash (effective), or null when that member is hidden from this viewer */
+      deletedByUserID: number | null;
+      /** @description Username of whoever put the URL in Trash (effective), or null when that member is hidden from this viewer */
+      deletedByUsername: string | null;
+      /** @description User ID of the member who added the URL, or null when that member is hidden from this viewer */
+      addedByUserID: number | null;
+      /** @description Username of the member who added the URL, or null when that member is hidden from this viewer */
+      addedByUsername: string | null;
       /** @description Whether the current user can restore this URL right now */
       canRestore: boolean;
       /** @description Whether the current user can permanently delete this URL right now */

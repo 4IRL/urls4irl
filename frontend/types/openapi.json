@@ -16800,20 +16800,48 @@
             "type": "string"
           },
           "deletedByUserID": {
-            "description": "User ID of whoever put the URL in Trash (effective)",
-            "type": "integer"
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "User ID of whoever put the URL in Trash (effective), or null when that member is hidden from this viewer"
           },
           "deletedByUsername": {
-            "description": "Username of whoever put the URL in Trash (effective)",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Username of whoever put the URL in Trash (effective), or null when that member is hidden from this viewer"
           },
           "addedByUserID": {
-            "description": "User ID of the member who added the URL",
-            "type": "integer"
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "User ID of the member who added the URL, or null when that member is hidden from this viewer"
           },
           "addedByUsername": {
-            "description": "Username of the member who added the URL",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Username of the member who added the URL, or null when that member is hidden from this viewer"
           },
           "canRestore": {
             "description": "Whether the current user can restore this URL right now",

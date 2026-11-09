@@ -46,6 +46,7 @@ from tests.integration.system.metrics_helpers import (
     parse_dims,
     sum_counter_values,
 )
+from tests.integration.trash.trash_helpers import login_as_user
 from tests.unit.test_url_validation import (
     FLATTENED_NORMALIZED_AND_INPUT_VALID_URLS,
     FLATTENED_TRACKING_PARAM_URLS,
@@ -4047,3 +4048,67 @@ def test_update_url_string_records_tracking_params_stripped_false(
     )
     assert len(stripped_keys) == 1
     assert parse_dims(stripped_keys[0])[STRIPPED_DIM_KEY] == "false"
+
+
+@pytest.mark.parametrize(
+    "actor, edited_adder, expected_adder",
+    [
+        pytest.param(
+            "member_a_id", "member_a_id", "member_a_id", id="plain_member_own_url"
+        ),
+        pytest.param(
+            "member_a_id",
+            "former_member_id",
+            "member_a_id",
+            id="plain_member_orphaned_adder_credits_reviver",
+        ),
+        pytest.param(
+            "owner_id",
+            "member_b_id",
+            "member_b_id",
+            id="manager_keeps_hidden_member_as_adder_unmasked",
+        ),
+    ],
+)
+def test_update_url_revive_response_in_hidden_list_utub_is_unmasked(
+    app: Flask, seed_hide_list, actor: str, edited_adder: str, expected_adder: str
+):
+    """
+    GIVEN a UTub with the member list hidden, where co-owner's URL is trashed
+    WHEN a plain member edits their own or an orphaned URL, or the owner edits a
+        hidden plain member's URL, to the trashed URL's string
+    THEN the revive response is unmasked: a plain member is credited their own id
+        (also when the edited adder is orphaned), and a manager's revive keeps the
+        hidden member as adder because the member set is not hide-filtered
+    """
+    seed = seed_hide_list(True)
+    own_row_id = seed.utub_url_ids[getattr(seed, edited_adder)]
+    trashed_row_id = seed.utub_url_ids[seed.co_owner_id]
+    with app.app_context():
+        # The seeded string is not in normalized form, so store the form the
+        # validator derives (trailing slash) for the edit to match the trashed row.
+        trashed_url = Utub_Urls.query.get(trashed_row_id).standalone_url
+        trashed_url.url_string = f"{trashed_url.url_string}/"
+        trashed_url_string = trashed_url.url_string
+        db.session.commit()
+    trash_utub_url(app, trashed_row_id, deleted_by=seed.owner_id)
+
+    with login_as_user(app, getattr(seed, actor)) as (client, csrf_token):
+        response = client.patch(
+            url_for(
+                ROUTES.URLS.UPDATE_URL,
+                utub_id=seed.utub_id,
+                utub_url_id=own_row_id,
+            ),
+            json={URL_FORM.URL_STRING: trashed_url_string},
+            headers={"X-CSRFToken": csrf_token},
+        )
+
+    assert response.status_code == 200, response.get_data(as_text=True)
+    assert response.json[MODEL_STRS.REVIVED_FROM_TRASH] is True
+    expected_id = getattr(seed, expected_adder)
+    assert response.json[MODEL_STRS.ADDED_BY] == expected_id
+    if actor == "member_a_id":
+        assert seed.usernames[seed.member_b_id] not in response.get_data(as_text=True)
+    with app.app_context():
+        assert Utub_Urls.query.get(trashed_row_id).user_id == expected_id
