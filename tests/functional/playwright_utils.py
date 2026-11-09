@@ -710,6 +710,20 @@ def get_url_row_by_id(*, page: Page, utub_url_id: int) -> Locator:
     return url_row
 
 
+def refocus_window(*, page: Page) -> None:
+    """Fire the window blur -> focus pair that triggers a refresh-on-focus.
+
+    A synthetic visibilitychange keeps visibilityState "visible" in headless
+    Chromium, so the blur -> focus pair is the portable trigger.
+    """
+    page.evaluate(
+        """() => {
+            window.dispatchEvent(new Event('blur'));
+            window.dispatchEvent(new Event('focus'));
+        }"""
+    )
+
+
 # JS-injection helpers (twin the Selenium execute_script bodies verbatim)
 def invalidate_csrf_token_on_page(*, page: Page) -> None:
     page.evaluate("""() => {
