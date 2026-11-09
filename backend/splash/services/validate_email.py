@@ -280,7 +280,8 @@ def validate_email_for_user(token: str) -> WerkzeugResponse:
     """
     Handles validating a user's email based on the JWT provided in the URL.
 
-    On success, logs the user in and redirects them to their home page.
+    On success, logs the user in and redirects them to their pending invite page
+    if one is stored, else their home page.
 
     Args:
         token (str): The JWT included in the URL
@@ -336,16 +337,25 @@ def _welcome_validated_email_new_user(
     """
     Handles a user with a newly validated email, their final step in registering for U4I.
 
-    Redirects the user to their home page.
+    Redirects the user to the invite page stored on their Email_Validations row
+    (if any), else to their home page. It never joins the user to a UTub: only
+    the invite page's explicit Join POST does.
 
     Args:
         user (Users): The newly validated User
         email_validation (Email_Validations): The Email_Validations object associated with the User
 
     Returns:
-        (WerkzeugResponse): The redirect to their home page
+        (WerkzeugResponse): The redirect to the pending invite page or home page
 
     """
+    # Read the reference before the delete/commit, which remove and expire the row
+    pending_token: str | None = (
+        email_validation.pending_invite.token
+        if email_validation.pending_invite is not None
+        else None
+    )
+
     user.validate_email()
     db.session.delete(email_validation)
     db.session.commit()
@@ -359,4 +369,6 @@ def _welcome_validated_email_new_user(
 
     notification_sender = safe_get_notif_sender(current_app)
     notification_sender.send_notification(f"Welcome! New user: {user.username}")
+    if pending_token is not None:
+        return redirect(url_for(ROUTES.INVITE_LINKS.INVITE_PAGE, token=pending_token))
     return redirect(url_for(ROUTES.UTUBS.HOME))

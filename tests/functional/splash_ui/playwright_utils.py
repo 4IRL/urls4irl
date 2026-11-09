@@ -31,16 +31,49 @@ def register_user_ui(
         email_confirm: Confirmation email. Defaults to email.
         pass_confirm: Confirmation password. Defaults to password.
     """
+    open_register_modal(page=page)
+    fill_register_fields(
+        page=page,
+        username=username,
+        email=email,
+        password=password,
+        email_confirm=email_confirm,
+        pass_confirm=pass_confirm,
+    )
+
+
+def open_register_modal(*, page: Page) -> None:
+    """Click the Register button and wait for the Register modal to be ready."""
+    # Longer timeout: first click after page load is sensitive to resource
+    # contention at the derived `U4I_N_UI` worker count.
+    wait_then_click_element(page=page, css_selector=SPL.BUTTON_REGISTER)
+    wait_for_modal_ready(page=page, modal_selector=SPL.REGISTER_MODAL)
+
+
+def fill_register_fields(
+    *,
+    page: Page,
+    username: str,
+    email: str,
+    password: str,
+    email_confirm: str | None = None,
+    pass_confirm: str | None = None,
+) -> None:
+    """Fill the five Register inputs of an already-open Register modal (no submit).
+
+    Args:
+        page: Playwright Page with the Register modal open.
+        username: Username to register with.
+        email: Email address to register with.
+        password: Password for the new account.
+        email_confirm: Confirmation email. Defaults to email.
+        pass_confirm: Confirmation password. Defaults to password.
+    """
     if email_confirm is None:
         email_confirm = email
 
     if pass_confirm is None:
         pass_confirm = password
-
-    # Longer timeout: first click after page load is sensitive to resource
-    # contention at the derived `U4I_N_UI` worker count.
-    wait_then_click_element(page=page, css_selector=SPL.BUTTON_REGISTER)
-    wait_for_modal_ready(page=page, modal_selector=SPL.REGISTER_MODAL)
 
     wait_for_element_presence(page=page, css_selector=SPL.REGISTER_INPUT_USERNAME)
     wait_until_visible_css_selector(page=page, css_selector=SPL.REGISTER_INPUT_USERNAME)
