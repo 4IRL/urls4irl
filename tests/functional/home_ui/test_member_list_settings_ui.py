@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 from flask import Flask
-from playwright.sync_api import Locator, Page, Route, expect
+from playwright.sync_api import Page, Route, expect
 
 from backend.cli.mock_constants import USERNAME_BASE
 from backend.models.user_preferences import MemberSort
@@ -12,7 +12,6 @@ from backend.models.utub_members import Member_Role
 from backend.utils.strings.user_strs import (
     MEMBER_ROLE_CHANGE_GRANT_POSITION,
     MEMBERS_LIST_SORT_JOINED_NOTE,
-    MEMBERS_LIST_SORT_LABEL,
     MEMBERS_LIST_SORT_NOTICE_PREFIX,
     MEMBERS_LIST_SORT_OPTION_JOINED,
     MEMBERS_LIST_SORT_OPTION_NAME_AZ,
@@ -24,6 +23,10 @@ from tests.functional.db_utils import (
     get_member_sort_preference,
     get_utub_this_user_created,
     set_utub_list_preferences,
+)
+from tests.functional.home_ui.playwright_utils import (
+    open_members_settings,
+    sort_select,
 )
 from tests.functional.home_ui.test_utub_list_settings_ui import (
     _expect_failure_surfaced,
@@ -43,7 +46,6 @@ from tests.functional.playwright_login_utils import (
 )
 from tests.functional.playwright_utils import (
     select_utub_by_id,
-    wait_then_click_element,
     wait_until_hidden,
 )
 
@@ -111,23 +113,9 @@ def expect_deck_order(*, page: Page, order: list[int]) -> None:
     expect(page.locator(HPL.MEMBERS_DECK_OWNER_NAME)).to_have_text(OWNER_NAME)
 
 
-def sort_select(*, page: Page) -> Locator:
-    """The member-sort combobox inside the open settings popover."""
-    return page.locator(HPL.PANEL_SETTINGS_POPOVER).get_by_role(
-        "combobox", name=MEMBERS_LIST_SORT_LABEL, exact=True
-    )
-
-
 def sort_notice(*, sort: MemberSort) -> str:
     """The live-region text announced after ``sort`` is saved."""
     return f"{MEMBERS_LIST_SORT_NOTICE_PREFIX}{SORT_UI[sort][1]}"
-
-
-def open_members_settings(*, page: Page) -> None:
-    """Open the Members gear popover and wait for the sort select."""
-    wait_then_click_element(page=page, css_selector=HPL.BUTTON_MEMBER_SETTINGS_GEAR)
-    expect(page.locator(HPL.PANEL_SETTINGS_POPOVER)).to_be_visible()
-    expect(sort_select(page=page)).to_be_visible()
 
 
 def pick_sort(*, page: Page, sort: MemberSort) -> None:
