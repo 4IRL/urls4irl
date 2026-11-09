@@ -540,9 +540,15 @@ def test_create_utub_tag_submit_btn_tooltip_restores_after_400(
 
     # The restore itself. Playwright's auto-retrying assertion absorbs
     # TOOLTIP_RESTORE_DELAY_MS, so no manual sleep is needed.
-    wait_until_visible_css_selector(page=page, css_selector=shown_tooltip_selector)
-    expect(page.locator(shown_tooltip_selector).first).to_have_text(
-        STRINGS.CREATE_UTUB_TAG_TOOLTIP
+    # Scope to the one shown bubble (count == 1, so no stale sibling can be
+    # matched by `.first`), then assert its copy on that same locator. The pointer
+    # never left the button, so the still-targeted guard keeps the restore armed.
+    restored_tooltip = page.locator(shown_tooltip_selector)
+    expect(restored_tooltip).to_have_count(1)
+    expect(restored_tooltip).to_be_visible()
+    expect(restored_tooltip).to_have_text(STRINGS.CREATE_UTUB_TAG_TOOLTIP)
+    expect(create_utub_tag_submit_btn).to_have_attribute(
+        "aria-label", STRINGS.CREATE_UTUB_TAG_TOOLTIP
     )
 
     assert_no_page_errors(page_errors=page_errors)

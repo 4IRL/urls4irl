@@ -1159,6 +1159,19 @@ describe("outcome banner", () => {
   });
 
   describe("performUndo", () => {
+    let actualApplyUrlString: typeof import("../cards/apply-url-string.js");
+    let actualAppStore: typeof import("../../../store/app-store.js");
+
+    beforeAll(async () => {
+      // Cold module-graph loads happen here (own hook timeout), not inside a 5s test.
+      actualApplyUrlString = await vi.importActual<
+        typeof import("../cards/apply-url-string.js")
+      >("../cards/apply-url-string.js");
+      actualAppStore = await vi.importActual<
+        typeof import("../../../store/app-store.js")
+      >("../../../store/app-store.js");
+    }, 60000);
+
     function showExistingBanner(): void {
       showURLOutcomeBanner({
         variant: "success",
@@ -1184,12 +1197,8 @@ describe("outcome banner", () => {
     });
 
     it("a successful Undo drops the card's short link through the real address-edit helper", async () => {
-      const actual = await vi.importActual<
-        typeof import("../cards/apply-url-string.js")
-      >("../cards/apply-url-string.js");
-      const store = await vi.importActual<
-        typeof import("../../../store/app-store.js")
-      >("../../../store/app-store.js");
+      const actual = actualApplyUrlString;
+      const store = actualAppStore;
       vi.mocked(applyUpdatedURLString).mockImplementation(
         actual.applyUpdatedURLString,
       );
