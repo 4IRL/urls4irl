@@ -439,7 +439,12 @@ def test_status_code_input_shows_hint_and_enter_saves_a_complete_draft(
 
     builder_step(page, 2).locator(MDL.FLOW_BUILDER_ADD_FILTER_BUTTON).click()
     row = _step_filter_rows(page, 2).nth(0)
-    _choose(row.locator(MDL.FLOW_BUILDER_FILTER_DIM), "status_code")
+    # The add-filter click renders the row asynchronously: wait for the row and
+    # its dimension select before focusing it.
+    expect(row).to_be_visible()
+    filter_dim = row.locator(MDL.FLOW_BUILDER_FILTER_DIM)
+    expect(filter_dim).to_be_visible()
+    _choose(filter_dim, "status_code")
     status_input = row.locator(MDL.FLOW_BUILDER_FILTER_VALUE)
     expect(status_input).to_have_js_property("tagName", "INPUT")
     expect(row).to_contain_text(UI_TEST_STRINGS.METRICS_FLOW_BUILDER_FILTER_STATUS_HINT)
