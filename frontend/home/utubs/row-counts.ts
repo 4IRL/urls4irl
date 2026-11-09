@@ -89,12 +89,16 @@ function writeRowCounts({
   memberCount: number | null;
 }): void {
   const { utubs } = getState();
-  if (!utubs.some((utub) => utub.id === utubID)) return;
-  setState({
-    utubs: utubs.map((utub) =>
-      utub.id === utubID ? { ...utub, urlCount, memberCount } : utub,
-    ),
-  });
+  const stored = utubs.find((utub) => utub.id === utubID);
+  if (stored === undefined) return;
+  // An unchanged row writes nothing, so a no-op refresh never churns the store.
+  if (stored.urlCount !== urlCount || stored.memberCount !== memberCount) {
+    setState({
+      utubs: utubs.map((utub) =>
+        utub.id === utubID ? { ...utub, urlCount, memberCount } : utub,
+      ),
+    });
+  }
 
   const counts = $(`.UTubSelector[utubid="${utubID}"] .UTubRowCounts`);
   if (counts.length === 0) return;

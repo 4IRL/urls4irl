@@ -143,6 +143,16 @@ MEMBERS_PERMISSIONS_CO_OWNERS_REMOVE_OFF_NOTICE = (
 )
 MEMBERS_PERMISSIONS_MEMBERS_ADD_ON_NOTICE = "Members can now add members"
 MEMBERS_PERMISSIONS_MEMBERS_ADD_OFF_NOTICE = "Members can no longer add members"
+MEMBERS_PERMISSIONS_HIDE_MEMBER_LIST_LABEL = "Hide member list from members"
+MEMBERS_PERMISSIONS_HIDE_MEMBER_LIST_DESC = (
+    "Members see only the owner, co-owners and themselves."
+)
+MEMBERS_PERMISSIONS_HIDE_MEMBER_LIST_ON_NOTICE = (
+    "Members now see only the owner, co-owners and themselves"
+)
+MEMBERS_PERMISSIONS_HIDE_MEMBER_LIST_OFF_NOTICE = (
+    "Members can now see everyone in this UTub"
+)
 MEMBERS_LIST_SORT_DESC = "In all your UTubs. The owner always stays on top."
 MEMBERS_LIST_SORT_OPTION_NAME_AZ = "Name A–Z"
 MEMBERS_LIST_SORT_OPTION_ROLE = "Role, then name"

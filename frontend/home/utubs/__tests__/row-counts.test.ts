@@ -162,6 +162,20 @@ describe("setRowCountsFromStore", () => {
     expect(getState().utubs[0].memberCount).toBe(1);
   });
 
+  it("leaves the utubs store reference untouched when the row already matches", () => {
+    seedRow({ id: 5, urlCount: 2, memberCount: 1 });
+    setState({
+      urls: [{ utubUrlID: 1 }, { utubUrlID: 2 }] as never,
+      members: [{ id: 1 }] as never,
+    });
+    const before = getState().utubs;
+
+    setRowCountsFromStore({ utubID: 5 });
+
+    expect(getState().utubs).toBe(before);
+    expect(rowNumbers()).toEqual(["2", "1"]);
+  });
+
   it("writes null and drops the member segment for a hidden plain member", () => {
     seedRow({ id: 5, urlCount: 9, memberCount: 9 });
     seedPlainMember({ hideMemberList: true });
