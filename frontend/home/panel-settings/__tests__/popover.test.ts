@@ -1,5 +1,5 @@
 import { $ } from "../../../lib/globals.js";
-import { AppEvents, emit } from "../../../lib/event-bus.js";
+import { AppEvents, emit, on } from "../../../lib/event-bus.js";
 import { resetStore, setState } from "../../../store/app-store.js";
 import { dismissActiveTip, maybeShowNextTip } from "../../onboarding/nudges.js";
 import { closeAllMemberRowMenus } from "../../members/row-menu.js";
@@ -20,6 +20,7 @@ import {
 import { DEBOUNCE_MS } from "../queue.js";
 import { _resetRegistryForTests } from "../registry.js";
 import { isPanelSettingsBusy, isPanelSettingsOpen } from "../state.js";
+import type { PanelId } from "../../../types/settings.js";
 import type { SectionContext, SectionPatch } from "../types.js";
 import type { BreakpointMock, Harness } from "./helpers.js";
 import {
@@ -249,6 +250,88 @@ describe("panel settings popover", () => {
       expect(closeAllMemberRowMenus).toHaveBeenCalledTimes(1);
       expect(dismissActiveTip).toHaveBeenCalledWith({ markSeen: false });
       expect(hideTooltip).toHaveBeenCalledWith(gear("urls"));
+    });
+
+    describe("PANEL_SETTINGS_OPENED", () => {
+      const opened = vi.fn<(payload: { panel: PanelId }) => void>();
+      let stopListening: () => void;
+
+      beforeEach(() => {
+        opened.mockReset();
+        stopListening = on(AppEvents.PANEL_SETTINGS_OPENED, opened);
+      });
+
+      afterEach(() => stopListening());
+
+      it("is emitted once with the gear's panel when the popover opens", () => {
+        setupUrls();
+        openGear("urls");
+
+        expect(opened).toHaveBeenCalledTimes(1);
+        expect(opened).toHaveBeenCalledWith({ panel: "urls" });
+      });
+
+      it("is emitted once with the gear's panel when the sheet opens", () => {
+        breakpoint.cross({ matches: true });
+        setupUrls();
+        openGear("urls");
+
+        expect(opened).toHaveBeenCalledTimes(1);
+        expect(opened).toHaveBeenCalledWith({ panel: "urls" });
+      });
+
+      it("is emitted before the surface renders", () => {
+        const harness = setupUrls();
+        const snapshot: { open: boolean; rendered: boolean }[] = [];
+        opened.mockImplementation(() => {
+          snapshot.push({
+            open: isOpen(),
+            rendered: vi.mocked(harness.section.render).mock.calls.length > 0,
+          });
+        });
+        openGear("urls");
+
+        expect(snapshot).toEqual([{ open: false, rendered: false }]);
+      });
+
+      it("is not emitted by a tap on a gear with no visible section", () => {
+        setupUrls();
+        openGear("members");
+
+        expect(opened).not.toHaveBeenCalled();
+        expect(isOpen()).toBe(false);
+      });
+    });
+
+    describe("INVITE_PANEL_OPENED", () => {
+      it("closes an open Members gear silently", () => {
+        initPopover();
+        registerControlled({ panel: "members" });
+        selectUTub();
+        openGear("members");
+        expect(isOpen()).toBe(true);
+
+        emit(AppEvents.INVITE_PANEL_OPENED);
+
+        expect(isOpen()).toBe(false);
+        expect(announced()).toBe("");
+      });
+
+      it("leaves another deck's gear open", () => {
+        setupUrls();
+        openGear("urls");
+
+        emit(AppEvents.INVITE_PANEL_OPENED);
+
+        expect(isOpen()).toBe(true);
+      });
+
+      it("is harmless with nothing open", () => {
+        setupUrls();
+        emit(AppEvents.INVITE_PANEL_OPENED);
+
+        expect(isOpen()).toBe(false);
+      });
     });
 
     it("prevents the gear tooltip from re-showing while expanded", () => {

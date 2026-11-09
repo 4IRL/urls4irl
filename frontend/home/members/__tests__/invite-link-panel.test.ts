@@ -18,6 +18,9 @@ import { UI_EVENTS } from "../../../types/metrics-events.js";
 import { getState, resetStore, setState } from "../../../store/app-store.js";
 import { updateUTubOnFindingStaleData } from "../../utubs/stale-data.js";
 import { canManageInviteLink } from "../../utubs/policy.js";
+import { AppEvents, emit as emitAppEvent, on } from "../../../lib/event-bus.js";
+import { hideAndResetMemberCombobox } from "../member-combobox.js";
+import { closeMemberNameFilter } from "../search.js";
 
 vi.mock("../invite-link-client.js", () => ({
   getInviteLink: vi.fn(),
@@ -27,6 +30,10 @@ vi.mock("../../utubs/stale-data.js", () => ({
   updateUTubOnFindingStaleData: vi.fn(),
 }));
 vi.mock("../../../lib/metrics-client.js", () => ({ emit: vi.fn() }));
+vi.mock("../member-combobox.js", () => ({
+  hideAndResetMemberCombobox: vi.fn(),
+}));
+vi.mock("../search.js", () => ({ closeMemberNameFilter: vi.fn() }));
 
 const $ = window.jQuery;
 const strings = APP_CONFIG.strings;
@@ -560,6 +567,131 @@ describe("invite link panel", () => {
       expect(isInviteLinkPanelOpen()).toBe(false);
       expect(announcement().text()).toBe("");
       expect(trigger().attr("aria-expanded")).toBe("false");
+    });
+  });
+
+  describe("cross-feature exclusion", () => {
+    it("opening closes the add form, the filter and the Members gear", async () => {
+      const gearCloser = vi.fn();
+      const stopListening = on(AppEvents.INVITE_PANEL_OPENED, gearCloser);
+      await openWith(null);
+      stopListening();
+
+      expect(hideAndResetMemberCombobox).toHaveBeenCalledTimes(1);
+      expect(closeMemberNameFilter).toHaveBeenCalledTimes(1);
+      expect(gearCloser).toHaveBeenCalledTimes(1);
+    });
+
+    it("opens with another home form open and both stay", async () => {
+      emitAppEvent(AppEvents.FORM_MODE_CHANGED, { openForm: "url_create" });
+      const formChanged = vi.fn();
+      const off = on(AppEvents.FORM_MODE_CHANGED, formChanged);
+      await openWith(null);
+      off();
+
+      expect(isInviteLinkPanelOpen()).toBe(true);
+      // Opening never touches the other home form (nothing closes it).
+      expect(formChanged).not.toHaveBeenCalled();
+    });
+
+    it("a later non-null FORM_MODE_CHANGED closes silently without moving focus", async () => {
+      await openWith(liveLink());
+      $("#MemberDeckHeaderAndCaret")[0].focus();
+
+      emitAppEvent(AppEvents.FORM_MODE_CHANGED, { openForm: "url_create" });
+      await settle();
+
+      expect(isInviteLinkPanelOpen()).toBe(false);
+      expect(announcement().text()).toBe("");
+      expect(document.activeElement?.id).toBe("MemberDeckHeaderAndCaret");
+    });
+
+    it("FORM_MODE_CHANGED with null leaves it open", async () => {
+      await openWith(null);
+      emitAppEvent(AppEvents.FORM_MODE_CHANGED, { openForm: null });
+
+      expect(isInviteLinkPanelOpen()).toBe(true);
+    });
+
+    it.each([
+      [AppEvents.MEMBER_ADD_OPENED],
+      [AppEvents.MEMBER_FILTER_OPENED],
+    ] as const)("%s closes silently", async (eventName) => {
+      await openWith(null);
+      $("#MemberDeckHeaderAndCaret")[0].focus();
+      emitAppEvent(eventName);
+      await settle();
+
+      expect(isInviteLinkPanelOpen()).toBe(false);
+      expect(announcement().text()).toBe("");
+      expect(document.activeElement?.id).toBe("MemberDeckHeaderAndCaret");
+    });
+
+    it("the Members gear closes it silently; the utubs and tags gears do not", async () => {
+      await openWith(null);
+      emitAppEvent(AppEvents.PANEL_SETTINGS_OPENED, { panel: "utubs" });
+      emitAppEvent(AppEvents.PANEL_SETTINGS_OPENED, { panel: "tags" });
+      expect(isInviteLinkPanelOpen()).toBe(true);
+
+      $("#MemberDeckHeaderAndCaret")[0].focus();
+      emitAppEvent(AppEvents.PANEL_SETTINGS_OPENED, { panel: "members" });
+      await settle();
+
+      expect(isInviteLinkPanelOpen()).toBe(false);
+      expect(announcement().text()).toBe("");
+      expect(document.activeElement?.id).toBe("MemberDeckHeaderAndCaret");
+    });
+
+    it.each(["url-deck", "utub-deck", "no-utub", "trash"] as const)(
+      "a mobile switch to %s closes it and focus lands on the deck header",
+      async (target) => {
+        await openWith(liveLink());
+        expect(document.activeElement?.id).toBe("inviteLinkUrlInput");
+
+        emitAppEvent(AppEvents.MOBILE_DECK_SWITCHED, { target });
+
+        expect(isInviteLinkPanelOpen()).toBe(false);
+        expect(document.activeElement?.id).toBe("MemberDeckHeaderAndCaret");
+      },
+    );
+
+    it.each(["member-deck", "desktop"] as const)(
+      "a mobile switch to %s leaves it open",
+      async (target) => {
+        await openWith(null);
+        emitAppEvent(AppEvents.MOBILE_DECK_SWITCHED, { target });
+
+        expect(isInviteLinkPanelOpen()).toBe(true);
+      },
+    );
+
+    it("collapsing the Members deck closes it; other decks and expanding do not", async () => {
+      await openWith(liveLink());
+      emitAppEvent(AppEvents.DECK_COLLAPSE_CHANGED, {
+        deck: "utubs",
+        collapsed: true,
+      });
+      emitAppEvent(AppEvents.DECK_COLLAPSE_CHANGED, {
+        deck: "members",
+        collapsed: false,
+      });
+      expect(isInviteLinkPanelOpen()).toBe(true);
+
+      emitAppEvent(AppEvents.DECK_COLLAPSE_CHANGED, {
+        deck: "members",
+        collapsed: true,
+      });
+
+      expect(isInviteLinkPanelOpen()).toBe(false);
+      expect(document.activeElement?.id).toBe("MemberDeckHeaderAndCaret");
+    });
+
+    it("the unsubscribe removes the bus subscriptions", async () => {
+      await openWith(null);
+      unsubscribe();
+      emitAppEvent(AppEvents.MEMBER_ADD_OPENED);
+
+      expect(isInviteLinkPanelOpen()).toBe(true);
     });
   });
 

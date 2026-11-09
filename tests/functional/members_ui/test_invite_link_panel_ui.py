@@ -233,3 +233,85 @@ def test_panel_closes_when_utub_gets_locked(
     expect(page.locator("#MemberRowActionAnnouncement")).to_have_text(
         INVITE_LINK_PANEL.FORCED_CLOSE
     )
+
+
+def test_opening_add_form_closes_panel_and_panel_closes_add_form(
+    page: Page, create_test_utubmembers, provide_app: Flask
+):
+    """
+    GIVEN an open invite link panel
+    WHEN the owner opens the add-member form, then reopens the panel
+    THEN each opening closes the other, so only one surface is ever open
+    """
+    login_as(app=provide_app, page=page, user_id=OWNER_ID)
+    _open_panel(page=page)
+
+    page.locator(HPL.BUTTON_MEMBER_CREATE).click()
+    expect(page.locator(HPL.MEMBER_COMBOBOX_WRAP)).to_be_visible()
+    expect(page.locator(HPL.MEMBER_INVITE_PANEL)).to_be_hidden()
+    expect(page.locator(HPL.BUTTON_MEMBER_INVITE_LINK)).to_have_attribute(
+        "aria-expanded", "false"
+    )
+
+    _open_panel(page=page)
+    expect(page.locator(HPL.MEMBER_COMBOBOX_WRAP)).to_have_count(0)
+
+
+def test_opening_filter_closes_panel_and_panel_closes_filter(
+    page: Page, create_test_utubmembers, provide_app: Flask
+):
+    """
+    GIVEN an open invite link panel
+    WHEN the owner opens the member filter, then reopens the panel
+    THEN each opening closes the other
+    """
+    login_as(app=provide_app, page=page, user_id=OWNER_ID)
+    _open_panel(page=page)
+
+    page.locator(HPL.BUTTON_MEMBER_NAME_FILTER).click()
+    expect(page.locator(HPL.BUTTON_MEMBER_NAME_FILTER_CLOSE)).to_be_visible()
+    expect(page.locator(HPL.MEMBER_INVITE_PANEL)).to_be_hidden()
+
+    _open_panel(page=page)
+    expect(page.locator(HPL.BUTTON_MEMBER_NAME_FILTER_CLOSE)).to_be_hidden()
+    expect(page.locator(HPL.BUTTON_MEMBER_NAME_FILTER)).to_be_visible()
+
+
+def test_opening_gear_closes_panel_and_panel_closes_gear(
+    page: Page, create_test_utubmembers, provide_app: Flask
+):
+    """
+    GIVEN an open invite link panel
+    WHEN the owner opens the Members gear popover, then reopens the panel
+    THEN each opening closes the other
+    """
+    login_as(app=provide_app, page=page, user_id=OWNER_ID)
+    _open_panel(page=page)
+
+    page.locator(HPL.BUTTON_MEMBER_SETTINGS_GEAR).click()
+    expect(page.locator(HPL.PANEL_SETTINGS_POPOVER)).to_be_visible()
+    expect(page.locator(HPL.MEMBER_INVITE_PANEL)).to_be_hidden()
+
+    # Keyboard open: not an outside click, so the popover's own dismissal
+    # cannot be what hides it.
+    page.locator(HPL.BUTTON_MEMBER_INVITE_LINK).focus()
+    page.keyboard.press("Enter")
+    expect(page.locator(HPL.MEMBER_INVITE_PANEL)).to_be_visible()
+    expect(page.locator(HPL.PANEL_SETTINGS_POPOVER)).to_be_hidden()
+
+
+def test_collapsing_members_deck_closes_panel_and_focuses_header(
+    page: Page, create_test_utubmembers, provide_app: Flask
+):
+    """
+    GIVEN an open invite link panel with focus inside it
+    WHEN the owner collapses the Members deck
+    THEN the panel closes and focus lands on the deck header, never the body
+    """
+    login_as(app=provide_app, page=page, user_id=OWNER_ID)
+    _open_panel(page=page)
+    page.locator(HPL.INVITE_LINK_EXPIRES_SELECT).focus()
+
+    page.locator(HPL.HEADER_AND_CARET_MEMBER_DECK).click()
+    expect(page.locator(HPL.MEMBER_INVITE_PANEL)).to_be_hidden()
+    expect(page.locator(HPL.HEADER_AND_CARET_MEMBER_DECK)).to_be_focused()

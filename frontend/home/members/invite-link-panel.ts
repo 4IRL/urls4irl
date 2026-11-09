@@ -4,11 +4,19 @@ import { debug } from "../../lib/debug.js";
 import { fillTemplate } from "../../lib/string-template.js";
 import { emit } from "../../lib/metrics-client.js";
 import { UI_EVENTS } from "../../types/metrics-events.js";
+import {
+  AppEvents,
+  emit as emitAppEvent,
+  on,
+  type AppEventMap,
+} from "../../lib/event-bus.js";
 import { getState, subscribe, type AppState } from "../../store/app-store.js";
 import { canManageInviteLink } from "../utubs/policy.js";
 import { updateUTubOnFindingStaleData } from "../utubs/stale-data.js";
 import { withMemberControlFocusFallback } from "./focus-fallback.js";
+import { hideAndResetMemberCombobox } from "./member-combobox.js";
 import { announceMemberRowAction } from "./notice.js";
+import { closeMemberNameFilter } from "./search.js";
 import {
   getInviteLink,
   INVITE_LINK_LOCKED_ERROR_CODE,
@@ -650,6 +658,13 @@ export function resyncInviteLinkPanel({
 function openPanel(): void {
   const { activeUTubID } = getState();
   if (activeUTubID === null || !canManageInviteLink()) return;
+  // The panel is the only open Members surface. Another home form (URL create,
+  // UTub create) is deliberately left alone: both may be on screen.
+  hideAndResetMemberCombobox();
+  closeMemberNameFilter();
+  // Signalled over the bus, not by importing panel-settings: popover.ts reaches
+  // client.ts, which reaches this module through the deck graph (an import cycle).
+  emitAppEvent(AppEvents.INVITE_PANEL_OPENED);
   _isOpen = true;
   _openedUTubID = activeUTubID;
   $(PANEL_SELECTOR).removeClass("hidden");
@@ -665,6 +680,44 @@ function closePanelByUser(): void {
   if (!_isOpen) return;
   teardownPanel();
   $(TRIGGER_SELECTOR)[0]?.focus({ preventScroll: true });
+}
+
+// Another surface took over (add form, filter, gear, another home form): close
+// silently and leave focus alone, since it is moving into that surface.
+function closePanelForOtherSurface(): void {
+  if (!_isOpen) return;
+  teardownPanel();
+}
+
+// The deck context went away (mobile deck switch, Members collapse): close
+// silently, keeping focus on a control that still exists.
+function closePanelForDeckLoss(): void {
+  if (!_isOpen) return;
+  withMemberControlFocusFallback({ write: teardownPanel });
+}
+
+const DECK_LOSS_TARGETS: ReadonlyArray<
+  AppEventMap["mobile:deck-switched"]["target"]
+> = ["url-deck", "utub-deck", "no-utub", "trash"];
+
+function subscribeCrossFeatureExclusion(): () => void {
+  const disposers = [
+    on(AppEvents.MEMBER_ADD_OPENED, closePanelForOtherSurface),
+    on(AppEvents.MEMBER_FILTER_OPENED, closePanelForOtherSurface),
+    on(AppEvents.FORM_MODE_CHANGED, ({ openForm }) => {
+      if (openForm !== null) closePanelForOtherSurface();
+    }),
+    on(AppEvents.PANEL_SETTINGS_OPENED, ({ panel }) => {
+      if (panel === "members") closePanelForOtherSurface();
+    }),
+    on(AppEvents.MOBILE_DECK_SWITCHED, ({ target }) => {
+      if (DECK_LOSS_TARGETS.includes(target)) closePanelForDeckLoss();
+    }),
+    on(AppEvents.DECK_COLLAPSE_CHANGED, ({ deck, collapsed }) => {
+      if (deck === "members" && collapsed) closePanelForDeckLoss();
+    }),
+  ];
+  return () => disposers.forEach((dispose) => dispose());
 }
 
 function togglePanel(): void {
@@ -726,9 +779,14 @@ export function initInviteLinkPanel(): () => void {
     .off(".invitePanel")
     .on("keydown.invitePanel", handlePanelKeydown);
   syncInviteLinkTrigger();
-  return subscribe((changedKeys) => {
+  const unsubscribeBus = subscribeCrossFeatureExclusion();
+  const unsubscribeStore = subscribe((changedKeys) => {
     if (!RELEVANT_KEYS.some((key) => changedKeys.includes(key))) return;
     withMemberControlFocusFallback({ write: syncInviteLinkTrigger });
     if (_isOpen && !canManageInviteLink()) forceClosePanel();
   });
+  return () => {
+    unsubscribeBus();
+    unsubscribeStore();
+  };
 }

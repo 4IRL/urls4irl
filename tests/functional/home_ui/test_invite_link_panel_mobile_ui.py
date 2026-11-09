@@ -9,7 +9,11 @@ from playwright.sync_api import Page, expect
 
 from tests.functional.db_utils import get_utub_this_user_created
 from tests.functional.home_ui.test_member_permissions_mobile_ui import (
+    go_to_members_deck,
     open_members_deck_as,
+)
+from tests.functional.home_ui.test_panel_settings_mobile_ui import (
+    _go_to_deck_via_navbar,
 )
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.members_ui.playwright_utils import OWNER_ID
@@ -57,6 +61,45 @@ def test_panel_fits_phone_width_with_touch_targets(
         "() => document.documentElement.scrollWidth - window.innerWidth"
     )
     assert overflow <= 0, overflow
+
+
+def test_gear_sheet_closes_panel(
+    page_mobile_portrait: Page, create_test_utubmembers, provide_app: Flask
+):
+    """
+    GIVEN the owner on the phone Members deck with the invite link panel open
+    WHEN they tap the Members gear
+    THEN the gear sheet opens and the panel is closed
+    """
+    page = page_mobile_portrait
+    open_members_deck_as(app=provide_app, page=page, user_id=OWNER_ID)
+    page.locator(HPL.BUTTON_MEMBER_INVITE_LINK).tap()
+    expect(page.locator(HPL.MEMBER_INVITE_PANEL)).to_be_visible()
+
+    page.locator(HPL.BUTTON_MEMBER_SETTINGS_GEAR).tap()
+    expect(page.locator(HPL.PANEL_SETTINGS_SHEET)).to_be_visible()
+    expect(page.locator(HPL.MEMBER_INVITE_PANEL)).to_be_hidden()
+
+
+def test_deck_switch_closes_panel(
+    page_mobile_portrait: Page, create_test_utubmembers, provide_app: Flask
+):
+    """
+    GIVEN the owner on the phone Members deck with the invite link panel open
+    WHEN they switch to the UTubs deck and back
+    THEN the panel stays closed after returning
+    """
+    page = page_mobile_portrait
+    open_members_deck_as(app=provide_app, page=page, user_id=OWNER_ID)
+    page.locator(HPL.BUTTON_MEMBER_INVITE_LINK).tap()
+    expect(page.locator(HPL.MEMBER_INVITE_PANEL)).to_be_visible()
+
+    _go_to_deck_via_navbar(page, HPL.NAVBAR_UTUB_DECK)
+    go_to_members_deck(page=page)
+    expect(page.locator(HPL.MEMBER_INVITE_PANEL)).to_be_hidden()
+    expect(page.locator(HPL.BUTTON_MEMBER_INVITE_LINK)).to_have_attribute(
+        "aria-expanded", "false"
+    )
 
 
 @pytest.mark.parametrize("width", [360, 390])

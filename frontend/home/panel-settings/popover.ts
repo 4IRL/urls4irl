@@ -2,7 +2,7 @@ import { $ } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { KEYS, TABLET_WIDTH } from "../../lib/constants.js";
 import { debug } from "../../lib/debug.js";
-import { AppEvents, on } from "../../lib/event-bus.js";
+import { AppEvents, emit as emitAppEvent, on } from "../../lib/event-bus.js";
 import { hideTooltip } from "../../lib/tooltips.js";
 import { getState, subscribe } from "../../store/app-store.js";
 import type { AppState } from "../../store/app-store.js";
@@ -1219,6 +1219,10 @@ function openPopover({ gear }: { gear: HTMLElement }): void {
   // tap is dropped (before any internal close) and stays dropped.
   if (surface === "sheet" && isPanelSettingsSheetSelfBackPending()) return;
 
+  // Emitted before anything renders, after every early return, so a tap that
+  // opens nothing never closes another surface.
+  emitAppEvent(AppEvents.PANEL_SETTINGS_OPENED, { panel });
+
   if (_current !== null) {
     // Switching popovers is a quiet user close; the sheet's gears are inert while
     // it is open, so reaching this on the sheet is a forced close.
@@ -1695,6 +1699,15 @@ export function initPopover(): void {
   _disposers.push(
     on(AppEvents.CROSS_UTUB_SEARCH_VISIBILITY_CHANGED, ({ active }) => {
       if (active) closeAnyOpen();
+    }),
+  );
+  // The invite panel is the only open Members surface: it closes the Members
+  // gear (the other decks' gears stay). Silent, like closePanelSettings.
+  _disposers.push(
+    on(AppEvents.INVITE_PANEL_OPENED, () => {
+      if (_current?.panel === "members") {
+        closePopover({ kind: "forced", announce: false });
+      }
     }),
   );
   _disposers.push(on(AppEvents.TRASH_OPENED, closeAnyOpen));

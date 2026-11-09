@@ -127,6 +127,8 @@ export function setUTubSelectorSearchEventListener(): void {
               firstVisibleSelector.trigger("focus");
             } else if (isFocusable("memberBtnCreate")) {
               $("#memberBtnCreate").trigger("focus");
+            } else if (isFocusable("memberBtnInviteLink")) {
+              $("#memberBtnInviteLink").trigger("focus");
             } else {
               // #memberBtnCreate is visibility:hidden while the Member deck is
               // collapsed; focusing it would silently drop focus to <body>.
