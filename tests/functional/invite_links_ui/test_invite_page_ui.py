@@ -4,13 +4,14 @@ from urllib.parse import quote, unquote, urlencode, urlsplit
 
 import pytest
 from flask import Flask
-from playwright.sync_api import Page, Response, expect
+from playwright.sync_api import Browser, Page, Response, expect
 
 from backend import db
 from backend.cli.mock_constants import EMAIL_SUFFIX
 from backend.models.user_oauth_identities import UserOAuthIdentity
 from backend.models.users import Users
-from backend.models.utub_members import Utub_Members
+from backend.models.utub_invite_links import Utub_Invite_Links
+from backend.models.utub_members import Member_Role, Utub_Members
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.db_utils import get_utub_this_user_created
 from tests.functional.invite_links_ui.db_utils import (
@@ -22,6 +23,12 @@ from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.locators import InvitePageLocators as IPL
 from tests.functional.locators import SplashPageLocators as SPL
 from tests.functional.playwright_assert_utils import assert_login_with_username
+from tests.functional.playwright_login_utils import (
+    login_user_and_select_utub_by_utubid,
+)
+from tests.functional.playwright_utils import (
+    add_cookie_banner_cookie as add_playwright_cookie_banner_cookie,
+)
 from tests.functional.playwright_utils import (
     current_base_url,
     get_selected_utub_id,
@@ -33,6 +40,7 @@ from tests.functional.splash_ui.playwright_utils import (
     fill_register_fields,
     register_user_ui,
 )
+from tests.functional.urls_ui.playwright_utils import ClipboardMockHelper
 
 pytestmark = pytest.mark.invite_links_ui
 
@@ -530,6 +538,71 @@ def test_password_login_from_auto_opened_modal_lands_on_invite_join(
     _assert_visitor_is_not_member(app=provide_app, utub_id=scenario.utub_id)
 
 
+def test_panel_link_login_handoff_ends_in_utub_with_one_join_click(
+    page: Page,
+    build_page_browser: Browser,
+    create_test_users,
+    create_test_utubs,
+    provide_app: Flask,
+    clipboard_mock: ClipboardMockHelper,
+):
+    """
+    GIVEN a link the owner created and copied in the panel
+    WHEN a logged-out, validated non-member opens it, logs in and clicks Join once
+    THEN the visitor lands in the UTub as a MEMBER and one use is counted, with no
+         membership or use before the click
+    """
+    utub_id = get_utub_this_user_created(provide_app, CREATOR_ID).id
+    login_user_and_select_utub_by_utubid(
+        app=provide_app, page=page, user_id=CREATOR_ID, utub_id=utub_id
+    )
+    clipboard_mock.setup_clipboard_mock()
+    page.locator(HPL.BUTTON_MEMBER_INVITE_LINK).click()
+    page.locator(HPL.INVITE_LINK_CREATE_BTN).click()
+    expect(page.locator(HPL.INVITE_LINK_COPY_BTN)).to_be_visible()
+    page.locator(HPL.INVITE_LINK_COPY_BTN).click()
+    clipboard_mock.wait_for_write_count(count=1)
+    invite_url = clipboard_mock.get_clipboard_content()
+    token = invite_url.rsplit("/", 1)[1]
+    base_url = current_base_url(page=page)
+    assert invite_url == f"{base_url}/invite/{token}"
+
+    visitor_context = build_page_browser.new_context()
+    try:
+        visitor_context.set_default_timeout(10_000)
+        visitor_context.set_default_navigation_timeout(30_000)
+        add_playwright_cookie_banner_cookie(context=visitor_context, base_url=base_url)
+        visitor = visitor_context.new_page()
+        visitor.goto(invite_url)
+        expect(visitor.locator(IPL.LINK_LOG_IN)).to_be_visible()
+        visitor.locator(IPL.LINK_LOG_IN).click()
+        wait_for_modal_ready(page=visitor, modal_selector=SPL.LOGIN_MODAL)
+        input_login_fields(
+            page=visitor,
+            username=UTS.TEST_USERNAME_2,
+            password=UTS.TEST_USERNAME_2 + EMAIL_SUFFIX,
+        )
+        visitor.locator(SPL.LOGIN_BUTTON_SUBMIT).click()
+
+        visitor.wait_for_url(invite_url)
+        expect(visitor.locator(IPL.BUTTON_JOIN)).to_have_text(UTS.INVITE_JOIN_LABEL)
+        _assert_visitor_is_not_member(app=provide_app, utub_id=utub_id)
+        with provide_app.app_context():
+            assert _use_count(token=token) == 0
+
+        visitor.locator(IPL.BUTTON_JOIN).click()
+
+        _assert_joined_as_member(
+            app=provide_app,
+            page=visitor,
+            utub_id=utub_id,
+            user_id=VISITOR_ID,
+            token=token,
+        )
+    finally:
+        visitor_context.close()
+
+
 def test_non_invite_next_opens_no_modal_and_leaves_oauth_hrefs(
     page: Page,
     create_test_users,
@@ -612,6 +685,26 @@ SIGNUP_EMAIL = "invitesignup@urls4irl.app"
 SIGNUP_PASSWORD = "InviteSignup1!"
 
 
+def _use_count(*, token: str) -> int:
+    """Must be called inside an app context."""
+    return Utub_Invite_Links.query.filter_by(token=token).one().use_count
+
+
+def _assert_joined_as_member(
+    *, app: Flask, page: Page, utub_id: int, user_id: int, token: str
+) -> None:
+    """After the single Join click: on the UTub, a MEMBER row, one use counted."""
+    page.wait_for_url(re.compile(r"/home\?UTubID=\d+$"))
+    assert urlsplit(page.url).query == f"UTubID={utub_id}"
+    assert get_selected_utub_id(page=page) == utub_id
+    with app.app_context():
+        membership = Utub_Members.query.filter_by(
+            utub_id=utub_id, user_id=user_id
+        ).one()
+        assert membership.member_role == Member_Role.MEMBER
+        assert _use_count(token=token) == 1
+
+
 def _submit_signup_and_open_validation_link(*, app: Flask, page: Page) -> int:
     """Submit the filled Register form, wait for the confirmation modal, then open
     the new user's validation link. Returns the new user's id."""
@@ -661,6 +754,17 @@ def test_signup_from_invite_lands_on_invite_join_without_membership(
             ).count()
             == 0
         )
+        assert _use_count(token=scenario.token) == 0
+
+    page.locator(IPL.BUTTON_JOIN).click()
+
+    _assert_joined_as_member(
+        app=provide_app,
+        page=page,
+        utub_id=scenario.utub_id,
+        user_id=user_id,
+        token=scenario.token,
+    )
 
 
 def test_signup_from_plain_splash_lands_on_home(
