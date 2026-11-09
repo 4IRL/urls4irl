@@ -41,6 +41,7 @@ from tests.integration.utubs.test_get_utubs_summary_route import (
 from tests.utils_for_test import (
     get_utub_url_id,
     remove_member,
+    set_members_settings,
     trash_utub,
     trash_utub_url,
 )
@@ -525,6 +526,35 @@ def test_summary_statement_count_does_not_grow_with_utub_count(
 
     three_utubs = _statements_during(_fresh_request(app, send))
     assert len(three_utubs) == len(one_utub), (one_utub, three_utubs)
+
+
+@pytest.mark.parametrize("surface", ["get_utubs", "home"])
+def test_summary_statement_count_is_unchanged_by_hidden_list(
+    app: Flask,
+    seed_hide_list,
+    hide_list_client,
+    surface: str,
+):
+    """
+    GIVEN a plain member of a UTub, first with the member list hidden, then shown
+    WHEN the summary is built (GET /utubs, /home) with the session emptied first
+    THEN the same number of SQL statements runs both times
+    """
+    seed = seed_hide_list(True)
+    client = hide_list_client(seed.member_a_id)
+
+    def send() -> Any:
+        with app.test_request_context():
+            if surface == "home":
+                return client.get(url_for(ROUTES.UTUBS.HOME))
+            return _get_summary(client)
+
+    hidden = _statements_during(_fresh_request(app, send))
+    assert hidden, "listener recorded no statements"
+
+    set_members_settings(app, seed.utub_id, {"hide_member_list": False})
+    shown = _statements_during(_fresh_request(app, send))
+    assert len(shown) == len(hidden), (hidden, shown)
 
 
 def _parse_iso(value: str | None) -> datetime | None:

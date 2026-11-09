@@ -21,6 +21,7 @@ import {
 } from "./selectors.js";
 import { removeUTubLocally } from "./remove-local.js";
 import { setRowCountsFromStore } from "./row-counts.js";
+import { isMemberListHiddenForViewer } from "./policy.js";
 import { syncRowNameAndOrder } from "./sort.js";
 import { reorderMemberDeck } from "../members/deck.js";
 import { setBackgroundRefreshActive } from "./background-refresh-flag.js";
@@ -278,7 +279,13 @@ export async function updateUTubOnFindingStaleData({
   });
   syncSidebarUTubName({ utubID: utub.id, utubName: utub.name });
   if (attributionChanged) refreshDateAddedBadges();
-  if (urlCountChanged || memberCountChanged) {
+  // A live flip of the hide setting changes whether the row shows a member
+  // count even when the list length is unchanged.
+  const storedRow = getState().utubs.find((item) => item.id === utub.id);
+  const memberVisibilityChanged =
+    storedRow !== undefined &&
+    (storedRow.memberCount === null) !== isMemberListHiddenForViewer();
+  if (urlCountChanged || memberCountChanged || memberVisibilityChanged) {
     setRowCountsFromStore({ utubID: utub.id });
   }
 

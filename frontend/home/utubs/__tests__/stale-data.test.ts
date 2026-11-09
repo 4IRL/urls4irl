@@ -19,6 +19,7 @@ import type { UtubDetail, UtubSummaryItem } from "../../../types/utub.js";
 import { makeUtubSummaryItem } from "../../../__tests__/helpers/utub-summary.js";
 import { TAG_DISPLAY_PREFERENCE_DEFAULTS } from "../../../__tests__/helpers/tag-display.js";
 import {
+  EMPTY_UTUB_SETTINGS,
   resolveMemberSettings,
   resolveUtubSettings,
 } from "../../../types/settings.js";
@@ -966,10 +967,17 @@ describe("updateUTubOnFindingStaleData", () => {
     });
   });
 
+  function settingsWithHidden({ hidden }: { hidden: boolean }) {
+    return {
+      ...EMPTY_UTUB_SETTINGS,
+      members: { ...EMPTY_UTUB_SETTINGS.members, hide_member_list: hidden },
+    };
+  }
+
   describe("row counts and sorted order", () => {
     function seedCountedRow(): void {
       document.body.innerHTML = `<div id="URLDeckHeader">My UTub</div>
-        <div id="listUTubs"><span class="UTubSelector" utubid="1"><b class="UTubName">My UTub</b><span class="UTubRowCounts"><span class="visually-hidden"></span><span class="UTubRowCountNum">1</span><span class="UTubRowCountNum">1</span></span></span></div>`;
+        <div id="listUTubs"><span class="UTubSelector" utubid="1"><b class="UTubName">My UTub</b><span class="UTubRowCounts"><span class="visually-hidden"></span><span class="UTubRowCount"><span class="UTubRowCountNum">1</span></span><span class="UTubRowCount"><span class="UTubRowCountNum">1</span></span></span></span></div>`;
       seedStore(makeDetail(), {
         utubs: [
           makeUtubSummaryItem({
@@ -1021,6 +1029,85 @@ describe("updateUTubOnFindingStaleData", () => {
       );
 
       expect($(".UTubRowCountNum").eq(1).text()).toBe("2");
+    });
+
+    it("never writes a member number for a plain member of a hidden-list UTub", async () => {
+      const hiddenSettings = settingsWithHidden({ hidden: true });
+      document.body.innerHTML = `<div id="URLDeckHeader">My UTub</div>
+        <div id="listUTubs"><span class="UTubSelector" utubid="1"><b class="UTubName">My UTub</b><span class="UTubRowCounts"><span class="visually-hidden"></span><span class="UTubRowCount"><span class="UTubRowCountNum">1</span></span></span></span></div>`;
+      seedStore(makeDetail({ isCreator: false, settings: hiddenSettings }), {
+        utubs: [
+          makeUtubSummaryItem({
+            id: UTUB_ID,
+            name: "My UTub",
+            memberRole: "member",
+            urlCount: 1,
+            memberCount: null,
+          }),
+        ],
+      });
+
+      await refreshWith(
+        ok(
+          makeDetail({
+            isCreator: false,
+            settings: hiddenSettings,
+            urls: [makeUrl(10), makeUrl(11)],
+          }),
+        ),
+      );
+
+      const row = (
+        storeState.value.utubs as { memberCount: number | null }[]
+      )[0];
+      expect(row.memberCount).toBeNull();
+      expect(
+        $(".UTubRowCountNum")
+          .map((_, el) => $(el).text())
+          .get(),
+      ).toEqual(["2"]);
+    });
+
+    it("re-creates the member segment when the setting flips off with an equal member count", async () => {
+      document.body.innerHTML = `<div id="URLDeckHeader">My UTub</div>
+        <div id="listUTubs"><span class="UTubSelector" utubid="1"><b class="UTubName">My UTub</b><span class="UTubRowCounts"><span class="visually-hidden"></span><span class="UTubRowCount"><span class="UTubRowCountNum">1</span></span></span></span></div>`;
+      seedStore(
+        makeDetail({
+          isCreator: false,
+          settings: settingsWithHidden({ hidden: true }),
+        }),
+        {
+          utubs: [
+            makeUtubSummaryItem({
+              id: UTUB_ID,
+              name: "My UTub",
+              memberRole: "member",
+              urlCount: 1,
+              memberCount: null,
+            }),
+          ],
+        },
+      );
+
+      await refreshWith(
+        ok(
+          makeDetail({
+            name: "Renamed",
+            isCreator: false,
+            settings: settingsWithHidden({ hidden: false }),
+          }),
+        ),
+      );
+
+      const row = (
+        storeState.value.utubs as { memberCount: number | null }[]
+      )[0];
+      expect(row.memberCount).toBe(1);
+      expect(
+        $(".UTubRowCountNum")
+          .map((_, el) => $(el).text())
+          .get(),
+      ).toEqual(["1", "1"]);
     });
 
     it("does not recount when neither count changed (stale row text stays)", async () => {

@@ -37,7 +37,7 @@ import {
   showCreateDescriptionButtonAlways,
 } from "../urls/update-description.js";
 import { isUTubSearchActive } from "./search.js";
-import { makeUTubRowCountsLabel, setRowCountsFromStore } from "./row-counts.js";
+import { makeUTubRowCounts, setRowCountsFromStore } from "./row-counts.js";
 import { fitUTubHeaderAndSubheader } from "./header-fit.js";
 import { makeUTubPinMarker } from "./pin-marker.js";
 import { markUTubOpened, scrollActiveUTubIntoViewIfHidden } from "./sort.js";
@@ -558,7 +558,7 @@ export function createUTubSelector({
   isPinned: boolean;
   index: number;
   urlCount: number;
-  memberCount: number;
+  memberCount: number | null;
 }): JQuery<HTMLElement> {
   const utubSelector = $(document.createElement("span"));
   const utubSelectorText = $(document.createElement("b"));
@@ -596,52 +596,9 @@ export function createUTubSelector({
   return utubSelector;
 }
 
-const LINK_ICON_SVG =
-  `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-link-45deg" viewBox="0 0 16 16">` +
-  `<path d="M4.715 6.542 3.343 7.914a3 3 0 1 0 4.243 4.243l1.828-1.829A3 3 0 0 0 8.586 5.5L8 6.086a1 1 0 0 0-.154.199 2 2 0 0 1 .861 3.337L6.88 11.45a2 2 0 1 1-2.83-2.83l.793-.792a4 4 0 0 1-.128-1.287z"/>` +
-  `<path d="M6.586 4.672A3 3 0 0 0 7.414 9.5l.775-.776a2 2 0 0 1-.896-3.346L9.12 3.55a2 2 0 1 1 2.83 2.83l-.793.792c.112.42.155.855.128 1.287l1.372-1.372a3 3 0 1 0-4.243-4.243z"/>` +
-  `</svg>`;
-
-const PERSON_ICON_SVG =
-  `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-person-fill" viewBox="0 0 16 16">` +
-  `<path d="M3 14s-1 0-1-1 1-4 6-4 6 3 6 4-1 1-1 1zm5-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6"/>` +
-  `</svg>`;
-
-// Markup identical to the Jinja UTubCard.html counts group. Uses its own class
-// (never `memberRole`, which stale-data.ts replaces).
-export function makeUTubRowCounts({
-  urlCount,
-  memberCount,
-}: {
-  urlCount: number;
-  memberCount: number;
-}): JQuery<HTMLElement> {
-  const counts = $(document.createElement("span")).addClass(
-    "UTubRowCounts flex-row align-center",
-  );
-  counts.append(
-    $(document.createElement("span"))
-      .addClass("visually-hidden")
-      .text(makeUTubRowCountsLabel({ urlCount, memberCount })),
-  );
-  for (const { icon, value } of [
-    { icon: LINK_ICON_SVG, value: urlCount },
-    { icon: PERSON_ICON_SVG, value: memberCount },
-  ]) {
-    counts.append(
-      $(document.createElement("span"))
-        .addClass("UTubRowCount")
-        .attr("aria-hidden", "true")
-        .append(icon)
-        .append(
-          $(document.createElement("span"))
-            .addClass("UTubRowCountNum")
-            .text(String(value)),
-        ),
-    );
-  }
-  return counts;
-}
+// Re-exported: the counts markup lives in the row-counts leaf module so it can
+// rebuild the group on a live flip without importing this file.
+export { makeUTubRowCounts };
 
 export function setUTubSelectorEventListeners(utub: HTMLElement): void {
   const utubSelector = $(utub);

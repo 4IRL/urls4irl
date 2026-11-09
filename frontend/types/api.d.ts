@@ -2968,8 +2968,8 @@ export interface components {
       isPinned: boolean;
       /** @description Number of live (non-trashed) URLs in the UTub */
       urlCount: number;
-      /** @description Number of members of the UTub */
-      memberCount: number;
+      /** @description Number of members of the UTub, null when hidden from this viewer */
+      memberCount: number | null;
       /**
        * Format: date-time
        * @description When the UTub was created (UTC, millisecond precision)
