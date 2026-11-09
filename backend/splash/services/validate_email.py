@@ -280,7 +280,8 @@ def validate_email_for_user(token: str) -> WerkzeugResponse:
     """
     Handles validating a user's email based on the JWT provided in the URL.
 
-    On success, logs the user in and redirects them to their pending invite page if one is stored, else their home page.
+    On success, logs the user in and redirects them to their pending invite page
+    if one is stored, else their home page.
 
     Args:
         token (str): The JWT included in the URL
