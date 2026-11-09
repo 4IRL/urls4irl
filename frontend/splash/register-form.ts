@@ -68,6 +68,7 @@ function handleRegister(event: JQuery.TriggeredEvent, $modal: JQuery): void {
     confirmEmail,
     password,
     confirmPassword,
+    inviteNext: null,
   };
   const registerRequest: JQuery.jqXHR = $.ajax({
     url: APP_CONFIG.routes.register,

@@ -2,6 +2,8 @@ from backend import db
 from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.app_logger import safe_add_log, warning_log
 from backend.extensions.metrics.writer import record_event
+from backend.invite_links.lookup import find_invite_by_token
+from backend.invite_links.next_target import parse_invite_next
 from backend.metrics.events import EventName
 from backend.models.email_validations import Email_Validations
 from backend.models.users import Users
@@ -15,7 +17,9 @@ from backend.utils.strings.splash_form_strs import REGISTER_LOGIN_FORM
 from backend.utils.strings.user_strs import MEMBER_SUCCESS, USER_FAILURE
 
 
-def register_new_user(username: str, email: str, password: str) -> FlaskResponse:
+def register_new_user(
+    username: str, email: str, password: str, invite_next: str | None = None
+) -> FlaskResponse:
     """
     Registers a new user while keeping every email-axis outcome opaque.
 
@@ -28,6 +32,8 @@ def register_new_user(username: str, email: str, password: str) -> FlaskResponse
         username: The requested username
         email: The requested email
         password: The plaintext password
+        invite_next: Raw invite path from the splash page; silently ignored
+            unless it parses and resolves to an invite row
 
     Returns:
         FlaskResponse: JSON response indicating success or failure
@@ -35,6 +41,11 @@ def register_new_user(username: str, email: str, password: str) -> FlaskResponse
     email_user: Users | None = Users.query.filter(Users.email == email.lower()).first()
 
     username_user: Users | None = Users.query.filter(Users.username == username).first()
+
+    # Resolved once, identically on every branch, so the work is the same
+    # whatever the outcome. Liveness is deliberately not checked here.
+    target = parse_invite_next(invite_next)
+    invite = find_invite_by_token(target.token) if target is not None else None
 
     # Branch 1: username taken (validated). A hard, accepted enumeration signal.
     # Username precedence: a taken username short-circuits before the email axis
@@ -81,7 +92,13 @@ def register_new_user(username: str, email: str, password: str) -> FlaskResponse
         # admin erasure path clears it while leaving email_validated False. Skip
         # the send in that case — still returning the identical opaque success so
         # the outcome stays indistinguishable rather than raising a 500.
+        # A resolved invite is stored on the existing row (latest wins) and
+        # committed before the guard so it holds even when the send is
+        # rate-limited; an unresolved value never clears a stored reference.
         if email_user.email_confirm is not None:
+            if invite is not None:
+                email_user.email_confirm.pending_invite_id = invite.id
+                db.session.commit()
             _guard_and_send_confirmation_email(
                 email_user, email_user.email_confirm, "registration confirmation"
             )
@@ -92,6 +109,8 @@ def register_new_user(username: str, email: str, password: str) -> FlaskResponse
     # emailed link, keeping genuine and taken paths uniform.
     new_user = _build_new_user(username, email, password)
     new_user.email_confirm = _build_new_email_validation(new_user)
+    if invite is not None:
+        new_user.email_confirm.pending_invite_id = invite.id
 
     db.session.add(new_user)
     db.session.commit()

@@ -179,6 +179,7 @@ def register_user(register_request: RegisterRequest) -> FlaskResponse:
         register_request.username,
         register_request.email,
         register_request.password,
+        register_request.invite_next,
     )
 
 
