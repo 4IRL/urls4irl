@@ -28,6 +28,12 @@ body.utub-locked #URLDeckSubheaderCreateDescription {
     display: none !important;
 }
 
+/* The invite link trigger is hidden (not greyed) in a locked UTub: a second guard
+   behind the TS gate (canManageInviteLink). */
+body.utub-locked #memberBtnInviteLink {
+    display: none !important;
+}
+
 /* Primary action buttons — greyed and disabled while locked. Read-only
    affordances (select UTub, filter/search, expand card, access URL, collapse
    panels, create a NEW UTub) are intentionally left interactive. */

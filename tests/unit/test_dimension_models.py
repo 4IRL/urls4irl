@@ -81,6 +81,11 @@ PER_EVENT_VALID_DIMS: tuple[tuple[EventName, dict], ...] = (
             "device_type": DeviceType.MOBILE,
         },
     ),
+    (EventName.UI_INVITE_PANEL_OPEN, {"device_type": DeviceType.DESKTOP}),
+    (
+        EventName.UI_INVITE_LINK_COPY,
+        {"result": "fallback", "device_type": DeviceType.MOBILE},
+    ),
     (EventName.UI_URL_EDIT_UNDONE, {"device_type": DeviceType.DESKTOP}),
     (EventName.UI_URL_DELETE_UNDONE, {"device_type": DeviceType.DESKTOP}),
     (

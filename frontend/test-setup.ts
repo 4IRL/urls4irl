@@ -491,6 +491,42 @@ const appConfig = {
       "Anyone who has this link will no longer be able to open it. It would otherwise expire on {date}.",
     SHORT_LINK_SHORT_LINKS_DISABLED:
       "Short links are turned off for this UTub.",
+    INVITE_LINK_PANEL_LOADING: "Loading invite link…",
+    INVITE_LINK_PANEL_LOAD_FAILED: "Couldn't load the invite link.",
+    INVITE_LINK_PANEL_TRY_AGAIN: "Try again",
+    INVITE_LINK_PANEL_EMPTY_HINT:
+      "Anyone with the link can join this UTub as a member.",
+    INVITE_LINK_PANEL_EXPIRES_LABEL: "Expires",
+    INVITE_LINK_PANEL_USES_LABEL: "Uses",
+    INVITE_LINK_PANEL_EXPIRES_IN_1: "in 1 day",
+    INVITE_LINK_PANEL_EXPIRES_IN_7: "in 7 days",
+    INVITE_LINK_PANEL_EXPIRES_IN_30: "in 30 days",
+    INVITE_LINK_PANEL_EXPIRES_FROM_NOW_1: "1 day from now",
+    INVITE_LINK_PANEL_EXPIRES_FROM_NOW_7: "7 days from now",
+    INVITE_LINK_PANEL_EXPIRES_FROM_NOW_30: "30 days from now",
+    INVITE_LINK_PANEL_USES_UNLIMITED: "Unlimited",
+    INVITE_LINK_PANEL_USES_ONE: "1 use",
+    INVITE_LINK_PANEL_USES_MANY: "{count} uses",
+    INVITE_LINK_PANEL_CREATE_LINK: "Create link",
+    INVITE_LINK_PANEL_COPY: "Copy",
+    INVITE_LINK_PANEL_LINK_LABEL: "Invite link URL",
+    INVITE_LINK_PANEL_NEW_LINK: "New link",
+    INVITE_LINK_PANEL_REVOKE: "Revoke",
+    INVITE_LINK_PANEL_META_CREATED_BY: "Created by {user}",
+    INVITE_LINK_PANEL_META_EXPIRES: "expires {date}",
+    INVITE_LINK_PANEL_META_JOINED: "{count} joined",
+    INVITE_LINK_PANEL_USES_FLOOR_HINT_ONE:
+      "1 person has joined, so the limit can't go below 1.",
+    INVITE_LINK_PANEL_USES_FLOOR_HINT:
+      "{count} people have joined, so the limit can't go below {count}.",
+    INVITE_LINK_PANEL_DEAD_EXPIRED: "This link expired on {date}.",
+    INVITE_LINK_PANEL_DEAD_USED_UP: "This link reached its limit of {uses}.",
+    INVITE_LINK_PANEL_DEAD_CREATOR_DEMOTED:
+      "This link stopped working because the person who made it is no longer an owner or co-owner.",
+    INVITE_LINK_PANEL_FORCED_CLOSE:
+      "The invite link panel closed because you can no longer manage this UTub's invite link.",
+    INVITE_LINK_PANEL_MANAGE_LOST:
+      "You can no longer manage this UTub's invite link.",
     TRASH_LOCKED: "That UTub is locked, so this item can't be changed.",
     TRASH_ORIGIN_UNAVAILABLE:
       "That UTub is no longer available. Choose a UTub to restore this URL into.",

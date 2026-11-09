@@ -773,3 +773,147 @@
 #MemberDeckNotice.hidden {
     display: none;
 }
+
+/* ==========================================================================
+   Invite link panel (#MemberInvitePanel, opened by #memberBtnInviteLink).
+   Rendered by members/invite-link-panel.ts. The member list stays visible
+   while it is open.
+   ========================================================================== */
+
+#memberBtnInviteLink {
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+/* Active outline on the trigger while the panel is open. */
+#memberBtnInviteLink[aria-expanded="true"] {
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: 2px;
+    border-radius: 6px;
+}
+
+#memberBtnInviteLink:focus-visible {
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: 2px;
+}
+
+#MemberInvitePanel {
+    box-sizing: border-box;
+    margin: 5px 0 8px;
+    padding: 10px 12px;
+    color: var(--textPrimary);
+    background-color: var(--cardBackgroundColor);
+    border: 1px solid var(--borderColor);
+    border-radius: 8px;
+}
+
+#MemberInvitePanel.hidden {
+    display: none;
+}
+
+#MemberInvitePanelHeading {
+    margin: 0 0 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--navbarText);
+}
+
+#MemberInvitePanelHeading:focus-visible,
+#MemberInvitePanel :is(button, select, input):focus-visible {
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: 2px;
+}
+
+.invitePanelHint,
+.invitePanelMeta {
+    margin: 0 0 8px;
+    font-size: 0.875rem;
+    color: var(--cardURLTextColor);
+    overflow-wrap: anywhere;
+}
+
+.invitePanelField {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 8px;
+}
+
+.invitePanelField > label {
+    font-size: 0.8125rem;
+    color: var(--cardURLTextColor);
+}
+
+.invitePanelSelect {
+    background-image:
+        linear-gradient(45deg, transparent 50%, var(--cardURLTextColor) 50%),
+        linear-gradient(135deg, var(--cardURLTextColor) 50%, transparent 50%);
+    background-position:
+        calc(100% - 18px) 50%,
+        calc(100% - 13px) 50%;
+    background-size: 5px 5px;
+    background-repeat: no-repeat;
+}
+
+.invitePanelLinkRow {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.invitePanelLinkInput {
+    flex: 1 1 auto;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 6px 10px;
+    color: var(--textPrimary);
+    background: var(--cardBackgroundColor);
+    border: 1px solid var(--borderColor);
+    border-radius: 8px;
+    font-size: 0.875rem;
+}
+
+.invitePanelFooter {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.invitePanelBtn {
+    box-sizing: border-box;
+    padding: 6px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--borderColor);
+    background: transparent;
+    color: var(--textPrimary);
+    font-size: 0.875rem;
+    cursor: pointer;
+}
+
+.invitePanelBtn--primary {
+    background: var(--deckSelectionGreen);
+    border-color: var(--deckSelectionGreen);
+    color: var(--panelBackgroundColor);
+}
+
+.invitePanelBtn--danger {
+    border-color: var(--removeMemberColor);
+    color: var(--textPrimary);
+    background: var(--removeMemberColorLighter);
+}
+
+@media (any-pointer: coarse) {
+    #MemberInvitePanel .invitePanelBtn,
+    #MemberInvitePanel .invitePanelSelect,
+    #MemberInvitePanel .invitePanelLinkInput {
+        min-height: 2.75rem;
+    }
+}
+
+@media (max-width: 991.98px) {
+    #MemberInvitePanel .invitePanelLinkInput,
+    #MemberInvitePanel .invitePanelSelect {
+        font-size: 16px;
+    }
+}

@@ -18,6 +18,10 @@ import { closeMemberRowMenuInRow } from "./row-menu.js";
 import { canAddMembers, viewerRoleFor } from "../utubs/policy.js";
 import { withMemberControlFocusFallback } from "./focus-fallback.js";
 import { clearMemberDeckNotice } from "./notice.js";
+import {
+  resetInviteLinkPanel,
+  syncInviteLinkTrigger,
+} from "./invite-link-panel.js";
 import { seedMemberDeckPolicySnapshot } from "./policy-attrs.js";
 import { setupShowCreateMemberFormEventListeners } from "./create.js";
 import { createLeaveUTubAsMemberIcon } from "./delete.js";
@@ -165,6 +169,8 @@ export function resetMemberDeck(): void {
   // staged chips or in-flight combobox state; this also clears the co-member
   // slice + loaded flag, so no separate setState clear is needed here.
   hideAndResetMemberCombobox();
+  // Close and clear the invite link panel (silently), dropping in-flight loads.
+  resetInviteLinkPanel();
 }
 
 // Update member deck on asynchronous update, either due to stale data or refresh
@@ -333,6 +339,7 @@ export function setMemberDeckWhenNoUTubSelected(): void {
   clearMemberDeckNotice();
 
   $("#memberBtnCreate").hideClass();
+  syncInviteLinkTrigger();
   // The leave button lives in the UTub deck now; it is hidden via
   // setUTubDeckWhenNoUTubSelected() on the no-UTub path.
 
@@ -361,6 +368,7 @@ export function setMemberDeckForUTub(): void {
   } else {
     $("#memberBtnCreate").hideClass();
   }
+  syncInviteLinkTrigger();
 
   // Inline member total next to the deck title (replaces the subheader band)
   $("#MemberDeckCount").text("(" + numOfMembers + ")");

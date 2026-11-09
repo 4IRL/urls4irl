@@ -159,6 +159,9 @@ vi.mock("../home/urls/deck-view-attrs.js", () => ({
 vi.mock("../home/members/policy-attrs.js", () => ({
   initMemberDeckPolicyAttrs: track("initMemberDeckPolicyAttrs"),
 }));
+vi.mock("../home/members/invite-link-panel.js", () => ({
+  initInviteLinkPanel: track("initInviteLinkPanel"),
+}));
 vi.mock("../home/utubs/refresh-on-focus.js", () => ({
   initUTubRefreshOnFocus: track("initUTubRefreshOnFocus"),
 }));
@@ -205,6 +208,12 @@ describe("main.ts init order", () => {
   it("starts the member deck policy attributes right after the URL deck's", () => {
     expect(callOrder.indexOf("initMemberDeckPolicyAttrs")).toBe(
       callOrder.indexOf("initUrlDeckPolicyAttrs") + 1,
+    );
+  });
+
+  it("starts the invite link panel right after the member deck policy attributes", () => {
+    expect(callOrder.indexOf("initInviteLinkPanel")).toBe(
+      callOrder.indexOf("initMemberDeckPolicyAttrs") + 1,
     );
   });
 

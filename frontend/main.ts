@@ -56,6 +56,7 @@ import { registerMembersListSettingsSection } from "./home/members/list-settings
 import { registerMembersPermissionsSettingsSection } from "./home/members/permissions-settings-section.js";
 import { initUrlDeckPolicyAttrs } from "./home/urls/deck-view-attrs.js";
 import { initMemberDeckPolicyAttrs } from "./home/members/policy-attrs.js";
+import { initInviteLinkPanel } from "./home/members/invite-link-panel.js";
 import { loadInitialTrashCount, renderTrashCount } from "./home/trash/count.js";
 import { initTrashTabs } from "./home/trash/tabs.js";
 import { initTrashPanel } from "./home/trash/panel.js";
@@ -100,6 +101,7 @@ $(document).ready(() => {
   initURLDeck();
   initUrlDeckPolicyAttrs();
   initMemberDeckPolicyAttrs();
+  initInviteLinkPanel();
   initTagDragDrop();
   initTagMatchMode();
   initTagDisplaySubscriptions();

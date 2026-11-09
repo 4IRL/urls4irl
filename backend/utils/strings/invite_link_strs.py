@@ -50,6 +50,50 @@ class INVITE_LINK_PAGE:
     TITLE_RATE_LIMIT = "Too many attempts - URLS4IRL"
 
 
+# Copy the Members-deck invite link panel renders from TypeScript. Bridged to
+# APP_CONFIG.strings with an INVITE_LINK_PANEL_ key prefix (see STRINGS /
+# generate_strings_js()). "{name}" placeholders are filled client-side.
+class INVITE_LINK_PANEL:
+    HEADING = "Invite link"
+    LOADING = "Loading invite link…"
+    LOAD_FAILED = "Couldn't load the invite link."
+    TRY_AGAIN = "Try again"
+    EMPTY_HINT = "Anyone with the link can join this UTub as a member."
+    EXPIRES_LABEL = "Expires"
+    USES_LABEL = "Uses"
+    EXPIRES_IN_1 = "in 1 day"
+    EXPIRES_IN_7 = "in 7 days"
+    EXPIRES_IN_30 = "in 30 days"
+    EXPIRES_FROM_NOW_1 = "1 day from now"
+    EXPIRES_FROM_NOW_7 = "7 days from now"
+    EXPIRES_FROM_NOW_30 = "30 days from now"
+    USES_UNLIMITED = "Unlimited"
+    USES_ONE = "1 use"
+    USES_MANY = "{count} uses"
+    CREATE_LINK = "Create link"
+    COPY = "Copy"
+    LINK_LABEL = "Invite link URL"
+    NEW_LINK = "New link"
+    REVOKE = "Revoke"
+    META_CREATED_BY = "Created by {user}"
+    META_EXPIRES = "expires {date}"
+    META_JOINED = "{count} joined"
+    USES_FLOOR_HINT_ONE = "1 person has joined, so the limit can't go below 1."
+    USES_FLOOR_HINT = "{count} people have joined, so the limit can't go below {count}."
+    DEAD_EXPIRED = "This link expired on {date}."
+    DEAD_USED_UP = "This link reached its limit of {uses}."
+    DEAD_CREATOR_DEMOTED = (
+        "This link stopped working because the person who made it is no longer "
+        "an owner or co-owner."
+    )
+    FORCED_CLOSE = (
+        "The invite link panel closed because you can no longer manage this "
+        "UTub's invite link."
+    )
+    MANAGE_LOST = "You can no longer manage this UTub's invite link."
+    ERROR_GENERIC = "Something went wrong. Try again."
+
+
 # Strings for invite link failure
 INVITE_LINK_NOT_FOUND_MESSAGE = "This UTub has no active invite link."
 INVALID_INVITE_LINK_INPUT = "Unable to process the invite link settings."

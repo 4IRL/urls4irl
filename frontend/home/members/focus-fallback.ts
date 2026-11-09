@@ -6,6 +6,8 @@ import { $ } from "../../lib/globals.js";
 const HEADER_SELECTOR = "#MemberDeckHeaderAndCaret";
 const ADD_BUTTON_SELECTOR = "#memberBtnCreate";
 const ADD_WRAP_SELECTOR = "#createMemberWrap";
+const INVITE_TRIGGER_SELECTOR = "#memberBtnInviteLink";
+const INVITE_PANEL_SELECTOR = "#MemberInvitePanel";
 // The co-owner kebab is the only kebab a policy flip hides.
 // Owner kebabs are covered by `coverList` on a rebuild write.
 const KEBAB_SELECTOR = ".memberRowKebab--coOwner";
@@ -33,7 +35,12 @@ function classifyFocus({
   active: HTMLElement;
   coverList: boolean;
 }): FocusKind | null {
-  if (active.matches(ADD_BUTTON_SELECTOR) || active.closest(ADD_WRAP_SELECTOR))
+  if (
+    active.matches(ADD_BUTTON_SELECTOR) ||
+    active.closest(ADD_WRAP_SELECTOR) ||
+    active.matches(INVITE_TRIGGER_SELECTOR) ||
+    active.closest(INVITE_PANEL_SELECTOR)
+  )
     return "add";
   // The kebab itself, or an item of its open menu (a sibling in the same cluster).
   if (
