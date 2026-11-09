@@ -1,3 +1,4 @@
+import json
 import re
 from datetime import datetime
 from logging import Handler, Logger, LogRecord, getLogger
@@ -301,6 +302,133 @@ def set_members_settings(app: Flask, utub_id: int, members: dict[str, bool]) -> 
         db.session.commit()
 
 
+class HideListSeed(NamedTuple):
+    """Ids of the shared 5-user hide-list UTub shape (see ``seed_hide_list_utub``)."""
+
+    utub_id: int
+    owner_id: int
+    co_owner_id: int
+    member_a_id: int
+    member_b_id: int
+    former_member_id: int
+    usernames: dict[int, str]
+    utub_url_ids: dict[int, int]  # adder user id -> Utub_Urls id
+
+    @property
+    def current_member_ids(self) -> set[int]:
+        return {self.owner_id, self.co_owner_id, self.member_a_id, self.member_b_id}
+
+
+def seed_hide_list_utub(app: Flask, hide_member_list: bool | None) -> HideListSeed:
+    """Seed one UTub with an owner, a co-owner, two plain members and a former member.
+
+    Every one of the five users added one URL; the former member's membership row is
+    then deleted, so their URL is orphaned. ``hide_member_list`` is stored through
+    ``set_members_settings`` (``None`` leaves the UTub without any stored settings).
+
+    Args:
+        app (Flask): The Flask client for providing an app context
+        hide_member_list (bool | None): The stored ``hide_member_list`` value, or None
+
+    Returns:
+        HideListSeed: The UTub id, the five user ids, usernames and URL ids
+    """
+    labels = ("owner", "coowner", "membera", "memberb", "former")
+    with app.app_context():
+        users: list[Users] = []
+        for label in labels:
+            user = Users(
+                username=f"hide_{label}",
+                email=f"hide_{label}@urls4irl.app",
+                plaintext_password=f"hide_{label}@urls4irl.app",
+            )
+            user.email_validated = True
+            db.session.add(user)
+            users.append(user)
+        db.session.commit()
+
+        owner, co_owner, member_a, member_b, former = users
+        utub = Utubs(name="Hide list UTub", utub_creator=owner.id, utub_description="")
+        roles = (
+            Member_Role.CREATOR,
+            Member_Role.CO_CREATOR,
+            Member_Role.MEMBER,
+            Member_Role.MEMBER,
+            Member_Role.MEMBER,
+        )
+        for user, role in zip(users, roles):
+            membership = Utub_Members(member_role=role)
+            membership.to_user = user
+            utub.members.append(membership)
+        db.session.add(utub)
+        db.session.commit()
+
+        utub_url_ids: dict[int, int] = {}
+        for user in users:
+            url = Urls(
+                normalized_url=f"https://hide-list-{user.id}.example.com",
+                current_user_id=user.id,
+            )
+            db.session.add(url)
+            db.session.commit()
+            utub_url = Utub_Urls()
+            utub_url.user_id = user.id
+            utub_url.url_title = f"Hide list URL {user.id}"
+            utub_url.url_id = url.id
+            utub_url.utub_id = utub.id
+            db.session.add(utub_url)
+            db.session.commit()
+            utub_url_ids[user.id] = utub_url.id
+
+        db.session.delete(Utub_Members.query.get((utub.id, former.id)))
+        db.session.commit()
+
+        seed = HideListSeed(
+            utub_id=utub.id,
+            owner_id=owner.id,
+            co_owner_id=co_owner.id,
+            member_a_id=member_a.id,
+            member_b_id=member_b.id,
+            former_member_id=former.id,
+            usernames={user.id: user.username for user in users},
+            utub_url_ids=utub_url_ids,
+        )
+
+    if hide_member_list is not None:
+        set_members_settings(app, seed.utub_id, {"hide_member_list": hide_member_list})
+    return seed
+
+
+def assert_hidden_list_detail(
+    payload: dict[str, Any], seed: HideListSeed, viewer_id: int
+) -> None:
+    """Assert a UTub detail payload honors the hide-list rule for ``viewer_id``.
+
+    A plain-member viewer sees exactly the owner, the co-owner and themself, hidden
+    current members' URLs carry a null adder, and no hidden username appears anywhere
+    in the serialized body. Former-member URLs keep their id. Owner and co-owner see
+    every current member and real adder ids.
+    """
+    members = {member["id"] for member in payload["members"]}
+    adders = {url["utubUrlID"]: url["addedByUserID"] for url in payload["urls"]}
+    plain_viewer = viewer_id in {seed.member_a_id, seed.member_b_id}
+    if plain_viewer:
+        visible = {seed.owner_id, seed.co_owner_id, viewer_id}
+        hidden = seed.current_member_ids - visible
+        assert members == visible
+        body = json.dumps(payload)
+        for hidden_id in hidden:
+            assert seed.usernames[hidden_id] not in body
+            assert adders[seed.utub_url_ids[hidden_id]] is None
+        for visible_id in visible:
+            assert adders[seed.utub_url_ids[visible_id]] == visible_id
+    else:
+        assert members == seed.current_member_ids
+        for user_id in seed.current_member_ids:
+            assert adders[seed.utub_url_ids[user_id]] == user_id
+    assert adders[seed.utub_url_ids[seed.former_member_id]] == seed.former_member_id
+
+
 def add_short_link(
     app: Flask,
     utub_url_id: int,
@@ -452,7 +580,11 @@ def url_schema_for_viewer(
         ).all()
     )
     return UtubUrlSchema.from_orm_url(
-        utub_url, viewer_id, viewer_is_manager, member_ids
+        utub_url,
+        viewer_id,
+        viewer_is_manager,
+        member_ids,
+        visible_member_ids=None,
     )
 
 

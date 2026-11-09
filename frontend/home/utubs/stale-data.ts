@@ -25,6 +25,7 @@ import { syncRowNameAndOrder } from "./sort.js";
 import { reorderMemberDeck } from "../members/deck.js";
 import { setBackgroundRefreshActive } from "./background-refresh-flag.js";
 import { showURLDeckBannerError } from "../urls/deck.js";
+import { refreshDateAddedBadges } from "../urls/cards/adder-badge.js";
 import {
   isMobile,
   getCurrentMobilePanel,
@@ -227,6 +228,16 @@ export async function updateUTubOnFindingStaleData({
   const urlCountChanged = utubURLs.length !== currentState.urls.length;
   const memberCountChanged = utubMembers.length !== currentState.members.length;
   const tagCountChanged = utubTags.length !== currentState.tags.length;
+  // Computed from the pre-update store: the per-card updater never re-renders the
+  // stacked adder badge, so an attribution-only change needs an explicit refresh.
+  const storedAdderByUrlID = new Map(
+    currentState.urls.map((url) => [url.utubUrlID, url.addedByUserID]),
+  );
+  const attributionChanged = utubURLs.some(
+    (url) =>
+      storedAdderByUrlID.has(url.utubUrlID) &&
+      storedAdderByUrlID.get(url.utubUrlID) !== url.addedByUserID,
+  );
 
   updateUTubNameAndDescription({
     utubID: utub.id,
@@ -266,6 +277,7 @@ export async function updateUTubOnFindingStaleData({
     activeUTubDescription: utub.description,
   });
   syncSidebarUTubName({ utubID: utub.id, utubName: utub.name });
+  if (attributionChanged) refreshDateAddedBadges();
   if (urlCountChanged || memberCountChanged) {
     setRowCountsFromStore({ utubID: utub.id });
   }
@@ -329,6 +341,7 @@ function projectUTubContent({
       urlString: url.urlString,
       urlTitle: url.urlTitle,
       canDelete: url.canDelete,
+      addedByUserID: url.addedByUserID,
       shortLinkExpiresAt: url.shortLinkExpiresAt,
       canRevokeShortLink: url.canRevokeShortLink,
       utubUrlTagIDs: [...url.utubUrlTagIDs].sort(

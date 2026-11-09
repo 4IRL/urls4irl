@@ -13760,8 +13760,15 @@
             "type": "string"
           },
           "addedByUserID": {
-            "description": "User ID of the member who added this URL to the UTub (resolved to a username on the frontend via the UTub member list)",
-            "type": "integer"
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "User ID of the member who added this URL to the UTub (resolved to a username on the frontend via the UTub member list); null means the adder is hidden from this viewer"
           },
           "shortLinkExpiresAt": {
             "anyOf": [

@@ -43,6 +43,7 @@ def test_utub_url_schema_dump():
         current_user_id=2,
         viewer_is_manager=True,
         member_ids=frozenset({2}),
+        visible_member_ids=None,
     )
     dumped = schema.model_dump(by_alias=True)
     assert dumped[MODELS.UTUB_URL_ID] == 10
@@ -84,6 +85,7 @@ def test_utub_url_schema_active_short_link_serializes_expiry_iso():
         current_user_id=99,
         viewer_is_manager=True,
         member_ids=frozenset({2, 3, 99}),
+        visible_member_ids=None,
     )
     dumped = schema.model_dump(by_alias=True)
     assert dumped[MODELS.SHORT_LINK_EXPIRES_AT] == expires_at.isoformat()
@@ -104,6 +106,7 @@ def test_utub_url_schema_expired_short_link_is_reported_as_none():
         current_user_id=99,
         viewer_is_manager=True,
         member_ids=frozenset({2, 99}),
+        visible_member_ids=None,
     )
     dumped = schema.model_dump(by_alias=True)
     assert dumped[MODELS.SHORT_LINK_EXPIRES_AT] is None
@@ -133,6 +136,7 @@ def test_utub_url_schema_can_revoke_short_link_matrix(
         current_user_id=viewer_id,
         viewer_is_manager=viewer_is_manager,
         member_ids=frozenset(member_ids),
+        visible_member_ids=None,
     )
     assert schema.can_revoke_short_link is expected
 
@@ -145,6 +149,7 @@ def test_utub_url_schema_can_delete_false():
         current_user_id=99,
         viewer_is_manager=False,
         member_ids=frozenset({2, 99}),
+        visible_member_ids=None,
     )
     assert schema.can_delete is False
 
@@ -160,8 +165,58 @@ def test_utub_url_schema_can_delete_true_for_orphaned_url_plain_viewer():
         current_user_id=99,
         viewer_is_manager=False,
         member_ids=frozenset({99}),
+        visible_member_ids=None,
     )
     assert schema.can_delete is True
+    assert schema.added_by_user_id == 2
+
+
+def test_utub_url_schema_masks_current_member_adder_outside_visible_set():
+    """
+    GIVEN a URL whose adder (user 2) is a current member outside the visible set
+    WHEN a plain member (user 99) serializes it
+    THEN addedByUserID is null and canDelete still reads the full member set
+    """
+    schema = UtubUrlSchema.from_orm_url(
+        _MockUtubUrl(),
+        current_user_id=99,
+        viewer_is_manager=False,
+        member_ids=frozenset({2, 99}),
+        visible_member_ids={1, 99},
+    )
+    assert schema.added_by_user_id is None
+    assert schema.can_delete is False
+
+
+def test_utub_url_schema_keeps_adder_in_visible_set():
+    """
+    GIVEN a URL whose adder (user 2) is inside the visible set
+    WHEN it is serialized
+    THEN addedByUserID is the adder's id
+    """
+    schema = UtubUrlSchema.from_orm_url(
+        _MockUtubUrl(),
+        current_user_id=99,
+        viewer_is_manager=False,
+        member_ids=frozenset({2, 99}),
+        visible_member_ids={1, 2, 99},
+    )
+    assert schema.added_by_user_id == 2
+
+
+def test_utub_url_schema_keeps_former_member_adder_with_visible_set():
+    """
+    GIVEN a URL whose adder (user 2) is no longer a member
+    WHEN it is serialized with a non-None visible set
+    THEN addedByUserID keeps the former member's id
+    """
+    schema = UtubUrlSchema.from_orm_url(
+        _MockUtubUrl(),
+        current_user_id=99,
+        viewer_is_manager=False,
+        member_ids=frozenset({99}),
+        visible_member_ids={99},
+    )
     assert schema.added_by_user_id == 2
 
 
@@ -176,6 +231,7 @@ def test_utub_url_schema_can_delete_true_for_manager_with_member_adder():
         current_user_id=99,
         viewer_is_manager=True,
         member_ids=frozenset({2, 99}),
+        visible_member_ids=None,
     )
     assert schema.can_delete is True
 

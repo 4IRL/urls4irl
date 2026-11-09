@@ -119,6 +119,9 @@ URL_BULK_N_HIDDEN = "{n} hidden by filter"
 # ("Added by a former member · <date>"); the departed user's name is never shown.
 URL_ADDED_BY = "Added by"
 URL_ADDED_BY_FORMER_MEMBER = "a former member"
+# A current member the viewer may not see (UTub's member list is hidden from them):
+# the wire carries addedByUserID null and the badge reads "Added by a member".
+URL_ADDED_BY_A_MEMBER = "a member"
 URL_ADDED_ON = "on"
 URL_DATE_ADDED_LABEL = "Added:"
 URL_DATE_ADDED_ARIA = "Added"

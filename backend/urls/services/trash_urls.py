@@ -7,6 +7,10 @@ from backend import db
 from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.app_logger import safe_add_many_logs, warning_log
 from backend.extensions.metrics.writer import record_event
+from backend.members.member_visibility import (
+    viewer_is_manager_from_role,
+    visible_member_ids,
+)
 from backend.metrics.events import EventName
 from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utub_tags import Utub_Tags
@@ -49,6 +53,28 @@ class LockedTrashedUrl(NamedTuple):
     utub_url: Utub_Urls
     origin_utub: Utubs
     membership: Utub_Members
+
+
+def _visible_adder_ids(
+    *, utub: Utubs, actor_role: Member_Role, current_user_id: int
+) -> set[int] | None:
+    """The member ids the actor may see in ``utub`` (``None`` = everyone).
+
+    Defense in depth: no reachable actor gets a masked value today (a plain-member
+    actor restores only their own or orphaned rows, and a manager is never hidden),
+    but the restore responses still go through the shared hide-list rule.
+    """
+    return visible_member_ids(
+        settings=utub.settings,
+        viewer_is_manager=viewer_is_manager_from_role(actor_role.value),
+        utub_creator_id=utub.utub_creator,
+        viewer_id=current_user_id,
+        co_owner_ids=[
+            member.user_id
+            for member in utub.members
+            if member.member_role == Member_Role.CO_CREATOR
+        ],
+    )
 
 
 def _lock_actionable_trashed_url(
@@ -268,6 +294,11 @@ def _restore_url_into_destination(
                 current_user_id,
                 viewer_is_manager,
                 frozenset(member.user_id for member in dest_utub.members),
+                visible_member_ids=_visible_adder_ids(
+                    utub=dest_utub,
+                    actor_role=dest_membership.member_role,
+                    current_user_id=current_user_id,
+                ),
             ),
             restored_to_destination=True,
             lost_tag_count=lost_tag_count,
@@ -389,6 +420,11 @@ def restore_trashed_url(
                 current_user_id,
                 viewer_is_manager,
                 frozenset(member.user_id for member in origin_utub.members),
+                visible_member_ids=_visible_adder_ids(
+                    utub=origin_utub,
+                    actor_role=membership.member_role,
+                    current_user_id=current_user_id,
+                ),
             ),
             applied_tags=[
                 UtubTagSchema(
@@ -416,6 +452,7 @@ def _build_urls_restored_response(
     current_user_id: int,
     viewer_is_manager: bool,
     member_ids: frozenset[int],
+    visible_ids: set[int] | None,
 ) -> FlaskResponse:
     """Build the 200 response for a bulk in-place restore (skipped may be non-empty)."""
     surviving_tag_ids: set[int] = {
@@ -438,7 +475,11 @@ def _build_urls_restored_response(
             utub_id=utub_id,
             restored=[
                 UtubUrlSchema.from_orm_url(
-                    row, current_user_id, viewer_is_manager, member_ids
+                    row,
+                    current_user_id,
+                    viewer_is_manager,
+                    member_ids,
+                    visible_member_ids=visible_ids,
                 )
                 for row in restored_rows
             ],
@@ -515,6 +556,7 @@ def restore_trashed_urls_in_place(
             current_user_id=current_user_id,
             viewer_is_manager=False,
             member_ids=frozenset(),
+            visible_ids=None,  # no restored rows, nothing to mask
         )
 
     _first_url, origin_utub, membership = locked_rows[0]
@@ -550,6 +592,7 @@ def restore_trashed_urls_in_place(
             current_user_id=current_user_id,
             viewer_is_manager=viewer_is_manager,
             member_ids=frozenset(),
+            visible_ids=None,  # no restored rows, nothing to mask
         )
 
     restored_rows: list[Utub_Urls] = [row[0] for row in locked_rows]
@@ -609,6 +652,11 @@ def restore_trashed_urls_in_place(
         current_user_id=current_user_id,
         viewer_is_manager=viewer_is_manager,
         member_ids=frozenset(member.user_id for member in origin_utub.members),
+        visible_ids=_visible_adder_ids(
+            utub=origin_utub,
+            actor_role=membership.member_role,
+            current_user_id=current_user_id,
+        ),
     )
 
 

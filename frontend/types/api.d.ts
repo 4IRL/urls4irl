@@ -3171,8 +3171,8 @@ export interface components {
        * @description Timestamp the URL was added to the UTub
        */
       addedAt: string;
-      /** @description User ID of the member who added this URL to the UTub (resolved to a username on the frontend via the UTub member list) */
-      addedByUserID: number;
+      /** @description User ID of the member who added this URL to the UTub (resolved to a username on the frontend via the UTub member list); null means the adder is hidden from this viewer */
+      addedByUserID: number | null;
       /** @description Expiry of the URL's active share short link; null when there is no link or it has expired */
       shortLinkExpiresAt: string | null;
       /** @description Whether the current user can revoke the URL's active share short link; false when there is no active link */

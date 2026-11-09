@@ -117,6 +117,55 @@ describe("refreshStackedAdderBadges", () => {
   });
 });
 
+describe("createURLDateAddedBadge attribution forms", () => {
+  const visibleMember: MemberItem = {
+    id: ADDER_ID,
+    username: "alice",
+    memberRole: "member",
+    joinedAt: null,
+  };
+
+  beforeEach(() => {
+    setState({ urls: [], members: [visibleMember] });
+  });
+
+  afterEach(() => {
+    setState({ urls: [], members: [] });
+  });
+
+  function build(addedByUserID: number | null) {
+    return createURLDateAddedBadge({
+      addedAt: "2024-03-09T12:00:00+00:00",
+      addedByUserID,
+      placementClass: "urlDateAddedBadgeStacked",
+      withAdder: true,
+    });
+  }
+
+  it("renders 'Added by a member' for a null (hidden) adder, visible and aria", () => {
+    const badge = build(null);
+    const hidden = APP_CONFIG.strings.URL_ADDED_BY_A_MEMBER;
+    expect(badge.text()).toBe(
+      `${APP_CONFIG.strings.URL_ADDED_BY} ${hidden} · 2024-03-09`,
+    );
+    expect(badge.attr("aria-label")).toBe(
+      `${APP_CONFIG.strings.URL_ADDED_BY} ${hidden} ${APP_CONFIG.strings.URL_ADDED_ON} 2024-03-09`,
+    );
+  });
+
+  it("renders the username for a visible adder", () => {
+    expect(build(ADDER_ID).text()).toBe(
+      `${APP_CONFIG.strings.URL_ADDED_BY} alice · 2024-03-09`,
+    );
+  });
+
+  it("renders 'a former member' for a non-null id absent from the members", () => {
+    expect(build(999).text()).toBe(
+      `${APP_CONFIG.strings.URL_ADDED_BY} ${APP_CONFIG.strings.URL_ADDED_BY_FORMER_MEMBER} · 2024-03-09`,
+    );
+  });
+});
+
 describe("hide date added", () => {
   const HIDE_DATE_RULE =
     '#URLDeck[data-hide-date="true"] .urlDateAddedBadgeInline { display: none !important; }';

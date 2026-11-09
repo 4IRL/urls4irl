@@ -9,6 +9,7 @@ import type { RefreshResult } from "../selectors.js";
 import { removeUTubLocally } from "../remove-local.js";
 import { reorderMemberDeck } from "../../members/deck.js";
 import { showURLDeckBannerError } from "../../urls/deck.js";
+import { refreshDateAddedBadges } from "../../urls/cards/adder-badge.js";
 import { showCreateDescriptionButtonAlways } from "../../urls/update-description.js";
 import { setState } from "../../../store/app-store.js";
 import { emit, AppEvents } from "../../../lib/event-bus.js";
@@ -91,6 +92,10 @@ vi.mock("../../urls/update-description.js", () => ({
 }));
 
 vi.mock("../header-fit.js", () => ({ fitUTubHeaderAndSubheader: vi.fn() }));
+
+vi.mock("../../urls/cards/adder-badge.js", () => ({
+  refreshDateAddedBadges: vi.fn(),
+}));
 
 const storeState = vi.hoisted(() => ({
   value: {} as Record<string, unknown>,
@@ -1374,6 +1379,38 @@ describe("updateUTubOnFindingStaleData", () => {
       expect(emitsOf(AppEvents.URL_DECK_CHANGED)).toHaveLength(0);
       expect(emitsOf(AppEvents.MEMBER_DECK_CHANGED)).toHaveLength(0);
       expect(emitsOf(AppEvents.TAG_DECK_CHANGED)).toHaveLength(0);
+    });
+
+    it("detects an attribution-only change and re-renders the adder badges after setState", async () => {
+      seedStore(makeDetail({ urls: [makeUrl(10, { addedByUserID: null })] }));
+
+      await refreshWith(
+        ok(makeDetail({ urls: [makeUrl(10, { addedByUserID: 1001 })] })),
+      );
+
+      expect(setState).toHaveBeenCalled();
+      expect(refreshDateAddedBadges).toHaveBeenCalledTimes(1);
+      const setStateOrders = vi.mocked(setState).mock.invocationCallOrder;
+      expect(
+        vi.mocked(refreshDateAddedBadges).mock.invocationCallOrder[0],
+      ).toBeGreaterThan(setStateOrders[setStateOrders.length - 1]);
+    });
+
+    it("does not re-render the adder badges for a content change with identical attribution", async () => {
+      seedStore(makeDetail({ urls: [makeUrl(10, { addedByUserID: null })] }));
+
+      await refreshWith(
+        ok(
+          makeDetail({
+            urls: [
+              makeUrl(10, { addedByUserID: null, urlTitle: "Edited title" }),
+            ],
+          }),
+        ),
+      );
+
+      expect(setState).toHaveBeenCalled();
+      expect(refreshDateAddedBadges).not.toHaveBeenCalled();
     });
 
     it("emits URL_DECK_CHANGED exactly once for a lock-only change", async () => {
