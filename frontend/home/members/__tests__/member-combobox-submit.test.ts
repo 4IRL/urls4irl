@@ -6,6 +6,7 @@ import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
 import { createMockJqXHR } from "../../../__tests__/helpers/mock-jquery.js";
 import { applyRowCountDelta } from "../../utubs/row-counts.js";
 import { learnMemberAddRefused } from "../add-refusal.js";
+import { EMPTY_UTUB_SETTINGS } from "../../../types/settings.js";
 
 import type { MemberCandidate, MemberItem } from "../../../types/member.js";
 
@@ -748,6 +749,147 @@ describe("member-combobox-submit — dedupe on switch-away-and-back", () => {
       viewerRole: "owner",
       utubID: 7,
     });
+  });
+});
+
+describe("member-combobox-submit — hidden member list", () => {
+  function seedHiddenViewer(): void {
+    seed({ isOwner: false });
+    setState({
+      isCoCreator: false,
+      settings: {
+        ...EMPTY_UTUB_SETTINGS,
+        members: { ...EMPTY_UTUB_SETTINGS.members, hide_member_list: true },
+      },
+    });
+  }
+
+  const addedMember = {
+    utubID: 7,
+    member: {
+      id: 2,
+      username: "Ghost",
+      memberRole: "member",
+      joinedAt: "2026-01-02T03:04:06.123Z",
+    },
+  };
+
+  it("on a 200 writes the summary, removes the chip, and changes no store, count or deck", async () => {
+    seedHiddenViewer();
+    const wrap = mount();
+    typeIn(wrap, "Ghost");
+    wrap.find(".memberAddOptionOutsider").trigger("click.memberAddCombobox");
+    const deferred = createMockJqXHR();
+    vi.mocked(ajaxCall).mockReturnValueOnce(deferred);
+    const { createMemberBadge } = await import("../members.js");
+    const { setMemberDeckForUTub } = await import("../deck.js");
+
+    const settle = submitStagedMembers({ utubID: 7, wrap });
+    deferred.resolve(addedMember, "success", okXhr);
+    await settle;
+
+    expect(wrap.find(".memberAddComboboxMsg").text()).toBe(
+      APP_CONFIG.strings.MEMBER_ADD_SUMMARY_ADDED_ONE,
+    );
+    expect(wrap.find(".memberAddStagedChip").length).toBe(0);
+    expect(getState().members).toEqual([]);
+    expect(applyRowCountDelta).not.toHaveBeenCalled();
+    expect(vi.mocked(createMemberBadge)).not.toHaveBeenCalled();
+    expect(vi.mocked(setMemberDeckForUTub)).not.toHaveBeenCalled();
+  });
+
+  it("a chip rejected with the unified reason announces summary + reason in one write", async () => {
+    seedHiddenViewer();
+    const wrap = mount();
+    typeIn(wrap, "Ghost");
+    wrap.find(".memberAddOptionOutsider").trigger("click.memberAddCombobox");
+    const deferred = createMockJqXHR();
+    vi.mocked(ajaxCall).mockReturnValueOnce(deferred);
+
+    const settle = submitStagedMembers({ utubID: 7, wrap });
+    deferred.reject({
+      status: 400,
+      responseJSON: {
+        errors: { username: [APP_CONFIG.strings.MEMBER_CANNOT_BE_ADDED] },
+      },
+    });
+    await settle;
+
+    expect(wrap.find(".memberAddComboboxMsg").text()).toBe(
+      `${APP_CONFIG.strings.MEMBER_ADD_SUMMARY_FAILED_ONE} ${APP_CONFIG.strings.MEMBER_CANNOT_BE_ADDED}`,
+    );
+    expect(wrap.find(".memberAddStagedChip").attr("title")).toBe(
+      APP_CONFIG.strings.MEMBER_CANNOT_BE_ADDED,
+    );
+  });
+
+  it("mixed batch (one added, one unified rejection) writes summary + unified once", async () => {
+    seedHiddenViewer();
+    const wrap = mount();
+    // Hidden viewers get no suggestions, so both chips are exact-username outsiders.
+    typeIn(wrap, "Ghost");
+    wrap.find(".memberAddOptionOutsider").trigger("click.memberAddCombobox");
+    typeIn(wrap, "Phantom");
+    wrap.find(".memberAddOptionOutsider").trigger("click.memberAddCombobox");
+    const first = createMockJqXHR();
+    const second = createMockJqXHR();
+    vi.mocked(ajaxCall).mockReturnValueOnce(first).mockReturnValueOnce(second);
+
+    const settle = submitStagedMembers({ utubID: 7, wrap });
+    first.resolve({ utubID: 7, member: addedMember.member }, "success", okXhr);
+    second.reject({
+      status: 400,
+      responseJSON: {
+        errors: { username: [APP_CONFIG.strings.MEMBER_CANNOT_BE_ADDED] },
+      },
+    });
+    await settle;
+
+    expect(wrap.find(".memberAddComboboxMsg").text()).toBe(
+      `${APP_CONFIG.strings.MEMBER_ADD_SUMMARY_ADDED_ONE}, ${APP_CONFIG.strings.MEMBER_ADD_SUMMARY_FAILED_ONE} ${APP_CONFIG.strings.MEMBER_CANNOT_BE_ADDED}`,
+    );
+  });
+
+  it("a chip rejected for another reason (daily cap) does not append the unified text", async () => {
+    seedHiddenViewer();
+    const wrap = mount();
+    typeIn(wrap, "Ghost");
+    wrap.find(".memberAddOptionOutsider").trigger("click.memberAddCombobox");
+    const deferred = createMockJqXHR();
+    vi.mocked(ajaxCall).mockReturnValueOnce(deferred);
+
+    const settle = submitStagedMembers({ utubID: 7, wrap });
+    deferred.reject({
+      status: 400,
+      responseJSON: { message: "You've added too many members today." },
+    });
+    await settle;
+
+    expect(wrap.find(".memberAddComboboxMsg").text()).toBe(
+      APP_CONFIG.strings.MEMBER_ADD_SUMMARY_FAILED_ONE,
+    );
+  });
+
+  it("a manager rejected with the same text never gets the unified announcement", async () => {
+    seed({});
+    const wrap = mount();
+    typeIn(wrap, "Ghost");
+    wrap.find(".memberAddOptionOutsider").trigger("click.memberAddCombobox");
+    const deferred = createMockJqXHR();
+    vi.mocked(ajaxCall).mockReturnValueOnce(deferred);
+
+    const settle = submitStagedMembers({ utubID: 7, wrap });
+    deferred.reject({
+      status: 400,
+      responseJSON: {
+        errors: { username: [APP_CONFIG.strings.MEMBER_CANNOT_BE_ADDED] },
+      },
+    });
+    await settle;
+
+    expect(wrap.find(".memberAddComboboxMsg").text()).toBe(
+      APP_CONFIG.strings.MEMBER_ADD_SUMMARY_FAILED_ONE,
+    );
   });
 });
 

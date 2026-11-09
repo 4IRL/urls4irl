@@ -622,6 +622,8 @@ const appConfig = {
     INVALID_PERMISSION_TO_REMOVE:
       "Not allowed to remove a member from this UTub.",
     MEMBER_ADD_NOT_ALLOWED: "The UTub owner turned off adding members.",
+    MEMBER_ADD_EXACT_USERNAME_HINT: "Type an exact username to add",
+    MEMBER_CANNOT_BE_ADDED: "That user can't be added to this UTub.",
     MEMBER_ADD_NOW_ALLOWED_ANNOUNCEMENT: "You can now add members.",
     MEMBER_ADD_NO_LONGER_ALLOWED_ANNOUNCEMENT: "You can no longer add members.",
     UTUB_CREATE_MSG: "Create a UTub",

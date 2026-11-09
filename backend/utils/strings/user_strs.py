@@ -190,6 +190,8 @@ MEMBER_ADD_PLACEHOLDER = "Add a member by username"
 MEMBER_ADD_SUBMIT = "Add"
 MEMBER_ADD_LOADING_HINT = "Loading matches…"
 MEMBER_ADD_NO_COMEMBERS_HINT = "No shared members yet — type a username to add"
+# Shown instead of suggestions to a plain member who cannot see the member list.
+MEMBER_ADD_EXACT_USERNAME_HINT = "Type an exact username to add"
 MEMBER_ADD_ALREADY_MEMBER_HINT = '"{{ username }}" is already a member'
 MEMBER_ADD_OUTSIDER_LABEL = 'Add "{{ username }}" by username'
 MEMBER_ADD_SHARES_COUNT_ONE = "shares 1 UTub"
@@ -228,6 +230,9 @@ INVALID_PERMISSION_TO_ADD = "Not allowed to add a member to this UTub."
 MEMBER_NOT_IN_UTUB = "Member does not exist or not found in this UTub."
 MEMBER_ALREADY_IN_UTUB = "Member already in UTub."
 UNABLE_TO_ADD_MEMBER = "Unable to add that member to this UTub."
+# Single field error for both "no such user" and "already a member" when the
+# member list is hidden from the adder, so the add form is not an oracle.
+MEMBER_CANNOT_BE_ADDED = "That user can't be added to this UTub."
 # Generic invalid-form-input error for the grant/revoke co-owner endpoint (the
 # 400 INVALID_FORM_INPUT copy — missing/bad `member_role`). Distinct from the
 # more specific CANNOT_MODIFY_OWNER_ROLE (400, targeting the owner) and
@@ -360,6 +365,7 @@ class MEMBER_FAILURE(FAILURE_GENERAL):
     MEMBER_NOT_IN_UTUB = MEMBER_NOT_IN_UTUB
     MEMBER_ALREADY_IN_UTUB = MEMBER_ALREADY_IN_UTUB
     UNABLE_TO_ADD_MEMBER = UNABLE_TO_ADD_MEMBER
+    MEMBER_CANNOT_BE_ADDED = MEMBER_CANNOT_BE_ADDED
     UNABLE_TO_MODIFY_MEMBER_ROLE = UNABLE_TO_MODIFY_MEMBER_ROLE
     CANNOT_MODIFY_OWNER_ROLE = CANNOT_MODIFY_OWNER_ROLE
     CANNOT_REMOVE_OWNER = CANNOT_REMOVE_OWNER

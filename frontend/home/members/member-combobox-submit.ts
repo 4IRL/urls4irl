@@ -6,7 +6,7 @@ import { AppEvents, emit as emitAppEvent } from "../../lib/event-bus.js";
 import { getState, setState } from "../../store/app-store.js";
 import { applyRowCountDelta } from "../utubs/row-counts.js";
 import { createMemberBadge } from "./members.js";
-import { viewerRoleFor } from "../utubs/policy.js";
+import { isMemberListHiddenForViewer, viewerRoleFor } from "../utubs/policy.js";
 import {
   isMemberAddNotAllowedResponse,
   learnMemberAddRefused,
@@ -202,6 +202,7 @@ function applyPostSettleSideEffects({
   // Nothing is learned for a UTub the viewer already left: the store now
   // describes another UTub.
   const addRefused = stillOnBatchUTub && anyRefused;
+  const listHidden = isMemberListHiddenForViewer();
 
   if (stillOnBatchUTub) {
     // Dedupe by id against members already in the store: when the creator
@@ -212,10 +213,16 @@ function applyPostSettleSideEffects({
     const existingMemberIds = new Set(
       getState().members.map((member) => member.id),
     );
-    const addedMembers = fulfilled
-      .map((result) => result.member)
-      .filter((member): member is NonNullable<typeof member> => Boolean(member))
-      .filter((member) => !existingMemberIds.has(member.id));
+    // A viewer who cannot see the member list must not have the added person
+    // pushed into their list, badges or counts: the server omits them too.
+    const addedMembers = listHidden
+      ? []
+      : fulfilled
+          .map((result) => result.member)
+          .filter((member): member is NonNullable<typeof member> =>
+            Boolean(member),
+          )
+          .filter((member) => !existingMemberIds.has(member.id));
     if (addedMembers.length > 0) {
       // Store push + deck badge append are unified under this single
       // UTub-relevance check so getState().members and the deck DOM stay in sync
@@ -263,7 +270,23 @@ function applyPostSettleSideEffects({
     // A batch with a refused chip writes one combined announcement outside the
     // combobox (it is torn down below), so the in-combobox summary is skipped.
     if (summary && !addRefused) {
-      wrap.find(".memberAddComboboxMsg").text(summary);
+      // The ONE settle-time write. For a hidden-list viewer a chip rejected with
+      // the unified reason also announces it here (a per-chip write would be
+      // overwritten by this one); other rejections keep their own text.
+      const unifiedRejected =
+        listHidden &&
+        results.some(
+          (result) =>
+            result.outcome === "rejected" &&
+            result.errorText === APP_CONFIG.strings.MEMBER_CANNOT_BE_ADDED,
+        );
+      wrap
+        .find(".memberAddComboboxMsg")
+        .text(
+          unifiedRejected
+            ? `${summary} ${APP_CONFIG.strings.MEMBER_CANNOT_BE_ADDED}`
+            : summary,
+        );
     }
   } else if (summary) {
     // Creator switched UTubs while the batch was in flight: the combobox this

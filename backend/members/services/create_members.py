@@ -16,6 +16,7 @@ from backend.members.constants import (
     UTubMembersErrorCodes,
 )
 from backend.members.data_models import ValidatedMember
+from backend.members.member_visibility import member_list_hidden_for
 from backend.members.services.member_permissions import member_add_refusal_response
 from backend.metrics.events import EventName
 from backend.models.users import Users
@@ -79,7 +80,8 @@ def create_utub_member(
         tuple[Response, int]:
         - Response: JSON response on create
         - int: HTTP status code 200 (Success), 400 (User not found, already a
-          member, or the per-user daily add cap was reached: 100 for managers,
+          member (both collapse into one identical response when the member
+          list is hidden from the adder), or the per-user daily add cap was reached: 100 for managers,
           25 for plain members), 403 (a plain member while ``members_can_add``
           is off, before or after the row lock, errorCode 7; or the UTub is
           locked)
@@ -131,9 +133,17 @@ def create_utub_member(
                 f"member-add daily-cap counter failed (failing open): {redis_error}"
             )
 
+    # Decided on the post-lock role. When the list is hidden from this adder, the
+    # unknown-user and already-a-member branches must be indistinguishable.
+    list_hidden: bool = member_list_hidden_for(
+        settings=current_utub.settings, viewer_is_manager=g.is_manager
+    )
+
     new_user: Users | None = Users.query.filter(Users.username == username).first()
     if new_user is None:
         warning_log(f"User={current_user.id} tried adding nonexistent username")
+        if list_hidden:
+            return _build_unified_add_failure()
         return build_field_error_response(
             message=MEMBER_FAILURE.UNABLE_TO_ADD_MEMBER,
             errors={"username": [USER_FAILURE.USER_NOT_EXIST]},
@@ -141,11 +151,21 @@ def create_utub_member(
 
     member_in_utub = _check_if_member_already_in_utub(new_user, current_utub)
     if member_in_utub.in_utub:
+        if list_hidden:
+            return _build_unified_add_failure()
         return build_message_error_response(
             message=MEMBER_FAILURE.MEMBER_ALREADY_IN_UTUB,
         )
 
     return _add_user_to_utub(user=new_user, current_utub=current_utub, source=source)
+
+
+def _build_unified_add_failure() -> FlaskResponse:
+    """The one 400 a hidden-list adder gets for both unknown and existing users."""
+    return build_field_error_response(
+        message=MEMBER_FAILURE.UNABLE_TO_ADD_MEMBER,
+        errors={"username": [MEMBER_FAILURE.MEMBER_CANNOT_BE_ADDED]},
+    )
 
 
 def _check_if_member_already_in_utub(
