@@ -467,6 +467,25 @@ def expire_invite_link_in_db(*, app: Flask, invite_link_id: int) -> None:
         db.session.commit()
 
 
+def set_invite_link_use_count_in_db(
+    *, app: Flask, invite_link_id: int, use_count: int
+) -> None:
+    """Set an existing invite link's `use_count` in place (simulates joins that
+    happened after the panel loaded)."""
+    with app.app_context():
+        invite: Utub_Invite_Links = Utub_Invite_Links.query.get(invite_link_id)
+        invite.use_count = use_count
+        db.session.commit()
+
+
+def get_invite_link_row(*, app: Flask, invite_link_id: int) -> tuple[int | None, int]:
+    """Return an invite link row's `(max_uses, days_until_expiry)` (rounded)."""
+    with app.app_context():
+        invite: Utub_Invite_Links = Utub_Invite_Links.query.get(invite_link_id)
+        remaining = invite.expires_at - utc_now()
+        return invite.max_uses, round(remaining.total_seconds() / 86400)
+
+
 def revoke_invite_link_in_db(*, app: Flask, invite_link_id: int) -> None:
     """Stamp `revoked_at` on an existing invite link, in place."""
     with app.app_context():

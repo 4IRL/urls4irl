@@ -543,6 +543,18 @@ const appConfig = {
     INVITE_LINK_PANEL_CONFIRM_NEW_QUESTION:
       "Make a new link? The current link stops working. People who already joined stay in the UTub.",
     INVITE_LINK_PANEL_CONFIRM_NEW_ACTION: "Make new link",
+    INVITE_LINK_PANEL_COPIED: "Copied",
+    INVITE_LINK_PANEL_COPY_SUCCESS: "Invite link copied.",
+    INVITE_LINK_PANEL_COPY_FALLBACK:
+      "Couldn't copy automatically. The link is selected: press Ctrl+C (⌘C on Mac).",
+    INVITE_LINK_PANEL_SAVING: "Saving…",
+    INVITE_LINK_PANEL_EXPIRES_SET: "Link now expires {date}.",
+    INVITE_LINK_PANEL_USES_SET: "Use limit set to {label}.",
+    INVITE_LINK_PANEL_RESYNC_DEAD_UPDATE: "This invite link no longer works.",
+    INVITE_LINK_PANEL_USES_BELOW_JOINED_ONE:
+      "1 person has already joined. Choose a limit of at least 1.",
+    INVITE_LINK_PANEL_USES_BELOW_JOINED:
+      "{count} people have already joined. Choose a limit of at least {count}.",
     TRASH_LOCKED: "That UTub is locked, so this item can't be changed.",
     TRASH_ORIGIN_UNAVAILABLE:
       "That UTub is no longer available. Choose a UTub to restore this URL into.",

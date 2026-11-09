@@ -4,6 +4,7 @@ import { debug } from "../../lib/debug.js";
 import { fillTemplate } from "../../lib/string-template.js";
 import { emit } from "../../lib/metrics-client.js";
 import { UI_EVENTS } from "../../types/metrics-events.js";
+import { INVITE_LINK_COPY_RESULT } from "../../types/metrics-dim-values.js";
 import {
   AppEvents,
   emit as emitAppEvent,
@@ -20,13 +21,17 @@ import { closeMemberNameFilter } from "./search.js";
 import {
   createInviteLink,
   getInviteLink,
+  INVITE_LINK_DEAD_UPDATE_ERROR_CODE,
   INVITE_LINK_LIVE_EXISTS_ERROR_CODE,
   INVITE_LINK_LOCKED_ERROR_CODE,
   INVITE_LINK_NOT_FOUND_ERROR_CODE,
+  INVITE_LINK_USES_BELOW_JOINED_ERROR_CODE,
   replaceExpiryDays,
   replaceInviteLink,
   revokeInviteLink,
+  updateInviteLink,
   type InviteLink,
+  type InviteLinkUpdateBody,
   type InviteLinkLoadFailure,
   type InviteLinkMutationFailure,
 } from "./invite-link-client.js";
@@ -76,6 +81,12 @@ let _confirm: {
   footerNodes: Node[];
   originId: string;
 } | null = null;
+// The settings save in flight: which select and the value being saved (the
+// select shows it until the response replaces it). Null outside a save.
+type SaveField = "expires" | "uses";
+let _pending: { field: SaveField; value: string } | null = null;
+let _copyRevertTimer: ReturnType<typeof setTimeout> | null = null;
+const COPIED_LABEL_MS = 1500;
 
 /** Whether the panel is open. */
 export function isInviteLinkPanelOpen(): boolean {
@@ -197,28 +208,21 @@ function makeButton({
   return button;
 }
 
-function makeSelectField({
-  id,
-  label,
+type SelectOption = {
+  value: string;
+  text: string;
+  selected?: boolean;
+  disabled?: boolean;
+};
+
+function fillSelectOptions({
+  select,
   options,
 }: {
-  id: string;
-  label: string;
-  options: Array<{
-    value: string;
-    text: string;
-    selected?: boolean;
-    disabled?: boolean;
-  }>;
-}): HTMLElement {
-  const field = makeElement({ tag: "div", className: "invitePanelField" });
-  const labelElement = makeElement({ tag: "label", text: label });
-  labelElement.htmlFor = id;
-  const select = makeElement({
-    tag: "select",
-    id,
-    className: "panelSettingsSelect invitePanelSelect",
-  });
+  select: HTMLSelectElement;
+  options: SelectOption[];
+}): void {
+  select.replaceChildren();
   for (const option of options) {
     const optionElement = makeElement({ tag: "option", text: option.text });
     optionElement.value = option.value;
@@ -228,6 +232,26 @@ function makeSelectField({
     // later option never resets the choice.
     if (option.selected === true) optionElement.selected = true;
   }
+}
+
+function makeSelectField({
+  id,
+  label,
+  options,
+}: {
+  id: string;
+  label: string;
+  options: SelectOption[];
+}): HTMLElement {
+  const field = makeElement({ tag: "div", className: "invitePanelField" });
+  const labelElement = makeElement({ tag: "label", text: label });
+  labelElement.htmlFor = id;
+  const select = makeElement({
+    tag: "select",
+    id,
+    className: "panelSettingsSelect invitePanelSelect",
+  });
+  fillSelectOptions({ select, options });
   field.append(labelElement, select);
   return field;
 }
@@ -290,12 +314,19 @@ export function deadReasonFor({ link }: { link: InviteLink }): string {
   }
 }
 
+function clearCopyRevertTimer(): void {
+  if (_copyRevertTimer === null) return;
+  clearTimeout(_copyRevertTimer);
+  _copyRevertTimer = null;
+}
+
 function setBody({ nodes, busy }: { nodes: Node[]; busy: boolean }): void {
   const body = $(BODY_SELECTOR)[0];
   if (body === undefined) return;
   // Any render drops an open confirm and the previous live link.
   _confirm = null;
   _liveLink = null;
+  clearCopyRevertTimer();
   body.replaceChildren(...nodes);
   const panel = $(PANEL_SELECTOR)[0];
   if (busy) panel?.setAttribute("aria-busy", "true");
@@ -369,6 +400,69 @@ function renderEmpty(): void {
   });
 }
 
+function liveMetaText({ link }: { link: InviteLink }): string {
+  const { strings } = APP_CONFIG;
+  // "Created by" is omitted when the creator is unknown.
+  return [
+    ...(link.creatorUsername === null
+      ? []
+      : [
+          fillTemplate({
+            template: strings.INVITE_LINK_PANEL_META_CREATED_BY,
+            values: { user: link.creatorUsername },
+          }),
+        ]),
+    fillTemplate({
+      template: strings.INVITE_LINK_PANEL_META_EXPIRES,
+      values: { date: formatShortDate(link.expiresAt) },
+    }),
+    fillTemplate({
+      template: strings.INVITE_LINK_PANEL_META_JOINED,
+      values: { count: String(link.useCount) },
+    }),
+  ].join(" · ");
+}
+
+// The first option shows the current expiry date (selected, disabled); the
+// rest reset the expiry from now.
+function expiryOptionsFor({ link }: { link: InviteLink }): SelectOption[] {
+  return [
+    {
+      value: "",
+      text: formatShortDate(link.expiresAt),
+      selected: true,
+      disabled: true,
+    },
+    ...EXPIRY_DAY_CHOICES.map((days) => ({
+      value: String(days),
+      text: expiryChoiceLabel({ days, fromNow: true }),
+      selected: false,
+      disabled: false,
+    })),
+  ];
+}
+
+const FLOOR_HINT_ID = "inviteLinkUsesFloorHint";
+
+// The helper under the Uses select, present only when an option is disabled.
+function makeFloorHint({ link }: { link: InviteLink }): HTMLElement | null {
+  const choices = usesOptions({ selected: link.maxUses, floor: link.useCount });
+  if (!choices.some((choice) => choice.disabled)) return null;
+  const { strings } = APP_CONFIG;
+  return makeElement({
+    tag: "p",
+    id: FLOOR_HINT_ID,
+    className: "invitePanelHint",
+    text: fillTemplate({
+      template:
+        link.useCount === 1
+          ? strings.INVITE_LINK_PANEL_USES_FLOOR_HINT_ONE
+          : strings.INVITE_LINK_PANEL_USES_FLOOR_HINT,
+      values: { count: String(link.useCount) },
+    }),
+  });
+}
+
 function renderLive({ link }: { link: InviteLink }): void {
   const { strings } = APP_CONFIG;
   const row = makeElement({ tag: "div", className: "invitePanelLinkRow" });
@@ -390,50 +484,10 @@ function renderLive({ link }: { link: InviteLink }): void {
     }),
   );
 
-  const expiresText = fillTemplate({
-    template: strings.INVITE_LINK_PANEL_META_EXPIRES,
-    values: { date: formatShortDate(link.expiresAt) },
-  });
-  // "Created by" is omitted when the creator is unknown.
-  const joinedText = fillTemplate({
-    template: strings.INVITE_LINK_PANEL_META_JOINED,
-    values: { count: String(link.useCount) },
-  });
-  const metaParts = [
-    ...(link.creatorUsername === null
-      ? []
-      : [
-          fillTemplate({
-            template: strings.INVITE_LINK_PANEL_META_CREATED_BY,
-            values: { user: link.creatorUsername },
-          }),
-        ]),
-    expiresText,
-    joinedText,
-  ];
   const meta = makeElement({
     tag: "p",
     className: "invitePanelMeta",
-    text: metaParts.join(" · "),
-  });
-
-  const expiryOptions = [
-    {
-      value: "",
-      text: formatShortDate(link.expiresAt),
-      selected: true,
-      disabled: true,
-    },
-    ...EXPIRY_DAY_CHOICES.map((days) => ({
-      value: String(days),
-      text: expiryChoiceLabel({ days, fromNow: true }),
-      selected: false,
-      disabled: false,
-    })),
-  ];
-  const usesChoices = usesOptions({
-    selected: link.maxUses,
-    floor: link.useCount,
+    text: liveMetaText({ link }),
   });
   const nodes: Node[] = [
     row,
@@ -441,29 +495,16 @@ function renderLive({ link }: { link: InviteLink }): void {
     makeSelectField({
       id: "inviteLinkExpiresSelect",
       label: strings.INVITE_LINK_PANEL_EXPIRES_LABEL,
-      options: expiryOptions,
+      options: expiryOptionsFor({ link }),
     }),
     makeSelectField({
       id: "inviteLinkUsesSelect",
       label: strings.INVITE_LINK_PANEL_USES_LABEL,
-      options: usesChoices,
+      options: usesOptions({ selected: link.maxUses, floor: link.useCount }),
     }),
   ];
-  if (usesChoices.some((choice) => choice.disabled)) {
-    nodes.push(
-      makeElement({
-        tag: "p",
-        className: "invitePanelHint",
-        text: fillTemplate({
-          template:
-            link.useCount === 1
-              ? strings.INVITE_LINK_PANEL_USES_FLOOR_HINT_ONE
-              : strings.INVITE_LINK_PANEL_USES_FLOOR_HINT,
-          values: { count: String(link.useCount) },
-        }),
-      }),
-    );
-  }
+  const floorHint = makeFloorHint({ link });
+  if (floorHint !== null) nodes.push(floorHint);
   const footer = makeElement({ tag: "div", className: "invitePanelFooter" });
   footer.append(
     makeButton({
@@ -567,6 +608,8 @@ function teardownPanel(): void {
   _lifecycleInFlight = false;
   _confirm = null;
   _liveLink = null;
+  _pending = null;
+  clearCopyRevertTimer();
   $(`${BODY_SELECTOR} [aria-disabled]`).removeAttr("aria-disabled");
   $(PANEL_SELECTOR).addClass("hidden").removeAttr("aria-busy");
   $(BODY_SELECTOR).empty();
@@ -697,19 +740,36 @@ function setControlsLocked({ locked }: { locked: boolean }): void {
   else controls.removeAttr("aria-disabled");
 }
 
+const SAVING_ID = "inviteLinkSaving";
+const COPY_HINT_ID = "inviteLinkCopyHint";
+const EXPIRES_SELECT_ID = "inviteLinkExpiresSelect";
+const USES_SELECT_ID = "inviteLinkUsesSelect";
+
 function clearInFlight(): void {
   _inFlight = false;
   _lifecycleInFlight = false;
+  _pending = null;
+  document.getElementById(SAVING_ID)?.remove();
+  $(`${BODY_SELECTOR} select[aria-busy]`).removeAttr("aria-busy");
   setControlsLocked({ locked: false });
 }
 
+// Removes the inline error and the invalid state it tied to a select.
 function clearInlineError(): void {
   document.getElementById(INLINE_ERROR_ID)?.remove();
+  $(`${BODY_SELECTOR} select`)
+    .removeAttr("aria-invalid")
+    .removeAttr("aria-describedby");
 }
 
-function showInlineError(): void {
+function showInlineError({
+  message = APP_CONFIG.strings.INVITE_LINK_PANEL_ERROR_GENERIC,
+  describes = null,
+}: {
+  message?: string;
+  describes?: HTMLElement | null;
+} = {}): void {
   clearInlineError();
-  const message = APP_CONFIG.strings.INVITE_LINK_PANEL_ERROR_GENERIC;
   const error = makeElement({
     tag: "p",
     id: INLINE_ERROR_ID,
@@ -717,6 +777,9 @@ function showInlineError(): void {
     text: message,
   });
   $(BODY_SELECTOR)[0]?.append(error);
+  if (describes !== null) {
+    describes.setAttribute("aria-describedby", INLINE_ERROR_ID);
+  }
   announceInviteLinkPanel({ message, politeness: "assertive" });
 }
 
@@ -897,6 +960,376 @@ function runLifecycle({ kind }: { kind: LifecycleKind }): void {
   );
 }
 
+function selectFor({ field }: { field: SaveField }): HTMLSelectElement | null {
+  const element = document.getElementById(
+    field === "expires" ? EXPIRES_SELECT_ID : USES_SELECT_ID,
+  );
+  return element instanceof HTMLSelectElement ? element : null;
+}
+
+// What the server last confirmed for a select. The Expires select always shows
+// its first option (the current expiry date), whose value is "".
+function committedValue({ field }: { field: SaveField }): string {
+  if (field === "expires" || _liveLink === null) return "";
+  return _liveLink.maxUses === null ? "" : String(_liveLink.maxUses);
+}
+
+// Sets the selects back to their committed values. Programmatic: no `change`
+// event fires and focus does not move.
+function restoreCommitted(): void {
+  for (const field of ["expires", "uses"] as const) {
+    const select = selectFor({ field });
+    if (select !== null) select.value = committedValue({ field });
+  }
+}
+
+// Repaints the meta, the Expires first option and the Uses options/helper from
+// `link` without replacing the controls, so focus stays where it is.
+function refreshLiveInPlace({ link }: { link: InviteLink }): void {
+  _liveLink = link;
+  $(`${BODY_SELECTOR} .invitePanelMeta`).first().text(liveMetaText({ link }));
+  const expires = selectFor({ field: "expires" });
+  if (expires !== null) {
+    fillSelectOptions({ select: expires, options: expiryOptionsFor({ link }) });
+  }
+  const uses = selectFor({ field: "uses" });
+  if (uses === null) return;
+  fillSelectOptions({
+    select: uses,
+    options: usesOptions({ selected: link.maxUses, floor: link.useCount }),
+  });
+  document.getElementById(FLOOR_HINT_ID)?.remove();
+  const hint = makeFloorHint({ link });
+  if (hint !== null) uses.parentElement?.after(hint);
+}
+
+function usesBelowJoinedMessage({ count }: { count: number }): string {
+  const { strings } = APP_CONFIG;
+  return fillTemplate({
+    template:
+      count === 1
+        ? strings.INVITE_LINK_PANEL_USES_BELOW_JOINED_ONE
+        : strings.INVITE_LINK_PANEL_USES_BELOW_JOINED,
+    values: { count: String(count) },
+  });
+}
+
+function savedMessageFor({
+  field,
+  link,
+}: {
+  field: SaveField;
+  link: InviteLink;
+}): string {
+  const { strings } = APP_CONFIG;
+  if (field === "expires") {
+    return fillTemplate({
+      template: strings.INVITE_LINK_PANEL_EXPIRES_SET,
+      values: { date: formatShortDate(link.expiresAt) },
+    });
+  }
+  return fillTemplate({
+    template: strings.INVITE_LINK_PANEL_USES_SET,
+    values: {
+      label:
+        link.maxUses === null
+          ? strings.INVITE_LINK_PANEL_USES_UNLIMITED
+          : usesLabel({ count: link.maxUses }),
+    },
+  });
+}
+
+function onSaveSuccess({
+  field,
+  link,
+  utubID,
+  token,
+}: {
+  field: SaveField;
+  link: InviteLink;
+  utubID: number;
+  token: number;
+}): void {
+  // A dropped save response does nothing at all.
+  if (isStale({ token, utubID })) return;
+  clearInFlight();
+  clearInlineError();
+  if (link.status !== "live") {
+    // e.g. a pick equal to the joined count used the link up (a 200).
+    const state = renderLink({ link });
+    focusEntering({ state });
+    announceLanding({ link, resyncMessage: null, state });
+    return;
+  }
+  refreshLiveInPlace({ link });
+  restoreCommitted();
+  announceInviteLinkPanel({ message: savedMessageFor({ field, link }) });
+}
+
+// Code 6: restore the committed value, name the minimum, then re-GET once to
+// refresh the count in place. A GET that lands null or non-live is a resync.
+function restoreForUsesBelowJoined({
+  utubID,
+  token,
+}: {
+  utubID: number;
+  token: number;
+}): void {
+  restoreCommitted();
+  const uses = selectFor({ field: "uses" });
+  if (uses === null || _liveLink === null) return;
+  showInlineError({
+    message: usesBelowJoinedMessage({ count: _liveLink.useCount }),
+    describes: uses,
+  });
+  uses.setAttribute("aria-invalid", "true");
+  getInviteLink({ utubID }).then(
+    (link) => {
+      if (isStale({ token, utubID }) || _inFlight) return;
+      if (link === null || link.status !== "live") {
+        clearInlineError();
+        const state = renderLink({ link });
+        focusEntering({ state });
+        announceLanding({
+          link,
+          resyncMessage:
+            link === null
+              ? APP_CONFIG.strings.INVITE_LINK_PANEL_RESYNC_REVOKED
+              : null,
+          state,
+        });
+        return;
+      }
+      refreshLiveInPlace({ link });
+      restoreCommitted();
+      const message = document.getElementById(INLINE_ERROR_ID);
+      if (message !== null) {
+        message.textContent = usesBelowJoinedMessage({ count: link.useCount });
+      }
+    },
+    () => {
+      // A failed refresh is silent: the restored state stays as it is.
+    },
+  );
+}
+
+function onSaveFailure({
+  field,
+  failure,
+  utubID,
+  token,
+}: {
+  field: SaveField;
+  failure: InviteLinkMutationFailure;
+  utubID: number;
+  token: number;
+}): void {
+  // A dropped save response does nothing: no render, announcement or refresh.
+  if (isStale({ token, utubID })) return;
+  if (failure.kind === "csrf") {
+    $("body").html(failure.html);
+    return;
+  }
+  clearInFlight();
+  // A 429 was already announced by the global handler.
+  if (failure.kind === "rate_limited") {
+    restoreCommitted();
+    return;
+  }
+  if (failure.errorCode === INVITE_LINK_NOT_FOUND_ERROR_CODE) {
+    resyncInviteLinkPanel({
+      message: APP_CONFIG.strings.INVITE_LINK_PANEL_RESYNC_REVOKED,
+    });
+    return;
+  }
+  if (failure.errorCode === INVITE_LINK_DEAD_UPDATE_ERROR_CODE) {
+    resyncInviteLinkPanel({
+      message: APP_CONFIG.strings.INVITE_LINK_PANEL_RESYNC_DEAD_UPDATE,
+    });
+    return;
+  }
+  if (failure.errorCode === INVITE_LINK_USES_BELOW_JOINED_ERROR_CODE) {
+    restoreForUsesBelowJoined({ utubID, token });
+    return;
+  }
+  if (failure.status === 403 || failure.status === 404) {
+    handleDenied({ utubID, errorCode: failure.errorCode });
+    return;
+  }
+  restoreCommitted();
+  showInlineError({ describes: selectFor({ field }) });
+}
+
+// Sends one settings save. The select stays enabled and focused; the lifecycle
+// controls are locked until the response.
+function saveSetting({
+  field,
+  value,
+}: {
+  field: SaveField;
+  value: string;
+}): void {
+  const utubID = _openedUTubID;
+  const select = selectFor({ field });
+  if (utubID === null || select === null) return;
+  let body: InviteLinkUpdateBody;
+  if (field === "expires") {
+    if (value === "") return;
+    body = { expires_in_days: Number(value) };
+  } else {
+    body = { max_uses: value === "" ? null : Number(value) };
+  }
+  const token = _generation;
+  _inFlight = true;
+  _pending = { field, value };
+  setControlsLocked({ locked: true });
+  select.setAttribute("aria-busy", "true");
+  select.after(
+    makeElement({
+      tag: "span",
+      id: SAVING_ID,
+      className: "invitePanelSaving",
+      text: APP_CONFIG.strings.INVITE_LINK_PANEL_SAVING,
+    }),
+  );
+  updateInviteLink({ utubID, body }).then(
+    (link) => onSaveSuccess({ field, link, utubID, token }),
+    (failure: InviteLinkMutationFailure) => {
+      log("invite link save failed", { field, failure: failure.kind });
+      onSaveFailure({ field, failure, utubID, token });
+    },
+  );
+}
+
+// One save at a time: a change to the select being saved reverts to the value
+// being saved, a change to the other select (or any change during a lifecycle
+// request) reverts to the committed value. Neither fires `change`.
+function handleSelectChange(event: JQuery.ChangeEvent): void {
+  if (_liveLink === null) return; // The empty state's selects never save.
+  const select = event.target as HTMLSelectElement;
+  const field: SaveField | null =
+    select.id === EXPIRES_SELECT_ID
+      ? "expires"
+      : select.id === USES_SELECT_ID
+        ? "uses"
+        : null;
+  if (field === null) return;
+  if (_lifecycleInFlight) {
+    select.value = committedValue({ field });
+    return;
+  }
+  if (_inFlight) {
+    select.value =
+      _pending !== null && _pending.field === field
+        ? _pending.value
+        : committedValue({ field });
+    return;
+  }
+  saveSetting({ field, value: select.value });
+}
+
+function showCopyFallbackHint(): void {
+  const hint = makeElement({
+    tag: "p",
+    id: COPY_HINT_ID,
+    className: "invitePanelHint",
+    text: APP_CONFIG.strings.INVITE_LINK_PANEL_COPY_FALLBACK,
+  });
+  $(".invitePanelLinkRow").first().after(hint);
+  announceInviteLinkPanel({ message: hint.textContent ?? "" });
+}
+
+// Moves focus to the readonly input and selects all of it so Ctrl+C works on
+// every browser; a throw while selecting is the `failure` result.
+function copyFallback({ input }: { input: HTMLInputElement }): void {
+  try {
+    input.focus();
+    input.select();
+    input.setSelectionRange(0, input.value.length);
+  } catch {
+    emit({
+      event: UI_EVENTS.UI_INVITE_LINK_COPY,
+      result: INVITE_LINK_COPY_RESULT.FAILURE,
+    });
+    $("#inviteLinkCopyBtn")[0]?.focus({ preventScroll: true });
+    // Announced only: an inline error would clear a code-6 invalid state.
+    announceInviteLinkPanel({
+      message: APP_CONFIG.strings.INVITE_LINK_PANEL_ERROR_GENERIC,
+      politeness: "assertive",
+    });
+    return;
+  }
+  emit({
+    event: UI_EVENTS.UI_INVITE_LINK_COPY,
+    result: INVITE_LINK_COPY_RESULT.FALLBACK,
+  });
+  showCopyFallbackHint();
+}
+
+function onCopySuccess(): void {
+  emit({
+    event: UI_EVENTS.UI_INVITE_LINK_COPY,
+    result: INVITE_LINK_COPY_RESULT.SUCCESS,
+  });
+}
+
+function handleCopy(): void {
+  const input = document.getElementById("inviteLinkUrlInput");
+  const copyButton = document.getElementById("inviteLinkCopyBtn");
+  const utubID = _openedUTubID;
+  if (
+    !(input instanceof HTMLInputElement) ||
+    copyButton === null ||
+    utubID === null
+  ) {
+    return;
+  }
+  const token = _generation;
+  clearCopyRevertTimer();
+  copyButton.textContent = APP_CONFIG.strings.INVITE_LINK_PANEL_COPY;
+  document.getElementById(COPY_HINT_ID)?.remove();
+  // The write starts synchronously inside the click (Safari's gesture rule).
+  let write: Promise<void> | null = null;
+  try {
+    write = navigator.clipboard?.writeText(input.value) ?? null;
+  } catch {
+    write = null;
+  }
+  if (write === null) {
+    copyFallback({ input });
+    return;
+  }
+  write.then(
+    () => {
+      onCopySuccess();
+      if (isStale({ token, utubID })) return;
+      // The panel may have re-rendered since the press; label the live button.
+      const liveButton = document.getElementById("inviteLinkCopyBtn");
+      announceInviteLinkPanel({
+        message: APP_CONFIG.strings.INVITE_LINK_PANEL_COPY_SUCCESS,
+      });
+      if (liveButton === null) return;
+      clearCopyRevertTimer();
+      liveButton.textContent = APP_CONFIG.strings.INVITE_LINK_PANEL_COPIED;
+      _copyRevertTimer = setTimeout(() => {
+        _copyRevertTimer = null;
+        liveButton.textContent = APP_CONFIG.strings.INVITE_LINK_PANEL_COPY;
+      }, COPIED_LABEL_MS);
+    },
+    () => {
+      if (isStale({ token, utubID })) {
+        // The panel is gone, so there is no input to select: count the failure.
+        emit({
+          event: UI_EVENTS.UI_INVITE_LINK_COPY,
+          result: INVITE_LINK_COPY_RESULT.FAILURE,
+        });
+        return;
+      }
+      copyFallback({ input });
+    },
+  );
+}
+
 function openConfirm({ kind }: { kind: "revoke" | "new" }): void {
   const footer = $(".invitePanelFooter")[0];
   if (footer === undefined || _confirm !== null) return;
@@ -963,6 +1396,10 @@ function handlePanelClick(event: JQuery.ClickEvent): void {
   if (target.id === "inviteLinkConfirmCancelBtn") {
     // While a lifecycle request is in flight the confirm is not cancelled.
     if (!_lifecycleInFlight) cancelConfirm();
+    return;
+  }
+  if (target.id === "inviteLinkCopyBtn") {
+    handleCopy();
     return;
   }
   if (!target.matches(LOCKABLE_SELECTOR)) return;
@@ -1120,7 +1557,8 @@ export function initInviteLinkPanel(): () => void {
   $(PANEL_SELECTOR)
     .off(".invitePanel")
     .on("keydown.invitePanel", handlePanelKeydown)
-    .on("click.invitePanel", "button", handlePanelClick);
+    .on("click.invitePanel", "button", handlePanelClick)
+    .on("change.invitePanel", "select", handleSelectChange);
   syncInviteLinkTrigger();
   const unsubscribeBus = subscribeCrossFeatureExclusion();
   const unsubscribeStore = subscribe((changedKeys) => {

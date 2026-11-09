@@ -109,6 +109,19 @@ class INVITE_LINK_PANEL:
         "People who already joined stay in the UTub."
     )
     CONFIRM_NEW_ACTION = "Make new link"
+    COPIED = "Copied"
+    COPY_SUCCESS = "Invite link copied."
+    COPY_FALLBACK = (
+        "Couldn't copy automatically. The link is selected: press Ctrl+C (⌘C on Mac)."
+    )
+    SAVING = "Saving…"
+    EXPIRES_SET = "Link now expires {date}."
+    USES_SET = "Use limit set to {label}."
+    RESYNC_DEAD_UPDATE = "This invite link no longer works."
+    USES_BELOW_JOINED_ONE = "1 person has already joined. Choose a limit of at least 1."
+    USES_BELOW_JOINED = (
+        "{count} people have already joined. Choose a limit of at least {count}."
+    )
 
 
 # Strings for invite link failure

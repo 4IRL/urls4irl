@@ -33,6 +33,9 @@ function readErrorCode(xhr: JQuery.jqXHR): number | null {
 /** `InviteLinkErrorCodes` mirrored from the backend: link not found, live link exists. */
 export const INVITE_LINK_NOT_FOUND_ERROR_CODE = 1;
 export const INVITE_LINK_LIVE_EXISTS_ERROR_CODE = 4;
+/** Dead-link update (PATCH on a link that stopped working) and use limit below the joined count. */
+export const INVITE_LINK_DEAD_UPDATE_ERROR_CODE = 5;
+export const INVITE_LINK_USES_BELOW_JOINED_ERROR_CODE = 6;
 
 const MS_PER_DAY = 86_400_000;
 
@@ -70,7 +73,7 @@ function sendMutation<Result>({
   body,
   read,
 }: {
-  method: "post" | "delete";
+  method: "post" | "patch" | "delete";
   url: string;
   body: Record<string, unknown> | null;
   read: (response: unknown) => Result | null;
@@ -153,6 +156,27 @@ export function replaceInviteLink({
     method: "post",
     url: APP_CONFIG.routes.replaceInviteLink(utubID),
     body: { expires_in_days: expiresInDays, max_uses: maxUses },
+    read: readLink,
+  });
+}
+
+/** Exactly one setting per save; `max_uses: null` is Unlimited. */
+export type InviteLinkUpdateBody =
+  | { expires_in_days: number }
+  | { max_uses: number | null };
+
+/** PATCHes one setting of the live link; the response is the saved link. */
+export function updateInviteLink({
+  utubID,
+  body,
+}: {
+  utubID: number;
+  body: InviteLinkUpdateBody;
+}): Promise<InviteLink> {
+  return sendMutation({
+    method: "patch",
+    url: APP_CONFIG.routes.updateInviteLink(utubID),
+    body,
     read: readLink,
   });
 }
