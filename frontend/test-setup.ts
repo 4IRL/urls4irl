@@ -527,6 +527,22 @@ const appConfig = {
       "The invite link panel closed because you can no longer manage this UTub's invite link.",
     INVITE_LINK_PANEL_MANAGE_LOST:
       "You can no longer manage this UTub's invite link.",
+    INVITE_LINK_PANEL_ERROR_GENERIC: "Something went wrong. Try again.",
+    INVITE_LINK_PANEL_CANCEL: "Cancel",
+    INVITE_LINK_PANEL_CREATED: "Invite link created.",
+    INVITE_LINK_PANEL_REPLACED:
+      "New invite link created. The old link no longer works.",
+    INVITE_LINK_PANEL_REVOKED: "Invite link revoked.",
+    INVITE_LINK_PANEL_RESYNC_REVOKED: "This invite link was already revoked.",
+    INVITE_LINK_PANEL_RESYNC_LIVE_EXISTS:
+      "This UTub already has a live invite link.",
+    INVITE_LINK_PANEL_CONFIRM_GROUP_LABEL: "Confirm invite link action",
+    INVITE_LINK_PANEL_CONFIRM_REVOKE_QUESTION:
+      "Revoke this link? It stops working right away. People who already joined stay in the UTub.",
+    INVITE_LINK_PANEL_CONFIRM_REVOKE_ACTION: "Revoke link",
+    INVITE_LINK_PANEL_CONFIRM_NEW_QUESTION:
+      "Make a new link? The current link stops working. People who already joined stay in the UTub.",
+    INVITE_LINK_PANEL_CONFIRM_NEW_ACTION: "Make new link",
     TRASH_LOCKED: "That UTub is locked, so this item can't be changed.",
     TRASH_ORIGIN_UNAVAILABLE:
       "That UTub is no longer available. Choose a UTub to restore this URL into.",

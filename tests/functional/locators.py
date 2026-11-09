@@ -679,6 +679,12 @@ class HomePageLocators(GenericPageLocator):
     INVITE_LINK_URL_INPUT = "#inviteLinkUrlInput"
     INVITE_LINK_EXPIRES_SELECT = "#inviteLinkExpiresSelect"
     INVITE_LINK_USES_SELECT = "#inviteLinkUsesSelect"
+    INVITE_LINK_NEW_BTN = "#inviteLinkNewBtn"
+    INVITE_LINK_REVOKE_BTN = "#inviteLinkRevokeBtn"
+    INVITE_LINK_CONFIRM_GROUP = "#MemberInvitePanel [role='group']"
+    INVITE_LINK_CONFIRM_ACTION_BTN = "#inviteLinkConfirmActionBtn"
+    INVITE_LINK_CONFIRM_CANCEL_BTN = "#inviteLinkConfirmCancelBtn"
+    INVITE_LINK_INLINE_ERROR = "#inviteLinkInlineError"
     BUTTON_UTUB_LEAVE = "#memberSelfBtnDelete"
     BUTTON_MEMBER_DELETE = ".memberOtherBtnDelete"
 

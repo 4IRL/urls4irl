@@ -891,6 +891,30 @@
     cursor: pointer;
 }
 
+.invitePanelBtn[aria-disabled="true"] {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.invitePanelConfirm {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+}
+
+.invitePanelConfirmButtons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.invitePanelError {
+    margin: 0;
+    color: var(--removeMemberColor);
+    font-size: 0.875rem;
+}
+
 .invitePanelBtn--primary {
     background: var(--deckSelectionGreen);
     border-color: var(--deckSelectionGreen);

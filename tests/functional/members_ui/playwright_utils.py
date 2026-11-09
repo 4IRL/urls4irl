@@ -1,5 +1,6 @@
 import json
 import re
+from datetime import timedelta
 from typing import Callable
 
 from flask import Flask
@@ -8,8 +9,10 @@ from playwright.sync_api import Locator, Page, Response, Route, expect
 from backend import db
 from backend.cli.mock_constants import USERNAME_BASE
 from backend.models.users import Users
+from backend.models.utub_invite_links import Utub_Invite_Links
 from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utubs import Utubs
+from backend.utils.datetime_utils import utc_now
 from tests.functional.db_utils import (
     get_utub_this_user_created,
     set_member_role_in_utub,
@@ -450,6 +453,26 @@ def seed_co_creator_in_utub(*, app: Flask, utub_id: int, username: str) -> int:
         membership.member_role = Member_Role.CO_CREATOR
         db.session.commit()
         return user.id
+
+
+def expire_invite_link_in_db(*, app: Flask, invite_link_id: int) -> None:
+    """Set an existing invite link's `expires_at` to the past, in place.
+
+    `add_invite_link` only inserts, so a test that needs the link to die after
+    the panel is open updates the existing row with this.
+    """
+    with app.app_context():
+        invite: Utub_Invite_Links = Utub_Invite_Links.query.get(invite_link_id)
+        invite.expires_at = utc_now() - timedelta(days=1)
+        db.session.commit()
+
+
+def revoke_invite_link_in_db(*, app: Flask, invite_link_id: int) -> None:
+    """Stamp `revoked_at` on an existing invite link, in place."""
+    with app.app_context():
+        invite: Utub_Invite_Links = Utub_Invite_Links.query.get(invite_link_id)
+        invite.revoked_at = utc_now()
+        db.session.commit()
 
 
 def open_member_row_role_action(*, page: Page, member_id: int) -> None:

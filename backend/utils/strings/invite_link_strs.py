@@ -92,6 +92,23 @@ class INVITE_LINK_PANEL:
     )
     MANAGE_LOST = "You can no longer manage this UTub's invite link."
     ERROR_GENERIC = "Something went wrong. Try again."
+    CANCEL = "Cancel"
+    CREATED = "Invite link created."
+    REPLACED = "New invite link created. The old link no longer works."
+    REVOKED = "Invite link revoked."
+    RESYNC_REVOKED = "This invite link was already revoked."
+    RESYNC_LIVE_EXISTS = "This UTub already has a live invite link."
+    CONFIRM_GROUP_LABEL = "Confirm invite link action"
+    CONFIRM_REVOKE_QUESTION = (
+        "Revoke this link? It stops working right away. "
+        "People who already joined stay in the UTub."
+    )
+    CONFIRM_REVOKE_ACTION = "Revoke link"
+    CONFIRM_NEW_QUESTION = (
+        "Make a new link? The current link stops working. "
+        "People who already joined stay in the UTub."
+    )
+    CONFIRM_NEW_ACTION = "Make new link"
 
 
 # Strings for invite link failure

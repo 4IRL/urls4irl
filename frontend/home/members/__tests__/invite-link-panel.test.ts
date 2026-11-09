@@ -22,9 +22,12 @@ import { AppEvents, emit as emitAppEvent, on } from "../../../lib/event-bus.js";
 import { hideAndResetMemberCombobox } from "../member-combobox.js";
 import { closeMemberNameFilter } from "../search.js";
 
-vi.mock("../invite-link-client.js", () => ({
+vi.mock("../invite-link-client.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../invite-link-client.js")>()),
   getInviteLink: vi.fn(),
-  INVITE_LINK_LOCKED_ERROR_CODE: 3,
+  createInviteLink: vi.fn(),
+  replaceInviteLink: vi.fn(),
+  revokeInviteLink: vi.fn(),
 }));
 vi.mock("../../utubs/stale-data.js", () => ({
   updateUTubOnFindingStaleData: vi.fn(),

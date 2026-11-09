@@ -18,10 +18,17 @@ import { hideAndResetMemberCombobox } from "./member-combobox.js";
 import { announceMemberRowAction } from "./notice.js";
 import { closeMemberNameFilter } from "./search.js";
 import {
+  createInviteLink,
   getInviteLink,
+  INVITE_LINK_LIVE_EXISTS_ERROR_CODE,
   INVITE_LINK_LOCKED_ERROR_CODE,
+  INVITE_LINK_NOT_FOUND_ERROR_CODE,
+  replaceExpiryDays,
+  replaceInviteLink,
+  revokeInviteLink,
   type InviteLink,
   type InviteLinkLoadFailure,
+  type InviteLinkMutationFailure,
 } from "./invite-link-client.js";
 
 const log = debug("members");
@@ -57,6 +64,18 @@ let _generation = 0;
 let _isOpen = false;
 let _openedUTubID: number | null = null;
 let _forcedClosedToken: number | null = null;
+// `_inFlight` (any request) drives the control lock; `_lifecycleInFlight` (only
+// create / replace / revoke) drives Escape. Both are reset by `teardownPanel`.
+let _inFlight = false;
+let _lifecycleInFlight = false;
+// The live link currently rendered (the New link body reads its settings), and
+// the open confirm with the footer it replaced and the button that opened it.
+let _liveLink: InviteLink | null = null;
+let _confirm: {
+  kind: "revoke" | "new";
+  footerNodes: Node[];
+  originId: string;
+} | null = null;
 
 /** Whether the panel is open. */
 export function isInviteLinkPanelOpen(): boolean {
@@ -274,6 +293,9 @@ export function deadReasonFor({ link }: { link: InviteLink }): string {
 function setBody({ nodes, busy }: { nodes: Node[]; busy: boolean }): void {
   const body = $(BODY_SELECTOR)[0];
   if (body === undefined) return;
+  // Any render drops an open confirm and the previous live link.
+  _confirm = null;
+  _liveLink = null;
   body.replaceChildren(...nodes);
   const panel = $(PANEL_SELECTOR)[0];
   if (busy) panel?.setAttribute("aria-busy", "true");
@@ -457,6 +479,7 @@ function renderLive({ link }: { link: InviteLink }): void {
   );
   nodes.push(footer);
   setBody({ nodes, busy: false });
+  _liveLink = link;
 }
 
 function renderDead({ link }: { link: InviteLink }): void {
@@ -540,6 +563,11 @@ function teardownPanel(): void {
   _generation += 1;
   _isOpen = false;
   _openedUTubID = null;
+  _inFlight = false;
+  _lifecycleInFlight = false;
+  _confirm = null;
+  _liveLink = null;
+  $(`${BODY_SELECTOR} [aria-disabled]`).removeAttr("aria-disabled");
   $(PANEL_SELECTOR).addClass("hidden").removeAttr("aria-busy");
   $(BODY_SELECTOR).empty();
   $(TRIGGER_SELECTOR).attr("aria-expanded", "false").removeClass("active");
@@ -655,6 +683,313 @@ export function resyncInviteLinkPanel({
   loadAndRender({ settle: false, resyncMessage: message });
 }
 
+const LOCKABLE_SELECTOR =
+  "#inviteLinkCreateBtn, #inviteLinkNewBtn, #inviteLinkRevokeBtn, #inviteLinkConfirmActionBtn";
+const INLINE_ERROR_ID = "inviteLinkInlineError";
+
+type LifecycleKind = "create" | "replace" | "revoke";
+
+// aria-disabled (never native `disabled`) keeps focus on the pressed control.
+// Cancel is deliberately not lockable.
+function setControlsLocked({ locked }: { locked: boolean }): void {
+  const controls = $(LOCKABLE_SELECTOR);
+  if (locked) controls.attr("aria-disabled", "true");
+  else controls.removeAttr("aria-disabled");
+}
+
+function clearInFlight(): void {
+  _inFlight = false;
+  _lifecycleInFlight = false;
+  setControlsLocked({ locked: false });
+}
+
+function clearInlineError(): void {
+  document.getElementById(INLINE_ERROR_ID)?.remove();
+}
+
+function showInlineError(): void {
+  clearInlineError();
+  const message = APP_CONFIG.strings.INVITE_LINK_PANEL_ERROR_GENERIC;
+  const error = makeElement({
+    tag: "p",
+    id: INLINE_ERROR_ID,
+    className: "invitePanelError",
+    text: message,
+  });
+  $(BODY_SELECTOR)[0]?.append(error);
+  announceInviteLinkPanel({ message, politeness: "assertive" });
+}
+
+function selectedCreateSettings(): {
+  expiresInDays: number;
+  maxUses: number | null;
+} {
+  const expires = $("#inviteLinkExpiresSelect").val();
+  const uses = $("#inviteLinkUsesSelect").val();
+  return {
+    expiresInDays:
+      typeof expires === "string" && expires !== ""
+        ? Number(expires)
+        : DEFAULT_EXPIRY_DAYS,
+    maxUses: typeof uses === "string" && uses !== "" ? Number(uses) : null,
+  };
+}
+
+function sendLifecycle({
+  kind,
+  utubID,
+}: {
+  kind: LifecycleKind;
+  utubID: number;
+}): Promise<InviteLink | true> | null {
+  if (kind === "create") {
+    return createInviteLink({ utubID, ...selectedCreateSettings() });
+  }
+  if (kind === "replace") {
+    if (_liveLink === null) return null;
+    return replaceInviteLink({
+      utubID,
+      expiresInDays: replaceExpiryDays({
+        expiresAt: _liveLink.expiresAt,
+        now: Date.now(),
+      }),
+      maxUses: _liveLink.maxUses,
+    });
+  }
+  return revokeInviteLink({ utubID });
+}
+
+function successMessageFor({ kind }: { kind: LifecycleKind }): string {
+  const { strings } = APP_CONFIG;
+  return kind === "create"
+    ? strings.INVITE_LINK_PANEL_CREATED
+    : kind === "replace"
+      ? strings.INVITE_LINK_PANEL_REPLACED
+      : strings.INVITE_LINK_PANEL_REVOKED;
+}
+
+// create meets code 4 (a live link exists); replace and revoke meet code 1.
+function resyncRuleFor({ kind }: { kind: LifecycleKind }): {
+  code: number;
+  message: string;
+} {
+  const { strings } = APP_CONFIG;
+  return kind === "create"
+    ? {
+        code: INVITE_LINK_LIVE_EXISTS_ERROR_CODE,
+        message: strings.INVITE_LINK_PANEL_RESYNC_LIVE_EXISTS,
+      }
+    : {
+        code: INVITE_LINK_NOT_FOUND_ERROR_CODE,
+        message: strings.INVITE_LINK_PANEL_RESYNC_REVOKED,
+      };
+}
+
+function onLifecycleSuccess({
+  kind,
+  link,
+  utubID,
+  token,
+}: {
+  kind: LifecycleKind;
+  link: InviteLink | true;
+  utubID: number;
+  token: number;
+}): void {
+  const stale = isStale({ token, utubID });
+  // Same-UTub outcomes are announced even after the panel closed, except a
+  // success the forced close already covered.
+  if (getState().activeUTubID === utubID && token !== _forcedClosedToken) {
+    announceInviteLinkPanel({ message: successMessageFor({ kind }) });
+  }
+  if (stale) return;
+  clearInFlight();
+  if (link === true) {
+    // Revoke: the empty state, focus on Create link (not the Expires select).
+    renderEmpty();
+    $("#inviteLinkCreateBtn")[0]?.focus({ preventScroll: true });
+    return;
+  }
+  renderLive({ link });
+  $("#inviteLinkCopyBtn")[0]?.focus({ preventScroll: true });
+}
+
+function onLifecycleFailure({
+  kind,
+  failure,
+  utubID,
+  token,
+}: {
+  kind: LifecycleKind;
+  failure: InviteLinkMutationFailure;
+  utubID: number;
+  token: number;
+}): void {
+  const stale = isStale({ token, utubID });
+  if (failure.kind === "csrf") {
+    $("body").html(failure.html);
+    return;
+  }
+  if (!stale) clearInFlight();
+  // A 429 was already announced by the global handler.
+  if (failure.kind === "rate_limited") return;
+
+  const sameUTub = getState().activeUTubID === utubID;
+  const resync = resyncRuleFor({ kind });
+  if (failure.errorCode === resync.code) {
+    if (stale) {
+      if (sameUTub) {
+        announceInviteLinkPanel({
+          message: resync.message,
+          politeness: "assertive",
+        });
+      }
+      return;
+    }
+    resyncInviteLinkPanel({ message: resync.message });
+    return;
+  }
+  if (failure.status === 403 || failure.status === 404) {
+    if (stale) {
+      if (sameUTub) {
+        announceInviteLinkPanel({
+          message: messageForDenied({ errorCode: failure.errorCode }),
+          politeness: "assertive",
+        });
+        void updateUTubOnFindingStaleData({ utubID });
+      }
+      return;
+    }
+    handleDenied({ utubID, errorCode: failure.errorCode });
+    return;
+  }
+  if (stale) {
+    if (sameUTub) {
+      announceInviteLinkPanel({
+        message: APP_CONFIG.strings.INVITE_LINK_PANEL_ERROR_GENERIC,
+        politeness: "assertive",
+      });
+    }
+    return;
+  }
+  showInlineError();
+}
+
+// Sends one lifecycle request. One at a time: an aria-disabled control that is
+// pressed again, or any press while a request is in flight, does nothing.
+function runLifecycle({ kind }: { kind: LifecycleKind }): void {
+  if (_inFlight || !_isOpen) return;
+  const utubID = _openedUTubID;
+  if (utubID === null) return;
+  const token = _generation;
+  const request = sendLifecycle({ kind, utubID });
+  if (request === null) return;
+  clearInlineError();
+  _inFlight = true;
+  _lifecycleInFlight = true;
+  setControlsLocked({ locked: true });
+  request.then(
+    (link) => onLifecycleSuccess({ kind, link, utubID, token }),
+    (failure: InviteLinkMutationFailure) => {
+      log("invite link mutation failed", { kind, failure: failure.kind });
+      onLifecycleFailure({ kind, failure, utubID, token });
+    },
+  );
+}
+
+function openConfirm({ kind }: { kind: "revoke" | "new" }): void {
+  const footer = $(".invitePanelFooter")[0];
+  if (footer === undefined || _confirm !== null) return;
+  const { strings } = APP_CONFIG;
+  const question =
+    kind === "revoke"
+      ? strings.INVITE_LINK_PANEL_CONFIRM_REVOKE_QUESTION
+      : strings.INVITE_LINK_PANEL_CONFIRM_NEW_QUESTION;
+  const actionLabel =
+    kind === "revoke"
+      ? strings.INVITE_LINK_PANEL_CONFIRM_REVOKE_ACTION
+      : strings.INVITE_LINK_PANEL_CONFIRM_NEW_ACTION;
+  const group = makeElement({ tag: "div", className: "invitePanelConfirm" });
+  group.setAttribute("role", "group");
+  group.setAttribute(
+    "aria-label",
+    strings.INVITE_LINK_PANEL_CONFIRM_GROUP_LABEL,
+  );
+  const buttons = makeElement({
+    tag: "div",
+    className: "invitePanelConfirmButtons",
+  });
+  const cancel = makeButton({
+    id: "inviteLinkConfirmCancelBtn",
+    label: strings.INVITE_LINK_PANEL_CANCEL,
+    variant: "ghost",
+  });
+  const action = makeButton({
+    id: "inviteLinkConfirmActionBtn",
+    label: actionLabel,
+    variant: kind === "revoke" ? "danger" : "primary",
+  });
+  buttons.append(cancel, action);
+  group.append(
+    makeElement({ tag: "p", className: "invitePanelHint", text: question }),
+    buttons,
+  );
+  const footerNodes = Array.from(footer.childNodes);
+  footer.replaceChildren(group);
+  _confirm = {
+    kind,
+    footerNodes,
+    originId: kind === "revoke" ? "inviteLinkRevokeBtn" : "inviteLinkNewBtn",
+  };
+  if (_inFlight) setControlsLocked({ locked: true });
+  cancel.focus({ preventScroll: true });
+  announceInviteLinkPanel({ message: question });
+}
+
+function cancelConfirm(): void {
+  if (_confirm === null) return;
+  const { footerNodes, originId } = _confirm;
+  const footer = $(".invitePanelFooter")[0];
+  _confirm = null;
+  footer?.replaceChildren(...footerNodes);
+  // The restored buttons were detached while the lock was applied.
+  if (_inFlight) setControlsLocked({ locked: true });
+  document.getElementById(originId)?.focus({ preventScroll: true });
+}
+
+function handlePanelClick(event: JQuery.ClickEvent): void {
+  const target = (event.target as HTMLElement).closest("button");
+  if (target === null) return;
+  if (target.id === "inviteLinkConfirmCancelBtn") {
+    // While a lifecycle request is in flight the confirm is not cancelled.
+    if (!_lifecycleInFlight) cancelConfirm();
+    return;
+  }
+  if (!target.matches(LOCKABLE_SELECTOR)) return;
+  if (_inFlight) {
+    event.preventDefault();
+    return;
+  }
+  switch (target.id) {
+    case "inviteLinkCreateBtn":
+      runLifecycle({ kind: "create" });
+      return;
+    case "inviteLinkNewBtn":
+      openConfirm({ kind: "new" });
+      return;
+    case "inviteLinkRevokeBtn":
+      openConfirm({ kind: "revoke" });
+      return;
+    case "inviteLinkConfirmActionBtn":
+      if (_confirm !== null) {
+        runLifecycle({
+          kind: _confirm.kind === "revoke" ? "revoke" : "replace",
+        });
+      }
+      return;
+  }
+}
+
 function openPanel(): void {
   const { activeUTubID } = getState();
   if (activeUTubID === null || !canManageInviteLink()) return;
@@ -734,6 +1069,13 @@ function handlePanelKeydown(event: JQuery.KeyDownEvent): void {
   // this handler. Consumed here so document-level Escape handlers never see it.
   event.preventDefault();
   event.stopPropagation();
+  // The first Escape cancels an open confirm; a second closes the panel. While
+  // a lifecycle request is in flight Escape closes directly: the confirm is
+  // not cancelled and the late response is dropped by the generation bump.
+  if (_confirm !== null && !_lifecycleInFlight) {
+    cancelConfirm();
+    return;
+  }
   closePanelByUser();
 }
 
@@ -777,7 +1119,8 @@ export function initInviteLinkPanel(): () => void {
   $(TRIGGER_SELECTOR).off(".invitePanel").on("click.invitePanel", togglePanel);
   $(PANEL_SELECTOR)
     .off(".invitePanel")
-    .on("keydown.invitePanel", handlePanelKeydown);
+    .on("keydown.invitePanel", handlePanelKeydown)
+    .on("click.invitePanel", "button", handlePanelClick);
   syncInviteLinkTrigger();
   const unsubscribeBus = subscribeCrossFeatureExclusion();
   const unsubscribeStore = subscribe((changedKeys) => {
