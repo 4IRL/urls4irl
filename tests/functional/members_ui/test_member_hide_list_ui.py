@@ -7,15 +7,8 @@ import pytest
 from flask import Flask
 from playwright.sync_api import Locator, Page, Request, Response, expect
 
-from backend.utils.strings.url_strs import HIDDEN_MEMBER_LABEL, URL_ADDED_BY
-from backend.utils.strings.user_strs import (
-    MEMBER_ADD_EXACT_USERNAME_HINT,
-    MEMBER_CANNOT_BE_ADDED,
-)
+from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.db_utils import set_utub_list_preferences
-from tests.functional.home_ui.test_panel_settings_mobile_ui import (
-    _go_to_deck_via_navbar,
-)
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.members_ui.playwright_utils import (
     click_add_member_submit,
@@ -35,6 +28,7 @@ from tests.functional.playwright_login_utils import (
 from tests.functional.playwright_utils import (
     collect_page_errors,
     get_url_row_by_id,
+    go_to_deck_via_navbar,
     refocus_window,
     wait_until_visible_css_selector,
 )
@@ -52,7 +46,7 @@ UNKNOWN_USERNAME = "hide_nobody_here"
 
 _MEMBER_ADD_POST_URL_RE = re.compile(r"/utubs/\d+/members$")
 _UTUB_SETTINGS_URL_RE = re.compile(r"/utubs/\d+/settings$")
-_ADDED_BY_A_MEMBER_RE = re.compile(rf"{URL_ADDED_BY} {HIDDEN_MEMBER_LABEL}\b")
+_ADDED_BY_A_MEMBER_RE = re.compile(rf"{UTS.URL_ADDED_BY} {UTS.HIDDEN_MEMBER_LABEL}\b")
 
 
 @pytest.fixture
@@ -265,7 +259,7 @@ def test_plain_member_in_hidden_utub_sees_only_visible_people_on_a_phone(
     )
     expect(badge).to_contain_text(_ADDED_BY_A_MEMBER_RE)
 
-    _go_to_deck_via_navbar(page, HPL.NAVBAR_MEMBER_DECK)
+    go_to_deck_via_navbar(page=page, navbar_selector=HPL.NAVBAR_MEMBER_DECK)
     assert _visible_member_ids(page=page, expected_count=3) == {
         seed.owner_id,
         seed.co_owner_id,
@@ -294,7 +288,7 @@ def test_plain_member_adding_gets_no_suggestions_and_one_unified_error(
 
     open_add_member_combobox(page=page)
     expect(page.locator(HPL.MEMBER_COMBOBOX_LISTBOX_HINT)).to_have_text(
-        MEMBER_ADD_EXACT_USERNAME_HINT
+        UTS.MEMBER_ADD_EXACT_USERNAME_HINT
     )
     expect(page.locator(HPL.MEMBER_COMBOBOX_OPTION)).to_have_count(0)
 
@@ -305,8 +299,8 @@ def test_plain_member_adding_gets_no_suggestions_and_one_unified_error(
 
     existing_chip = get_staged_chip(page=page, username=existing_hidden_name)
     unknown_chip = get_staged_chip(page=page, username=UNKNOWN_USERNAME)
-    expect(existing_chip).to_have_attribute("title", MEMBER_CANNOT_BE_ADDED)
-    expect(unknown_chip).to_have_attribute("title", MEMBER_CANNOT_BE_ADDED)
+    expect(existing_chip).to_have_attribute("title", UTS.MEMBER_CANNOT_BE_ADDED)
+    expect(unknown_chip).to_have_attribute("title", UTS.MEMBER_CANNOT_BE_ADDED)
     assert existing_chip.get_attribute("title") == unknown_chip.get_attribute("title")
     assert_no_page_errors(page_errors=page_errors)
 
@@ -382,7 +376,7 @@ def test_live_flip_of_the_setting_hides_and_restores_the_list_for_a_loaded_membe
     badge = _expanded_adder_badge(
         page=page, utub_url_id=seed.utub_url_ids[seed.member_b_id]
     )
-    expect(badge).to_contain_text(f"{URL_ADDED_BY} {hidden_name}")
+    expect(badge).to_contain_text(f"{UTS.URL_ADDED_BY} {hidden_name}")
 
     # Plain-member rows are not focusable, so give the row-to-be-hidden focus.
     hidden_row = member_row(page=page, member_id=seed.member_b_id)
@@ -418,5 +412,5 @@ def test_live_flip_of_the_setting_hides_and_restores_the_list_for_a_loaded_membe
     expect(_utub_row_numbers(page=page, utub_id=seed.utub_id)).to_have_text(
         [url_count, str(member_count)]
     )
-    expect(badge).to_contain_text(f"{URL_ADDED_BY} {hidden_name}")
+    expect(badge).to_contain_text(f"{UTS.URL_ADDED_BY} {hidden_name}")
     assert_no_page_errors(page_errors=page_errors)

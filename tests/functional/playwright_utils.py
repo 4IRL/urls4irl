@@ -1057,6 +1057,16 @@ def click_on_navbar(*, page: Page) -> None:
     expect(navbar_dropdown).not_to_have_class(re.compile(r"collapsing"))
 
 
+def go_to_deck_via_navbar(*, page: Page, navbar_selector: str) -> None:
+    """On a phone, switch decks by opening the navbar dropdown and clicking the
+    given deck entry, then wait for the dropdown's collapse to finish."""
+    click_on_navbar(page=page)
+    wait_then_click_element(page=page, css_selector=navbar_selector)
+    wait_for_class_to_be_removed(
+        page=page, css_selector=HPL.NAVBAR_DROPDOWN, class_name="collapsing"
+    )
+
+
 def close_navbar(*, page: Page) -> None:
     """Collapse an already-open mobile navbar by tapping the toggler again,
     waiting for Bootstrap's hide animation (`show` class removal) to finish."""

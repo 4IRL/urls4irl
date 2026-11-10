@@ -15,7 +15,6 @@ from tests.functional.db_utils import (
 from tests.functional.home_ui.test_panel_settings_mobile_ui import (
     _MIN_TOUCH_TARGET_PX,
     _expect_sheet_closed,
-    _go_to_deck_via_navbar,
 )
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.members_ui.playwright_utils import (
@@ -27,6 +26,7 @@ from tests.functional.playwright_login_utils import (
     login_user_and_select_utub_by_utubid_mobile,
 )
 from tests.functional.playwright_utils import (
+    go_to_deck_via_navbar,
     wait_then_click_element,
     wait_until_hidden,
 )
@@ -41,7 +41,7 @@ def _login_to_members_deck(*, app: Flask, page: Page) -> int:
     login_user_and_select_utub_by_utubid_mobile(
         app=app, page=page, user_id=OWNER_ID, utub_id=utub_id
     )
-    _go_to_deck_via_navbar(page, HPL.NAVBAR_MEMBER_DECK)
+    go_to_deck_via_navbar(page=page, navbar_selector=HPL.NAVBAR_MEMBER_DECK)
     return utub_id
 
 
@@ -103,7 +103,7 @@ def test_full_transfer_from_the_sheet_completes(
     wait_until_hidden(page=page, css_selector=HPL.TRANSFER_OWNER_MODAL)
 
     # The phone layout lands back on the URL deck after the transfer reload.
-    _go_to_deck_via_navbar(page, HPL.NAVBAR_MEMBER_DECK)
+    go_to_deck_via_navbar(page=page, navbar_selector=HPL.NAVBAR_MEMBER_DECK)
     expect(
         page.locator(
             f'{HPL.BADGES_MEMBERS}[memberid="{new_owner_id}"] svg.bi-diamond-fill'
