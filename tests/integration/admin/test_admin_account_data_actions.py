@@ -1128,6 +1128,80 @@ def test_admin_email_resend_happy_path(
     assert audit_row.log_metadata.get("reason") == _MOCK_REASON
 
 
+def _mock_resend_success(monkeypatch: pytest.MonkeyPatch) -> None:
+    success_email_response = Response()
+    success_email_response.status_code = 200
+    monkeypatch.setattr(
+        EmailSender,
+        "send_account_email_confirmation",
+        lambda self, *args, **kwargs: success_email_response,
+    )
+
+
+def test_admin_email_resend_keeps_pending_invite_reference(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    GIVEN an unvalidated target whose Email_Validations row references an invite
+    WHEN the admin resends the confirmation email
+    THEN the same row is refreshed (new token) and keeps its pending_invite_id.
+    """
+    client, csrf, _, app = login_admin_user_with_register
+    target = _seed_unvalidated_user(app)
+    _seed_email_validation_row(app, target)
+    utub = _seed_utub_with_target_as_sole_member(app, target)
+    invite_id: int = add_invite_link(app, utub.id, target.id)
+    with app.app_context():
+        row: Email_Validations = Email_Validations.query.filter_by(
+            user_id=target.id
+        ).one()
+        row.pending_invite_id = invite_id
+        old_token: str = row.validation_token
+        db.session.commit()
+    _mock_resend_success(monkeypatch)
+
+    response = _post_account(
+        client, _EMAIL_RESEND_URL.format(target_user_id=target.id), csrf
+    )
+
+    assert response.status_code == 200
+    with app.app_context():
+        db.session.expire_all()
+        row_after: Email_Validations = Email_Validations.query.filter_by(
+            user_id=target.id
+        ).one()
+        assert row_after.pending_invite_id == invite_id
+        assert row_after.validation_token != old_token
+
+
+def test_admin_email_resend_new_row_has_no_pending_invite(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    GIVEN an unvalidated target with no Email_Validations row
+    WHEN the admin resends the confirmation email
+    THEN a new row is created whose pending_invite_id is NULL.
+    """
+    client, csrf, _, app = login_admin_user_with_register
+    target = _seed_unvalidated_user(app)
+    with app.app_context():
+        assert Email_Validations.query.filter_by(user_id=target.id).first() is None
+    _mock_resend_success(monkeypatch)
+
+    response = _post_account(
+        client, _EMAIL_RESEND_URL.format(target_user_id=target.id), csrf
+    )
+
+    assert response.status_code == 200
+    with app.app_context():
+        new_row: Email_Validations = Email_Validations.query.filter_by(
+            user_id=target.id
+        ).one()
+        assert new_row.pending_invite_id is None
+
+
 # ---------------------------------------------------------------------------
 # EMAIL RESEND: already-validated — no-op, no audit
 # ---------------------------------------------------------------------------

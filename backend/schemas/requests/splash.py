@@ -16,7 +16,7 @@ from backend.schemas.requests._sanitize import SanitizedStr
 from backend.utils.constants import USER_CONSTANTS
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.reset_password_strs import RESET_PASSWORD
-from backend.utils.strings.splash_form_strs import EMAILS_NOT_IDENTICAL
+from backend.utils.strings.splash_form_strs import EMAILS_NOT_IDENTICAL, INVITE_NEXT
 
 
 class _UsernameStripMixin(BaseModel):
@@ -65,6 +65,19 @@ class RegisterRequest(_UsernameStripMixin):
         alias="confirmPassword",
         description="Password confirmation, must match password",
     )
+    invite_next: str | None = Field(
+        default=None,
+        alias=INVITE_NEXT,
+        description=(
+            "Invite path from the splash page's single next param, "
+            "e.g. /invite/<token>/register; ignored unless valid"
+        ),
+    )
+
+    @field_validator("invite_next", mode="before")
+    @classmethod
+    def non_string_invite_next_is_absent(cls, value: object) -> str | None:
+        return value if isinstance(value, str) else None
 
     @field_validator("confirm_email", mode="after")
     @classmethod

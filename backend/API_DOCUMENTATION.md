@@ -205,6 +205,9 @@ Required JSON body:
 > }
 > ```
 
+Optional JSON body field:
+> `inviteNext` (string): the invite path from the splash page's single `next` param, e.g. `/invite/<token>/register`. It is silently ignored when it is not a string, is malformed, or names no known invite; it never causes a 400 and never changes the response.
+
 ##### Responses
 
 > | http code     | content-type                      | response  | details |

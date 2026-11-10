@@ -3829,6 +3829,11 @@ export interface components {
       password: string;
       /** @description Password confirmation, must match password */
       confirmPassword: string;
+      /**
+       * @description Invite path from the splash page's single next param, e.g. /invite/<token>/register; ignored unless valid
+       * @default null
+       */
+      inviteNext: string | null;
     };
     RegisterResponseSchema: {
       /**

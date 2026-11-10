@@ -21,12 +21,17 @@ from tests.functional.invite_links_ui.db_utils import (
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.locators import InvitePageLocators as IPL
 from tests.functional.locators import SplashPageLocators as SPL
+from tests.functional.playwright_assert_utils import assert_login_with_username
 from tests.functional.playwright_utils import (
     current_base_url,
     get_selected_utub_id,
     input_login_fields,
     login_user_to_home_page,
     wait_for_modal_ready,
+)
+from tests.functional.splash_ui.playwright_utils import (
+    fill_register_fields,
+    register_user_ui,
 )
 
 pytestmark = pytest.mark.invite_links_ui
@@ -600,3 +605,83 @@ def test_github_oauth_from_auto_opened_login_modal_lands_on_invite(
 
     page.wait_for_url(scenario.url)
     expect(page.locator(IPL.BUTTON_JOIN)).to_have_text(UTS.INVITE_JOIN_LABEL)
+
+
+SIGNUP_USERNAME = "invitesignup"
+SIGNUP_EMAIL = "invitesignup@urls4irl.app"
+SIGNUP_PASSWORD = "InviteSignup1!"
+
+
+def _submit_signup_and_open_validation_link(*, app: Flask, page: Page) -> int:
+    """Submit the filled Register form, wait for the confirmation modal, then open
+    the new user's validation link. Returns the new user's id."""
+    page.locator(SPL.REGISTER_BUTTON_SUBMIT).click()
+    wait_for_modal_ready(page=page, modal_selector=SPL.REGISTER_CONFIRMATION_MODAL)
+
+    with app.app_context():
+        user = Users.query.filter(Users.username == SIGNUP_USERNAME).one()
+        user_id = user.id
+        token = user.email_confirm.validation_token
+
+    page.goto(f"{current_base_url(page=page)}/validate/{token}")
+    return user_id
+
+
+def test_signup_from_invite_lands_on_invite_join_without_membership(
+    page: Page,
+    create_test_users,
+    create_test_utubs,
+    provide_app: Flask,
+):
+    """
+    GIVEN a live invite link and an anonymous visitor who clicked Create account
+    WHEN the visitor registers, then opens the emailed validation link
+    THEN the visitor is logged in on the invite page showing Join, and is not a
+         member of the UTub
+    """
+    scenario = _seed_invite(app=provide_app, page=page)
+    page.goto(scenario.url)
+    page.locator(IPL.LINK_CREATE_ACCOUNT).click()
+    wait_for_modal_ready(page=page, modal_selector=SPL.REGISTER_MODAL)
+
+    fill_register_fields(
+        page=page,
+        username=SIGNUP_USERNAME,
+        email=SIGNUP_EMAIL,
+        password=SIGNUP_PASSWORD,
+    )
+    user_id = _submit_signup_and_open_validation_link(app=provide_app, page=page)
+
+    page.wait_for_url(scenario.url)
+    expect(page.locator(IPL.BUTTON_JOIN)).to_have_text(UTS.INVITE_JOIN_LABEL)
+    with provide_app.app_context():
+        assert (
+            Utub_Members.query.filter_by(
+                utub_id=scenario.utub_id, user_id=user_id
+            ).count()
+            == 0
+        )
+
+
+def test_signup_from_plain_splash_lands_on_home(
+    page: Page,
+    create_test_users,
+    create_test_utubs,
+    provide_app: Flask,
+):
+    """
+    GIVEN an anonymous visitor on the plain splash page
+    WHEN the visitor registers, then opens the emailed validation link
+    THEN the visitor lands on the home page
+    """
+    page.goto(current_base_url(page=page))
+    register_user_ui(
+        page=page,
+        username=SIGNUP_USERNAME,
+        email=SIGNUP_EMAIL,
+        password=SIGNUP_PASSWORD,
+    )
+    _submit_signup_and_open_validation_link(app=provide_app, page=page)
+
+    page.wait_for_url(re.compile(r"/home(\?|$)"))
+    assert_login_with_username(page=page, username=SIGNUP_USERNAME)

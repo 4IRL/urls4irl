@@ -4,6 +4,7 @@ from backend.utils.strings.model_strs import EMAIL, PASSWORD, USERNAME
 # Strings for login/register forms
 CONFIRM_EMAIL = "confirmEmail"
 CONFIRM_PASSWORD = "confirmPassword"
+INVITE_NEXT = "inviteNext"
 USERNAME_TEXT = "Username"
 EMAIL_TEXT = "Email"
 CONFIRM_EMAIL_TEXT = "Confirm Email"

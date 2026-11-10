@@ -1,6 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
+from backend.schemas.requests.splash import RegisterRequest
 from backend.utils.constants import USER_CONSTANTS
 from backend.utils.strings.reset_password_strs import RESET_PASSWORD
 from backend.utils.strings.splash_form_strs import EMAILS_NOT_IDENTICAL
@@ -79,6 +80,33 @@ class TestRegisterRequest:
         req = RegisterRequest.model_validate(self._valid_payload())
         assert req.username == "testuser"
         assert req.email == "test@example.com"
+
+    def test_invite_next_omitted_is_none(self):
+        assert RegisterRequest.model_validate(self._valid_payload()).invite_next is None
+
+    @pytest.mark.parametrize(
+        "value", ["", "x" * 5000, "/home", "/invite/short", "/invite/" + "a" * 22]
+    )
+    def test_invite_next_strings_pass_unchanged(self, value):
+        req = RegisterRequest.model_validate(self._valid_payload(inviteNext=value))
+        assert req.invite_next == value
+
+    @pytest.mark.parametrize("value", [123, {}, [], True])
+    def test_invite_next_non_strings_become_none(self, value):
+        req = RegisterRequest.model_validate(self._valid_payload(inviteNext=value))
+        assert req.invite_next is None
+
+    def test_invite_next_does_not_change_other_field_errors(self):
+        bad = self._valid_payload(confirmEmail="other@example.com")
+        with pytest.raises(ValidationError) as without:
+            RegisterRequest.model_validate(bad)
+        with pytest.raises(ValidationError) as with_field:
+            RegisterRequest.model_validate({**bad, "inviteNext": "/invite/x"})
+
+        def shape(error: ValidationError) -> list[tuple]:
+            return [(err["loc"], err["type"], err["msg"]) for err in error.errors()]
+
+        assert shape(without.value) == shape(with_field.value)
 
     def test_username_whitespace_stripped(self):
         from backend.schemas.requests.splash import RegisterRequest

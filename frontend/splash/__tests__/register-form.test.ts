@@ -299,3 +299,55 @@ describe("register-form success → confirmation modal", () => {
     expect($confirmation.data("confirmMessage")).toBe("msg");
   });
 });
+
+describe("register-form inviteNext forwarding", () => {
+  const TOKEN = "A".repeat(22);
+
+  beforeEach(() => {
+    document.body.innerHTML = REGISTER_MODAL_HTML;
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    window.history.replaceState({}, "", "/");
+  });
+
+  function submitAndGetPayload(search: string): Record<string, unknown> {
+    window.history.replaceState({}, "", `/${search}`);
+    const ajaxSpy = vi.spyOn($, "ajax").mockReturnValue(createMockJqXHR());
+    const $modal = $("#RegisterModal");
+    initRegisterForm($modal);
+    $modal.find("#submit").trigger("click");
+    return JSON.parse(String(ajaxSpy.mock.calls[0]?.[0]?.data));
+  }
+
+  const BASE_FIELDS = {
+    username: "testuser",
+    email: "test@test.com",
+    confirmEmail: "test@test.com",
+    password: "testpass",
+    confirmPassword: "testpass",
+  };
+
+  it.each([
+    [`?next=/invite/${TOKEN}/register`, `/invite/${TOKEN}/register`],
+    [`?next=%2Finvite%2F${TOKEN}`, `/invite/${TOKEN}`],
+    ["?next=/invite/short", "/invite/short"],
+    ["?next=", ""],
+  ])("sends inviteNext for %s", (search, expected) => {
+    expect(submitAndGetPayload(search)).toEqual({
+      ...BASE_FIELDS,
+      inviteNext: expected,
+    });
+  });
+
+  it.each([[""], ["?b=c"], ["?next=a&b=c"], ["?next=x&next=y"]])(
+    "omits inviteNext for %j",
+    (search) => {
+      const payload = submitAndGetPayload(search);
+      expect(payload).toEqual(BASE_FIELDS);
+      expect("inviteNext" in payload).toBe(false);
+    },
+  );
+});

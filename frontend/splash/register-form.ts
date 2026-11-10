@@ -11,12 +11,16 @@ import {
   handleImproperFormErrors,
   switchModal,
 } from "./init.js";
+import { getForwardableNextQuery } from "./next-param.js";
 import { VALIDATION_FORM } from "../types/metrics-dim-values.js";
 import { debug } from "../lib/debug.js";
 
 const log = debug("splash:register");
 
-type RegisterRequest = Schema<"RegisterRequest">;
+// The server field is optional (defaults to null); the generated type marks it
+// required, so the key is made omittable here.
+type RegisterRequest = Omit<Schema<"RegisterRequest">, "inviteNext"> &
+  Partial<Pick<Schema<"RegisterRequest">, "inviteNext">>;
 type RegisterSuccess = SuccessResponse<"registerUser", 200>;
 type RegisterError = Schema<"ErrorResponse_RegisterErrorCodes">;
 
@@ -62,12 +66,16 @@ function handleRegister(event: JQuery.TriggeredEvent, $modal: JQuery): void {
     passwordsMatch: password === confirmPassword,
   });
 
+  // Forward the single `next` (e.g. an invite path) unchanged; the server's
+  // parse_invite_next is the only format rule.
+  const forwardable = getForwardableNextQuery(window.location.search);
   const payload: RegisterRequest = {
     username,
     email,
     confirmEmail,
     password,
     confirmPassword,
+    ...(forwardable !== null && { inviteNext: forwardable.value }),
   };
   const registerRequest: JQuery.jqXHR = $.ajax({
     url: APP_CONFIG.routes.register,

@@ -14966,6 +14966,18 @@
             "description": "Password confirmation, must match password",
             "minLength": 1,
             "type": "string"
+          },
+          "inviteNext": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Invite path from the splash page's single next param, e.g. /invite/<token>/register; ignored unless valid"
           }
         },
         "required": [
