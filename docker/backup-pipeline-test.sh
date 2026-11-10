@@ -46,9 +46,14 @@ GUARD_STARTED=""
 S3_STARTED=""
 PRODSIM_STARTED=""
 SECRETS_VOL_CREATED=""
+# Fresh per-leg containers for the heartbeat legs (space-separated names).
+LEG_CONTAINERS=""
 
 cleanup() {
   echo "🧹 Cleaning up..."
+  for leg_container in $LEG_CONTAINERS; do
+    docker rm -f "$leg_container" >/dev/null 2>&1 || true
+  done
   [ -n "$MAIN_STARTED" ] && docker rm -f "$MAIN" >/dev/null 2>&1 || true
   [ -n "$GUARD_STARTED" ] && docker rm -f "$GUARD" >/dev/null 2>&1 || true
   [ -n "$PRODSIM_STARTED" ] && docker rm -f "$PRODSIM" >/dev/null 2>&1 || true
@@ -66,6 +71,49 @@ wait_for_env_file() {
     sleep 1
   done
   docker exec "$container_name" test -f /app/container_environment
+}
+
+# Today's daily-docker.sh log of a container (empty when absent).
+daily_log() {
+  docker exec "$1" cat "/app/workflow_logs/$(docker exec "$1" date +%Y_%m_%d)-daily-workflow-logs.txt" 2>/dev/null || echo ""
+}
+
+# Assert a log holds exactly ONE daily_backup heartbeat line and that it matches a
+# pattern. $1 = leg label, $2 = log text, $3 = ERE the single line must match.
+assert_one_heartbeat_line() {
+  local label=$1 log_text=$2 pattern=$3 total matching
+  total=$(echo "$log_text" | grep -c "notifs_hub lane=heartbeat check=daily_backup" || true)
+  matching=$(echo "$log_text" | grep -cE "notifs_hub lane=heartbeat check=daily_backup .*${pattern}" || true)
+  if [ "$total" != "1" ] || [ "$matching" != "1" ]; then
+    echo "❌ $label: expected exactly one heartbeat line matching '${pattern}' (total=$total matching=$matching)" >&2
+    echo "$log_text" | grep "notifs_hub" >&2 || true
+    exit 1
+  fi
+}
+
+# Start a fresh workflow container for a heartbeat leg: /backups + yesterday's
+# log in place, Discord notifier stubbed, and a cron-like env dump written with
+# PRODUCTION=true, an unreachable hub and NO key directory. $1 = name, $2 = the
+# Postgres password to put in the dump (a wrong one makes the DB backup fail).
+start_heartbeat_leg_container() {
+  local name=$1 db_password=$2
+  docker run -d \
+    --network "$NET" --no-healthcheck \
+    -e POSTGRES_USER=bob -e POSTGRES_DB=test -e POSTGRES_PASSWORD=test \
+    -e POSTGRES_HOST=db -e POSTGRES_PORT=5432 \
+    -e METRICS_FLUSH_LIVENESS_THRESHOLD_SECONDS=180 \
+    --name "$name" \
+    "$WORKFLOW_IMAGE" >/dev/null
+  LEG_CONTAINERS="$LEG_CONTAINERS $name"
+  wait_for_env_file "$name" || {
+    echo "❌ /app/container_environment not written in $name" >&2
+    exit 1
+  }
+  docker exec "$name" mkdir -p /backups /app/volume/logs
+  docker exec "$name" chown -R 1001:1001 /backups /app/volume
+  docker exec -u 1001 "$name" bash -c 'printf "leg log line\n" > "/app/volume/logs/$(date -d yesterday +%Y-%m-%d)_daily.log"'
+  docker exec "$name" bash -c 'printf "#!/bin/bash\nexit 0\n" > /usr/bin/restricted_curl && chmod +x /usr/bin/restricted_curl'
+  docker exec -u 1001 "$name" bash -c "printf 'POSTGRES_USER=bob\nPOSTGRES_PASSWORD=${db_password}\nPOSTGRES_DB=test\nPOSTGRES_HOST=db\nPOSTGRES_PORT=5432\nPRODUCTION=true\nNOTIFS_BASE_URL=http://127.0.0.1:9\nNOTIFS_KEY_DIR=/nonexistent\n' > /app/container_environment"
 }
 
 echo "🌐 Creating network $NET"
@@ -226,6 +274,8 @@ if docker exec "$GUARD" bash -c 'ls /backups/*_daily.sql.gz >/dev/null 2>&1'; th
   echo "❌ Leg 5: a backup file was created despite the guard aborting" >&2
   exit 1
 fi
+# Dev mode (PRODUCTION unset): the heartbeat takes its skip gate, one line, no hub call.
+assert_one_heartbeat_line "Leg 5" "$GUARD_OUTPUT" "kind=fail outcome=skip"
 echo "✅ Leg 5 PASSED: guard notified and aborted before any backup"
 
 # --- Leg 7: full PRODUCTION=true daily-docker.sh end-to-end ---
@@ -283,6 +333,9 @@ if [ "$prodsim_rc" -ne 0 ]; then
 fi
 
 PRODSIM_LOG=$(docker exec "$PRODSIM" cat "/app/workflow_logs/$(docker exec "$PRODSIM" date +%Y_%m_%d)-daily-workflow-logs.txt" 2>/dev/null || echo "")
+# Exactly one success heartbeat (no key directory is mounted, so the client logs
+# missing_key) and the run's exit code (asserted above) is unchanged.
+assert_one_heartbeat_line "Leg 7" "$PRODSIM_LOG" "kind=success .*outcome=missing_key"
 echo "$PRODSIM_LOG" | grep -q "Success: Sent daily database backup to Cloudflare R2" ||
   {
     echo "❌ Leg 7: database upload did not report success" >&2
@@ -315,6 +368,71 @@ rclone ls remote:u4i-logs/ | grep -q '_daily.log.gz'
   exit 1
 }
 echo "✅ Leg 7 PASSED: prod-mode end-to-end (secrets → dump → verify → real S3 upload → notification)"
+
+# --- Heartbeat legs: each runs daily-docker.sh in its OWN fresh container with
+# PRODUCTION=true (so the client passes its skip gate) and no key directory, and
+# counts the daily_backup heartbeat lines in that container's own log. ---
+
+# Leg 8: PRODUCTION=true variant of Leg 5 (missing POSTGRES_DB) -> exactly one fail.
+echo "── Leg 8: prod missing-var guard sends one fail heartbeat ──"
+start_heartbeat_leg_container backup_test_hb_guard test
+docker exec -u 1001 backup_test_hb_guard bash -c "printf 'POSTGRES_USER=bob\nPOSTGRES_PASSWORD=test\nPOSTGRES_DB=\nPRODUCTION=true\nNOTIFS_BASE_URL=http://127.0.0.1:9\nNOTIFS_KEY_DIR=/nonexistent\n' > /app/container_environment"
+set +e
+docker exec -u 1001 backup_test_hb_guard env -i PATH=/usr/local/bin:/usr/bin:/bin bash /app/daily-docker.sh
+hb_guard_rc=$?
+set -e
+[ "$hb_guard_rc" -ne 0 ] || {
+  echo "❌ Leg 8: daily-docker.sh exited 0 despite missing POSTGRES_DB" >&2
+  exit 1
+}
+assert_one_heartbeat_line "Leg 8" "$(daily_log backup_test_hb_guard)" "kind=fail .*outcome=missing_key"
+echo "✅ Leg 8 PASSED: missing POSTGRES_* in prod sends exactly one fail heartbeat"
+
+# Leg 9: failing step (wrong DB password, so the database backup fails) -> one fail.
+echo "── Leg 9: failing backup step sends one fail heartbeat ──"
+start_heartbeat_leg_container backup_test_hb_step wrong-password
+set +e
+docker exec -u 1001 backup_test_hb_step bash /app/daily-docker.sh
+set -e
+assert_one_heartbeat_line "Leg 9" "$(daily_log backup_test_hb_step)" "kind=fail .*outcome=missing_key"
+echo "✅ Leg 9 PASSED: failed database backup sends exactly one fail heartbeat"
+
+# Leg 10: manual trigger -> a skip line and no hub call (no missing_key line).
+echo "── Leg 10: manual run sends no heartbeat ──"
+start_heartbeat_leg_container backup_test_hb_manual wrong-password
+set +e
+docker exec -u 1001 -e BACKUP_TRIGGER_SOURCE=manual backup_test_hb_manual bash /app/daily-docker.sh
+set -e
+HB_MANUAL_LOG=$(daily_log backup_test_hb_manual)
+assert_one_heartbeat_line "Leg 10" "$HB_MANUAL_LOG" "outcome=skip error=manual_trigger"
+if echo "$HB_MANUAL_LOG" | grep -q "outcome=missing_key"; then
+  echo "❌ Leg 10: a manual run reached the hub client" >&2
+  exit 1
+fi
+echo "✅ Leg 10 PASSED: manual run logs a skip and pings nothing"
+
+# Leg 11: set -e abort. After container_environment is sourced and the trap is
+# armed, `source remote-object-storage.sh` is unguarded, so a failing file aborts
+# the script under set -e; the EXIT trap must still send exactly one fail ping
+# using its defaults without tripping set -u.
+echo "── Leg 11: set -e abort sends one fail heartbeat ──"
+start_heartbeat_leg_container backup_test_hb_abort test
+docker exec backup_test_hb_abort bash -c "printf 'false\n' > /app/remote-object-storage.sh"
+set +e
+docker exec -u 1001 backup_test_hb_abort bash /app/daily-docker.sh
+hb_abort_rc=$?
+set -e
+[ "$hb_abort_rc" -ne 0 ] || {
+  echo "❌ Leg 11: daily-docker.sh did not abort under set -e" >&2
+  exit 1
+}
+HB_ABORT_LOG=$(daily_log backup_test_hb_abort)
+assert_one_heartbeat_line "Leg 11" "$HB_ABORT_LOG" "kind=fail .*outcome=missing_key"
+if echo "$HB_ABORT_LOG" | grep -q "unbound variable"; then
+  echo "❌ Leg 11: the EXIT trap tripped set -u" >&2
+  exit 1
+fi
+echo "✅ Leg 11 PASSED: set -e abort sends exactly one fail heartbeat"
 
 echo "✅ ALL BACKUP PIPELINE LEGS PASSED"
 exit 0

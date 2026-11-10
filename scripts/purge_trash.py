@@ -41,6 +41,7 @@ from typing import NamedTuple
 import psycopg2
 import psycopg2.extensions
 
+from scripts.notifs_hub import safe_ping
 from scripts.trash_retention import TRASH_RETENTION_DAYS
 
 logging.basicConfig(
@@ -211,9 +212,11 @@ if __name__ == "__main__":
             TRASH_RETENTION_DAYS,
             elapsed_ms,
         )
+        safe_ping("purge_trash")
         sys.exit(0)
     except Exception as purge_error:
         logger.exception("trash purge failed: %s", purge_error)
+        safe_ping("purge_trash", fail=True)
         sys.exit(1)
     finally:
         if pg_conn_main is not None:

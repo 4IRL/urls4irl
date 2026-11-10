@@ -6,7 +6,8 @@ Operational shell scripts for server administration and the daily workflow conta
 
 | Script | Trigger | Purpose |
 |---|---|---|
-| `daily-docker.sh` | Daily cron (midnight) | Orchestrator: runs DB backup, log backup, and remote upload in sequence. Cleans up sensitive env vars on exit. |
+| `daily-docker.sh` | Daily cron (midnight) | Orchestrator: runs DB backup, log backup, and remote upload in sequence. Cleans up sensitive env vars on exit. On every exit path after `container_environment` is sourced, its `EXIT` trap sends one `daily_backup` heartbeat (`/fail` unless the DB backup, log backup and remote upload all succeeded); a manual trigger logs a skip and pings nothing. |
+| `flush_metrics.py`, `sample_gauges.py`, `purge_audit_log.py`, `purge_trash.py`, `purge_short_links.py`, `purge_invite_links.py` | Cron (every minute / hourly / nightly) | On finish each sends one heartbeat (`metrics_flush`, `gauge_sample`, `purge_*`) via `notifs_hub.safe_ping`, or `/fail` on error, without changing its exit code. `metrics_flush` (1m period, 5m grace) can show a pings gap while `workflow` is recreated on a deploy. |
 | `backup-database.sh` | Called by `daily-docker.sh` | `pg_dump` the PostgreSQL database, compress it, and rotate local copies to keep the most recent 90 days. |
 | `backup-logs.sh` | Called by `daily-docker.sh` | Compress yesterday's app log file and rotate local copies to keep the most recent 90 days. |
 | `remote-object-storage.sh` | Called by `daily-docker.sh` | Upload compressed DB and log backups to Cloudflare R2 via rclone. Skips upload in non-production environments. Also sends a monthly copy on the 1st of each month. |
