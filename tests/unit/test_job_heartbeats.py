@@ -160,14 +160,12 @@ def test_failure_sends_one_fail_ping_and_exits_one(
     ]
 
 
-@pytest.mark.parametrize("script_file, check, expected_timeout", _JOBS)
+@pytest.mark.parametrize("script_file", [job[0] for job in _JOBS])
 @pytest.mark.parametrize(
     "arrange_name, expected_code", [("success", 0), ("failure", 1)]
 )
 def test_a_failed_ping_never_changes_the_exit_code(
     script_file: str,
-    check: str,
-    expected_timeout: float,
     arrange_name: str,
     expected_code: int,
     monkeypatch: pytest.MonkeyPatch,
@@ -218,11 +216,9 @@ def test_a_raising_ping_never_double_pings(
     ]
 
 
-@pytest.mark.parametrize("script_file, check, expected_timeout", _JOBS)
+@pytest.mark.parametrize("script_file", [job[0] for job in _JOBS])
 def test_no_hub_call_outside_production(
     script_file: str,
-    check: str,
-    expected_timeout: float,
     monkeypatch: pytest.MonkeyPatch,
     urlopen_stub: _UrlopenStub,
 ) -> None:

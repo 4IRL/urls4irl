@@ -434,5 +434,27 @@ if echo "$HB_ABORT_LOG" | grep -q "unbound variable"; then
 fi
 echo "✅ Leg 11 PASSED: set -e abort sends exactly one fail heartbeat"
 
+# Leg 12: database backup and log backup succeed, only the remote upload fails ->
+# exactly one fail ping. remote_backup is replaced by a stub that reports the
+# failure the way the real one does (REMOTE_*_STATUS=fail, non-zero return).
+echo "── Leg 12: remote upload failure sends one fail heartbeat ──"
+start_heartbeat_leg_container backup_test_hb_remote test
+docker exec backup_test_hb_remote bash -c "printf 'remote_backup() {\n  REMOTE_DB_STATUS=fail\n  return 1\n}\n' > /app/remote-object-storage.sh"
+set +e
+docker exec -u 1001 backup_test_hb_remote bash /app/daily-docker.sh
+hb_remote_rc=$?
+set -e
+[ "$hb_remote_rc" -ne 0 ] || {
+  echo "❌ Leg 12: daily-docker.sh exited 0 despite a failed remote upload" >&2
+  exit 1
+}
+HB_REMOTE_LOG=$(daily_log backup_test_hb_remote)
+if echo "$HB_REMOTE_LOG" | grep -q "Failure in daily local backup"; then
+  echo "❌ Leg 12: the local database or log backup failed (the leg must isolate the remote upload)" >&2
+  exit 1
+fi
+assert_one_heartbeat_line "Leg 12" "$HB_REMOTE_LOG" "kind=fail .*outcome=missing_key"
+echo "✅ Leg 12 PASSED: failed remote upload sends exactly one fail heartbeat"
+
 echo "✅ ALL BACKUP PIPELINE LEGS PASSED"
 exit 0

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import socket
 import urllib.error
 from pathlib import Path
 from typing import Any
@@ -113,7 +112,7 @@ def test_ping_fail_url(configured: Path, urlopen: MagicMock, capsys):
             "http_404",
         ),
         (urllib.error.URLError("connection refused"), "error"),
-        (urllib.error.URLError(socket.timeout("timed out")), "timeout"),
+        (urllib.error.URLError(TimeoutError("timed out")), "timeout"),
         (TimeoutError("timed out"), "timeout"),
         (OSError("boom"), "error"),
         (ValueError("bad header"), "error"),
@@ -221,6 +220,70 @@ def test_env_resolves_from_dump_only(
     monkeypatch.setattr(notifs_hub, "CONTAINER_ENVIRONMENT_FILE", str(dump))
     assert notifs_hub.ping("metrics_flush") is True
     assert _sent_request(urlopen).full_url.startswith(_BASE_URL)
+
+
+def test_trailing_slash_base_url_is_normalised(
+    configured: Path, urlopen: MagicMock, monkeypatch: pytest.MonkeyPatch
+):
+    """
+    GIVEN NOTIFS_BASE_URL with a trailing slash
+    WHEN a ping is sent
+    THEN the request URL has no doubled slash.
+    """
+    monkeypatch.setenv("NOTIFS_BASE_URL", f"{_BASE_URL}/")
+    assert notifs_hub.ping("daily_backup") is True
+    assert (
+        _sent_request(urlopen).full_url
+        == f"{_BASE_URL}/v1/heartbeats/urls4irl/daily_backup"
+    )
+
+
+def test_env_dump_skips_comments_blanks_and_malformed_lines(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, urlopen: MagicMock
+):
+    """
+    GIVEN a dump with comments, blank lines and lines without '=' around the real entries
+    WHEN a ping is sent
+    THEN the real entries are still resolved and the request is made.
+    """
+    key_dir = tmp_path / "notifs"
+    _write_key_dir(key_dir)
+    dump = tmp_path / "container_environment"
+    dump.write_text(
+        "# a comment\n"
+        "\n"
+        "   \n"
+        "not-an-assignment\n"
+        "PRODUCTION=true\n"
+        "# NOTIFS_BASE_URL=https://commented.example.test\n"
+        f"NOTIFS_BASE_URL={_BASE_URL}\n"
+        "=novalue-key\n"
+        f"NOTIFS_KEY_DIR={key_dir}\n"
+    )
+    monkeypatch.setattr(notifs_hub, "CONTAINER_ENVIRONMENT_FILE", str(dump))
+    assert notifs_hub.ping("metrics_flush") is True
+    assert _sent_request(urlopen).full_url.startswith(_BASE_URL)
+
+
+def test_empty_env_value_overrides_the_dump(
+    configured: Path,
+    urlopen: MagicMock,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys,
+):
+    """
+    GIVEN NOTIFS_BASE_URL set to "" in the environment and a real value in the dump
+    WHEN a ping is sent
+    THEN the empty env value wins (the dump is not consulted) and no request is made.
+    """
+    dump = tmp_path / "container_environment"
+    dump.write_text(f"NOTIFS_BASE_URL={_BASE_URL}\n")
+    monkeypatch.setattr(notifs_hub, "CONTAINER_ENVIRONMENT_FILE", str(dump))
+    monkeypatch.setenv("NOTIFS_BASE_URL", "")
+    assert notifs_hub.ping("metrics_flush") is False
+    urlopen.assert_not_called()
+    assert "outcome=error" in capsys.readouterr().err
 
 
 def test_unset_base_url_is_error_without_request(

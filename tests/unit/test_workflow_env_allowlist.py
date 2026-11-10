@@ -275,7 +275,7 @@ def test_allow_list_covers_notifs_hub_env_reads():
     assert reads <= _ALLOWED, (
         f"notifs_hub.py reads {sorted(reads - _ALLOWED)} not in ALLOW_VARS"
     )
-    assert {"NOTIFS_BASE_URL", "NOTIFS_KEY_DIR"} <= _ALLOWED
+    assert {"PRODUCTION", "NOTIFS_BASE_URL", "NOTIFS_KEY_DIR"} <= _ALLOWED
 
 
 def test_allow_list_covers_backup_sentinel_env_reads():

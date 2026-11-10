@@ -40,19 +40,12 @@ case "$*" in
     [ -z "${STUB_NO_RELEASE:-}" ] || exit 1
     echo "${STUB_TAG:-v1.2.3}"
     ;;
-  "api repos/${GH_REPO}/git/ref/tags/"*" --jq .object.type")
+  "api repos/${GH_REPO}/git/ref/tags/"*' --jq .object.type + " " + .object.sha')
     [ -z "${STUB_REF_MISSING:-}" ] || exit 1
-    echo "${STUB_REF_TYPE}"
+    echo "${STUB_REF_TYPE} ${STUB_REF_SHA}"
     ;;
-  "api repos/${GH_REPO}/git/ref/tags/"*" --jq .object.sha")
-    [ -z "${STUB_REF_MISSING:-}" ] || exit 1
-    echo "${STUB_REF_SHA}"
-    ;;
-  "api repos/${GH_REPO}/git/tags/${STUB_REF_SHA} --jq .object.type")
-    echo "${STUB_TAG_OBJECT_TYPE:-commit}"
-    ;;
-  "api repos/${GH_REPO}/git/tags/${STUB_REF_SHA} --jq .object.sha")
-    echo "${STUB_TAG_OBJECT_SHA}"
+  "api repos/${GH_REPO}/git/tags/${STUB_REF_SHA}"' --jq .object.type + " " + .object.sha')
+    echo "${STUB_TAG_OBJECT_TYPE:-commit} ${STUB_TAG_OBJECT_SHA}"
     ;;
   *)
     echo "stub gh: unexpected argv: $*" >&2

@@ -230,6 +230,50 @@ def test_read_only_directory_fails_before_any_move(key_dir: Path):
     assert _snapshot(key_dir) == old
 
 
+def test_no_arguments_exits_two_with_usage():
+    """
+    GIVEN no arguments
+    WHEN the script runs
+    THEN it exits 2 and prints the usage line.
+    """
+    result = subprocess.run(
+        ["bash", str(SCRIPT)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 2
+    assert "usage:" in result.stderr
+
+
+def test_unknown_mode_exits_two_with_usage(key_dir: Path):
+    """
+    GIVEN an unknown mode and a valid directory
+    WHEN the script runs
+    THEN it exits 2 and prints the usage line.
+    """
+    result = _run("--bogus", key_dir)
+
+    assert result.returncode == 2
+    assert "usage:" in result.stderr
+
+
+def test_write_fails_for_a_missing_directory(tmp_path: Path):
+    """
+    GIVEN a path that does not exist
+    WHEN --write runs with valid stdin
+    THEN it exits non-zero and creates nothing.
+    """
+    missing = tmp_path / "absent"
+
+    result = _run("--write", missing, _stdin(), env=dict(os.environ))
+
+    assert result.returncode != 0
+    assert not missing.exists()
+    _assert_no_secrets(result)
+
+
 def test_check_passes_for_a_valid_directory(key_dir: Path):
     """
     GIVEN a directory with the expected group and mode
@@ -329,6 +373,10 @@ def test_check_fails_for_unwritable_directory(key_dir: Path):
     assert result.returncode != 0
 
 
+@pytest.mark.skipif(
+    not PROD_DEPLOY.parent.is_dir(),
+    reason="needs the repo's .github/workflows (absent inside the web container)",
+)
 @pytest.mark.parametrize("workflow", [PROD_DEPLOY, NOTIFS_EXCHANGE])
 def test_workflows_never_set_the_expected_gid_override(workflow: Path):
     """
@@ -336,7 +384,4 @@ def test_workflows_never_set_the_expected_gid_override(workflow: Path):
     WHEN their text is read
     THEN neither mentions the test-only gid override.
     """
-    if not workflow.exists():
-        pytest.skip(f"{workflow.name} not created yet (Step 4)")
-
     assert GID_OVERRIDE not in workflow.read_text()

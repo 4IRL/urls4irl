@@ -15,19 +15,20 @@ fail() {
 }
 
 release_commit() {
-  local tag ref_type ref_sha tag_type
+  local tag ref ref_type ref_sha tag_obj tag_type tag_sha
   tag="$(gh release view --json tagName --jq .tagName)" || fail "no published release found"
   [ -n "${tag}" ] || fail "latest release has no tag"
-  ref_type="$(gh api "repos/${GH_REPO}/git/ref/tags/${tag}" --jq .object.type)" || fail "tag ref for ${tag} not found"
-  ref_sha="$(gh api "repos/${GH_REPO}/git/ref/tags/${tag}" --jq .object.sha)" || fail "tag ref for ${tag} not found"
+  ref="$(gh api "repos/${GH_REPO}/git/ref/tags/${tag}" --jq '.object.type + " " + .object.sha')" || fail "tag ref for ${tag} not found"
+  read -r ref_type ref_sha <<<"${ref}"
   case "${ref_type}" in
     commit)
       echo "${ref_sha}"
       ;;
     tag)
-      tag_type="$(gh api "repos/${GH_REPO}/git/tags/${ref_sha}" --jq .object.type)" || fail "annotated tag ${tag} not readable"
+      tag_obj="$(gh api "repos/${GH_REPO}/git/tags/${ref_sha}" --jq '.object.type + " " + .object.sha')" || fail "annotated tag ${tag} not readable"
+      read -r tag_type tag_sha <<<"${tag_obj}"
       [ "${tag_type}" = "commit" ] || fail "annotated tag ${tag} does not point at a commit (${tag_type})"
-      gh api "repos/${GH_REPO}/git/tags/${ref_sha}" --jq .object.sha || fail "annotated tag ${tag} not readable"
+      echo "${tag_sha}"
       ;;
     *)
       fail "tag ${tag} has unexpected object type '${ref_type}'"

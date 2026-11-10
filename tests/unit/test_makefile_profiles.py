@@ -1855,7 +1855,13 @@ def test_host_static_still_runs_its_host_pytest_line() -> None:
     output = _successful_dry_run("test-host-static")
     assert "command -v mise" in output
     host_line = _single_line_containing(output, HOST_STATIC_PYTEST_FRAGMENT)
-    assert host_line.endswith("tests/unit/test_notifs_resolve_release_sha.py -v ")
+    for notifs_test in (
+        "tests/unit/test_notifs_key_write.py",
+        "tests/unit/test_prod_deploy_key_dir.py",
+        "tests/unit/test_notifs_exchange_workflow.py",
+        "tests/unit/test_notifs_resolve_release_sha.py",
+    ):
+        assert notifs_test in host_line
 
 
 @pytest.mark.skipif(GIT_BINARY is None, reason="needs `git`")

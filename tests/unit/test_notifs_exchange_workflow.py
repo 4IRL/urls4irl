@@ -492,7 +492,7 @@ def test_write_and_post_write_rely_on_implicit_success():
     """
     GIVEN the write and post-write steps
     WHEN their `if:` strings are read
-    THEN each is exactly the key-present check (no status function), and the exchange step has continue-on-error.
+    THEN each is exactly the key-present check (no status function), and the write step validates and exports host_hash.
     """
     write = _by_id("write")
     post_write = _steps()[
@@ -501,7 +501,8 @@ def test_write_and_post_write_rely_on_implicit_success():
 
     assert write["if"] == KEY_PRESENT_IF
     assert post_write["if"] == KEY_PRESENT_IF
-    assert _by_id("notifs")["continue-on-error"] is True
+    assert "=~ ^[0-9a-f]{64}$" in write["run"]
+    assert 'echo "host_hash=${host_hash}" >> "$GITHUB_OUTPUT"' in write["run"]
 
 
 def test_write_step_keeps_secrets_out_of_command_text():

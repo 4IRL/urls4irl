@@ -29,7 +29,6 @@ from __future__ import annotations
 
 import argparse
 import os
-import socket
 import sys
 import urllib.error
 import urllib.parse
@@ -167,7 +166,7 @@ def ping(
             outcome=f"http_{http_error.code}",
             error=_mask(str(http_error), _secrets_of(credentials)),
         )
-    except (TimeoutError, socket.timeout) as timeout_error:
+    except TimeoutError as timeout_error:
         _log(
             check=check,
             fail=fail,
@@ -175,7 +174,7 @@ def ping(
             error=_mask(str(timeout_error), _secrets_of(credentials)),
         )
     except urllib.error.URLError as url_error:
-        is_timeout = isinstance(url_error.reason, (TimeoutError, socket.timeout))
+        is_timeout = isinstance(url_error.reason, TimeoutError)
         _log(
             check=check,
             fail=fail,
