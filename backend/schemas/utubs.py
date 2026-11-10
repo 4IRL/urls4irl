@@ -5,10 +5,7 @@ from typing import TYPE_CHECKING, Literal
 
 from pydantic import Field, SerializeAsAny, field_serializer
 
-from backend.members.member_visibility import (
-    viewer_is_manager_from_role,
-    visible_member_ids,
-)
+from backend.members.member_visibility import visible_member_ids_for_utub
 from backend.schemas.base import BaseSchema
 from backend.schemas.tags import UtubTagSchema
 from backend.schemas.urls import UtubUrlSchema
@@ -153,16 +150,8 @@ class UtubDetailSchema(BaseSchema):
         member_ids = frozenset(member.user_id for member in utub.members)
         # ``None`` = everyone visible; otherwise the only ids this viewer may see.
         # ``member_ids`` (the FULL set) still drives canDelete / canRevokeShortLink.
-        visible_ids = visible_member_ids(
-            settings=utub.settings,
-            viewer_is_manager=viewer_is_manager_from_role(viewer_role_value),
-            utub_creator_id=utub.utub_creator,
-            viewer_id=current_user_id,
-            co_owner_ids=[
-                member.user_id
-                for member in utub.members
-                if member.member_role == Member_Role.CO_CREATOR
-            ],
+        visible_ids = visible_member_ids_for_utub(
+            utub=utub, viewer_id=current_user_id, viewer_role=viewer_role_value
         )
         urls = [
             UtubUrlSchema.from_orm_url(

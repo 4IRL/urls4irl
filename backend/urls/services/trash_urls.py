@@ -7,10 +7,7 @@ from backend import db
 from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.app_logger import safe_add_many_logs, warning_log
 from backend.extensions.metrics.writer import record_event
-from backend.members.member_visibility import (
-    viewer_is_manager_from_role,
-    visible_member_ids,
-)
+from backend.members.member_visibility import visible_member_ids_for_utub
 from backend.metrics.events import EventName
 from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utub_tags import Utub_Tags
@@ -64,16 +61,8 @@ def _visible_adder_ids(
     actor restores only their own or orphaned rows, and a manager is never hidden),
     but the restore responses still go through the shared hide-list rule.
     """
-    return visible_member_ids(
-        settings=utub.settings,
-        viewer_is_manager=viewer_is_manager_from_role(actor_role.value),
-        utub_creator_id=utub.utub_creator,
-        viewer_id=current_user_id,
-        co_owner_ids=[
-            member.user_id
-            for member in utub.members
-            if member.member_role == Member_Role.CO_CREATOR
-        ],
+    return visible_member_ids_for_utub(
+        utub=utub, viewer_id=current_user_id, viewer_role=actor_role.value
     )
 
 

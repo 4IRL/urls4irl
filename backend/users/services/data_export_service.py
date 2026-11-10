@@ -2,13 +2,10 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from backend.members.member_visibility import (
-    viewer_is_manager_from_role,
-    visible_member_ids,
-)
+from backend.members.member_visibility import visible_member_ids_for_utub
 from backend.models.user_preferences import resolve_preferences
 from backend.models.users import Users
-from backend.models.utub_members import Member_Role, Utub_Members
+from backend.models.utub_members import Utub_Members
 from backend.models.utub_urls import Utub_Urls
 from backend.schemas.exports import (
     ExportAccountSchema,
@@ -73,16 +70,10 @@ def _build_export_utub(
     adders, tag creators, members) are identified by username only — no
     internal IDs."""
     utub = membership.to_utub
-    visible_ids = visible_member_ids(
-        settings=utub.settings,
-        viewer_is_manager=viewer_is_manager_from_role(membership.member_role.value),
-        utub_creator_id=utub.utub_creator,
+    visible_ids = visible_member_ids_for_utub(
+        utub=utub,
         viewer_id=membership.user_id,
-        co_owner_ids=[
-            member.user_id
-            for member in utub.members
-            if member.member_role == Member_Role.CO_CREATOR
-        ],
+        viewer_role=membership.member_role.value,
     )
     # Hidden = current members outside the visible set. Former members have no
     # membership row, so they keep their name, as in the UTub detail payload.

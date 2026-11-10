@@ -11,6 +11,7 @@ from typing import Any, Collection
 
 _MANAGER_ROLES = frozenset({"creator", "cocreator"})
 _PLAIN_ROLE = "member"
+_CO_OWNER_ROLE = "cocreator"
 
 
 def viewer_is_manager_from_role(role: str | None) -> bool | None:
@@ -58,3 +59,25 @@ def visible_member_ids(
     ):
         return None
     return {utub_creator_id, viewer_id} | set(co_owner_ids)
+
+
+def visible_member_ids_for_utub(
+    *, utub: Any, viewer_id: int, viewer_role: str | None
+) -> set[int] | None:
+    """``visible_member_ids`` for a Utubs row, deriving the co-owner ids itself.
+
+    ``utub`` is duck-typed (``settings``, ``utub_creator``, ``members`` with
+    ``user_id`` / ``member_role.value``) to keep this module a leaf.
+    ``viewer_role`` is the viewer's ``Member_Role.value`` (None = unknown).
+    """
+    return visible_member_ids(
+        settings=utub.settings,
+        viewer_is_manager=viewer_is_manager_from_role(viewer_role),
+        utub_creator_id=utub.utub_creator,
+        viewer_id=viewer_id,
+        co_owner_ids=[
+            member.user_id
+            for member in utub.members
+            if member.member_role.value == _CO_OWNER_ROLE
+        ],
+    )

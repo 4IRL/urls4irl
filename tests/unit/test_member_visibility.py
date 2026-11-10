@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -8,6 +9,7 @@ from backend.members.member_visibility import (
     member_list_hidden_for,
     viewer_is_manager_from_role,
     visible_member_ids,
+    visible_member_ids_for_utub,
 )
 from backend.models.utub_members import Member_Role
 
@@ -110,3 +112,49 @@ def test_visible_member_ids_when_hidden():
         viewer_id=3,
         co_owner_ids=[2],
     ) == {1, 2, 3}
+
+
+def _utub_row(*, settings: Any) -> SimpleNamespace:
+    return SimpleNamespace(
+        settings=settings,
+        utub_creator=1,
+        members=[
+            SimpleNamespace(user_id=1, member_role=Member_Role.CREATOR),
+            SimpleNamespace(user_id=2, member_role=Member_Role.CO_CREATOR),
+            SimpleNamespace(user_id=3, member_role=Member_Role.MEMBER),
+            SimpleNamespace(user_id=4, member_role=Member_Role.MEMBER),
+        ],
+    )
+
+
+def test_visible_member_ids_for_utub_derives_co_owners_when_hidden():
+    utub = _utub_row(settings={"members": {"hide_member_list": True}})
+    assert visible_member_ids_for_utub(
+        utub=utub, viewer_id=3, viewer_role=Member_Role.MEMBER.value
+    ) == {1, 2, 3}
+
+
+def test_visible_member_ids_for_utub_none_for_manager_or_visible_list():
+    hidden = _utub_row(settings={"members": {"hide_member_list": True}})
+    assert (
+        visible_member_ids_for_utub(
+            utub=hidden, viewer_id=2, viewer_role=Member_Role.CO_CREATOR.value
+        )
+        is None
+    )
+    shown = _utub_row(settings=None)
+    assert (
+        visible_member_ids_for_utub(
+            utub=shown, viewer_id=3, viewer_role=Member_Role.MEMBER.value
+        )
+        is None
+    )
+
+
+def test_visible_member_ids_for_utub_unknown_role_fails_closed():
+    utub = _utub_row(settings=None)
+    assert visible_member_ids_for_utub(utub=utub, viewer_id=3, viewer_role=None) == {
+        1,
+        2,
+        3,
+    }
