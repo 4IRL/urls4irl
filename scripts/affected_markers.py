@@ -279,6 +279,10 @@ HOST_STATIC_GLOBS: tuple[str, ...] = (
     "tests/unit/test_compose_hub.py",
     "tests/unit/test_compose_prod_key_mount.py",
     "scripts/notifs_hub.py",
+    "scripts/notifs-key-write.sh",
+    ".github/workflows/prod-deploy.yml",
+    "tests/unit/test_notifs_key_write.py",
+    "tests/unit/test_prod_deploy_key_dir.py",
     "tests/unit/test_compose_profiles.py",
     "tests/unit/test_audit_pins.py",
     "tests/unit/test_playwright_entrypoint.py",
@@ -323,6 +327,8 @@ PATH_MARKERS: tuple[MarkerRow, ...] = (
     (".env.example", ()),
     # Ahead of scripts/*.sh (unit, admin): the worktree script is exercised only by host-static tests.
     ("scripts/worktree.sh", ()),
+    ("scripts/notifs-key-write.sh", ()),
+    (".github/workflows/prod-deploy.yml", ()),
     ("docs/endpoints/endpoint-registry.json", ("unit", "cli")),
     ("docs/endpoints/ENDPOINT_REGISTRY.md", ("unit", "cli")),
     # --- tests -----------------------------------------------------------
