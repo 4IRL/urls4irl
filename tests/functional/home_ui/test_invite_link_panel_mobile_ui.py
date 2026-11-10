@@ -12,11 +12,9 @@ from tests.functional.home_ui.test_member_permissions_mobile_ui import (
     go_to_members_deck,
     open_members_deck_as,
 )
-from tests.functional.home_ui.test_panel_settings_mobile_ui import (
-    _go_to_deck_via_navbar,
-)
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.members_ui.playwright_utils import OWNER_ID
+from tests.functional.playwright_utils import go_to_deck_via_navbar
 from tests.utils_for_test import add_invite_link
 
 pytestmark = [pytest.mark.home_ui, pytest.mark.members_ui, pytest.mark.mobile_ui]
@@ -94,7 +92,7 @@ def test_deck_switch_closes_panel(
     page.locator(HPL.BUTTON_MEMBER_INVITE_LINK).tap()
     expect(page.locator(HPL.MEMBER_INVITE_PANEL)).to_be_visible()
 
-    _go_to_deck_via_navbar(page, HPL.NAVBAR_UTUB_DECK)
+    go_to_deck_via_navbar(page=page, navbar_selector=HPL.NAVBAR_UTUB_DECK)
     go_to_members_deck(page=page)
     expect(page.locator(HPL.MEMBER_INVITE_PANEL)).to_be_hidden()
     expect(page.locator(HPL.BUTTON_MEMBER_INVITE_LINK)).to_have_attribute(
