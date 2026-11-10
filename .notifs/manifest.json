@@ -1,0 +1,19 @@
+{
+  "app_id": "urls4irl",
+  "destinations": [
+    {
+      "name": "urls4irl_ops",
+      "type": "discord",
+      "secrets": { "webhook_url": { "env": "NOTIFICATION_URL" } }
+    }
+  ],
+  "heartbeats": [
+    { "name": "daily_backup", "period": "24h", "grace": "3h", "destinations": ["urls4irl_ops"] },
+    { "name": "metrics_flush", "period": "1m", "grace": "5m", "destinations": ["urls4irl_ops"] },
+    { "name": "gauge_sample", "period": "1h", "grace": "30m", "destinations": ["urls4irl_ops"] },
+    { "name": "purge_audit_log", "period": "24h", "grace": "2h", "destinations": ["urls4irl_ops"] },
+    { "name": "purge_trash", "period": "24h", "grace": "2h", "destinations": ["urls4irl_ops"] },
+    { "name": "purge_short_links", "period": "24h", "grace": "2h", "destinations": ["urls4irl_ops"] },
+    { "name": "purge_invite_links", "period": "24h", "grace": "2h", "destinations": ["urls4irl_ops"] }
+  ]
+}

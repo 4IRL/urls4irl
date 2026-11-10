@@ -1,0 +1,9 @@
+{
+  "github": {
+    "event_name": "workflow_dispatch",
+    "ref": "refs/heads/main",
+    "event": {
+      "inputs": { "sha": "" }
+    }
+  }
+}

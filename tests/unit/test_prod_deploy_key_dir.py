@@ -13,10 +13,18 @@ from typing import Any
 import pytest
 import yaml
 
-pytestmark = pytest.mark.unit
-
 REPO_ROOT: Path = Path(__file__).resolve().parents[2]
 PROD_DEPLOY: Path = REPO_ROOT / ".github" / "workflows" / "prod-deploy.yml"
+
+# `.github/` is not mounted into the `web` image, so the module skips there and runs host-side.
+# The skip looks at the workflows directory, never at the file under test: a missing file must fail.
+pytestmark = [
+    pytest.mark.unit,
+    pytest.mark.skipif(
+        not PROD_DEPLOY.parent.is_dir(),
+        reason="needs the repo's .github/workflows (absent inside the web container)",
+    ),
+]
 KEY_DIR: str = "/home/u4i/notifs-key"
 MANUAL_COMMAND: str = f"sudo chgrp 1001 {KEY_DIR}"
 SCRIPT_NAME: str = "notifs-key-write.sh"

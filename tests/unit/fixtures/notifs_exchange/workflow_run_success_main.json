@@ -1,0 +1,16 @@
+{
+  "github": {
+    "event_name": "workflow_run",
+    "ref": "refs/heads/main",
+    "event": {
+      "action": "completed",
+      "workflow_run": {
+        "name": "Build and Deploy Production Server",
+        "event": "release",
+        "conclusion": "success",
+        "head_branch": "v1.2.3",
+        "head_sha": "0123456789abcdef0123456789abcdef01234567"
+      }
+    }
+  }
+}

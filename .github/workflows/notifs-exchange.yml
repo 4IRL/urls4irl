@@ -1,0 +1,175 @@
+name: Notifs Exchange
+# After every successful production deploy (or by hand from main): mint a hub delivery key through
+# the pinned notifs-app action, apply .notifs/manifest.json and install the key on the host.
+# Runbook: docs/notifs-hub.md
+
+on:
+  workflow_run:
+    workflows: ["Build and Deploy Production Server"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: "Commit whose manifest to apply (empty: the latest release tag's commit)"
+        required: false
+        type: string
+        default: ""
+
+permissions: {}
+
+jobs:
+  exchange:
+    name: Exchange hub key and apply manifest
+    # The group lives on the job, not the workflow: a workflow-level group is taken before this
+    # `if:` is evaluated, so a skipped run for a failed deploy could displace a pending exchange.
+    concurrency:
+      group: notifs-exchange-urls4irl
+      cancel-in-progress: false
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success')
+    runs-on: ubuntu-latest
+    # No `environment:` (it would become part of the bound OIDC identity).
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      # The resolve script is a repo file, so it is checked out first, always from main HEAD.
+      - name: Checkout resolve script
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+          sparse-checkout: scripts/notifs-resolve-release-sha.sh
+          sparse-checkout-cone-mode: false
+          path: resolve-src
+
+      - name: Resolve manifest commit
+        id: resolve
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          RUN_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          INPUT_SHA: ${{ inputs.sha }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          sha="$(bash resolve-src/scripts/notifs-resolve-release-sha.sh)"
+          echo "sha=${sha}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout manifest
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ steps.resolve.outputs.sha }}
+          persist-credentials: false
+          path: release
+
+      - name: Install SSH key
+        env:
+          SSH_KEY_FILENAME: ${{ secrets.PROD_SSH_PRIVATE_KEY_FILENAME }}
+          SSH_KEY_VALUE: ${{ secrets.PROD_SSH_PRIVATE_KEY_VALUE }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_KEY_VALUE" > ~/.ssh/"$SSH_KEY_FILENAME"
+          chmod 600 ~/.ssh/"$SSH_KEY_FILENAME"
+
+      - name: Install Cloudflared
+        run: |
+          sudo curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o /usr/bin/cloudflared
+          sudo chmod a+x /usr/bin/cloudflared
+
+      - name: Prepare SSH Config file
+        env:
+          SSH_HOST: ${{ secrets.PROD_SSH_HOST }}
+          SSH_USER: ${{ secrets.PROD_SSH_USERNAME }}
+          SSH_KEY_FILENAME: ${{ secrets.PROD_SSH_PRIVATE_KEY_FILENAME }}
+          SERVICE_TOKEN_ID: ${{ secrets.PROD_SERVICE_TOKEN_ID }}
+          SERVICE_TOKEN_SECRET: ${{ secrets.PROD_SERVICE_TOKEN_SECRET }}
+        run: |
+          cat <<EOF > ~/.ssh/config
+          Host ${SSH_HOST}
+            HostName ${SSH_HOST}
+            User ${SSH_USER}
+            IdentityFile ~/.ssh/${SSH_KEY_FILENAME}
+            IdentitiesOnly yes
+            AddKeysToAgent yes
+            ProxyCommand /usr/bin/cloudflared access ssh --hostname %h --id ${SERVICE_TOKEN_ID} --secret ${SERVICE_TOKEN_SECRET}
+          EOF
+          chmod 600 ~/.ssh/config
+
+      - name: Preflight key directory
+        env:
+          SSH_HOST: ${{ secrets.PROD_SSH_HOST }}
+        run: |
+          ssh -T -q -o StrictHostKeyChecking=no "$SSH_HOST" 'bash /home/u4i/notifs-key-write.sh --check /home/u4i/notifs-key'
+
+      # Runs after the preflight and before the exchange, so a lint error can never follow a minted key.
+      # The checkout SHA must equal the exchange action's pin below (bump both together; a test enforces it).
+      - name: Checkout 4irl-notifs (offline lint)
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          repository: 4IRL/4irl-notifs
+          ref: b29154bd75cd4c4db8ff2fafbde672f68928aadf
+          persist-credentials: false
+          path: notifs-src
+
+      - name: Set up Node
+        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+        with:
+          node-version: '24'
+
+      - name: Lint manifest offline
+        id: lint
+        env:
+          MANIFEST: ${{ github.workspace }}/release/.notifs/manifest.json
+        run: |
+          node notifs-src/scripts/onboard.mjs lint --manifest "$MANIFEST" --target app
+
+      # continue-on-error: a failure after the exchange minted the key must not skip the write below.
+      - name: Exchange key and apply manifest
+        id: notifs
+        continue-on-error: true
+        uses: 4IRL/4irl-notifs/.github/actions/notifs-app@b29154bd75cd4c4db8ff2fafbde672f68928aadf # 4irl-notifs main @ b29154b
+        with:
+          app_id: urls4irl
+          delivery_url: https://notifs-delivery.4irl.app
+          access_client_id: ${{ secrets.NOTIFS_ACCESS_CLIENT_ID }}
+          access_client_secret: ${{ secrets.NOTIFS_ACCESS_CLIENT_SECRET }}
+          manifest: release/.notifs/manifest.json
+        env:
+          NOTIFICATION_URL: ${{ secrets.NOTIFICATION_URL_INF }}
+
+      # No status function: GitHub wraps this `if:` in an implicit success(), which holds only because
+      # the exchange step's continue-on-error keeps the job status successful after the action fails.
+      - name: Install key on host
+        id: write
+        if: steps.notifs.outputs.key != ''
+        env:
+          SSH_HOST: ${{ secrets.PROD_SSH_HOST }}
+          NOTIFS_KEY: ${{ steps.notifs.outputs.key }}
+          NOTIFS_ACCESS_CLIENT_ID: ${{ secrets.NOTIFS_ACCESS_CLIENT_ID }}
+          NOTIFS_ACCESS_CLIENT_SECRET: ${{ secrets.NOTIFS_ACCESS_CLIENT_SECRET }}
+        run: |
+          host_hash="$(printf '%s\n%s\n%s\n' "$NOTIFS_KEY" "$NOTIFS_ACCESS_CLIENT_ID" "$NOTIFS_ACCESS_CLIENT_SECRET" | ssh -T -q -o StrictHostKeyChecking=no "$SSH_HOST" 'bash /home/u4i/notifs-key-write.sh --write /home/u4i/notifs-key')"
+          if ! [[ "$host_hash" =~ ^[0-9a-f]{64}$ ]]; then
+            echo "::error::key write did not report a sha256"
+            exit 1
+          fi
+          echo "host_hash=${host_hash}" >> "$GITHUB_OUTPUT"
+
+      - name: Verify key inside containers
+        if: steps.notifs.outputs.key != ''
+        env:
+          SSH_HOST: ${{ secrets.PROD_SSH_HOST }}
+          HOST_HASH: ${{ steps.write.outputs.host_hash }}
+        run: |
+          for container in u4i-prod-flask u4i-prod-workflow; do
+            container_hash="$(ssh -T -q -o StrictHostKeyChecking=no "$SSH_HOST" "docker exec -u 1001 ${container} sha256sum /run/notifs/delivery_key" | cut -d' ' -f1)"
+            if [ -z "$HOST_HASH" ] || [ "$container_hash" != "$HOST_HASH" ]; then
+              echo "::error::delivery_key hash mismatch or unreadable in ${container}"
+              exit 1
+            fi
+          done
+
+      - name: Fail when the exchange or apply failed
+        if: always() && steps.notifs.outcome == 'failure'
+        run: |
+          echo "::error::notifs-app action outcome: ${{ steps.notifs.outcome }}"
+          exit 1
