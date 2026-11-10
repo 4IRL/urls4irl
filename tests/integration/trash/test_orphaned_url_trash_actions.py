@@ -458,6 +458,38 @@ def test_trash_list_keeps_visible_deleter_names_for_plain_member(
     )
 
 
+def test_utub_level_deleter_fallback_is_unreachable_for_plain_member(
+    app: Flask, seed_hide_list
+):
+    """
+    GIVEN a hidden-list UTub trashed as a whole (URL rows inherit ``utub.deleted_by``,
+        the ``read_trash`` deleter fallback) by the owner
+    WHEN plain member A, then the owner, read the Trash list
+    THEN A sees none of the UTub's URLs (the whole-UTub path is creator-only, so the
+        fallback deleter can never be masked for a plain member), and the owner sees
+        their own id and username as the deleter via the fallback
+    """
+    seed = seed_hide_list(True)
+    own_row = seed.utub_url_ids[seed.member_a_id]
+    trash_utub(app, seed.utub_id, deleted_by=seed.owner_id)
+
+    with login_as_user(app, seed.member_a_id) as (client, _):
+        member_response = client.get(
+            url_for(ROUTES.UTUBS.GET_TRASH), headers=AJAX_HEADERS
+        )
+    assert member_response.status_code == 200
+    assert member_response.json[MODELS.URLS] == []
+    assert seed.usernames[seed.owner_id] not in member_response.get_data(as_text=True)
+
+    with login_as_user(app, seed.owner_id) as (client, _):
+        owner_response = client.get(
+            url_for(ROUTES.UTUBS.GET_TRASH), headers=AJAX_HEADERS
+        )
+    rows = {item[MODELS.UTUB_URL_ID]: item for item in owner_response.json[MODELS.URLS]}
+    assert rows[own_row][MODELS.DELETED_BY] == seed.owner_id
+    assert rows[own_row][MODELS.DELETED_BY_USERNAME] == seed.usernames[seed.owner_id]
+
+
 @pytest.mark.parametrize("hide_member_list", [True, False, None])
 def test_owner_trash_list_is_unchanged_by_hide_setting(
     app: Flask, seed_hide_list, hide_member_list: bool | None
