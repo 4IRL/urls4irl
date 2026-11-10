@@ -598,7 +598,6 @@ export function createUTubSelector({
 
 // Re-exported: the counts markup lives in the row-counts leaf module so it can
 // rebuild the group on a live flip without importing this file.
-export { makeUTubRowCounts };
 
 export function setUTubSelectorEventListeners(utub: HTMLElement): void {
   const utubSelector = $(utub);

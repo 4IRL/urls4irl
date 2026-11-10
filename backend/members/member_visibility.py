@@ -39,8 +39,6 @@ def member_list_hidden_for(*, settings: Any, viewer_is_manager: bool | None) -> 
     section = settings["members"]
     if not isinstance(section, dict):
         return True
-    if not section:
-        return False
     if "hide_member_list" not in section:
         return False
     return section["hide_member_list"] is not False

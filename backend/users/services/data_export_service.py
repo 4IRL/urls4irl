@@ -21,6 +21,7 @@ from backend.schemas.exports import (
 )
 from backend.utils.datetime_utils import to_iso_milliseconds
 from backend.utils.strings.model_strs import MODELS as MODEL_STRS
+from backend.utils.strings.url_strs import URL_ADDED_BY_A_MEMBER
 
 # Fallback attribution when a contributor's Users row can't be resolved (should
 # not occur under FK integrity, but keeps the export schema's `str` contract
@@ -30,7 +31,7 @@ _UNKNOWN_CONTRIBUTOR = "(unknown user)"
 
 # Attribution shown instead of a username when the exporting user may not see that
 # person in the UTub (hide-member-list setting on, exporter is a plain member).
-EXPORT_HIDDEN_MEMBER_LABEL = "a member"
+EXPORT_HIDDEN_MEMBER_LABEL = URL_ADDED_BY_A_MEMBER
 
 
 def _contributor_name(

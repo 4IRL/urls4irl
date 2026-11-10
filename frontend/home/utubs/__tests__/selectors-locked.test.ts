@@ -1,8 +1,8 @@
 import utubCardTemplate from "../../../../backend/templates/components/home/UTubDeck/UTubCard.html?raw";
 
 import { APP_CONFIG } from "../../../lib/config.js";
-import { createUTubSelector, makeUTubRowCounts } from "../selectors.js";
-import { makeUTubRowCountsLabel } from "../row-counts.js";
+import { createUTubSelector } from "../selectors.js";
+import { makeUTubRowCounts, makeUTubRowCountsLabel } from "../row-counts.js";
 
 const { mockMetricsClient } = await vi.hoisted(
   async () => await import("../../../__tests__/helpers/mock-metrics-client.js"),

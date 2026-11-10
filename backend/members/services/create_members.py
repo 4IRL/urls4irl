@@ -81,8 +81,8 @@ def create_utub_member(
         - Response: JSON response on create
         - int: HTTP status code 200 (Success), 400 (User not found, already a
           member (both collapse into one identical response when the member
-          list is hidden from the adder), or the per-user daily add cap was reached: 100 for managers,
-          25 for plain members), 403 (a plain member while ``members_can_add``
+          list is hidden from the adder), or the per-user daily add cap was
+          reached: 100 for managers, 25 for plain members), 403 (a plain member while ``members_can_add``
           is off, before or after the row lock, errorCode 7; or the UTub is
           locked)
     """

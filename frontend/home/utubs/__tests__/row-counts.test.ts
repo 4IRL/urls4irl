@@ -1,9 +1,9 @@
 import { getState, resetStore, setState } from "../../../store/app-store.js";
 import { EMPTY_UTUB_SETTINGS } from "../../../types/settings.js";
 import { makeUtubSummaryItem } from "../../../__tests__/helpers/utub-summary.js";
-import { makeUTubRowCounts } from "../selectors.js";
 import {
   applyRowCountDelta,
+  makeUTubRowCounts,
   makeUTubRowCountsLabel,
   setRowCountsFromStore,
 } from "../row-counts.js";
