@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
+from backend.members.member_visibility import visible_member_ids_for_utub
 from backend.models.user_preferences import resolve_preferences
 from backend.models.users import Users
 from backend.models.utub_members import Utub_Members
@@ -17,6 +18,7 @@ from backend.schemas.exports import (
 )
 from backend.utils.datetime_utils import to_iso_milliseconds
 from backend.utils.strings.model_strs import MODELS as MODEL_STRS
+from backend.utils.strings.url_strs import HIDDEN_MEMBER_LABEL
 
 # Fallback attribution when a contributor's Users row can't be resolved (should
 # not occur under FK integrity, but keeps the export schema's `str` contract
@@ -24,18 +26,35 @@ from backend.utils.strings.model_strs import MODELS as MODEL_STRS
 _UNKNOWN_CONTRIBUTOR = "(unknown user)"
 
 
+def _contributor_name(
+    *, user_id: int, username_by_id: dict[int, str], hidden_ids: frozenset[int]
+) -> str:
+    """Username for a contributor, the hidden label when hidden from the exporter."""
+    if user_id in hidden_ids:
+        return HIDDEN_MEMBER_LABEL
+    return username_by_id.get(user_id, _UNKNOWN_CONTRIBUTOR)
+
+
 def _build_export_url(
-    *, utub_url: Utub_Urls, username_by_id: dict[int, str]
+    *,
+    utub_url: Utub_Urls,
+    username_by_id: dict[int, str],
+    hidden_ids: frozenset[int],
 ) -> ExportUrlSchema:
     """Serialize one UTub URL, reading applied tag strings from the
     ``associated_tags`` property (a ``list[dict]`` keyed by ``MODEL_STRS`` —
     subscript access, not attribute access). The adder is attributed by
-    username (resolved from ``username_by_id``), never an internal user ID."""
+    username (resolved from ``username_by_id``), never an internal user ID.
+    An adder in ``hidden_ids`` is attributed as ``HIDDEN_MEMBER_LABEL``."""
     return ExportUrlSchema(
         url=utub_url.standalone_url.url_string,
         title=utub_url.url_title,
         added_at=utub_url.added_at,
-        added_by=username_by_id.get(utub_url.user_id, _UNKNOWN_CONTRIBUTOR),
+        added_by=_contributor_name(
+            user_id=utub_url.user_id,
+            username_by_id=username_by_id,
+            hidden_ids=hidden_ids,
+        ),
         tags=[
             applied_tag[MODEL_STRS.TAG_STRING]
             for applied_tag in utub_url.associated_tags
@@ -51,6 +70,22 @@ def _build_export_utub(
     adders, tag creators, members) are identified by username only — no
     internal IDs."""
     utub = membership.to_utub
+    visible_ids = visible_member_ids_for_utub(
+        utub=utub,
+        viewer_id=membership.user_id,
+        viewer_role=membership.member_role.value,
+    )
+    # Hidden = current members outside the visible set. Former members have no
+    # membership row, so they keep their name, as in the UTub detail payload.
+    hidden_ids: frozenset[int] = (
+        frozenset()
+        if visible_ids is None
+        else frozenset(
+            member.user_id
+            for member in utub.members
+            if member.user_id not in visible_ids
+        )
+    )
     return ExportUtubSchema(
         name=utub.name,
         description=utub.utub_description,
@@ -65,14 +100,20 @@ def _build_export_utub(
         pinned=membership.pinned_at is not None,
         member_settings=membership.settings,
         urls=[
-            _build_export_url(utub_url=utub_url, username_by_id=username_by_id)
+            _build_export_url(
+                utub_url=utub_url,
+                username_by_id=username_by_id,
+                hidden_ids=hidden_ids,
+            )
             for utub_url in utub.utub_urls
         ],
         tags=[
             ExportTagSchema(
                 tag_string=utub_tag.tag_string,
-                created_by=username_by_id.get(
-                    utub_tag.created_by, _UNKNOWN_CONTRIBUTOR
+                created_by=_contributor_name(
+                    user_id=utub_tag.created_by,
+                    username_by_id=username_by_id,
+                    hidden_ids=hidden_ids,
                 ),
                 created_at=utub_tag.created_at,
             )
@@ -84,6 +125,7 @@ def _build_export_utub(
                 role=member.member_role.value,
             )
             for member in utub.members
+            if member.user_id not in hidden_ids
         ],
     )
 

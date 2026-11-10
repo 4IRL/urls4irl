@@ -1,3 +1,4 @@
+import json
 import re
 from datetime import timedelta
 from typing import Tuple
@@ -14,6 +15,7 @@ from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
 from backend.utils.all_routes import ROUTES
+from backend.utils.constants import CONSTANTS
 from backend.utils.datetime_utils import to_iso_milliseconds
 from backend.utils.strings.form_strs import UTUB_FORM
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE
@@ -637,6 +639,102 @@ def _get_ordered_utub_summary() -> dict[str, list[dict[str, int | str]] | str | 
         MODELS.TRASH_COUNT: 0,
         MODELS.PREFERENCES: DEFAULT_PREFERENCES,
     }
+
+
+@pytest.mark.parametrize(
+    "viewer, hide_member_list, expect_hidden",
+    [
+        ("member_a_id", True, True),
+        ("member_b_id", True, True),
+        ("owner_id", True, False),
+        ("co_owner_id", True, False),
+        ("member_a_id", False, False),
+        ("member_a_id", None, False),
+    ],
+)
+def test_get_utubs_summary_hidden_member_count(
+    app: Flask,
+    seed_hide_list,
+    hide_list_client,
+    viewer: str,
+    hide_member_list: bool | None,
+    expect_hidden: bool,
+):
+    """
+    GIVEN a UTub whose owner may have hidden the member list from plain members
+    WHEN each role requests the UTub summary
+    THEN a plain member of a hidden-list UTub gets memberCount null, and everyone
+        else gets the real total
+    """
+    seed = seed_hide_list(hide_member_list)
+    client = hide_list_client(getattr(seed, viewer))
+
+    with app.test_request_context():
+        response = client.get(url_for(ROUTES.UTUBS.GET_UTUBS), headers=AJAX_HEADERS)
+
+    assert response.status_code == 200
+    (item,) = response.get_json()[MODELS.UTUBS]
+    expected_count = None if expect_hidden else len(seed.current_member_ids)
+    assert item[MODELS.MEMBER_COUNT] == expected_count
+
+
+@pytest.mark.parametrize(
+    "viewer, expect_hidden",
+    [("member_a_id", True), ("owner_id", False), ("co_owner_id", False)],
+)
+def test_home_page_hides_member_count_in_utub_row(
+    app: Flask, seed_hide_list, hide_list_client, viewer: str, expect_hidden: bool
+):
+    """
+    GIVEN a UTub whose owner hid the member list from plain members
+    WHEN each role loads /home
+    THEN a plain member's UTub row has no member number, person icon or member
+        clause in its label, and the embedded JSON carries null; others keep them
+    """
+    seed = seed_hide_list(True)
+    client = hide_list_client(getattr(seed, viewer))
+
+    with app.test_request_context():
+        response = client.get(url_for(ROUTES.UTUBS.HOME))
+
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    (counts_line,) = [line for line in html.splitlines() if "UTubRowCounts" in line]
+    data_match = re.search(
+        r'<script id="utubs-data" type="application/json">(.*?)</script>',
+        html,
+        re.DOTALL,
+    )
+    assert data_match is not None
+    (embedded,) = json.loads(data_match.group(1))
+    label_match = re.search(
+        r'<span class="visually-hidden">(.*?)</span>', counts_line, re.DOTALL
+    )
+    assert label_match is not None
+    url_total: int = embedded[MODELS.URL_COUNT]
+    url_noun = (
+        CONSTANTS.STRINGS.UTUB_ROW_URL_SINGULAR
+        if url_total == 1
+        else CONSTANTS.STRINGS.UTUB_ROW_URL_PLURAL
+    )
+    url_label = f", {url_total} {url_noun}"
+    member_total = len(seed.current_member_ids)
+    if expect_hidden:
+        assert embedded[MODELS.MEMBER_COUNT] is None
+        assert "bi-person-fill" not in counts_line
+        assert counts_line.count("UTubRowCountNum") == 1
+        assert label_match.group(1) == url_label
+    else:
+        member_noun = (
+            CONSTANTS.STRINGS.UTUB_ROW_MEMBER_SINGULAR
+            if member_total == 1
+            else CONSTANTS.STRINGS.UTUB_ROW_MEMBER_PLURAL
+        )
+        assert embedded[MODELS.MEMBER_COUNT] == member_total
+        assert "bi-person-fill" in counts_line
+        assert counts_line.count("UTubRowCountNum") == 2
+        assert f">{member_total}</span>" in counts_line
+        assert label_match.group(1) == f"{url_label}, {member_total} {member_noun}"
 
 
 def test_get_utubs_without_ajax_request(

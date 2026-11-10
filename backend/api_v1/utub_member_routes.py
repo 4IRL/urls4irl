@@ -202,6 +202,8 @@ def api_v1_get_co_member_candidates(
     if refusal is not None:
         return refusal
     return APIResponse(
-        data=get_co_member_candidates(current_user.id, current_utub),
+        data=get_co_member_candidates(
+            current_user.id, current_utub, viewer_is_manager=g.is_manager
+        ),
         status_code=200,
     ).to_response()

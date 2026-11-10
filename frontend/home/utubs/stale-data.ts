@@ -20,9 +20,10 @@ import {
   type TagDisplayDefaults,
 } from "./selectors.js";
 import { removeUTubLocally } from "./remove-local.js";
-import { setRowCountsFromStore } from "./row-counts.js";
+import { isMemberListHiddenForViewer } from "./policy.js";
 import { syncRowNameAndOrder } from "./sort.js";
 import { reorderMemberDeck } from "../members/deck.js";
+import { applyMemberListVisibility } from "../members/list-visibility.js";
 import { setBackgroundRefreshActive } from "./background-refresh-flag.js";
 import { showURLDeckBannerError } from "../urls/deck.js";
 import {
@@ -123,6 +124,9 @@ export async function updateUTubOnFindingStaleData({
   // Settings apply before the no-op short-circuit (a settings-only difference
   // must still land), unless a local save landed while the request was in
   // flight: that response predates the save and must not overwrite it.
+  // Read here (after the mid-flight discard guard), so it matches the value the
+  // settings write below replaces.
+  const wasHidden = isMemberListHiddenForViewer();
   const {
     keepSettings,
     keepMemberSettings,
@@ -192,6 +196,8 @@ export async function updateUTubOnFindingStaleData({
     });
   }
 
+  const isHidden = isMemberListHiddenForViewer();
+
   if (isSameUTubData({ store: currentState, data: utub })) {
     // A sort-only difference is already in the store; it emits no
     // STALE_DATA_DETECTED so URL and tag subscribers do not re-run. The deck is
@@ -204,6 +210,9 @@ export async function updateUTubOnFindingStaleData({
         memberSort: getState().preferences.memberSort,
       });
     }
+    // The count, row count and badges can be stale even with identical content
+    // (a flip of the hide setting alone), so this branch never skips the deck.
+    applyMemberListVisibility({ wasHidden, isHidden });
     log("updateUTubOnFindingStaleData — payload matches store, no-op", {
       utubID,
       memberSortChanged,
@@ -266,9 +275,11 @@ export async function updateUTubOnFindingStaleData({
     activeUTubDescription: utub.description,
   });
   syncSidebarUTubName({ utubID: utub.id, utubName: utub.name });
-  if (urlCountChanged || memberCountChanged) {
-    setRowCountsFromStore({ utubID: utub.id });
-  }
+  // Runs against the new list. It recounts the row, rewrites the deck total and
+  // re-resolves the stacked adder badges (the per-card updater never re-renders
+  // them, so an attribution-only change needs this too), and reacts to a flip of
+  // the hide setting even when no content count changed.
+  applyMemberListVisibility({ wasHidden, isHidden });
 
   // Re-evaluate onboarding tips against the new store. There is no lock event,
   // so a lock change rides on URL_DECK_CHANGED (its listener re-runs the tips).
@@ -329,6 +340,7 @@ function projectUTubContent({
       urlString: url.urlString,
       urlTitle: url.urlTitle,
       canDelete: url.canDelete,
+      addedByUserID: url.addedByUserID,
       shortLinkExpiresAt: url.shortLinkExpiresAt,
       canRevokeShortLink: url.canRevokeShortLink,
       utubUrlTagIDs: [...url.utubUrlTagIDs].sort(

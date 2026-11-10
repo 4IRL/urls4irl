@@ -199,7 +199,11 @@ def open_add_member_combobox(*, page: Page) -> Locator:
     Returns:
         The visible, focused add-member combobox input locator.
     """
-    wait_then_click_element(page=page, css_selector=HPL.BUTTON_MEMBER_CREATE)
+    # no_wait_after: a phone run once stalled 10s at "waiting for scheduled
+    # navigations to finish" after the click had completed (combobox open, no
+    # navigation on this path). The visible + focused waits below are the real
+    # readiness check, so the post-click navigation wait is skipped.
+    page.locator(HPL.BUTTON_MEMBER_CREATE).first.click(no_wait_after=True)
     wait_until_visible_css_selector(page=page, css_selector=HPL.MEMBER_COMBOBOX_INPUT)
     wait_until_in_focus(page=page, css_selector=HPL.MEMBER_COMBOBOX_INPUT)
     return wait_then_get_element(page=page, css_selector=HPL.MEMBER_COMBOBOX_INPUT)

@@ -1,12 +1,17 @@
-from typing import Tuple
+from typing import AbstractSet, Tuple
+from unittest import mock
 
 import pytest
 from flask import Flask, url_for
 from flask.testing import FlaskClient
 
 from backend import db
+from backend.models.urls import Urls
 from backend.models.users import Users
 from backend.models.utub_members import Member_Role, Utub_Members
+from backend.models.utub_urls import Utub_Urls
+from backend.models.utubs import Utubs
+from backend.schemas.urls import UtubUrlSchema
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings.form_strs import URL_FORM
 from backend.utils.strings.model_strs import MODELS
@@ -21,11 +26,13 @@ from tests.integration.trash.trash_helpers import (
     assert_not_in_trash_response,
     get_row_state,
     get_trash_url_ids,
+    login_as_user,
     post_restore,
     post_restore_urls,
     row_exists,
 )
 from tests.utils_for_test import (
+    HideListSeed,
     get_utub_url_id,
     remove_member,
     trash_utub,
@@ -278,3 +285,294 @@ def test_readded_member_is_adder_again_and_their_trashed_url_is_hidden(
 
     assert get_trash_url_ids(client) == []
     assert _trash_count(app, SECOND_USER_ID) == 0
+
+
+def _create_trashed_source_utub_with_url(app: Flask, creator_id: int) -> int:
+    """Create a trashed UTub owned by ``creator_id`` holding one URL they added.
+
+    Returns the URL's ``Utub_Urls`` id. Used as the origin of a destination restore.
+    """
+    with app.app_context():
+        utub = Utubs(name="Source UTub", utub_creator=creator_id, utub_description="")
+        membership = Utub_Members(member_role=Member_Role.CREATOR)
+        membership.to_user = Users.query.get(creator_id)
+        utub.members.append(membership)
+        db.session.add(utub)
+        db.session.commit()
+        url = Urls(
+            normalized_url="https://hide-list-source.example.com",
+            current_user_id=creator_id,
+        )
+        db.session.add(url)
+        db.session.commit()
+        utub_url = Utub_Urls()
+        utub_url.user_id = creator_id
+        utub_url.url_title = "Source URL"
+        utub_url.url_id = url.id
+        utub_url.utub_id = utub.id
+        db.session.add(utub_url)
+        db.session.commit()
+        source_utub_id, utub_url_id = utub.id, utub_url.id
+    trash_utub(app, source_utub_id, deleted_by=creator_id)
+    return utub_url_id
+
+
+def _restore_as_hidden_list_plain_member(
+    app: Flask, seed: HideListSeed, site: str
+) -> tuple[list[int | None], str, list[AbstractSet[int] | None]]:
+    """Run one restore site as plain member A in the hidden-list UTub.
+
+    Spies on ``UtubUrlSchema.from_orm_url``. Returns the adder ids in the response,
+    the raw response body and the ``visible_member_ids`` argument of every call.
+    """
+    member_a = seed.member_a_id
+    own_row = seed.utub_url_ids[member_a]
+    former_row = seed.utub_url_ids[seed.former_member_id]
+    if site == "destination":
+        source_row = _create_trashed_source_utub_with_url(app, member_a)
+        source_utub_id = get_row_state(app, source_row)["utub_id"]
+    else:
+        trash_utub_url(app, own_row, deleted_by=seed.owner_id)
+        trash_utub_url(app, former_row, deleted_by=seed.owner_id)
+
+    with mock.patch.object(
+        UtubUrlSchema, "from_orm_url", wraps=UtubUrlSchema.from_orm_url
+    ) as spy:
+        with login_as_user(app, member_a) as (client, csrf_token):
+            if site == "destination":
+                response = post_restore(
+                    client,
+                    csrf_token,
+                    source_utub_id,
+                    source_row,
+                    {"destUtubId": seed.utub_id},
+                )
+                assert response.status_code == 200
+                adders = [response.json[MODELS.URL][MODELS.ADDED_BY]]
+            elif site == "in_place":
+                adders = []
+                for row_id in (own_row, former_row):
+                    response = post_restore(client, csrf_token, seed.utub_id, row_id)
+                    assert response.status_code == 200
+                    adders.append(response.json[MODELS.URL][MODELS.ADDED_BY])
+            else:
+                response = post_restore_urls(
+                    client, csrf_token, seed.utub_id, [own_row, former_row]
+                )
+                assert response.status_code == 200
+                adders = [
+                    card[MODELS.ADDED_BY] for card in response.json[MODELS.RESTORED]
+                ]
+    visible_args = [call.kwargs["visible_member_ids"] for call in spy.call_args_list]
+    return adders, response.get_data(as_text=True), visible_args
+
+
+@pytest.mark.parametrize(
+    "site, expected_adders",
+    [
+        pytest.param("in_place", ["member_a_id", "former_member_id"], id="in_place"),
+        pytest.param("bulk", ["member_a_id", "former_member_id"], id="bulk"),
+        pytest.param("destination", ["member_a_id"], id="destination"),
+    ],
+)
+def test_plain_member_restore_in_hidden_list_utub_never_echoes_a_hidden_member(
+    app: Flask, seed_hide_list, site: str, expected_adders: list[str]
+):
+    """
+    GIVEN a UTub with the member list hidden, where plain member A restores URLs
+        (their own and a former member's) in place, in bulk or into it as destination
+    WHEN the response is built
+    THEN every adder is A's own id or the former member's id, no hidden member's
+        id or username appears, and the site passed a visible-id set that excludes
+        the hidden plain member B to the serializer
+    """
+    seed = seed_hide_list(True)
+
+    adders, body, visible_args = _restore_as_hidden_list_plain_member(app, seed, site)
+
+    assert adders == [getattr(seed, name) for name in expected_adders]
+    assert seed.usernames[seed.member_b_id] not in body
+    assert visible_args
+    for visible_ids in visible_args:
+        assert visible_ids is not None
+        assert seed.member_b_id not in visible_ids
+        assert visible_ids == {seed.owner_id, seed.co_owner_id, seed.member_a_id}
+
+
+def test_trash_list_hides_deleter_of_orphan_row_from_plain_member(
+    app: Flask, seed_hide_list
+):
+    """
+    GIVEN a hidden-list UTub where the former member's URL (an orphan) and plain
+        member A's own URL were trashed by hidden plain member B
+    WHEN plain member A reads the Trash list
+    THEN both rows are listed with a null deleter id and username, no username of B
+        appears anywhere, the former member's name and A's own name are kept, and
+        A's own id is never masked
+    """
+    seed = seed_hide_list(True)
+    own_row = seed.utub_url_ids[seed.member_a_id]
+    former_row = seed.utub_url_ids[seed.former_member_id]
+    trash_utub_url(app, own_row, deleted_by=seed.member_b_id)
+    trash_utub_url(app, former_row, deleted_by=seed.member_b_id)
+
+    with login_as_user(app, seed.member_a_id) as (client, _):
+        response = client.get(url_for(ROUTES.UTUBS.GET_TRASH), headers=AJAX_HEADERS)
+
+    assert response.status_code == 200
+    rows = {item[MODELS.UTUB_URL_ID]: item for item in response.json[MODELS.URLS]}
+    assert set(rows) == {own_row, former_row}
+    for item in rows.values():
+        assert item[MODELS.DELETED_BY] is None
+        assert item[MODELS.DELETED_BY_USERNAME] is None
+    assert rows[own_row][MODELS.ADDED_BY] == seed.member_a_id
+    assert rows[own_row][MODELS.ADDED_BY_USERNAME] == seed.usernames[seed.member_a_id]
+    assert rows[former_row][MODELS.ADDED_BY] == seed.former_member_id
+    body = response.get_data(as_text=True)
+    assert seed.usernames[seed.member_b_id] not in body
+
+
+def test_trash_list_keeps_visible_deleter_names_for_plain_member(
+    app: Flask, seed_hide_list
+):
+    """
+    GIVEN a hidden-list UTub where the owner and A themself trashed A's two URLs
+    WHEN plain member A reads the Trash list
+    THEN the owner (visible) and A (the viewer) keep their ids and usernames
+    """
+    seed = seed_hide_list(True)
+    own_row = seed.utub_url_ids[seed.member_a_id]
+    former_row = seed.utub_url_ids[seed.former_member_id]
+    trash_utub_url(app, own_row, deleted_by=seed.owner_id)
+    trash_utub_url(app, former_row, deleted_by=seed.member_a_id)
+
+    with login_as_user(app, seed.member_a_id) as (client, _):
+        response = client.get(url_for(ROUTES.UTUBS.GET_TRASH), headers=AJAX_HEADERS)
+
+    rows = {item[MODELS.UTUB_URL_ID]: item for item in response.json[MODELS.URLS]}
+    assert rows[own_row][MODELS.DELETED_BY] == seed.owner_id
+    assert rows[own_row][MODELS.DELETED_BY_USERNAME] == seed.usernames[seed.owner_id]
+    assert rows[former_row][MODELS.DELETED_BY] == seed.member_a_id
+    assert (
+        rows[former_row][MODELS.DELETED_BY_USERNAME] == seed.usernames[seed.member_a_id]
+    )
+
+
+def test_utub_level_deleter_fallback_is_unreachable_for_plain_member(
+    app: Flask, seed_hide_list
+):
+    """
+    GIVEN a hidden-list UTub trashed as a whole (URL rows inherit ``utub.deleted_by``,
+        the ``read_trash`` deleter fallback) by the owner
+    WHEN plain member A, then the owner, read the Trash list
+    THEN A sees none of the UTub's URLs (the whole-UTub path is creator-only, so the
+        fallback deleter can never be masked for a plain member), and the owner sees
+        their own id and username as the deleter via the fallback
+    """
+    seed = seed_hide_list(True)
+    own_row = seed.utub_url_ids[seed.member_a_id]
+    trash_utub(app, seed.utub_id, deleted_by=seed.owner_id)
+
+    with login_as_user(app, seed.member_a_id) as (client, _):
+        member_response = client.get(
+            url_for(ROUTES.UTUBS.GET_TRASH), headers=AJAX_HEADERS
+        )
+    assert member_response.status_code == 200
+    assert member_response.json[MODELS.URLS] == []
+    assert seed.usernames[seed.owner_id] not in member_response.get_data(as_text=True)
+
+    with login_as_user(app, seed.owner_id) as (client, _):
+        owner_response = client.get(
+            url_for(ROUTES.UTUBS.GET_TRASH), headers=AJAX_HEADERS
+        )
+    rows = {item[MODELS.UTUB_URL_ID]: item for item in owner_response.json[MODELS.URLS]}
+    assert rows[own_row][MODELS.DELETED_BY] == seed.owner_id
+    assert rows[own_row][MODELS.DELETED_BY_USERNAME] == seed.usernames[seed.owner_id]
+
+
+@pytest.mark.parametrize("hide_member_list", [True, False, None])
+def test_owner_trash_list_is_unchanged_by_hide_setting(
+    app: Flask, seed_hide_list, hide_member_list: bool | None
+):
+    """
+    GIVEN the owner trashed hidden-list-UTub URLs added by plain members A and B
+        (B deleted one of them first)
+    WHEN the owner reads the Trash list with the setting on, off or absent
+    THEN every adder and deleter id and username is present
+    """
+    seed = seed_hide_list(hide_member_list)
+    row_a = seed.utub_url_ids[seed.member_a_id]
+    row_b = seed.utub_url_ids[seed.member_b_id]
+    trash_utub_url(app, row_a, deleted_by=seed.member_b_id)
+    trash_utub_url(app, row_b, deleted_by=seed.owner_id)
+
+    with login_as_user(app, seed.owner_id) as (client, _):
+        response = client.get(url_for(ROUTES.UTUBS.GET_TRASH), headers=AJAX_HEADERS)
+
+    rows = {item[MODELS.UTUB_URL_ID]: item for item in response.json[MODELS.URLS]}
+    assert rows[row_a][MODELS.ADDED_BY] == seed.member_a_id
+    assert rows[row_a][MODELS.ADDED_BY_USERNAME] == seed.usernames[seed.member_a_id]
+    assert rows[row_a][MODELS.DELETED_BY] == seed.member_b_id
+    assert rows[row_a][MODELS.DELETED_BY_USERNAME] == seed.usernames[seed.member_b_id]
+    assert rows[row_b][MODELS.ADDED_BY] == seed.member_b_id
+    assert rows[row_b][MODELS.DELETED_BY] == seed.owner_id
+
+
+def test_trash_masking_is_per_utub(app: Flask, seed_hide_list):
+    """
+    GIVEN plain member A, who is in a hidden-list UTub (B hidden) and in a second
+        UTub with no hide setting where B is a visible member, and B trashed A's
+        URL in each
+    WHEN A reads the Trash list
+    THEN B is masked as the deleter only in the hidden-list UTub
+    """
+    seed = seed_hide_list(True)
+    second_seed_row = _create_second_visible_utub(app, seed)
+    first_row = seed.utub_url_ids[seed.member_a_id]
+    trash_utub_url(app, first_row, deleted_by=seed.member_b_id)
+    trash_utub_url(app, second_seed_row, deleted_by=seed.member_b_id)
+
+    with login_as_user(app, seed.member_a_id) as (client, _):
+        response = client.get(url_for(ROUTES.UTUBS.GET_TRASH), headers=AJAX_HEADERS)
+
+    rows = {item[MODELS.UTUB_URL_ID]: item for item in response.json[MODELS.URLS]}
+    assert rows[first_row][MODELS.DELETED_BY] is None
+    assert rows[first_row][MODELS.DELETED_BY_USERNAME] is None
+    assert rows[second_seed_row][MODELS.DELETED_BY] == seed.member_b_id
+    assert (
+        rows[second_seed_row][MODELS.DELETED_BY_USERNAME]
+        == seed.usernames[seed.member_b_id]
+    )
+
+
+def _create_second_visible_utub(app: Flask, seed: HideListSeed) -> int:
+    """Create a UTub owned by the seed owner with plain members A and B and no stored
+    settings, holding one URL added by A. Returns that URL's ``Utub_Urls`` id."""
+    with app.app_context():
+        utub = Utubs(
+            name="Visible UTub", utub_creator=seed.owner_id, utub_description=""
+        )
+        for user_id, role in (
+            (seed.owner_id, Member_Role.CREATOR),
+            (seed.member_a_id, Member_Role.MEMBER),
+            (seed.member_b_id, Member_Role.MEMBER),
+        ):
+            membership = Utub_Members(member_role=role)
+            membership.to_user = Users.query.get(user_id)
+            utub.members.append(membership)
+        db.session.add(utub)
+        db.session.commit()
+        url = Urls(
+            normalized_url="https://visible-utub.example.com",
+            current_user_id=seed.member_a_id,
+        )
+        db.session.add(url)
+        db.session.commit()
+        utub_url = Utub_Urls()
+        utub_url.user_id = seed.member_a_id
+        utub_url.url_title = "Visible UTub URL"
+        utub_url.url_id = url.id
+        utub_url.utub_id = utub.id
+        db.session.add(utub_url)
+        db.session.commit()
+        return utub_url.id

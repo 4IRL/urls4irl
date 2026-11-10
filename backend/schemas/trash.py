@@ -55,21 +55,21 @@ class TrashedUrlItemSchema(BaseSchema):
         alias=MODELS.EXPIRES_AT,
         description="When the URL is permanently deleted (ISO 8601)",
     )
-    deleted_by_user_id: int = Field(
+    deleted_by_user_id: int | None = Field(
         alias=MODELS.DELETED_BY,
-        description="User ID of whoever put the URL in Trash (effective)",
+        description="User ID of whoever put the URL in Trash (effective), or null when that member is hidden from this viewer",
     )
-    deleted_by_username: str = Field(
+    deleted_by_username: str | None = Field(
         alias=MODELS.DELETED_BY_USERNAME,
-        description="Username of whoever put the URL in Trash (effective)",
+        description="Username of whoever put the URL in Trash (effective), or null when that member is hidden from this viewer",
     )
-    added_by_user_id: int = Field(
+    added_by_user_id: int | None = Field(
         alias=MODELS.ADDED_BY,
-        description="User ID of the member who added the URL",
+        description="User ID of the member who added the URL, or null when that member is hidden from this viewer",
     )
-    added_by_username: str = Field(
+    added_by_username: str | None = Field(
         alias=MODELS.ADDED_BY_USERNAME,
-        description="Username of the member who added the URL",
+        description="Username of the member who added the URL, or null when that member is hidden from this viewer",
     )
     can_restore: bool = Field(
         alias=MODELS.CAN_RESTORE,

@@ -20,7 +20,7 @@ import { loadCoMemberCandidates } from "./co-member-fetch.js";
 import { submitStagedMembers } from "./member-combobox-submit.js";
 import { closeMemberNameFilter } from "./search.js";
 import { clearMemberDeckNotice } from "./notice.js";
-import { canAddMembers } from "../utubs/policy.js";
+import { canAddMembers, isMemberListHiddenForViewer } from "../utubs/policy.js";
 import { isMobile } from "../mobile.js";
 
 import type { MemberCandidate } from "../../types/member.js";
@@ -261,7 +261,10 @@ function renderMemberListbox(refs: MemberComboboxRefs): void {
   // Fetch not settled yet: show only a neutral loading hint (no suggestions,
   // no outsider row) so "haven't loaded" is visibly distinct from "loaded and
   // empty".
-  if (!getState().coMemberCandidatesLoaded) {
+  // A viewer who cannot see the member list gets no suggestions at all (the
+  // server returns none), so there is nothing to load and nothing to suggest.
+  const listHidden = isMemberListHiddenForViewer();
+  if (!listHidden && !getState().coMemberCandidatesLoaded) {
     listbox.append(buildHintRow(APP_CONFIG.strings.MEMBER_ADD_LOADING_HINT));
     listbox.removeClass("hidden");
     input.attr("aria-expanded", "true");
@@ -273,11 +276,13 @@ function renderMemberListbox(refs: MemberComboboxRefs): void {
     (member) => member.username,
   );
   const stagedUsernames = refs.stagedChips.map((chip) => chip.username);
-  const suggestions = filterCoMemberSuggestions({
-    query: trimmedQuery,
-    currentMemberUsernames,
-    stagedUsernames,
-  });
+  const suggestions = listHidden
+    ? []
+    : filterCoMemberSuggestions({
+        query: trimmedQuery,
+        currentMemberUsernames,
+        stagedUsernames,
+      });
 
   let optionIndex = 0;
   suggestions.forEach((candidate) => {
@@ -291,7 +296,8 @@ function renderMemberListbox(refs: MemberComboboxRefs): void {
   const matchesCurrentMember = getState().members.some(
     (member) => member.username === trimmedQuery,
   );
-  const hasExactCandidate = hasExactCoMemberMatch({ query: trimmedQuery });
+  const hasExactCandidate =
+    !listHidden && hasExactCoMemberMatch({ query: trimmedQuery });
   // Suppress the outsider row when the exact typed username is already staged as
   // an outsider chip: re-typing it would otherwise show a clickable row whose add
   // silently no-ops (stageMemberUsername dedupes case-sensitively). Mirrors the
@@ -328,10 +334,14 @@ function renderMemberListbox(refs: MemberComboboxRefs): void {
 
   // Loaded successfully but the requester has zero co-members: prompt them to
   // type a username (the outsider path still works once they do).
-  const hasCoMembers = getState().coMemberCandidates.length > 0;
+  const hasCoMembers = !listHidden && getState().coMemberCandidates.length > 0;
   if (!hasCoMembers && trimmedQuery.length === 0) {
     listbox.append(
-      buildHintRow(APP_CONFIG.strings.MEMBER_ADD_NO_COMEMBERS_HINT),
+      buildHintRow(
+        listHidden
+          ? APP_CONFIG.strings.MEMBER_ADD_EXACT_USERNAME_HINT
+          : APP_CONFIG.strings.MEMBER_ADD_NO_COMEMBERS_HINT,
+      ),
     );
     listbox.removeClass("hidden");
     input.attr("aria-expanded", "true");

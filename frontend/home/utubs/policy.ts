@@ -65,6 +65,19 @@ export function canAddMembers(
   );
 }
 
+// Whether the active UTub's member list (and total) is hidden from the viewer:
+// false only for the owner, co-owners, or when the resolved setting is exactly
+// false. Missing settings fail closed (hidden); the server is the authority.
+export function isMemberListHiddenForViewer(
+  state: Pick<
+    AppState,
+    "isCurrentUserOwner" | "isCoCreator" | "settings"
+  > = getState(),
+): boolean {
+  if (state.isCurrentUserOwner || state.isCoCreator) return false;
+  return state.settings?.members.hide_member_list !== false;
+}
+
 export const VIEWER_ROLE = {
   OWNER: "owner",
   CO_OWNER: "co_owner",

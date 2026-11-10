@@ -38,11 +38,10 @@ from tests.functional.playwright_login_utils import (
 )
 from tests.functional.playwright_utils import (
     Decks,
-    click_on_navbar,
     dispatch_pointer_drag,
     get_selected_url,
+    go_to_deck_via_navbar,
     login_user_to_home_page,
-    wait_for_class_to_be_removed,
     wait_for_css_transitions_to_finish,
     wait_then_click_element,
     wait_until_visible_css_selector,
@@ -109,14 +108,6 @@ def _select_owned_utub_on_phone(app: Flask, page: Page) -> int:
         app=app, page=page, user_id=USER_ID_FOR_TEST, utub_id=utub.id
     )
     return utub.id
-
-
-def _go_to_deck_via_navbar(page: Page, navbar_selector: str) -> None:
-    click_on_navbar(page=page)
-    wait_then_click_element(page=page, css_selector=navbar_selector)
-    wait_for_class_to_be_removed(
-        page=page, css_selector=HPL.NAVBAR_DROPDOWN, class_name="collapsing"
-    )
 
 
 def _open_tag_sheet(page: Page) -> None:
@@ -193,7 +184,7 @@ def test_urls_and_utubs_gears_rendered_on_phone(
     expect(page.locator(HPL.BUTTON_TAG_SETTINGS_GEAR)).to_be_visible()
 
     # Reopening the UTubs deck from the navbar shows #leftPanel, and its gear.
-    _go_to_deck_via_navbar(page, HPL.NAVBAR_UTUB_DECK)
+    go_to_deck_via_navbar(page=page, navbar_selector=HPL.NAVBAR_UTUB_DECK)
     expect(page.locator(HPL.BUTTON_UTUB_SETTINGS_GEAR)).to_be_visible()
 
 
@@ -209,7 +200,7 @@ def test_members_gear_opens_sheet_with_sort_select_on_phone(
     _select_owned_utub_on_phone(provide_app, page)
     expect(page.locator(HPL.LEFT_PANEL)).to_be_hidden()
 
-    _go_to_deck_via_navbar(page, HPL.NAVBAR_MEMBER_DECK)
+    go_to_deck_via_navbar(page=page, navbar_selector=HPL.NAVBAR_MEMBER_DECK)
     gear = page.locator(HPL.BUTTON_MEMBER_SETTINGS_GEAR)
     expect(gear).to_be_visible()
     gear.tap()
@@ -253,10 +244,10 @@ def test_revealed_gears_are_touch_targets_on_phone(
     _open_tag_sheet(page)
     _expect_touch_target(page, HPL.BUTTON_TAG_SETTINGS_GEAR)
 
-    _go_to_deck_via_navbar(page, HPL.NAVBAR_MEMBER_DECK)
+    go_to_deck_via_navbar(page=page, navbar_selector=HPL.NAVBAR_MEMBER_DECK)
     _expect_touch_target(page, HPL.BUTTON_MEMBER_SETTINGS_GEAR)
 
-    _go_to_deck_via_navbar(page, HPL.NAVBAR_UTUB_DECK)
+    go_to_deck_via_navbar(page=page, navbar_selector=HPL.NAVBAR_UTUB_DECK)
     _expect_touch_target(page, HPL.BUTTON_UTUB_SETTINGS_GEAR)
 
 
@@ -337,10 +328,10 @@ def test_revealed_gears_fit_their_headers_on_small_phones(
     _open_tag_sheet(page)
     check_fit(HPL.BUTTON_TAG_SETTINGS_GEAR)
 
-    _go_to_deck_via_navbar(page, HPL.NAVBAR_MEMBER_DECK)
+    go_to_deck_via_navbar(page=page, navbar_selector=HPL.NAVBAR_MEMBER_DECK)
     check_fit(HPL.BUTTON_MEMBER_SETTINGS_GEAR)
 
-    _go_to_deck_via_navbar(page, HPL.NAVBAR_UTUB_DECK)
+    go_to_deck_via_navbar(page=page, navbar_selector=HPL.NAVBAR_UTUB_DECK)
     check_fit(HPL.BUTTON_UTUB_SETTINGS_GEAR)
 
 

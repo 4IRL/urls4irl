@@ -124,9 +124,13 @@ export function formatDeletedBy({
       values: { ago },
     });
   }
+  // A hidden member's username is masked to null on the wire (URL rows only).
   return fillTemplate({
     template: APP_CONFIG.strings.TRASH_DELETED_BY,
-    values: { user: item.deletedByUsername, ago },
+    values: {
+      user: item.deletedByUsername ?? APP_CONFIG.strings.HIDDEN_MEMBER_LABEL,
+      ago,
+    },
   });
 }
 

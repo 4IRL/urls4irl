@@ -141,6 +141,19 @@ describe("stale-data deck refresh attributes new cards from the payload members"
     expect(stackedBadge(5).text()).not.toContain("alice");
   });
 
+  it("credits 'a member' when the payload hides the adder (addedByUserID null)", () => {
+    updateURLDeck({
+      updatedUTubUrls: [{ ...makeURL(5, 7), addedByUserID: null }],
+      updatedUTubTags: [],
+      utubID: UTUB_ID,
+      updatedMembers: [member(1, "owner")],
+    });
+
+    expect(stackedBadge(5).text()).toBe(
+      `${APP_CONFIG.strings.URL_ADDED_BY} ${APP_CONFIG.strings.HIDDEN_MEMBER_LABEL} · 2024-03-09`,
+    );
+  });
+
   it("leaves an existing card's badge untouched (element update path)", () => {
     const existing = createURLBlock({
       url: makeURL(1, 1),
