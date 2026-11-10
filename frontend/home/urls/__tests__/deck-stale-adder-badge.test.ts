@@ -150,7 +150,7 @@ describe("stale-data deck refresh attributes new cards from the payload members"
     });
 
     expect(stackedBadge(5).text()).toBe(
-      `${APP_CONFIG.strings.URL_ADDED_BY} ${APP_CONFIG.strings.URL_ADDED_BY_A_MEMBER} · 2024-03-09`,
+      `${APP_CONFIG.strings.URL_ADDED_BY} ${APP_CONFIG.strings.HIDDEN_MEMBER_LABEL} · 2024-03-09`,
     );
   });
 

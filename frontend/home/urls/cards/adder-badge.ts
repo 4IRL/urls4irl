@@ -98,7 +98,7 @@ export function createURLDateAddedBadge({
     // the member list = someone who left.
     const adderName =
       addedByUserID === null
-        ? APP_CONFIG.strings.URL_ADDED_BY_A_MEMBER
+        ? APP_CONFIG.strings.HIDDEN_MEMBER_LABEL
         : (resolveAdderUsername({ addedByUserID, members }) ??
           APP_CONFIG.strings.URL_ADDED_BY_FORMER_MEMBER);
     if (effectiveHideDateAdded()) {

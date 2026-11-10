@@ -49,13 +49,13 @@ from backend.models.utubs import Utubs
 from backend.schemas.exports import UserDataExportResponseSchema
 from backend.users.constants import DATA_EXPORT_RATE_LIMIT, DataExportErrorCodes
 from backend.users.services.data_export_service import (
-    EXPORT_HIDDEN_MEMBER_LABEL,
     build_user_data_export_core,
 )
 from backend.utils.all_routes import ROUTES
 from backend.utils.datetime_utils import utc_now
 from backend.utils.strings.html_identifiers import IDENTIFIERS
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
+from backend.utils.strings.url_strs import HIDDEN_MEMBER_LABEL
 from tests.conftest import AjaxFlaskLoginClient
 from tests.integration.system.metrics_helpers import count_counter_keys
 from tests.integration.utils import assert_response_conforms_to_schema
@@ -646,11 +646,9 @@ def test_data_export_hides_hidden_members_from_plain_member(
         seed.usernames[seed.co_owner_id],
         seed.usernames[seed.member_a_id],
         seed.usernames[seed.former_member_id],
-        EXPORT_HIDDEN_MEMBER_LABEL,
+        HIDDEN_MEMBER_LABEL,
     }
-    assert [tag["createdBy"] for tag in utub_export["tags"]] == [
-        EXPORT_HIDDEN_MEMBER_LABEL
-    ]
+    assert [tag["createdBy"] for tag in utub_export["tags"]] == [HIDDEN_MEMBER_LABEL]
     assert seed.usernames[seed.member_b_id] not in body
 
 
@@ -697,9 +695,7 @@ def test_data_export_is_unchanged_for_plain_member_when_list_visible(
     assert {member["username"] for member in utub_export["members"]} == {
         seed.usernames[user_id] for user_id in seed.current_member_ids
     }
-    assert EXPORT_HIDDEN_MEMBER_LABEL not in {
-        url["addedBy"] for url in utub_export["urls"]
-    }
+    assert HIDDEN_MEMBER_LABEL not in {url["addedBy"] for url in utub_export["urls"]}
 
 
 def test_data_export_masking_is_per_utub(

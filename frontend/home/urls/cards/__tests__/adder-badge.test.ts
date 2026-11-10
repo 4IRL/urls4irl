@@ -144,7 +144,7 @@ describe("createURLDateAddedBadge attribution forms", () => {
 
   it("renders 'Added by a member' for a null (hidden) adder, visible and aria", () => {
     const badge = build(null);
-    const hidden = APP_CONFIG.strings.URL_ADDED_BY_A_MEMBER;
+    const hidden = APP_CONFIG.strings.HIDDEN_MEMBER_LABEL;
     expect(badge.text()).toBe(
       `${APP_CONFIG.strings.URL_ADDED_BY} ${hidden} · 2024-03-09`,
     );

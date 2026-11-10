@@ -391,7 +391,7 @@ const appConfig = {
     ONBOARDING_ADD_MEMBER_TIP_BODY:
       "Add a member to share this UTub and gather links together.",
     URL_ADDED_BY: "Added by",
-    URL_ADDED_BY_A_MEMBER: "a member",
+    HIDDEN_MEMBER_LABEL: "a member",
     URL_ADDED_BY_FORMER_MEMBER: "a former member",
     URL_ADDED_ON: "on",
     URL_DATE_ADDED_LABEL: "Added:",

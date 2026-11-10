@@ -21,7 +21,7 @@ from backend.schemas.exports import (
 )
 from backend.utils.datetime_utils import to_iso_milliseconds
 from backend.utils.strings.model_strs import MODELS as MODEL_STRS
-from backend.utils.strings.url_strs import URL_ADDED_BY_A_MEMBER
+from backend.utils.strings.url_strs import HIDDEN_MEMBER_LABEL
 
 # Fallback attribution when a contributor's Users row can't be resolved (should
 # not occur under FK integrity, but keeps the export schema's `str` contract
@@ -29,17 +29,12 @@ from backend.utils.strings.url_strs import URL_ADDED_BY_A_MEMBER
 _UNKNOWN_CONTRIBUTOR = "(unknown user)"
 
 
-# Attribution shown instead of a username when the exporting user may not see that
-# person in the UTub (hide-member-list setting on, exporter is a plain member).
-EXPORT_HIDDEN_MEMBER_LABEL = URL_ADDED_BY_A_MEMBER
-
-
 def _contributor_name(
     *, user_id: int, username_by_id: dict[int, str], hidden_ids: frozenset[int]
 ) -> str:
     """Username for a contributor, the hidden label when hidden from the exporter."""
     if user_id in hidden_ids:
-        return EXPORT_HIDDEN_MEMBER_LABEL
+        return HIDDEN_MEMBER_LABEL
     return username_by_id.get(user_id, _UNKNOWN_CONTRIBUTOR)
 
 
@@ -53,7 +48,7 @@ def _build_export_url(
     ``associated_tags`` property (a ``list[dict]`` keyed by ``MODEL_STRS`` —
     subscript access, not attribute access). The adder is attributed by
     username (resolved from ``username_by_id``), never an internal user ID.
-    An adder in ``hidden_ids`` is attributed as ``EXPORT_HIDDEN_MEMBER_LABEL``."""
+    An adder in ``hidden_ids`` is attributed as ``HIDDEN_MEMBER_LABEL``."""
     return ExportUrlSchema(
         url=utub_url.standalone_url.url_string,
         title=utub_url.url_title,

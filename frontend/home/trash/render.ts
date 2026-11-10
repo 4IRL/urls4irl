@@ -128,7 +128,7 @@ export function formatDeletedBy({
   return fillTemplate({
     template: APP_CONFIG.strings.TRASH_DELETED_BY,
     values: {
-      user: item.deletedByUsername ?? APP_CONFIG.strings.URL_ADDED_BY_A_MEMBER,
+      user: item.deletedByUsername ?? APP_CONFIG.strings.HIDDEN_MEMBER_LABEL,
       ago,
     },
   });

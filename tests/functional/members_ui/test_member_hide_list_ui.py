@@ -7,7 +7,7 @@ import pytest
 from flask import Flask
 from playwright.sync_api import Locator, Page, Request, Response, expect
 
-from backend.utils.strings.url_strs import URL_ADDED_BY, URL_ADDED_BY_A_MEMBER
+from backend.utils.strings.url_strs import HIDDEN_MEMBER_LABEL, URL_ADDED_BY
 from backend.utils.strings.user_strs import (
     MEMBER_ADD_EXACT_USERNAME_HINT,
     MEMBER_CANNOT_BE_ADDED,
@@ -52,7 +52,7 @@ UNKNOWN_USERNAME = "hide_nobody_here"
 
 _MEMBER_ADD_POST_URL_RE = re.compile(r"/utubs/\d+/members$")
 _UTUB_SETTINGS_URL_RE = re.compile(r"/utubs/\d+/settings$")
-_ADDED_BY_A_MEMBER_RE = re.compile(rf"{URL_ADDED_BY} {URL_ADDED_BY_A_MEMBER}\b")
+_ADDED_BY_A_MEMBER_RE = re.compile(rf"{URL_ADDED_BY} {HIDDEN_MEMBER_LABEL}\b")
 
 
 @pytest.fixture
