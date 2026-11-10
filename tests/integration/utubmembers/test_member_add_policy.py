@@ -476,6 +476,41 @@ def test_hidden_plain_member_unknown_and_existing_user_get_identical_400(
     }
 
 
+@pytest.mark.parametrize(
+    "body", [None, UNKNOWN_USERNAME_BODY], ids=["existing", "unknown"]
+)
+def test_caller_demoted_after_decorator_gets_unified_error(
+    every_user_in_every_utub, app: Flask, body: Any
+):
+    """
+    GIVEN a hidden member list, members_can_add on, and a co-owner caller whom the
+        decorator saw as a manager
+    WHEN the caller is demoted to plain member before the row lock is taken
+    THEN the post-lock role (list_hidden from g.is_manager) gives the unified 400
+        for both an existing and an unknown username
+    """
+    set_members_settings(app, FIRST_UTUB_ID, HIDE_AND_ADD)
+    set_member_role(app, FIRST_UTUB_ID, SECOND_USER_ID, Member_Role.CO_CREATOR)
+
+    def pre_lock_check_then_demotion(utub: Utubs, *, is_manager: bool) -> None:
+        assert is_manager is True
+        set_member_role(app, FIRST_UTUB_ID, SECOND_USER_ID, Member_Role.MEMBER)
+
+    with mock.patch(
+        "backend.members.services.create_members.member_add_refusal_response",
+        side_effect=pre_lock_check_then_demotion,
+    ) as pre_lock_check:
+        response = _add_as(app, SECOND_USER_ID, body)
+
+    pre_lock_check.assert_called_once()
+    assert response.status_code == 400
+    payload = response.get_json()
+    assert payload[STD_JSON.MESSAGE] == MEMBER_FAILURE.UNABLE_TO_ADD_MEMBER
+    assert payload[STD_JSON.ERRORS] == {
+        ADD_USER_FORM.USERNAME: [MEMBER_FAILURE.MEMBER_CANNOT_BE_ADDED]
+    }
+
+
 def test_hidden_unified_failures_each_consume_one_cap_unit(
     every_user_in_every_utub, app: Flask
 ):
