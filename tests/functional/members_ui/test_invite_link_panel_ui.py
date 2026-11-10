@@ -24,7 +24,10 @@ from tests.functional.members_ui.playwright_utils import (
     login_as,
     seed_policy,
 )
-from tests.utils_for_test import add_invite_link
+from tests.functional.playwright_login_utils import (
+    login_user_and_select_utub_by_utubid,
+)
+from tests.utils_for_test import add_invite_link, seed_hide_list_utub
 
 pytestmark = [pytest.mark.members_ui, pytest.mark.home_ui]
 
@@ -315,3 +318,31 @@ def test_collapsing_members_deck_closes_panel_and_focuses_header(
     page.locator(HPL.HEADER_AND_CARET_MEMBER_DECK).click()
     expect(page.locator(HPL.MEMBER_INVITE_PANEL)).to_be_hidden()
     expect(page.locator(HPL.HEADER_AND_CARET_MEMBER_DECK)).to_be_focused()
+
+
+def test_hide_member_list_keeps_trigger_for_managers_and_hides_it_from_members(
+    page: Page, runner, provide_app: Flask
+):
+    """
+    GIVEN a UTub with the member list hidden from plain members
+    WHEN the owner and a co-owner open it
+    THEN each still sees the trigger and can open the panel
+    AND WHEN a plain member opens it THEN they see no trigger and no panel
+    """
+    app = provide_app
+    seed = seed_hide_list_utub(app, True)
+
+    for manager_id in (seed.owner_id, seed.co_owner_id):
+        login_user_and_select_utub_by_utubid(
+            app=app, page=page, user_id=manager_id, utub_id=seed.utub_id
+        )
+        _open_panel(page=page)
+
+    login_user_and_select_utub_by_utubid(
+        app=app, page=page, user_id=seed.member_a_id, utub_id=seed.utub_id
+    )
+    # Positive readiness wait: only owner, co-owner and self render under hide-list,
+    # so the deck has been built before the hidden assertions can run.
+    expect(page.locator(f"{HPL.MEMBER_DECK} {HPL.BADGES_MEMBERS}")).to_have_count(3)
+    expect(page.locator(HPL.BUTTON_MEMBER_INVITE_LINK)).to_be_hidden()
+    expect(page.locator(HPL.MEMBER_INVITE_PANEL)).to_be_hidden()
