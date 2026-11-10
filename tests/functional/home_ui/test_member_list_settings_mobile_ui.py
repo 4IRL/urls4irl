@@ -19,13 +19,15 @@ from tests.functional.home_ui.test_panel_settings_mobile_ui import (
     _SHEET_OPEN_CLASS_RE,
     _close_sheet_via_close_button,
     _expect_sheet_closed,
-    _go_to_deck_via_navbar,
 )
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.playwright_login_utils import (
     login_user_and_select_utub_by_utubid_mobile,
 )
-from tests.functional.playwright_utils import wait_for_css_transitions_to_finish
+from tests.functional.playwright_utils import (
+    go_to_deck_via_navbar,
+    wait_for_css_transitions_to_finish,
+)
 
 pytestmark = [pytest.mark.home_ui, pytest.mark.members_ui, pytest.mark.mobile_ui]
 
@@ -46,7 +48,7 @@ def test_sheet_select_is_a_touch_target_and_deck_is_reordered_on_close(
     login_user_and_select_utub_by_utubid_mobile(
         app=app, page=page, user_id=OWNER_ID, utub_id=utub_id
     )
-    _go_to_deck_via_navbar(page, HPL.NAVBAR_MEMBER_DECK)
+    go_to_deck_via_navbar(page=page, navbar_selector=HPL.NAVBAR_MEMBER_DECK)
     expect_deck_order(page=page, order=ORDER_BY_SORT[MemberSort.NAME_AZ])
 
     gear = page.locator(HPL.BUTTON_MEMBER_SETTINGS_GEAR)

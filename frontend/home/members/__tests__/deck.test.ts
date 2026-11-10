@@ -9,7 +9,10 @@ import { applyDeckDiff } from "../../../logic/apply-deck-diff.js";
 import { createMemberBadge, swapMemberRoleInRow } from "../members.js";
 import { makeUTubRoleIcon } from "../../utubs/selectors.js";
 import { getState, resetStore, setState } from "../../../store/app-store.js";
-import { resolveUtubSettings } from "../../../types/settings.js";
+import {
+  EMPTY_UTUB_SETTINGS,
+  resolveUtubSettings,
+} from "../../../types/settings.js";
 import { setupShowCreateMemberFormEventListeners } from "../create.js";
 import { showMemberDeckNotice } from "../notice.js";
 
@@ -64,6 +67,13 @@ const MEMBER_DECK_HTML = `
   </div>
 `;
 
+function hiddenSettings(): ReturnType<typeof resolveUtubSettings> {
+  return {
+    ...EMPTY_UTUB_SETTINGS,
+    members: { ...EMPTY_UTUB_SETTINGS.members, hide_member_list: true },
+  };
+}
+
 describe("Member deck visibility on UTub selection", () => {
   beforeEach(() => {
     document.body.innerHTML = MEMBER_DECK_HTML;
@@ -87,6 +97,8 @@ describe("Member deck visibility on UTub selection", () => {
   it("reveals the member list and shows the inline count when a UTub is selected", () => {
     const wrap = window.jQuery("#displayMemberWrap");
     expect(wrap.hasClass("hidden")).toBe(true);
+    // The count reads the store's viewer role (written before UTUB_SELECTED).
+    setState({ isCurrentUserOwner: true });
 
     setMemberDeckOnUTubSelected(
       [{ id: 1, username: "owner", memberRole: "creator", joinedAt: null }],
@@ -115,17 +127,51 @@ describe("Member deck visibility on UTub selection", () => {
     window
       .jQuery("#listMembers")
       .append(`<span class="member">a</span><span class="member">b</span>`);
+    setState({ isCurrentUserOwner: true });
 
     setMemberDeckForUTub();
 
     expect(window.jQuery("#MemberDeckCount").text()).toBe("(3)");
   });
 
+  it("writes an empty count for a plain member while the list is hidden", () => {
+    window.jQuery("#listMembers").append(`<span class="member">a</span>`);
+    window.jQuery("#MemberDeckCount").text("(2)");
+    setState({
+      settings: hiddenSettings(),
+    });
+
+    setMemberDeckForUTub();
+
+    expect(window.jQuery("#MemberDeckCount").text()).toBe("");
+  });
+
+  it("fails closed to an empty count when settings are missing for a plain member", () => {
+    window.jQuery("#listMembers").append(`<span class="member">a</span>`);
+
+    setMemberDeckForUTub();
+
+    expect(window.jQuery("#MemberDeckCount").text()).toBe("");
+  });
+
+  it("keeps the count for the owner and a co-owner whatever the setting", () => {
+    window.jQuery("#listMembers").append(`<span class="member">a</span>`);
+    const hidden = hiddenSettings();
+    setState({ settings: hidden, isCurrentUserOwner: true });
+    setMemberDeckForUTub();
+    expect(window.jQuery("#MemberDeckCount").text()).toBe("(2)");
+
+    setState({ isCurrentUserOwner: false, isCoCreator: true });
+    setMemberDeckForUTub();
+    expect(window.jQuery("#MemberDeckCount").text()).toBe("(2)");
+  });
+
   it("hides the add-member button and shows the inline count for a non-owner UTub", () => {
     window.jQuery("#listMembers").append(`<span class="member">a</span>`);
     window.jQuery("#memberBtnCreate").removeClass("hidden");
 
-    // Default store: not owner, not co-owner, no settings -> cannot add.
+    // Plain member with the list visible, members_can_add off -> cannot add.
+    setState({ settings: resolveUtubSettings({}) });
     setMemberDeckForUTub();
 
     expect(window.jQuery("#MemberDeckCount").text()).toBe("(2)");
@@ -373,6 +419,49 @@ describe("updateMemberDeck — targeted role swap via real applyDeckDiff (DD-17/
     expect(
       getState().members.find((member) => member.id === 101)?.memberRole,
     ).toBe("member");
+  });
+});
+
+describe("updateMemberDeck — focus fallback on a refresh-driven removal", () => {
+  beforeEach(() => {
+    document.body.innerHTML = MEMBER_DECK_HTML;
+    resetStore();
+    Object.defineProperty(HTMLElement.prototype, "offsetParent", {
+      configurable: true,
+      get() {
+        return document.body;
+      },
+    });
+  });
+
+  afterEach(() => {
+    delete (HTMLElement.prototype as unknown as Record<string, unknown>)
+      .offsetParent;
+    vi.mocked(applyDeckDiff).mockReset();
+    resetStore();
+  });
+
+  it("keeps focus inside the deck when a background diff removes the focused row", async () => {
+    const { applyDeckDiff: realApplyDeckDiff } = await vi.importActual<
+      typeof import("../../../logic/apply-deck-diff.js")
+    >("../../../logic/apply-deck-diff.js");
+    vi.mocked(applyDeckDiff).mockImplementation(realApplyDeckDiff);
+    window
+      .jQuery("#listMembers")
+      .append(
+        `<span class="member" memberid="9"><button class="memberRowKebab" id="kebab9">k</button></span>`,
+      );
+    setState({
+      members: [
+        { id: 9, username: "u9", memberRole: "member", joinedAt: null },
+      ],
+    });
+    (document.getElementById("kebab9") as HTMLElement).focus();
+
+    updateMemberDeck([], false, 42);
+
+    expect(window.jQuery(".member[memberid=9]").length).toBe(0);
+    expect(document.activeElement?.id).toBe("MemberDeckHeaderAndCaret");
   });
 });
 

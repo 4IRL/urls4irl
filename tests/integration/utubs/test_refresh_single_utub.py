@@ -25,7 +25,7 @@ from tests.settings_stub import (
     URLS_DEFAULTS,
     patch_settings_model,
 )
-from tests.utils_for_test import trash_utub
+from tests.utils_for_test import assert_hidden_list_detail, trash_utub
 
 pytestmark = pytest.mark.utubs
 
@@ -133,6 +133,25 @@ def test_refresh_payload_matches_open_as_co_creator(
         member[MODELS.MEMBER_ROLE] == Member_Role.CO_CREATOR.value
         for member in refresh_json[MODELS.MEMBERS]
     )
+
+
+def test_refresh_hidden_list_matches_open_for_plain_member(
+    app: Flask, seed_hide_list, hide_list_client
+):
+    """
+    GIVEN a UTub with the member list hidden from plain members
+    WHEN a plain member refreshes it
+    THEN the payload equals the open payload and carries only the visible members
+    """
+    seed = seed_hide_list(True)
+    client = hide_list_client(seed.member_a_id)
+
+    with app.test_request_context():
+        payload = _assert_refresh_matches_open_payload(
+            client=client, app=app, utub_id=seed.utub_id
+        )
+
+    assert_hidden_list_detail(payload, seed, seed.member_a_id)
 
 
 def test_refresh_carries_callers_member_settings_only(

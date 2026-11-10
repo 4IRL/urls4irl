@@ -7,8 +7,14 @@ import {
 } from "../selectors.js";
 import type { RefreshResult } from "../selectors.js";
 import { removeUTubLocally } from "../remove-local.js";
-import { reorderMemberDeck } from "../../members/deck.js";
+import { reorderMemberDeck, setMemberDeckForUTub } from "../../members/deck.js";
+import {
+  cancelCoMemberCandidatesFetch,
+  loadCoMemberCandidates,
+} from "../../members/co-member-fetch.js";
+import { RENDER_KEY } from "../../members/member-combobox.js";
 import { showURLDeckBannerError } from "../../urls/deck.js";
+import { refreshDateAddedBadges } from "../../urls/cards/adder-badge.js";
 import { showCreateDescriptionButtonAlways } from "../../urls/update-description.js";
 import { setState } from "../../../store/app-store.js";
 import { emit, AppEvents } from "../../../lib/event-bus.js";
@@ -18,6 +24,7 @@ import type { UtubDetail, UtubSummaryItem } from "../../../types/utub.js";
 import { makeUtubSummaryItem } from "../../../__tests__/helpers/utub-summary.js";
 import { TAG_DISPLAY_PREFERENCE_DEFAULTS } from "../../../__tests__/helpers/tag-display.js";
 import {
+  EMPTY_UTUB_SETTINGS,
   resolveMemberSettings,
   resolveUtubSettings,
 } from "../../../types/settings.js";
@@ -79,6 +86,12 @@ vi.mock("../deck.js", () => ({
 
 vi.mock("../../members/deck.js", () => ({
   reorderMemberDeck: vi.fn(() => []),
+  setMemberDeckForUTub: vi.fn(),
+}));
+
+vi.mock("../../members/co-member-fetch.js", () => ({
+  cancelCoMemberCandidatesFetch: vi.fn(),
+  loadCoMemberCandidates: vi.fn(),
 }));
 
 vi.mock("../remove-local.js", () => ({ removeUTubLocally: vi.fn() }));
@@ -91,6 +104,10 @@ vi.mock("../../urls/update-description.js", () => ({
 }));
 
 vi.mock("../header-fit.js", () => ({ fitUTubHeaderAndSubheader: vi.fn() }));
+
+vi.mock("../../urls/cards/adder-badge.js", () => ({
+  refreshDateAddedBadges: vi.fn(),
+}));
 
 const storeState = vi.hoisted(() => ({
   value: {} as Record<string, unknown>,
@@ -184,6 +201,9 @@ function seedStore(
         name: detail.name,
         memberRole: "creator",
         isLocked: detail.isLocked,
+        // Consistent with the loaded decks, as after a real selection.
+        urlCount: detail.urls.length,
+        memberCount: detail.members.length,
       }),
     ],
     selectedTagIDs: [],
@@ -961,10 +981,17 @@ describe("updateUTubOnFindingStaleData", () => {
     });
   });
 
+  function settingsWithHidden({ hidden }: { hidden: boolean }) {
+    return {
+      ...EMPTY_UTUB_SETTINGS,
+      members: { ...EMPTY_UTUB_SETTINGS.members, hide_member_list: hidden },
+    };
+  }
+
   describe("row counts and sorted order", () => {
     function seedCountedRow(): void {
       document.body.innerHTML = `<div id="URLDeckHeader">My UTub</div>
-        <div id="listUTubs"><span class="UTubSelector" utubid="1"><b class="UTubName">My UTub</b><span class="UTubRowCounts"><span class="visually-hidden"></span><span class="UTubRowCountNum">1</span><span class="UTubRowCountNum">1</span></span></span></div>`;
+        <div id="listUTubs"><span class="UTubSelector" utubid="1"><b class="UTubName">My UTub</b><span class="UTubRowCounts"><span class="visually-hidden"></span><span class="UTubRowCount"><span class="UTubRowCountNum">1</span></span><span class="UTubRowCount"><span class="UTubRowCountNum">1</span></span></span></span></div>`;
       seedStore(makeDetail(), {
         utubs: [
           makeUtubSummaryItem({
@@ -1018,13 +1045,92 @@ describe("updateUTubOnFindingStaleData", () => {
       expect($(".UTubRowCountNum").eq(1).text()).toBe("2");
     });
 
-    it("does not recount when neither count changed (stale row text stays)", async () => {
+    it("never writes a member number for a plain member of a hidden-list UTub", async () => {
+      const hiddenSettings = settingsWithHidden({ hidden: true });
+      document.body.innerHTML = `<div id="URLDeckHeader">My UTub</div>
+        <div id="listUTubs"><span class="UTubSelector" utubid="1"><b class="UTubName">My UTub</b><span class="UTubRowCounts"><span class="visually-hidden"></span><span class="UTubRowCount"><span class="UTubRowCountNum">1</span></span></span></span></div>`;
+      seedStore(makeDetail({ isCreator: false, settings: hiddenSettings }), {
+        utubs: [
+          makeUtubSummaryItem({
+            id: UTUB_ID,
+            name: "My UTub",
+            memberRole: "member",
+            urlCount: 1,
+            memberCount: null,
+          }),
+        ],
+      });
+
+      await refreshWith(
+        ok(
+          makeDetail({
+            isCreator: false,
+            settings: hiddenSettings,
+            urls: [makeUrl(10), makeUrl(11)],
+          }),
+        ),
+      );
+
+      const row = (
+        storeState.value.utubs as { memberCount: number | null }[]
+      )[0];
+      expect(row.memberCount).toBeNull();
+      expect(
+        $(".UTubRowCountNum")
+          .map((_, el) => $(el).text())
+          .get(),
+      ).toEqual(["2"]);
+    });
+
+    it("re-creates the member segment when the setting flips off with an equal member count", async () => {
+      document.body.innerHTML = `<div id="URLDeckHeader">My UTub</div>
+        <div id="listUTubs"><span class="UTubSelector" utubid="1"><b class="UTubName">My UTub</b><span class="UTubRowCounts"><span class="visually-hidden"></span><span class="UTubRowCount"><span class="UTubRowCountNum">1</span></span></span></span></div>`;
+      seedStore(
+        makeDetail({
+          isCreator: false,
+          settings: settingsWithHidden({ hidden: true }),
+        }),
+        {
+          utubs: [
+            makeUtubSummaryItem({
+              id: UTUB_ID,
+              name: "My UTub",
+              memberRole: "member",
+              urlCount: 1,
+              memberCount: null,
+            }),
+          ],
+        },
+      );
+
+      await refreshWith(
+        ok(
+          makeDetail({
+            name: "Renamed",
+            isCreator: false,
+            settings: settingsWithHidden({ hidden: false }),
+          }),
+        ),
+      );
+
+      const row = (
+        storeState.value.utubs as { memberCount: number | null }[]
+      )[0];
+      expect(row.memberCount).toBe(1);
+      expect(
+        $(".UTubRowCountNum")
+          .map((_, el) => $(el).text())
+          .get(),
+      ).toEqual(["1", "1"]);
+    });
+
+    it("recounts the row on every refresh, so stale row text is rewritten", async () => {
       seedCountedRow();
       $(".UTubRowCountNum").eq(0).text("7");
 
       await refreshWith(ok(makeDetail({ name: "Renamed" })));
 
-      expect($(".UTubRowCountNum").eq(0).text()).toBe("7");
+      expect($(".UTubRowCountNum").eq(0).text()).toBe("1");
     });
 
     it("under name_az a changed name reorders the deck without scrolling", async () => {
@@ -1052,6 +1158,159 @@ describe("updateUTubOnFindingStaleData", () => {
           .get(),
       ).toEqual([2, 1]);
       expect(scrollIntoView).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("member list visibility flip", () => {
+    const hiddenSettings = settingsWithHidden({ hidden: true });
+    const visibleSettings = settingsWithHidden({ hidden: false });
+    const MEMBER_ROW = {
+      id: 2000,
+      username: "bob",
+      memberRole: "member",
+      joinedAt: null,
+    };
+    let render: ReturnType<typeof vi.fn>;
+
+    // A plain member viewing UTub 1 with the given stored setting, and an open
+    // add-member combobox carrying a render hook.
+    function seedPlainMember({ hidden }: { hidden: boolean }): void {
+      document.body.innerHTML =
+        DOM +
+        `<div id="createMemberWrap"><div class="memberAddComboboxWrap"></div></div>`;
+      render = vi.fn();
+      $("#createMemberWrap .memberAddComboboxWrap").data(RENDER_KEY, render);
+      seedStore(
+        makeDetail({
+          isCreator: false,
+          settings: hidden ? hiddenSettings : visibleSettings,
+        }),
+        {
+          coMemberCandidates: [{ id: 5 }],
+          coMemberCandidatesLoaded: false,
+        },
+      );
+    }
+
+    it("same-data refresh: rewrites the count, row and badges and cancels candidates on flip-on", async () => {
+      seedPlainMember({ hidden: false });
+
+      await refreshWith(
+        ok(makeDetail({ isCreator: false, settings: hiddenSettings })),
+      );
+
+      expect(vi.mocked(setMemberDeckForUTub)).toHaveBeenCalledTimes(1);
+      expect(vi.mocked(refreshDateAddedBadges)).toHaveBeenCalledTimes(1);
+      expect(
+        (storeState.value.utubs as { memberCount: number | null }[])[0]
+          .memberCount,
+      ).toBeNull();
+      expect(vi.mocked(cancelCoMemberCandidatesFetch)).toHaveBeenCalledTimes(1);
+      expect(storeState.value.coMemberCandidates).toEqual([]);
+      expect(storeState.value.coMemberCandidatesLoaded).toBe(true);
+      expect(render).toHaveBeenCalledTimes(1);
+      expect(vi.mocked(loadCoMemberCandidates)).not.toHaveBeenCalled();
+      expect(emitsOf(AppEvents.STALE_DATA_DETECTED)).toHaveLength(0);
+    });
+
+    it("same-data refresh on flip-off re-runs the candidates fetch for an open combobox", async () => {
+      seedPlainMember({ hidden: true });
+
+      await refreshWith(
+        ok(makeDetail({ isCreator: false, settings: visibleSettings })),
+      );
+
+      expect(vi.mocked(setMemberDeckForUTub)).toHaveBeenCalledTimes(1);
+      expect(vi.mocked(loadCoMemberCandidates)).toHaveBeenCalledWith(
+        UTUB_ID,
+        expect.any(Function),
+      );
+      expect(storeState.value.coMemberCandidatesLoaded).toBe(false);
+      expect(vi.mocked(cancelCoMemberCandidatesFetch)).not.toHaveBeenCalled();
+    });
+
+    it("flip-off with no open combobox fetches nothing", async () => {
+      seedPlainMember({ hidden: true });
+      $("#createMemberWrap").empty();
+
+      await refreshWith(
+        ok(makeDetail({ isCreator: false, settings: visibleSettings })),
+      );
+
+      expect(vi.mocked(loadCoMemberCandidates)).not.toHaveBeenCalled();
+    });
+
+    it("changed-content flip-on cancels the fetch and settles the candidates", async () => {
+      seedPlainMember({ hidden: false });
+
+      await refreshWith(
+        ok(
+          makeDetail({
+            isCreator: false,
+            settings: hiddenSettings,
+            urls: [makeUrl(10), makeUrl(11)],
+          }),
+        ),
+      );
+
+      expect(vi.mocked(cancelCoMemberCandidatesFetch)).toHaveBeenCalledTimes(1);
+      expect(storeState.value.coMemberCandidates).toEqual([]);
+      expect(storeState.value.coMemberCandidatesLoaded).toBe(true);
+      expect(vi.mocked(setMemberDeckForUTub)).toHaveBeenCalledTimes(1);
+      expect(vi.mocked(refreshDateAddedBadges)).toHaveBeenCalledTimes(1);
+      expect(
+        (storeState.value.utubs as { memberCount: number | null }[])[0]
+          .memberCount,
+      ).toBeNull();
+    });
+
+    it("changed-content refresh: applies after the final setState, against the new list", async () => {
+      seedPlainMember({ hidden: true });
+
+      await refreshWith(
+        ok(
+          makeDetail({
+            isCreator: false,
+            settings: visibleSettings,
+            members: [
+              ...makeDetail().members,
+              MEMBER_ROW,
+            ] as UtubDetail["members"],
+          }),
+        ),
+      );
+
+      // After the write that replaces urls and members.
+      const listWriteIndex = vi
+        .mocked(setState)
+        .mock.calls.findIndex(([partial]) => "members" in partial);
+      expect(listWriteIndex).toBeGreaterThanOrEqual(0);
+      expect(
+        vi.mocked(setMemberDeckForUTub).mock.invocationCallOrder[0],
+      ).toBeGreaterThan(
+        vi.mocked(setState).mock.invocationCallOrder[listWriteIndex],
+      );
+      expect(vi.mocked(emit).mock.invocationCallOrder[0]).toBeLessThan(
+        vi.mocked(setMemberDeckForUTub).mock.invocationCallOrder[0],
+      );
+      expect(vi.mocked(loadCoMemberCandidates)).toHaveBeenCalledTimes(1);
+      expect(
+        (storeState.value.utubs as { memberCount: number | null }[])[0]
+          .memberCount,
+      ).toBe(2);
+    });
+
+    it("an unchanged setting still refreshes the deck total but touches no candidates", async () => {
+      seedPlainMember({ hidden: true });
+
+      await refreshWith(
+        ok(makeDetail({ isCreator: false, settings: hiddenSettings })),
+      );
+
+      expect(vi.mocked(setMemberDeckForUTub)).toHaveBeenCalledTimes(1);
+      expect(vi.mocked(cancelCoMemberCandidatesFetch)).not.toHaveBeenCalled();
+      expect(vi.mocked(loadCoMemberCandidates)).not.toHaveBeenCalled();
+      expect(render).not.toHaveBeenCalled();
     });
   });
 
@@ -1173,6 +1432,8 @@ describe("updateUTubOnFindingStaleData", () => {
           name: "My UTub",
           memberRole: "creator",
           isLocked: true,
+          urlCount: 1,
+          memberCount: 1,
         }),
       ]);
       expect(makeUTubRoleIcon).toHaveBeenCalledWith({
@@ -1189,7 +1450,7 @@ describe("updateUTubOnFindingStaleData", () => {
       );
     });
 
-    it("leaves a row's counts group and its hidden label intact when the role icon is replaced", async () => {
+    it("keeps a single counts group, recounted from the store, when the role icon is replaced", async () => {
       $(".UTubSelector[utubid=1] .UTubName").after(
         `<span class="UTubRowCounts"><span class="visually-hidden">, 3 URLs, 2 members</span></span>`,
       );
@@ -1199,7 +1460,7 @@ describe("updateUTubOnFindingStaleData", () => {
       expect($(".UTubSelector[utubid=1] .UTubRowCounts").length).toBe(1);
       expect(
         $(".UTubSelector[utubid=1] .UTubRowCounts .visually-hidden").text(),
-      ).toBe(", 3 URLs, 2 members");
+      ).toBe(", 1 URL, 1 member");
       expect($(".UTubSelector[utubid=1] .memberRole").attr("data-locked")).toBe(
         "true",
       );
@@ -1374,6 +1635,38 @@ describe("updateUTubOnFindingStaleData", () => {
       expect(emitsOf(AppEvents.URL_DECK_CHANGED)).toHaveLength(0);
       expect(emitsOf(AppEvents.MEMBER_DECK_CHANGED)).toHaveLength(0);
       expect(emitsOf(AppEvents.TAG_DECK_CHANGED)).toHaveLength(0);
+    });
+
+    it("detects an attribution-only change and re-renders the adder badges after setState", async () => {
+      seedStore(makeDetail({ urls: [makeUrl(10, { addedByUserID: null })] }));
+
+      await refreshWith(
+        ok(makeDetail({ urls: [makeUrl(10, { addedByUserID: 1001 })] })),
+      );
+
+      expect(setState).toHaveBeenCalled();
+      expect(refreshDateAddedBadges).toHaveBeenCalledTimes(1);
+      const setStateOrders = vi.mocked(setState).mock.invocationCallOrder;
+      expect(
+        vi.mocked(refreshDateAddedBadges).mock.invocationCallOrder[0],
+      ).toBeGreaterThan(setStateOrders[setStateOrders.length - 1]);
+    });
+
+    it("re-resolves the adder badges exactly once for a content change with identical attribution", async () => {
+      seedStore(makeDetail({ urls: [makeUrl(10, { addedByUserID: null })] }));
+
+      await refreshWith(
+        ok(
+          makeDetail({
+            urls: [
+              makeUrl(10, { addedByUserID: null, urlTitle: "Edited title" }),
+            ],
+          }),
+        ),
+      );
+
+      expect(setState).toHaveBeenCalled();
+      expect(refreshDateAddedBadges).toHaveBeenCalledTimes(1);
     });
 
     it("emits URL_DECK_CHANGED exactly once for a lock-only change", async () => {

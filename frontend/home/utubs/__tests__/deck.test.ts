@@ -119,6 +119,19 @@ describe("buildUTubDeck — pin divider", () => {
     expect(divider.attr("role")).toBeUndefined();
   });
 
+  it("passes a null memberCount through to the row and keeps an int one", () => {
+    buildUTubDeck([
+      makeUtubSummaryItem({ id: 1, memberCount: null }),
+      makeUtubSummaryItem({ id: 2, memberCount: 4 }),
+    ]);
+
+    expect(
+      vi
+        .mocked(createUTubSelector)
+        .mock.calls.map(([args]) => args.memberCount),
+    ).toEqual([null, 4]);
+  });
+
   it("recreates exactly one hidden divider for an empty deck", () => {
     buildUTubDeck([]);
 

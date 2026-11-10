@@ -63,7 +63,11 @@ function settingsWith(
 ): ResolvedUtubSettings {
   return {
     utubs: {},
-    members: { co_owners_can_remove: false, members_can_add: false },
+    members: {
+      co_owners_can_remove: false,
+      members_can_add: false,
+      hide_member_list: false,
+    },
     tags: {},
     ...overrides,
     urls: { ...URLS_DEFAULTS, ...overrides.urls },

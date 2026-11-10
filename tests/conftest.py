@@ -2,7 +2,7 @@ import logging
 import os
 import time
 import warnings
-from typing import Any, Awaitable, Generator, Optional, Tuple, Union
+from typing import Any, Awaitable, Callable, Generator, Optional, Tuple, Union
 
 import pytest
 import redis
@@ -51,7 +51,12 @@ from tests.models_for_test import (
     valid_user_2,
     valid_user_3,
 )
-from tests.utils_for_test import clear_database, get_csrf_token
+from tests.utils_for_test import (
+    HideListSeed,
+    clear_database,
+    get_csrf_token,
+    seed_hide_list_utub,
+)
 
 # Per-run Redis isolation: every worker of every pytest invocation LEASES its
 # session and metrics Redis DB indices (scripts/testrun_resources.py) instead of
@@ -697,6 +702,30 @@ def register_multiple_users(
 
         # yield app
     yield all_users
+
+
+@pytest.fixture
+def seed_hide_list(app: Flask) -> Callable[[bool | None], HideListSeed]:
+    """Factory seeding the shared hide-list UTub (owner, co-owner, two plain members,
+    a former member, one URL each) with ``hide_member_list`` stored as passed."""
+
+    def _seed(hide_member_list: bool | None) -> HideListSeed:
+        return seed_hide_list_utub(app, hide_member_list)
+
+    return _seed
+
+
+@pytest.fixture
+def hide_list_client(app: Flask) -> Callable[[int], FlaskClient]:
+    """Factory returning a flask_login test client logged in as the given user id."""
+
+    def _client(user_id: int) -> FlaskClient:
+        app.test_client_class = AjaxFlaskLoginClient
+        with app.app_context():
+            user: Users = Users.query.get(user_id)
+        return app.test_client(user=user)
+
+    return _client
 
 
 @pytest.fixture

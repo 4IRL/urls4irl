@@ -16,6 +16,7 @@ vi.mock("../../panel-settings/client.js", () => ({
 
 const REMOVE = "#membersPermissionsCoOwnersRemoveSwitch";
 const ADD = "#membersPermissionsMembersAddSwitch";
+const HIDE = "#membersPermissionsHideListSwitch";
 const NOTE_ID = "panelSettingsNote-members-permissions";
 
 describe("Members permissions settings section", () => {
@@ -67,7 +68,7 @@ describe("Members permissions settings section", () => {
 
   it("renders enabled switches defaulting to off for the owner", () => {
     renderWith(ctxFor());
-    for (const selector of [REMOVE, ADD]) {
+    for (const selector of [REMOVE, ADD, HIDE]) {
       expect(control(selector).getAttribute("aria-checked")).toBe("false");
       expect(control(selector).hasAttribute("aria-disabled")).toBe(false);
     }
@@ -78,12 +79,42 @@ describe("Members permissions settings section", () => {
       ctxFor({
         settings: {
           ...EMPTY_UTUB_SETTINGS,
-          members: { co_owners_can_remove: true, members_can_add: false },
+          members: {
+            co_owners_can_remove: true,
+            members_can_add: false,
+            hide_member_list: true,
+          },
         },
       }),
     );
     expect(control(REMOVE).getAttribute("aria-checked")).toBe("true");
     expect(control(ADD).getAttribute("aria-checked")).toBe("false");
+    expect(control(HIDE).getAttribute("aria-checked")).toBe("true");
+  });
+
+  it("submits the hide_member_list key and announces its notices", async () => {
+    renderWith(ctxFor());
+    control(HIDE).click();
+    expect(submit).toHaveBeenLastCalledWith({
+      patch: { hide_member_list: true },
+    });
+    vi.mocked(patchUtubSettings).mockResolvedValue({ outcome: "ok" });
+    const on = await section.save({
+      utubID: 3,
+      patch: { hide_member_list: true },
+    });
+    expect(on).toEqual({
+      outcome: "ok",
+      notice: "Members now see only the owner, co-owners and themselves",
+    });
+    const off = await section.save({
+      utubID: 3,
+      patch: { hide_member_list: false },
+    });
+    expect(off).toEqual({
+      outcome: "ok",
+      notice: "Members can now see everyone in this UTub",
+    });
   });
 
   it("submits exactly one key per flip", () => {
@@ -105,7 +136,7 @@ describe("Members permissions settings section", () => {
 
   it("is read-only, described by the note, and inert when canWrite is false", () => {
     renderWith(ctxFor({ canWrite: false }));
-    for (const selector of [REMOVE, ADD]) {
+    for (const selector of [REMOVE, ADD, HIDE]) {
       const element = control(selector);
       expect(element.getAttribute("aria-disabled")).toBe("true");
       expect(element.getAttribute("aria-describedby")).toContain(NOTE_ID);

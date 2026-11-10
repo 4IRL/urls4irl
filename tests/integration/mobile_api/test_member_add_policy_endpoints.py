@@ -340,6 +340,89 @@ def test_suggestions_for_plain_member_when_on(
     ]
 
 
+def test_hidden_list_unified_add_failure_over_api(
+    every_user_in_every_utub, app: Flask, api_client: FlaskClient
+):
+    """
+    GIVEN a hidden member list and members_can_add on
+    WHEN a plain member adds an unknown user, then an existing member, over /api/v1
+    THEN both responses are the identical unified 400; the owner's stay distinct
+    """
+    set_members_settings(
+        app, FIRST_UTUB_ID, {"members_can_add": True, "hide_member_list": True}
+    )
+
+    unknown = _add(app, api_client, SECOND_USER_ID, {"username": "nosuchuser_hidden"})
+    existing = _add(app, api_client, SECOND_USER_ID)
+
+    assert unknown.status_code == 400
+    assert (unknown.status_code, unknown.get_json()) == (
+        existing.status_code,
+        existing.get_json(),
+    )
+    assert unknown.get_json()["errors"] == {
+        "username": [MEMBER_FAILURE.MEMBER_CANNOT_BE_ADDED]
+    }
+
+
+def test_hidden_list_owner_add_errors_stay_distinct_over_api(
+    every_user_in_every_utub, app: Flask, api_client: FlaskClient
+):
+    """
+    GIVEN a hidden member list and members_can_add on
+    WHEN the owner adds an unknown user, then an existing member, over /api/v1
+    THEN the two responses stay distinct
+    """
+    set_members_settings(
+        app, FIRST_UTUB_ID, {"members_can_add": True, "hide_member_list": True}
+    )
+
+    unknown = _add(app, api_client, CREATOR_ID, {"username": "nosuchuser_hidden"})
+    existing = _add(app, api_client, CREATOR_ID)
+
+    assert unknown.status_code == existing.status_code == 400
+    assert unknown.get_json() != existing.get_json()
+
+
+def test_hidden_list_suggestions_empty_for_plain_member_over_api(
+    every_user_in_every_utub, app: Flask, api_client: FlaskClient
+):
+    """
+    GIVEN a hidden member list, members_can_add on and a user outside the UTub
+    WHEN a plain member loads suggestions over /api/v1
+    THEN they get an empty list
+    """
+    remove_member(app, FIRST_UTUB_ID, TARGET_USER_ID)
+    set_members_settings(
+        app, FIRST_UTUB_ID, {"members_can_add": True, "hide_member_list": True}
+    )
+
+    member_response = _candidates(app, api_client, SECOND_USER_ID)
+
+    assert member_response.status_code == 200
+    assert member_response.get_json()[MODELS.MEMBERS] == []
+
+
+def test_hidden_list_suggestions_unchanged_for_owner_over_api(
+    every_user_in_every_utub, app: Flask, api_client: FlaskClient
+):
+    """
+    GIVEN a hidden member list and a user outside the UTub
+    WHEN the owner loads suggestions over /api/v1
+    THEN they still get the candidate
+    """
+    remove_member(app, FIRST_UTUB_ID, TARGET_USER_ID)
+    set_members_settings(
+        app, FIRST_UTUB_ID, {"members_can_add": True, "hide_member_list": True}
+    )
+
+    owner_response = _candidates(app, api_client, CREATOR_ID)
+
+    assert [item[MODELS.ID] for item in owner_response.get_json()[MODELS.MEMBERS]] == [
+        TARGET_USER_ID
+    ]
+
+
 def test_suggestions_manager_unchanged_when_off(
     every_user_in_every_utub, app: Flask, api_client: FlaskClient
 ):

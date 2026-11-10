@@ -130,6 +130,9 @@ class HomePageLocators(GenericPageLocator):
         "#membersPermissionsCoOwnersRemoveSwitch"
     )
     MEMBERS_PERMISSIONS_MEMBERS_ADD_SWITCH = "#membersPermissionsMembersAddSwitch"
+    MEMBERS_PERMISSIONS_HIDE_LIST_SWITCH = "#membersPermissionsHideListSwitch"
+    MEMBER_DECK_COUNT = "#MemberDeckCount"
+    UTUB_ROW_COUNT_NUMBERS = ".UTubRowCountNum"
     MEMBERS_PERMISSIONS_SECTION = (
         "section.panelSettingsSection[data-section-id='members-permissions']"
     )
