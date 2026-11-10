@@ -357,7 +357,7 @@ test-playwright-lifecycle: _hub-capacity ## Build the derived Playwright image a
 # a stamp inside that venv, so a pin bump reaches it too; the stamp is touched only after a successful install.
 # psycopg2 is skipped: it builds from source (needs pg_config), and the pinned psycopg2-binary provides the same
 # `psycopg2` module the root conftest imports.
-HOST_STATIC_TESTS := tests/unit/test_makefile_profiles.py tests/unit/test_compose_hub.py tests/unit/test_compose_profiles.py tests/unit/test_audit_pins.py tests/unit/test_playwright_entrypoint.py tests/unit/test_worktree_script.py tests/unit/test_env_example.py
+HOST_STATIC_TESTS := tests/unit/test_makefile_profiles.py tests/unit/test_compose_hub.py tests/unit/test_compose_prod_key_mount.py tests/unit/test_compose_profiles.py tests/unit/test_audit_pins.py tests/unit/test_playwright_entrypoint.py tests/unit/test_worktree_script.py tests/unit/test_env_example.py
 HOST_STATIC_STAMP = $(PRIMARY_ROOT)/venv/.u4i-host-static.stamp
 HOST_STATIC_TEST_PINS = $(PRIMARY_ROOT)/requirements/requirements-test.txt
 HOST_STATIC_PROD_PINS = $(PRIMARY_ROOT)/requirements/requirements-prod.txt
@@ -822,10 +822,12 @@ purge-invite-links: _require-workflow ## Run the invite-link purge now
 
 # No DB or stack and no token wrapper: one image build plus two throwaway `docker run`s. _hub-capacity only ensures the
 # capacity file exists, for parity with test-backup-pipeline.
-test-workflow-image: _hub-capacity ## Build the workflow image and check the invite-link purge cron entry and script
+test-workflow-image: _hub-capacity ## Build the workflow image and check the invite-link purge cron entry and script, and the notifs_hub client
 	docker build -f docker/Dockerfile.Workflow -t u4i-local-workflow:wiring-test .
 	docker run --rm --entrypoint crontab u4i-local-workflow:wiring-test -l -u workflow | grep -qE '^0 5 \* \* \* .*/app/purge_invite_links\.py' || { echo "FAIL: no /app/purge_invite_links.py entry in the image crontab - the docker/crontab.workflow edit was not copied into the image" >&2; exit 1; }
 	docker run --rm --entrypoint test u4i-local-workflow:wiring-test -x /app/purge_invite_links.py || { echo "FAIL: /app/purge_invite_links.py is not executable in the image - the chmod line is missing in docker/Dockerfile.Workflow" >&2; exit 1; }
+	docker run --rm --entrypoint test u4i-local-workflow:wiring-test -x /app/scripts/notifs_hub.py || { echo "FAIL: /app/scripts/notifs_hub.py is missing or not executable in the image - the COPY or chmod line is missing in docker/Dockerfile.Workflow" >&2; exit 1; }
+	docker run --rm --network none --entrypoint /opt/metrics-venv/bin/python u4i-local-workflow:wiring-test /app/scripts/notifs_hub.py ping metrics_flush 2>&1 | grep -q 'outcome=skip' || { echo "FAIL: notifs_hub.py ping did not print outcome=skip with PRODUCTION unset - the COPY line is missing in docker/Dockerfile.Workflow, or PRODUCTION leaked into the image env" >&2; exit 1; }
 	@echo "workflow image wiring OK"
 
 gauge-rows: ## Show last 25 sampled rows from AnonymousGauges

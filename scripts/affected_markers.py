@@ -277,6 +277,8 @@ HOST_STATIC_GLOBS: tuple[str, ...] = (
     ".env.example",
     "tests/unit/test_makefile_profiles.py",
     "tests/unit/test_compose_hub.py",
+    "tests/unit/test_compose_prod_key_mount.py",
+    "scripts/notifs_hub.py",
     "tests/unit/test_compose_profiles.py",
     "tests/unit/test_audit_pins.py",
     "tests/unit/test_playwright_entrypoint.py",
@@ -529,6 +531,7 @@ PATH_MARKERS: tuple[MarkerRow, ...] = (
     ("scripts/purge_trash.py", ("unit", "trash")),
     ("scripts/purge_short_links.py", ("unit", "short_links")),
     ("scripts/purge_invite_links.py", ("unit", "invite_links")),
+    ("scripts/notifs_hub.py", ("unit",)),
     ("scripts/*.py", ("unit",)),
     ("scripts/*.sh", ("unit", "admin")),
 )
