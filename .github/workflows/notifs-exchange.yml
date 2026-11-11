@@ -54,14 +54,19 @@ jobs:
           sha="$(bash resolve-src/scripts/notifs-resolve-release-sha.sh)"
           echo "sha=${sha}" >> "$GITHUB_OUTPUT"
 
-      - name: Checkout manifest
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          ref: ${{ steps.resolve.outputs.sha }}
-          persist-credentials: false
-          sparse-checkout: .notifs/manifest.json
-          sparse-checkout-cone-mode: false
-          path: release
+      # Downloaded as one data file through the contents API, never checked out: the sha is verified
+      # reachable from main above, and no other file of that commit lands on the runner.
+      - name: Fetch manifest
+        id: manifest
+        env:
+          MANIFEST_SHA: ${{ steps.resolve.outputs.sha }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          mkdir -p release/.notifs
+          gh api -H "Accept: application/vnd.github.raw+json" \
+            "repos/${GH_REPO}/contents/.notifs/manifest.json?ref=${MANIFEST_SHA}" \
+            > release/.notifs/manifest.json
 
       - name: Install SSH key
         env:

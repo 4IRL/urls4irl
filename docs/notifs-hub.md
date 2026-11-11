@@ -24,7 +24,7 @@ cloudflared is installed from an exact release with its sha256 verified; bump `C
 
 ## First run and approval
 
-Run the first exchange only after the first production deploy that contains this change; before it, the key-directory preflight fails because the directory and `notifs-key-write.sh` are not on the host yet. A `workflow_dispatch` `sha` and a `workflow_run` head sha must both be reachable from `main` (the resolver refuses anything else), and only `.notifs/manifest.json` is checked out from that commit.
+Run the first exchange only after the first production deploy that contains this change; before it, the key-directory preflight fails because the directory and `notifs-key-write.sh` are not on the host yet. A `workflow_dispatch` `sha` and a `workflow_run` head sha must both be reachable from `main` (the resolver refuses anything else), and only `.notifs/manifest.json` is downloaded from that commit through the contents API (the commit is never checked out).
 
 The first exchange files an identity request and the action fails ("pending") until the operator approves it in the hub admin UI. Approve, then re-run: `workflow_dispatch` from `main` (leave `sha` empty for the latest release, or pass a commit). Verify the checks appear in the hub and that a ping returns 200.
 
@@ -36,7 +36,7 @@ A key stays valid for 24 hours after the next exchange supersedes it. If the wri
 
 Edit `.notifs/manifest.json` (names must equal the names pinged by the scripts: `daily_backup`, `metrics_flush`, `gauge_sample`, `purge_audit_log`, `purge_trash`, `purge_short_links`, `purge_invite_links`; `period` and `grace` are at least `60s`). The next release applies it, or dispatch with an explicit `sha`. The action never prunes: delete a removed check in the admin UI, or run `node scripts/onboard.mjs apply --manifest <path> --target app --prune` from the 4irl-notifs repo.
 
-The manifest is checked out at the release tag's commit while the deploy checks out `main`, so they can differ by the commits between the tag and `main` (and the resolve script itself runs from `main` HEAD through the sparse checkout): a manifest can name checks whose pings are not deployed yet, or the reverse.
+The manifest is read at the release tag's commit while the deploy checks out `main`, so they can differ by the commits between the tag and `main` (and the resolve script itself runs from `main` HEAD through the sparse checkout): a manifest can name checks whose pings are not deployed yet, or the reverse.
 
 `metrics_flush` (1m period, 5m grace) may alert once while `workflow` is recreated on a release; grace is raised only if that actually happens.
 

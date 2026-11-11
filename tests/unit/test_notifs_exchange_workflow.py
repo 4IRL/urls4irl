@@ -332,10 +332,10 @@ def test_step_order_is_the_contract():
     """
     GIVEN the job steps
     WHEN their positions are compared
-    THEN script checkout < resolve < manifest checkout < preflight < setup-node < lint < exchange < write
+    THEN script checkout < resolve < manifest fetch < preflight < setup-node < lint < exchange < write
         < post-write < final.
     """
-    script_checkout, manifest_checkout, notifs_checkout = _checkouts()
+    script_checkout, notifs_checkout = _checkouts()
     steps = _steps()
     preflight = _index_where(
         lambda step: "--check /home/u4i/notifs-key" in step.get("run", "")
@@ -351,7 +351,7 @@ def test_step_order_is_the_contract():
     positions = [
         steps.index(script_checkout),
         _index_by_id("resolve"),
-        steps.index(manifest_checkout),
+        _index_by_id("manifest"),
         preflight,
         steps.index(notifs_checkout),
         setup_node,
@@ -406,33 +406,37 @@ def test_resolve_step_passes_inputs_through_env_only():
     assert "resolve-src/scripts/notifs-resolve-release-sha.sh" in resolve["run"]
 
 
-def test_manifest_checkout_uses_resolved_sha_and_distinct_paths():
+def test_manifest_is_fetched_by_api_never_checked_out():
     """
-    GIVEN the three checkouts
-    WHEN their refs and paths are read
-    THEN the manifest checkout reads the resolve output and every path is different.
+    GIVEN the manifest step
+    WHEN its inputs are read
+    THEN it downloads only .notifs/manifest.json at the resolved sha through the contents API, and
+        the ref is never checked out (only the resolve script and the pinned 4irl-notifs are).
     """
-    script_checkout, manifest_checkout, notifs_checkout = _checkouts()
+    manifest = _by_id("manifest")
 
-    assert manifest_checkout["with"]["ref"] == "${{ steps.resolve.outputs.sha }}"
-    assert manifest_checkout["with"]["persist-credentials"] is False
+    assert not _is_checkout(manifest)
+    assert manifest["env"]["MANIFEST_SHA"] == "${{ steps.resolve.outputs.sha }}"
+    assert "contents/.notifs/manifest.json?ref=${MANIFEST_SHA}" in manifest["run"]
+    assert "> release/.notifs/manifest.json" in manifest["run"]
+    for checkout in _checkouts():
+        assert "steps.resolve.outputs.sha" not in str(checkout.get("with", {}))
+
+
+def test_checkout_paths_are_distinct():
+    """
+    GIVEN the two checkouts and the manifest download directory
+    WHEN their paths are read
+    THEN every path is different.
+    """
+    script_checkout, notifs_checkout = _checkouts()
+
     paths = [
-        checkout["with"]["path"]
-        for checkout in (script_checkout, manifest_checkout, notifs_checkout)
+        script_checkout["with"]["path"],
+        notifs_checkout["with"]["path"],
+        "release",
     ]
     assert len(set(paths)) == 3
-
-
-def test_manifest_checkout_fetches_only_the_manifest_file():
-    """
-    GIVEN the manifest checkout of an untrusted-by-default ref
-    WHEN its inputs are read
-    THEN it is sparse (cone mode off) and fetches only .notifs/manifest.json.
-    """
-    inputs = _checkouts()[1]["with"]
-
-    assert inputs["sparse-checkout"].strip() == ".notifs/manifest.json"
-    assert inputs["sparse-checkout-cone-mode"] is False
 
 
 def test_manifest_paths_point_under_the_manifest_checkout():
@@ -441,7 +445,7 @@ def test_manifest_paths_point_under_the_manifest_checkout():
     WHEN their manifest arguments are read
     THEN both point at .notifs/manifest.json under the manifest checkout's path.
     """
-    manifest_path = _checkouts()[1]["with"]["path"]
+    manifest_path = "release"
     lint = _by_id("lint")
     notifs = _by_id("notifs")
 
@@ -451,7 +455,7 @@ def test_manifest_paths_point_under_the_manifest_checkout():
     )
     assert '--manifest "$MANIFEST"' in lint["run"]
     assert "--target app" in lint["run"]
-    notifs_path = _checkouts()[2]["with"]["path"]
+    notifs_path = _checkouts()[1]["with"]["path"]
     assert f"node {notifs_path}/scripts/onboard.mjs lint" in lint["run"]
 
 
@@ -461,7 +465,7 @@ def test_lint_checkout_sha_equals_the_exchange_action_sha():
     WHEN both SHAs are compared
     THEN they are the same 40-hex SHA, so a bump of one without the other fails.
     """
-    notifs_checkout = _checkouts()[2]
+    notifs_checkout = _checkouts()[1]
 
     assert notifs_checkout["with"]["repository"] == "4IRL/4irl-notifs"
     assert notifs_checkout["with"]["ref"] == _exchange_sha()
