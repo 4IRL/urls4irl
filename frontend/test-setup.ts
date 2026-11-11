@@ -391,6 +391,7 @@ const appConfig = {
     ONBOARDING_ADD_MEMBER_TIP_BODY:
       "Add a member to share this UTub and gather links together.",
     URL_ADDED_BY: "Added by",
+    HIDDEN_MEMBER_LABEL: "a member",
     URL_ADDED_BY_FORMER_MEMBER: "a former member",
     URL_ADDED_ON: "on",
     URL_DATE_ADDED_LABEL: "Added:",
@@ -576,6 +577,13 @@ const appConfig = {
     MEMBERS_PERMISSIONS_MEMBERS_ADD_ON_NOTICE: "Members can now add members",
     MEMBERS_PERMISSIONS_MEMBERS_ADD_OFF_NOTICE:
       "Members can no longer add members",
+    MEMBERS_PERMISSIONS_HIDE_MEMBER_LIST_LABEL: "Hide member list from members",
+    MEMBERS_PERMISSIONS_HIDE_MEMBER_LIST_DESC:
+      "Members see only the owner, co-owners and themselves.",
+    MEMBERS_PERMISSIONS_HIDE_MEMBER_LIST_ON_NOTICE:
+      "Members now see only the owner, co-owners and themselves",
+    MEMBERS_PERMISSIONS_HIDE_MEMBER_LIST_OFF_NOTICE:
+      "Members can now see everyone in this UTub",
     MEMBERS_LIST_SORT_DESC: "In all your UTubs. The owner always stays on top.",
     MEMBERS_LIST_SORT_OPTION_NAME_AZ: "Name A–Z",
     MEMBERS_LIST_SORT_OPTION_ROLE: "Role, then name",
@@ -621,6 +629,8 @@ const appConfig = {
     INVALID_PERMISSION_TO_REMOVE:
       "Not allowed to remove a member from this UTub.",
     MEMBER_ADD_NOT_ALLOWED: "The UTub owner turned off adding members.",
+    MEMBER_ADD_EXACT_USERNAME_HINT: "Type an exact username to add",
+    MEMBER_CANNOT_BE_ADDED: "That user can't be added to this UTub.",
     MEMBER_ADD_NOW_ALLOWED_ANNOUNCEMENT: "You can now add members.",
     MEMBER_ADD_NO_LONGER_ALLOWED_ANNOUNCEMENT: "You can no longer add members.",
     UTUB_CREATE_MSG: "Create a UTub",

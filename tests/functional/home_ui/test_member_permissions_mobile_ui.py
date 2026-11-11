@@ -23,7 +23,6 @@ from tests.functional.db_utils import (
 )
 from tests.functional.home_ui.test_panel_settings_mobile_ui import (
     _MIN_TOUCH_TARGET_PX,
-    _go_to_deck_via_navbar,
 )
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.members_ui.playwright_utils import (
@@ -48,6 +47,7 @@ from tests.functional.playwright_login_utils import (
     login_user_and_select_utub_by_utubid_mobile,
 )
 from tests.functional.playwright_utils import (
+    go_to_deck_via_navbar,
     wait_for_modal_ready,
     wait_until_hidden,
     wait_until_visible_css_selector,
@@ -88,7 +88,7 @@ def wait_for_members_after_reload(*, page: Page) -> None:
 
 
 def go_to_members_deck(*, page: Page) -> None:
-    _go_to_deck_via_navbar(page, HPL.NAVBAR_MEMBER_DECK)
+    go_to_deck_via_navbar(page=page, navbar_selector=HPL.NAVBAR_MEMBER_DECK)
     wait_until_visible_css_selector(page=page, css_selector=HPL.MEMBER_ROW_ROLE_ICON)
 
 

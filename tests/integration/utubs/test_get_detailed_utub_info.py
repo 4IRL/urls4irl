@@ -38,10 +38,12 @@ from tests.settings_stub import (
     patch_settings_model,
 )
 from tests.utils_for_test import (
+    assert_hidden_list_detail,
     count_tag_instances_in_utub,
     is_string_in_logs,
     remove_member,
     set_member_role,
+    set_members_settings,
     trash_utub,
     trash_utub_url,
 )
@@ -1504,3 +1506,115 @@ def test_get_valid_utub_without_ajax_request_logs(
     assert is_string_in_logs(
         f"User={current_user_id} did not make an AJAX request", caplog.records
     )
+
+
+def _detail_json(
+    app: Flask, client: FlaskClient, utub_id: int, route: str
+) -> dict[str, Any]:
+    with app.test_request_context():
+        detail_url = url_for(route, utub_id=utub_id)
+    response = client.get(detail_url)
+    assert response.status_code == 200
+    assert response.json is not None
+    return response.json
+
+
+@pytest.mark.parametrize(
+    "route", [ROUTES.UTUBS.GET_SINGLE_UTUB, ROUTES.UTUBS.REFRESH_SINGLE_UTUB]
+)
+@pytest.mark.parametrize("viewer", ["member_a_id", "member_b_id"])
+def test_hidden_list_plain_member_sees_owner_co_owner_and_self(
+    app: Flask, seed_hide_list, hide_list_client, route: str, viewer: str
+):
+    """
+    GIVEN a UTub whose owner hid the member list, with two plain members
+    WHEN a plain member opens or refreshes it
+    THEN members are exactly owner, co-owner and self, hidden adders are null,
+        former-member adders keep their id, and no hidden username is serialized
+    """
+    seed = seed_hide_list(True)
+    viewer_id: int = getattr(seed, viewer)
+
+    payload = _detail_json(app, hide_list_client(viewer_id), seed.utub_id, route)
+
+    assert_hidden_list_detail(payload, seed, viewer_id)
+
+
+@pytest.mark.parametrize("viewer", ["owner_id", "co_owner_id"])
+def test_hidden_list_owner_and_co_owner_see_everyone(
+    app: Flask, seed_hide_list, hide_list_client, viewer: str
+):
+    """
+    GIVEN a UTub whose owner hid the member list
+    WHEN the owner or the co-owner opens it
+    THEN every current member and every real adder id is present
+    """
+    seed = seed_hide_list(True)
+    viewer_id: int = getattr(seed, viewer)
+
+    payload = _detail_json(
+        app, hide_list_client(viewer_id), seed.utub_id, ROUTES.UTUBS.GET_SINGLE_UTUB
+    )
+
+    assert_hidden_list_detail(payload, seed, viewer_id)
+
+
+@pytest.mark.parametrize(
+    "stored", [{"members": "garbage"}, {"members": {"hide_member_list": "yes"}}]
+)
+def test_hidden_list_malformed_stored_value_fails_closed(
+    app: Flask, seed_hide_list, hide_list_client, stored: dict[str, Any]
+):
+    """
+    GIVEN a UTub whose raw stored members section is malformed
+    WHEN a plain member opens it
+    THEN the list is treated as hidden
+    """
+    seed = seed_hide_list(None)
+    with app.app_context():
+        utub: Utubs = Utubs.query.get(seed.utub_id)
+        utub.settings = stored
+        db.session.commit()
+
+    payload = _detail_json(
+        app,
+        hide_list_client(seed.member_a_id),
+        seed.utub_id,
+        ROUTES.UTUBS.GET_SINGLE_UTUB,
+    )
+
+    assert_hidden_list_detail(payload, seed, seed.member_a_id)
+
+
+def test_hidden_list_off_matches_unset_and_keeps_permissions(
+    app: Flask, seed_hide_list, hide_list_client
+):
+    """
+    GIVEN a plain member of a UTub with no stored setting
+    WHEN the setting is stored as False, then True
+    THEN False gives a byte-identical payload; True only shrinks members and
+        masks adders while canDelete / canRevokeShortLink stay identical
+    """
+    seed = seed_hide_list(None)
+    client = hide_list_client(seed.member_a_id)
+    route = ROUTES.UTUBS.GET_SINGLE_UTUB
+    baseline = _detail_json(app, client, seed.utub_id, route)
+    assert len(baseline["members"]) == 4
+
+    set_members_settings(app, seed.utub_id, {"hide_member_list": False})
+    assert _detail_json(app, client, seed.utub_id, route) == baseline
+
+    set_members_settings(app, seed.utub_id, {"hide_member_list": True})
+    hidden = _detail_json(app, client, seed.utub_id, route)
+
+    def permissions(payload: dict[str, Any]) -> dict[int, tuple[bool, bool]]:
+        return {
+            url["utubUrlID"]: (
+                url[MODELS.CAN_DELETE],
+                url[MODELS.CAN_REVOKE_SHORT_LINK],
+            )
+            for url in payload["urls"]
+        }
+
+    assert permissions(hidden) == permissions(baseline)
+    assert len(hidden["members"]) == 3

@@ -72,7 +72,7 @@ export function createURLDateAddedBadge({
   members,
 }: {
   addedAt: string;
-  addedByUserID: number;
+  addedByUserID: number | null;
   placementClass: string;
   withAdder: boolean;
   members?: MemberItem[];
@@ -94,9 +94,13 @@ export function createURLDateAddedBadge({
   let visibleText = `${addedLabel} ${formattedDate}`;
   let accessibleLabel = `${addedAriaPrefix} ${formattedDate}`;
   if (withAdder) {
+    // null = a current member hidden from this viewer; a non-null id absent from
+    // the member list = someone who left.
     const adderName =
-      resolveAdderUsername({ addedByUserID, members }) ??
-      APP_CONFIG.strings.URL_ADDED_BY_FORMER_MEMBER;
+      addedByUserID === null
+        ? APP_CONFIG.strings.HIDDEN_MEMBER_LABEL
+        : (resolveAdderUsername({ addedByUserID, members }) ??
+          APP_CONFIG.strings.URL_ADDED_BY_FORMER_MEMBER);
     if (effectiveHideDateAdded()) {
       // Date hidden by the member: keep the attribution, drop the date everywhere
       // (including the accessible name).

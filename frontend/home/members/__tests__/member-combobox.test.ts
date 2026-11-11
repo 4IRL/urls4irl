@@ -9,6 +9,7 @@ import {
 import { resetMemberDeck } from "../deck.js";
 import { getState, resetStore, setState } from "../../../store/app-store.js";
 import { APP_CONFIG } from "../../../lib/config.js";
+import { EMPTY_UTUB_SETTINGS } from "../../../types/settings.js";
 
 import type { MemberCandidate, MemberItem } from "../../../types/member.js";
 
@@ -399,6 +400,58 @@ describe("member-combobox — empty + loading states", () => {
       .map((_, el) => $(el).text())
       .get();
     expect(labels).toContain("Alice");
+  });
+});
+
+describe("member-combobox — hidden member list", () => {
+  function seedHiddenViewer({ loaded = true } = {}): void {
+    seed({ candidates: [ALICE], members: [], loaded, isOwner: false });
+    setState({
+      isCoCreator: false,
+      settings: {
+        ...EMPTY_UTUB_SETTINGS,
+        members: { ...EMPTY_UTUB_SETTINGS.members, hide_member_list: true },
+      },
+    });
+  }
+
+  it("shows the exact-username hint on an empty query, never loading, shares or the co-members hint", () => {
+    seedHiddenViewer({ loaded: false });
+    const wrap = mount();
+    (wrap.data(RENDER_KEY) as () => void)();
+
+    expect(wrap.find(".memberAddListboxHint").text()).toBe(
+      APP_CONFIG.strings.MEMBER_ADD_EXACT_USERNAME_HINT,
+    );
+    expect(wrap.find(".memberAddOption").length).toBe(0);
+    expect(wrap.text()).not.toContain(
+      APP_CONFIG.strings.MEMBER_ADD_LOADING_HINT,
+    );
+    expect(wrap.text()).not.toContain(
+      APP_CONFIG.strings.MEMBER_ADD_NO_COMEMBERS_HINT,
+    );
+  });
+
+  it("offers only the outsider row for a typed name even when stale candidates exist", () => {
+    seedHiddenViewer();
+    const wrap = mount();
+    typeIn(wrap, "al");
+
+    expect(
+      wrap.find(".memberAddOption:not(.memberAddOptionOutsider)").length,
+    ).toBe(0);
+    expect(wrap.find(".memberAddOptionOutsider").length).toBe(1);
+    expect(wrap.text()).not.toContain("shares");
+  });
+
+  it("a manager keeps the co-members hint and suggestions", () => {
+    seed({ candidates: [ALICE], members: [] });
+    const wrap = mount();
+    typeIn(wrap, "al");
+
+    expect(
+      wrap.find(".memberAddOption:not(.memberAddOptionOutsider)").length,
+    ).toBe(1);
   });
 });
 

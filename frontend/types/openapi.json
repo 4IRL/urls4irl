@@ -13375,8 +13375,15 @@
             "type": "integer"
           },
           "memberCount": {
-            "description": "Number of members of the UTub",
-            "type": "integer"
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Number of members of the UTub, null when hidden from this viewer"
           },
           "createdAt": {
             "description": "When the UTub was created (UTC, millisecond precision)",
@@ -13606,6 +13613,11 @@
             "default": false,
             "description": "Whether plain members can add members to this UTub",
             "type": "boolean"
+          },
+          "hide_member_list": {
+            "default": false,
+            "description": "Whether plain members see only the owner, co-owners and themselves",
+            "type": "boolean"
           }
         },
         "type": "object"
@@ -13755,8 +13767,15 @@
             "type": "string"
           },
           "addedByUserID": {
-            "description": "User ID of the member who added this URL to the UTub (resolved to a username on the frontend via the UTub member list)",
-            "type": "integer"
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "User ID of the member who added this URL to the UTub (resolved to a username on the frontend via the UTub member list); null means the adder is hidden from this viewer"
           },
           "shortLinkExpiresAt": {
             "anyOf": [
@@ -16793,20 +16812,48 @@
             "type": "string"
           },
           "deletedByUserID": {
-            "description": "User ID of whoever put the URL in Trash (effective)",
-            "type": "integer"
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "User ID of whoever put the URL in Trash (effective), or null when that member is hidden from this viewer"
           },
           "deletedByUsername": {
-            "description": "Username of whoever put the URL in Trash (effective)",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Username of whoever put the URL in Trash (effective), or null when that member is hidden from this viewer"
           },
           "addedByUserID": {
-            "description": "User ID of the member who added the URL",
-            "type": "integer"
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "User ID of the member who added the URL, or null when that member is hidden from this viewer"
           },
           "addedByUsername": {
-            "description": "Username of the member who added the URL",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Username of the member who added the URL, or null when that member is hidden from this viewer"
           },
           "canRestore": {
             "description": "Whether the current user can restore this URL right now",

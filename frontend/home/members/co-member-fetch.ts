@@ -2,6 +2,7 @@ import { $ } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { ajaxCall, is429Handled } from "../../lib/ajax.js";
 import { setState } from "../../store/app-store.js";
+import { isMemberListHiddenForViewer } from "../utubs/policy.js";
 import {
   isMemberAddNotAllowedResponse,
   learnMemberAddRefused,
@@ -32,6 +33,14 @@ export function loadCoMemberCandidates(
   onSettle?: () => void,
 ): void {
   _inFlight?.abort();
+  // The server returns no suggestions to a viewer who cannot see the member
+  // list, so skip the request: settle the slice as loaded and empty at once.
+  if (isMemberListHiddenForViewer()) {
+    _inFlight = null;
+    setState({ coMemberCandidates: [], coMemberCandidatesLoaded: true });
+    onSettle?.();
+    return;
+  }
   _inFlight = ajaxCall(
     "GET",
     APP_CONFIG.routes.coMemberCandidates(utubID),

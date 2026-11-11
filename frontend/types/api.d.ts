@@ -2968,8 +2968,8 @@ export interface components {
       isPinned: boolean;
       /** @description Number of live (non-trashed) URLs in the UTub */
       urlCount: number;
-      /** @description Number of members of the UTub */
-      memberCount: number;
+      /** @description Number of members of the UTub, null when hidden from this viewer */
+      memberCount: number | null;
       /**
        * Format: date-time
        * @description When the UTub was created (UTC, millisecond precision)
@@ -3084,6 +3084,11 @@ export interface components {
        * @default false
        */
       members_can_add: boolean;
+      /**
+       * @description Whether plain members see only the owner, co-owners and themselves
+       * @default false
+       */
+      hide_member_list: boolean;
     };
     /** @description The viewer's six resolved all-UTubs tag display defaults. */
     TagDisplayDefaultsSchema: {
@@ -3166,8 +3171,8 @@ export interface components {
        * @description Timestamp the URL was added to the UTub
        */
       addedAt: string;
-      /** @description User ID of the member who added this URL to the UTub (resolved to a username on the frontend via the UTub member list) */
-      addedByUserID: number;
+      /** @description User ID of the member who added this URL to the UTub (resolved to a username on the frontend via the UTub member list); null means the adder is hidden from this viewer */
+      addedByUserID: number | null;
       /** @description Expiry of the URL's active share short link; null when there is no link or it has expired */
       shortLinkExpiresAt: string | null;
       /** @description Whether the current user can revoke the URL's active share short link; false when there is no active link */
@@ -4778,14 +4783,14 @@ export interface components {
        * @description When the URL is permanently deleted (ISO 8601)
        */
       expiresAt: string;
-      /** @description User ID of whoever put the URL in Trash (effective) */
-      deletedByUserID: number;
-      /** @description Username of whoever put the URL in Trash (effective) */
-      deletedByUsername: string;
-      /** @description User ID of the member who added the URL */
-      addedByUserID: number;
-      /** @description Username of the member who added the URL */
-      addedByUsername: string;
+      /** @description User ID of whoever put the URL in Trash (effective), or null when that member is hidden from this viewer */
+      deletedByUserID: number | null;
+      /** @description Username of whoever put the URL in Trash (effective), or null when that member is hidden from this viewer */
+      deletedByUsername: string | null;
+      /** @description User ID of the member who added the URL, or null when that member is hidden from this viewer */
+      addedByUserID: number | null;
+      /** @description Username of the member who added the URL, or null when that member is hidden from this viewer */
+      addedByUsername: string | null;
       /** @description Whether the current user can restore this URL right now */
       canRestore: boolean;
       /** @description Whether the current user can permanently delete this URL right now */

@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Literal
 
 from pydantic import Field, SerializeAsAny, field_serializer
 
+from backend.members.member_visibility import visible_member_ids_for_utub
 from backend.schemas.base import BaseSchema
 from backend.schemas.tags import UtubTagSchema
 from backend.schemas.urls import UtubUrlSchema
@@ -129,10 +130,12 @@ class UtubDetailSchema(BaseSchema):
 
         is_co_creator = False
         caller_member_settings: dict | None = None
+        viewer_role_value: str | None = None
         for member in utub.members:
             if member.to_user.id == current_user_id:
                 is_co_creator = member.member_role == Member_Role.CO_CREATOR
                 caller_member_settings = member.settings
+                viewer_role_value = member.member_role.value
                 break
         # A "manager" (literal owner OR co-owner) may delete any URL in the UTub.
         # This must stay in lockstep with the server-side delete predicate in
@@ -145,9 +148,18 @@ class UtubDetailSchema(BaseSchema):
         # ``get_single_utub_for_user``) — the serialized ``urls`` list is emitted
         # in exactly this order.
         member_ids = frozenset(member.user_id for member in utub.members)
+        # ``None`` = everyone visible; otherwise the only ids this viewer may see.
+        # ``member_ids`` (the FULL set) still drives canDelete / canRevokeShortLink.
+        visible_ids = visible_member_ids_for_utub(
+            utub=utub, viewer_id=current_user_id, viewer_role=viewer_role_value
+        )
         urls = [
             UtubUrlSchema.from_orm_url(
-                utub_url, current_user_id, viewer_is_manager, member_ids
+                utub_url,
+                current_user_id,
+                viewer_is_manager,
+                member_ids,
+                visible_member_ids=visible_ids,
             )
             for utub_url in ordered_utub_urls
         ]
@@ -177,6 +189,7 @@ class UtubDetailSchema(BaseSchema):
                     joined_at=member.joined_at,
                 )
                 for member in ordered_members
+                if visible_ids is None or member.user_id in visible_ids
             ],
             member_sort=member_sort,
             tag_display_defaults=tag_display_defaults,

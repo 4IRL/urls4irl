@@ -1,8 +1,8 @@
 import utubCardTemplate from "../../../../backend/templates/components/home/UTubDeck/UTubCard.html?raw";
 
 import { APP_CONFIG } from "../../../lib/config.js";
-import { createUTubSelector, makeUTubRowCounts } from "../selectors.js";
-import { makeUTubRowCountsLabel } from "../row-counts.js";
+import { createUTubSelector } from "../selectors.js";
+import { makeUTubRowCounts, makeUTubRowCountsLabel } from "../row-counts.js";
 
 const { mockMetricsClient } = await vi.hoisted(
   async () => await import("../../../__tests__/helpers/mock-metrics-client.js"),
@@ -71,7 +71,7 @@ describe("createUTubSelector — locked-UTub role icon", () => {
 });
 
 describe("createUTubSelector — row counts group", () => {
-  function build(urlCount: number, memberCount: number) {
+  function build(urlCount: number, memberCount: number | null) {
     return createUTubSelector({
       utubName: "Counts UTub",
       utubID: 3,
@@ -95,6 +95,14 @@ describe("createUTubSelector — row counts group", () => {
     expect(counts.find(".UTubRowCountNum").first().text()).toBe("3");
     expect(counts.find(".UTubRowCountNum").last().text()).toBe("2");
     expect(counts.next().is("svg.memberRole")).toBe(true);
+  });
+
+  it("shows only the URL count when the member count is hidden", () => {
+    const counts = build(4, null).children(".UTubRowCounts");
+
+    expect(counts.find(".visually-hidden").text()).toBe(", 4 URLs");
+    expect(counts.find(".UTubRowCountNum")).toHaveLength(1);
+    expect(counts.find(".bi-person-fill")).toHaveLength(0);
   });
 
   it("renders singular labels for a count of one", () => {
@@ -171,15 +179,31 @@ describe("createUTubSelector — pin marker", () => {
 });
 
 describe("makeUTubRowCounts — Jinja markup parity", () => {
-  it("matches the UTubCard.html counts group (normalized whitespace)", () => {
+  // Renders the template's counts line by hand: resolves the memberCount
+  // `{% if %}` blocks (none = drop the member clause and segment).
+  function renderTemplateFragment({
+    urlCount,
+    memberCount,
+  }: {
+    urlCount: number;
+    memberCount: number | null;
+  }): string {
     const fragment = utubCardTemplate
       .split("\n")
       .find((line: string) => line.includes('<span class="UTubRowCounts'));
     expect(fragment).toBeDefined();
 
-    const urlCount = 3;
-    const memberCount = 2;
-    const rendered = (fragment ?? "")
+    const withoutBlocks =
+      memberCount === null
+        ? (fragment ?? "").replace(
+            /\{% if utub\.memberCount is not none %\}.*?\{% endif %\}/g,
+            "",
+          )
+        : (fragment ?? "").replace(
+            /\{% (?:if utub\.memberCount is not none|endif) %\}/g,
+            "",
+          );
+    return withoutBlocks
       .trim()
       .replace(
         /<span class="visually-hidden">.*?<\/span>/,
@@ -187,14 +211,31 @@ describe("makeUTubRowCounts — Jinja markup parity", () => {
       )
       .replace("{{ utub.urlCount }}", String(urlCount))
       .replace("{{ utub.memberCount }}", String(memberCount));
+  }
 
-    // Parse the template fragment through the DOM so both sides serialize alike.
-    const template = document.createElement("div");
-    template.innerHTML = rendered;
-    const normalize = (html: string) => html.replace(/\s+/g, " ").trim();
+  it.each([
+    { urlCount: 3, memberCount: 2 as number | null },
+    { urlCount: 3, memberCount: null as number | null },
+  ])(
+    "matches the UTubCard.html counts group for memberCount $memberCount",
+    ({ urlCount, memberCount }) => {
+      // Parse the template fragment through the DOM so both sides serialize alike.
+      const template = document.createElement("div");
+      template.innerHTML = renderTemplateFragment({ urlCount, memberCount });
+      const normalize = (html: string) => html.replace(/\s+/g, " ").trim();
 
-    expect(normalize(template.innerHTML)).toBe(
-      normalize(makeUTubRowCounts({ urlCount, memberCount }).prop("outerHTML")),
-    );
+      expect(normalize(template.innerHTML)).toBe(
+        normalize(
+          makeUTubRowCounts({ urlCount, memberCount }).prop("outerHTML"),
+        ),
+      );
+    },
+  );
+
+  it("omits the member segment and label clause for a null memberCount", () => {
+    const counts = makeUTubRowCounts({ urlCount: 1, memberCount: null });
+
+    expect(counts.find(".UTubRowCount")).toHaveLength(1);
+    expect(counts.find(".visually-hidden").text()).toBe(", 1 URL");
   });
 });

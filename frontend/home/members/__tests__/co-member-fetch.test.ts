@@ -6,6 +6,7 @@ import { APP_CONFIG } from "../../../lib/config.js";
 import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
 import { setState } from "../../../store/app-store.js";
 import { learnMemberAddRefused } from "../add-refusal.js";
+import { isMemberListHiddenForViewer } from "../../utubs/policy.js";
 
 // co-member-fetch.ts is the members-deck twin of cross-utub-search.ts's fetch
 // path (abort-and-replace over a single module-scoped in-flight jqXHR). This
@@ -19,6 +20,10 @@ vi.mock("../../../lib/ajax.js", () => ({
 
 vi.mock("../../../store/app-store.js", () => ({
   setState: vi.fn(),
+}));
+
+vi.mock("../../utubs/policy.js", () => ({
+  isMemberListHiddenForViewer: vi.fn(() => false),
 }));
 
 vi.mock("../add-refusal.js", async () => {
@@ -84,9 +89,35 @@ beforeEach(() => {
   cancelCoMemberCandidatesFetch();
   vi.clearAllMocks();
   vi.mocked(is429Handled).mockReturnValue(false);
+  vi.mocked(isMemberListHiddenForViewer).mockReturnValue(false);
 });
 
 describe("co-member-fetch — loadCoMemberCandidates", () => {
+  it("hidden-list viewer: skips the fetch, settles loaded + empty at once and aborts a prior in-flight request", () => {
+    const inFlight = buildPendingXhr();
+    vi.mocked(ajaxCall).mockReturnValueOnce(inFlight);
+    loadCoMemberCandidates(7);
+    vi.mocked(ajaxCall).mockClear();
+
+    vi.mocked(isMemberListHiddenForViewer).mockReturnValue(true);
+    const onSettle = vi.fn();
+    loadCoMemberCandidates(7, onSettle);
+
+    expect(vi.mocked(ajaxCall)).not.toHaveBeenCalled();
+    expect(inFlight.abort).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(setState)).toHaveBeenCalledWith({
+      coMemberCandidates: [],
+      coMemberCandidatesLoaded: true,
+    });
+    expect(onSettle).toHaveBeenCalledTimes(1);
+  });
+
+  it("visible-list viewer: still fetches", () => {
+    vi.mocked(ajaxCall).mockReturnValue(buildDoneXhr([]));
+    loadCoMemberCandidates(7);
+    expect(vi.mocked(ajaxCall)).toHaveBeenCalledTimes(1);
+  });
+
   it("(1) success: writes the candidate list + loaded flag to the store and calls onSettle", () => {
     const members = [{ id: 1, username: "Bob", sharedUtubCount: 2 }];
     vi.mocked(ajaxCall).mockReturnValue(buildDoneXhr(members));

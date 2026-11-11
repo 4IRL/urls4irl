@@ -1,14 +1,20 @@
 from datetime import datetime, timedelta
+from typing import Any, Sequence
 
 from sqlalchemy import func, select
+from sqlalchemy.engine import Row
 from sqlalchemy.orm import aliased
 
 from backend import db
 from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.app_logger import safe_add_log
+from backend.members.member_visibility import (
+    member_list_hidden_for,
+    viewer_is_manager_from_role,
+)
 from backend.models.urls import Urls
 from backend.models.users import Users
-from backend.models.utub_members import Utub_Members
+from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
 from backend.schemas.trash import (
@@ -30,6 +36,41 @@ from scripts.trash_retention import TRASH_RETENTION_DAYS
 def _expires_at(deleted_at: datetime) -> datetime:
     """Return when a row trashed at ``deleted_at`` leaves the retention window."""
     return deleted_at + timedelta(days=TRASH_RETENTION_DAYS)
+
+
+def _hidden_person_ids_by_utub(
+    *, url_rows: Sequence[Row[Any]], current_user_id: int
+) -> dict[int, frozenset[int]]:
+    """Map each hidden-list UTub in ``url_rows`` to the current members the viewer may not see.
+
+    Each row carries the viewer's own membership, so their role and the raw
+    ``Utubs.settings`` decide whether the list is hidden for them. One extra query
+    over those UTub ids finds the hidden people: current members who are neither a
+    manager nor the viewer. Former members have no membership row, so they are never
+    masked (as in the UTub detail payload). The viewer's own id is never masked.
+    """
+    hidden_utub_ids: set[int] = {
+        utub.id
+        for _utub_url, utub, member, *_rest in url_rows
+        if member_list_hidden_for(
+            settings=utub.settings,
+            viewer_is_manager=viewer_is_manager_from_role(member.member_role.value),
+        )
+    }
+    if not hidden_utub_ids:
+        return {}
+
+    hidden: dict[int, set[int]] = {utub_id: set() for utub_id in hidden_utub_ids}
+    plain_members = db.session.execute(
+        select(Utub_Members.utub_id, Utub_Members.user_id).where(
+            Utub_Members.utub_id.in_(hidden_utub_ids),
+            Utub_Members.member_role == Member_Role.MEMBER,
+            Utub_Members.user_id != current_user_id,
+        )
+    ).all()
+    for utub_id, user_id in plain_members:
+        hidden[utub_id].add(user_id)
+    return {utub_id: frozenset(ids) for utub_id, ids in hidden.items()}
 
 
 def get_trash_for_user(*, current_user_id: int) -> FlaskResponse:
@@ -69,6 +110,10 @@ def get_trash_for_user(*, current_user_id: int) -> FlaskResponse:
         ).order_by(effective_deleted_at.desc(), Utub_Urls.id.desc())
     ).all()
 
+    hidden_by_utub = _hidden_person_ids_by_utub(
+        url_rows=url_rows, current_user_id=current_user_id
+    )
+
     urls: list[TrashedUrlItemSchema] = []
     for (
         utub_url,
@@ -79,6 +124,10 @@ def get_trash_for_user(*, current_user_id: int) -> FlaskResponse:
         deleter_username,
     ) in url_rows:
         deleted_at: datetime = utub_url.deleted_at or utub.deleted_at
+        hidden_ids = hidden_by_utub.get(utub.id, frozenset())
+        deleted_by_id: int = utub_url.deleted_by or utub.deleted_by
+        deleter_hidden = deleted_by_id in hidden_ids
+        adder_hidden = utub_url.user_id in hidden_ids
         urls.append(
             TrashedUrlItemSchema(
                 utub_url_id=utub_url.id,
@@ -91,10 +140,10 @@ def get_trash_for_user(*, current_user_id: int) -> FlaskResponse:
                 trashed_with_utub=utub_url.deleted_at is None,
                 deleted_at=deleted_at,
                 expires_at=_expires_at(deleted_at),
-                deleted_by_user_id=utub_url.deleted_by or utub.deleted_by,
-                deleted_by_username=deleter_username,
-                added_by_user_id=utub_url.user_id,
-                added_by_username=adder_username,
+                deleted_by_user_id=None if deleter_hidden else deleted_by_id,
+                deleted_by_username=None if deleter_hidden else deleter_username,
+                added_by_user_id=None if adder_hidden else utub_url.user_id,
+                added_by_username=None if adder_hidden else adder_username,
                 can_restore=not utub.is_locked,
                 can_delete=not utub.is_locked,
             )

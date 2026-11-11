@@ -442,8 +442,225 @@ def test_demoted_manager_with_30_adds_is_refused_at_once(
 
 
 # ---------------------------------------------------------------------------
+# Add: hidden member list
+# ---------------------------------------------------------------------------
+
+HIDE_AND_ADD = {"members_can_add": True, "hide_member_list": True}
+UNKNOWN_USERNAME_BODY = {ADD_USER_FORM.USERNAME: "nosuchuser_hidden"}
+
+
+def _comparable(response: Response) -> tuple[int, Any]:
+    return response.status_code, response.get_json()
+
+
+def test_hidden_plain_member_unknown_and_existing_user_get_identical_400(
+    every_user_in_every_utub, app: Flask
+):
+    """
+    GIVEN a hidden member list and members_can_add on
+    WHEN a plain member adds an unknown user, then someone already in the UTub
+    THEN both responses have the same status and JSON body (the unified error)
+    """
+    set_members_settings(app, FIRST_UTUB_ID, HIDE_AND_ADD)
+
+    with logged_in_as(app, SECOND_USER_ID) as (client, csrf_token):
+        unknown = _add_with(client, csrf_token, UNKNOWN_USERNAME_BODY)
+        existing = _add_with(client, csrf_token)
+
+    assert unknown.status_code == 400
+    assert _comparable(unknown) == _comparable(existing)
+    body = unknown.get_json()
+    assert body[STD_JSON.MESSAGE] == MEMBER_FAILURE.UNABLE_TO_ADD_MEMBER
+    assert body[STD_JSON.ERRORS] == {
+        ADD_USER_FORM.USERNAME: [MEMBER_FAILURE.MEMBER_CANNOT_BE_ADDED]
+    }
+
+
+@pytest.mark.parametrize(
+    "body", [None, UNKNOWN_USERNAME_BODY], ids=["existing", "unknown"]
+)
+def test_caller_demoted_after_decorator_gets_unified_error(
+    every_user_in_every_utub, app: Flask, body: Any
+):
+    """
+    GIVEN a hidden member list, members_can_add on, and a co-owner caller whom the
+        decorator saw as a manager
+    WHEN the caller is demoted to plain member before the row lock is taken
+    THEN the post-lock role (list_hidden from g.is_manager) gives the unified 400
+        for both an existing and an unknown username
+    """
+    set_members_settings(app, FIRST_UTUB_ID, HIDE_AND_ADD)
+    set_member_role(app, FIRST_UTUB_ID, SECOND_USER_ID, Member_Role.CO_CREATOR)
+
+    def pre_lock_check_then_demotion(utub: Utubs, *, is_manager: bool) -> None:
+        assert is_manager is True
+        set_member_role(app, FIRST_UTUB_ID, SECOND_USER_ID, Member_Role.MEMBER)
+
+    with mock.patch(
+        "backend.members.services.create_members.member_add_refusal_response",
+        side_effect=pre_lock_check_then_demotion,
+    ) as pre_lock_check:
+        response = _add_as(app, SECOND_USER_ID, body)
+
+    pre_lock_check.assert_called_once()
+    assert response.status_code == 400
+    payload = response.get_json()
+    assert payload[STD_JSON.MESSAGE] == MEMBER_FAILURE.UNABLE_TO_ADD_MEMBER
+    assert payload[STD_JSON.ERRORS] == {
+        ADD_USER_FORM.USERNAME: [MEMBER_FAILURE.MEMBER_CANNOT_BE_ADDED]
+    }
+
+
+def test_hidden_unified_failures_each_consume_one_cap_unit(
+    every_user_in_every_utub, app: Flask
+):
+    """
+    GIVEN a hidden member list and a plain member with a zeroed counter
+    WHEN they hit the unknown-user and already-member branches
+    THEN each attempt consumed one daily-cap unit
+    """
+    set_members_settings(app, FIRST_UTUB_ID, HIDE_AND_ADD)
+    _drop_counter(app, SECOND_USER_ID)
+
+    try:
+        with logged_in_as(app, SECOND_USER_ID) as (client, csrf_token):
+            _add_with(client, csrf_token, UNKNOWN_USERNAME_BODY)
+            _add_with(client, csrf_token)
+
+        redis_client = _enforcement_redis(app)
+        assert int(redis_client.get(f"member-add-lookup:{SECOND_USER_ID}")) == 2
+        redis_client.close()
+    finally:
+        _drop_counter(app, SECOND_USER_ID)
+
+
+def test_hidden_plain_member_rate_limit_and_403_unchanged(
+    every_user_in_every_utub, app: Flask
+):
+    """
+    GIVEN a hidden member list
+    WHEN a plain member is at the daily cap, and when members_can_add is off
+    THEN the rate-limit 400 and the errorCode-7 403 are unchanged
+    """
+    set_members_settings(app, FIRST_UTUB_ID, HIDE_AND_ADD)
+    _enforcement_redis(app).close()
+
+    try:
+        _seed_counter(app, SECOND_USER_ID, MEMBER_ADD_DAILY_CAP_MEMBER)
+        with logged_in_as(app, SECOND_USER_ID) as (client, csrf_token):
+            limited = _add_with(client, csrf_token, UNKNOWN_USERNAME_BODY)
+            assert limited.status_code == 400
+            assert (
+                limited.get_json()[STD_JSON.MESSAGE]
+                == MEMBER_FAILURE.MEMBER_ADD_RATE_LIMITED
+            )
+
+            set_members_settings(
+                app, FIRST_UTUB_ID, {"members_can_add": False, "hide_member_list": True}
+            )
+            refused = _add_with(client, csrf_token)
+            assert refused.status_code == 403
+            assert _error_code(refused) == NOT_ALLOWED_CODE
+    finally:
+        _drop_counter(app, SECOND_USER_ID)
+
+
+@pytest.mark.parametrize("setting", [{"members_can_add": True}, HIDE_AND_ADD])
+def test_manager_keeps_distinct_add_errors(
+    every_user_in_every_utub, app: Flask, setting: dict[str, bool]
+):
+    """
+    GIVEN the setting off or on
+    WHEN a manager adds an unknown user, then an existing member
+    THEN the two responses stay distinct, as today
+    """
+    set_members_settings(app, FIRST_UTUB_ID, setting)
+
+    with logged_in_as(app, CREATOR_ID) as (client, csrf_token):
+        unknown = _add_with(client, csrf_token, UNKNOWN_USERNAME_BODY)
+        existing = _add_with(client, csrf_token)
+
+    assert unknown.status_code == existing.status_code == 400
+    assert _comparable(unknown) != _comparable(existing)
+    assert (
+        existing.get_json()[STD_JSON.MESSAGE] == MEMBER_FAILURE.MEMBER_ALREADY_IN_UTUB
+    )
+    assert unknown.get_json()[STD_JSON.ERRORS][ADD_USER_FORM.USERNAME] != [
+        MEMBER_FAILURE.MEMBER_CANNOT_BE_ADDED
+    ]
+
+
+def test_hidden_plain_member_add_succeeds_but_detail_omits_added_person(
+    every_user_in_every_utub, app: Flask
+):
+    """
+    GIVEN a hidden member list and members_can_add on
+    WHEN a plain member adds a user successfully, then fetches the UTub detail
+    THEN the add is 200 and the detail members list does not include the new person
+    """
+    remove_member(app, FIRST_UTUB_ID, TARGET_USER_ID)
+    set_members_settings(app, FIRST_UTUB_ID, HIDE_AND_ADD)
+
+    with logged_in_as(app, SECOND_USER_ID) as (client, csrf_token):
+        response = _add_with(client, csrf_token)
+        assert response.status_code == 200
+        assert _is_member(app, TARGET_USER_ID)
+
+        detail = client.get(
+            url_for(ROUTES.UTUBS.GET_SINGLE_UTUB, utub_id=FIRST_UTUB_ID)
+        )
+        member_ids = {item[MODELS.ID] for item in detail.get_json()[MODELS.MEMBERS]}
+        assert TARGET_USER_ID not in member_ids
+        assert member_ids == {CREATOR_ID, SECOND_USER_ID}
+
+        # Retyping the just-added name is the unified 400 (accepted, no client state)
+        again = _add_with(client, csrf_token)
+    assert again.status_code == 400
+    assert again.get_json()[STD_JSON.ERRORS] == {
+        ADD_USER_FORM.USERNAME: [MEMBER_FAILURE.MEMBER_CANNOT_BE_ADDED]
+    }
+
+
+# ---------------------------------------------------------------------------
 # Suggestions
 # ---------------------------------------------------------------------------
+
+
+def test_hidden_suggestions_empty_for_plain_member(
+    every_user_in_every_utub, app: Flask
+):
+    """
+    GIVEN a hidden member list, members_can_add on, and a user outside the UTub
+    WHEN a plain member loads suggestions
+    THEN 200 with an empty list
+    """
+    remove_member(app, FIRST_UTUB_ID, TARGET_USER_ID)
+    set_members_settings(app, FIRST_UTUB_ID, HIDE_AND_ADD)
+
+    response = _candidates_as(app, SECOND_USER_ID)
+
+    assert response.status_code == 200
+    assert response.get_json()[MODELS.MEMBERS] == []
+
+
+def test_suggestions_for_manager_identical_with_setting_on_and_off(
+    every_user_in_every_utub, app: Flask
+):
+    """
+    GIVEN a user outside the UTub
+    WHEN the owner loads suggestions with hide_member_list off, then on
+    THEN the two bodies are identical and non-empty
+    """
+    remove_member(app, FIRST_UTUB_ID, TARGET_USER_ID)
+    set_members_settings(app, FIRST_UTUB_ID, ADD_ALLOWED)
+
+    with logged_in_as(app, CREATOR_ID) as (client, _):
+        off_body = client.get(_candidates_url()).get_json()
+        set_members_settings(app, FIRST_UTUB_ID, HIDE_AND_ADD)
+        on_body = client.get(_candidates_url()).get_json()
+
+    assert on_body == off_body
+    assert on_body[MODELS.MEMBERS] != []
 
 
 def test_suggestions_refused_for_plain_member_when_off(
