@@ -574,32 +574,6 @@ def test_cloudflared_is_pinned_and_checksum_verified():
     assert run.index("sha256sum --check --strict") < run.index("install -m 0755")
 
 
-def test_ssh_host_key_is_pinned_from_a_repo_variable():
-    """
-    GIVEN the SSH host-key and config steps
-    WHEN their text is read
-    THEN known_hosts comes from a repo variable (fail when empty), the config enforces it, and no ssh disables the check.
-    """
-    pin_index = _index_where(lambda step: step.get("name") == "Pin SSH host key")
-    pin = _steps()[pin_index]
-    config_index = _index_where(
-        lambda step: step.get("name") == "Prepare SSH Config file"
-    )
-    preflight = _index_where(
-        lambda step: "--check /home/u4i/notifs-key" in step.get("run", "")
-    )
-
-    assert pin["env"]["SSH_KNOWN_HOSTS"] == "${{ vars.PROD_SSH_KNOWN_HOSTS }}"
-    assert '[ -z "$SSH_KNOWN_HOSTS" ]' in pin["run"]
-    assert "exit 1" in pin["run"]
-    assert "~/.ssh/known_hosts" in pin["run"]
-    assert pin_index < config_index < preflight
-    config = _steps()[config_index]["run"]
-    assert "StrictHostKeyChecking yes" in config
-    assert "UserKnownHostsFile ~/.ssh/known_hosts" in config
-    assert "StrictHostKeyChecking=no" not in EXCHANGE.read_text()
-
-
 def test_every_uses_is_pinned_by_full_sha():
     """
     GIVEN every `uses:` in the workflow

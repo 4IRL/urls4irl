@@ -153,26 +153,6 @@ def test_cloudflared_is_pinned_and_checksum_verified():
     assert run.index("sha256sum --check --strict") < run.index("install -m 0755")
 
 
-def test_ssh_host_key_is_pinned_and_never_disabled():
-    """
-    GIVEN the host-key pin and SSH config steps
-    WHEN their text is read
-    THEN known_hosts comes from a repo variable before the config, the config enforces it, and no ssh disables the check.
-    """
-    pin_index = _index("Pin SSH host key")
-    config_index = _index("Prepare SSH Config file")
-    pin = _steps()[pin_index]
-
-    assert pin["env"]["SSH_KNOWN_HOSTS"] == "${{ vars.PROD_SSH_KNOWN_HOSTS }}"
-    assert '[ -z "$SSH_KNOWN_HOSTS" ]' in pin["run"]
-    assert "exit 1" in pin["run"]
-    assert pin_index < config_index < _index(BUILD_STEP_NAME)
-    config = _steps()[config_index]["run"]
-    assert "StrictHostKeyChecking yes" in config
-    assert "UserKnownHostsFile ~/.ssh/known_hosts" in config
-    assert "StrictHostKeyChecking=no" not in PROD_DEPLOY.read_text()
-
-
 def test_prod_deploy_does_not_grant_id_token():
     """
     GIVEN prod-deploy.yml

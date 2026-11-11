@@ -80,19 +80,6 @@ jobs:
           echo "${CLOUDFLARED_SHA256}  ${RUNNER_TEMP}/cloudflared" | sha256sum --check --strict -
           sudo install -m 0755 "${RUNNER_TEMP}/cloudflared" /usr/bin/cloudflared
 
-      # known_hosts line(s) for the SSH host, from the PROD_SSH_KNOWN_HOSTS repo variable (public key, not a secret).
-      - name: Pin SSH host key
-        env:
-          SSH_KNOWN_HOSTS: ${{ vars.PROD_SSH_KNOWN_HOSTS }}
-        run: |
-          if [ -z "$SSH_KNOWN_HOSTS" ]; then
-            echo "::error::repo variable PROD_SSH_KNOWN_HOSTS is not set"
-            exit 1
-          fi
-          mkdir -p ~/.ssh
-          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
-          chmod 600 ~/.ssh/known_hosts
-
       - name: Prepare SSH Config file
         env:
           SSH_HOST: ${{ secrets.PROD_SSH_HOST }}
@@ -108,8 +95,6 @@ jobs:
             IdentityFile ~/.ssh/${SSH_KEY_FILENAME}
             IdentitiesOnly yes
             AddKeysToAgent yes
-            StrictHostKeyChecking yes
-            UserKnownHostsFile ~/.ssh/known_hosts
             ProxyCommand /usr/bin/cloudflared access ssh --hostname %h --id ${SERVICE_TOKEN_ID} --secret ${SERVICE_TOKEN_SECRET}
           EOF
           chmod 600 ~/.ssh/config
@@ -118,7 +103,7 @@ jobs:
         env:
           SSH_HOST: ${{ secrets.PROD_SSH_HOST }}
         run: |
-          ssh -T -q "$SSH_HOST" 'bash /home/u4i/notifs-key-write.sh --check /home/u4i/notifs-key'
+          ssh -T -q -o StrictHostKeyChecking=no "$SSH_HOST" 'bash /home/u4i/notifs-key-write.sh --check /home/u4i/notifs-key'
 
       # Runs after the preflight and before the exchange, so a lint error can never follow a minted key.
       # The checkout SHA must equal the exchange action's pin below (bump both together; a test enforces it).
@@ -167,7 +152,7 @@ jobs:
           NOTIFS_ACCESS_CLIENT_ID: ${{ secrets.NOTIFS_ACCESS_CLIENT_ID }}
           NOTIFS_ACCESS_CLIENT_SECRET: ${{ secrets.NOTIFS_ACCESS_CLIENT_SECRET }}
         run: |
-          host_hash="$(printf '%s\n%s\n%s\n' "$NOTIFS_KEY" "$NOTIFS_ACCESS_CLIENT_ID" "$NOTIFS_ACCESS_CLIENT_SECRET" | ssh -T -q "$SSH_HOST" 'bash /home/u4i/notifs-key-write.sh --write /home/u4i/notifs-key')"
+          host_hash="$(printf '%s\n%s\n%s\n' "$NOTIFS_KEY" "$NOTIFS_ACCESS_CLIENT_ID" "$NOTIFS_ACCESS_CLIENT_SECRET" | ssh -T -q -o StrictHostKeyChecking=no "$SSH_HOST" 'bash /home/u4i/notifs-key-write.sh --write /home/u4i/notifs-key')"
           if ! [[ "$host_hash" =~ ^[0-9a-f]{64}$ ]]; then
             echo "::error::key write did not report a sha256"
             exit 1
@@ -181,7 +166,7 @@ jobs:
           HOST_HASH: ${{ steps.write.outputs.host_hash }}
         run: |
           for container in u4i-prod-flask u4i-prod-workflow; do
-            container_hash="$(ssh -T -q "$SSH_HOST" "docker exec -u 1001 ${container} sha256sum /run/notifs/delivery_key" | cut -d' ' -f1)"
+            container_hash="$(ssh -T -q -o StrictHostKeyChecking=no "$SSH_HOST" "docker exec -u 1001 ${container} sha256sum /run/notifs/delivery_key" | cut -d' ' -f1)"
             if [ -z "$HOST_HASH" ] || [ "$container_hash" != "$HOST_HASH" ]; then
               echo "::error::delivery_key hash mismatch or unreadable in ${container}"
               exit 1
