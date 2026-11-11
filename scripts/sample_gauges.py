@@ -81,6 +81,8 @@ _metrics_strs_module = _load_module_direct(
     "_metrics_strs", "backend/utils/strings/metrics_strs.py"
 )
 _notify_module = _load_module_direct("_notify", "scripts/notify.py")
+_notifs_hub_module = _load_module_direct("_notifs_hub", "scripts/notifs_hub.py")
+safe_ping = _notifs_hub_module.safe_ping
 GaugeName = _gauges_module.GaugeName
 GAUGE_REGISTRY = _gauges_module.GAUGE_REGISTRY
 build_gauge_sql = _gauges_module.build_gauge_sql
@@ -315,9 +317,11 @@ if __name__ == "__main__":
         )
         elapsed_ms = int((time.time() - started_at) * 1000)
         logger.info("sampled=%d elapsed_ms=%d", sampled_rows, elapsed_ms)
+        safe_ping("gauge_sample", timeout_seconds=3.0)
         sys.exit(0)
     except Exception as sample_error:
         logger.exception("gauge sample failed: %s", sample_error)
+        safe_ping("gauge_sample", fail=True, timeout_seconds=3.0)
         sys.exit(1)
     finally:
         if pg_conn_main is not None:

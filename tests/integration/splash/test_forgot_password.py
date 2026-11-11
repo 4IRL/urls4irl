@@ -18,6 +18,7 @@ from backend.utils.strings.html_identifiers import IDENTIFIERS
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.reset_password_strs import FORGOT_PASSWORD, RESET_PASSWORD
 from backend.utils.strings.splash_form_strs import FORGOT_YOUR_PASSWORD
+from tests.integration.splash.conftest import patch_password_reset_email_spy
 from tests.integration.system.metrics_helpers import count_counter_keys
 from tests.integration.utils import assert_response_conforms_to_schema
 from tests.models_for_test import valid_user_1
@@ -191,6 +192,7 @@ def test_forgot_password_with_validated_email_records_metric(
     provide_metrics_redis,
     register_first_user,
     load_login_page,
+    monkeypatch,
 ):
     """
     GIVEN a registered email-validated user with metrics enabled
@@ -198,6 +200,9 @@ def test_forgot_password_with_validated_email_records_metric(
     THEN the request returns HTTP 200 AND exactly one PASSWORD_RESET_REQUESTED
         counter key is written to the metrics Redis DB.
     """
+    # The real send reaches api.mailjet.com (sandbox mode); a network refusal
+    # turned the 200 into a 400 under gate load, so this test stays hermetic.
+    patch_password_reset_email_spy(monkeypatch)
     new_user, _ = register_first_user
     client, csrf_token = load_login_page
 

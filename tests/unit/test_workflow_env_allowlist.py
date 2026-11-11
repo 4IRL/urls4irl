@@ -39,6 +39,7 @@ _PURGE_SHORT_LINKS_SCRIPT: Path = _PROJECT_ROOT / "scripts" / "purge_short_links
 _PURGE_INVITE_LINKS_SCRIPT: Path = _PROJECT_ROOT / "scripts" / "purge_invite_links.py"
 _SAMPLE_GAUGES_SCRIPT: Path = _PROJECT_ROOT / "scripts" / "sample_gauges.py"
 _NOTIFY_SCRIPT: Path = _PROJECT_ROOT / "scripts" / "notify.py"
+_NOTIFS_HUB_SCRIPT: Path = _PROJECT_ROOT / "scripts" / "notifs_hub.py"
 _BACKUP_SENTINEL_SCRIPT: Path = _PROJECT_ROOT / "scripts" / "backup_sentinel.py"
 _RUN_BACKUP_IF_REQUESTED_SCRIPT: Path = (
     _PROJECT_ROOT / "scripts" / "run_backup_if_requested.py"
@@ -262,6 +263,19 @@ def test_allow_list_covers_notify_env_reads():
     assert reads <= _ALLOWED, (
         f"notify.py reads {sorted(reads - _ALLOWED)} not in ALLOW_VARS"
     )
+
+
+def test_allow_list_covers_notifs_hub_env_reads():
+    """
+    GIVEN the env-var keys read by scripts/notifs_hub.py
+    WHEN they are compared against ALLOW_VARS
+    THEN every read key is present in ALLOW_VARS (and the key itself never is).
+    """
+    reads = _walk_env_reads(_NOTIFS_HUB_SCRIPT.read_text())
+    assert reads <= _ALLOWED, (
+        f"notifs_hub.py reads {sorted(reads - _ALLOWED)} not in ALLOW_VARS"
+    )
+    assert {"PRODUCTION", "NOTIFS_BASE_URL", "NOTIFS_KEY_DIR"} <= _ALLOWED
 
 
 def test_allow_list_covers_backup_sentinel_env_reads():

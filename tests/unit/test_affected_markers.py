@@ -734,6 +734,44 @@ def test_env_example_selects_host_static_only() -> None:
     assert not selection.everything
 
 
+@pytest.mark.parametrize(
+    "path",
+    [
+        ".github/workflows/prod-deploy.yml",
+        ".github/workflows/notifs-exchange.yml",
+        ".notifs/manifest.json",
+        "scripts/notifs-key-write.sh",
+        "scripts/notifs-resolve-release-sha.sh",
+        "tests/unit/fixtures/notifs_exchange/dispatch_main.json",
+    ],
+)
+def test_notifs_host_inputs_select_host_static_only(path: str) -> None:
+    """
+    GIVEN a notifs deploy input read only by host-static tests (workflows under the `.github/*` no-impact
+        glob, the manifest, the two bash scripts, the exchange fixtures)
+    WHEN it resolves
+    THEN host_static is set, no markers, and no broader scripts/*.sh, tests/unit/* or .github/* row swallows it
+    """
+    selection = _resolve([path])
+
+    assert selection.host_static
+    assert selection.markers == frozenset()
+    assert not selection.everything
+
+
+def test_notifs_hub_client_selects_host_static_and_unit() -> None:
+    """
+    GIVEN scripts/notifs_hub.py, a host-static input that also has unit tests
+    WHEN it resolves
+    THEN host_static is set AND the `unit` marker is selected
+    """
+    selection = _resolve(["scripts/notifs_hub.py"])
+
+    assert selection.host_static
+    assert selection.markers == {"unit"}
+    assert not selection.everything
+
+
 def test_env_example_test_selects_host_static_and_unit() -> None:
     """
     GIVEN tests/unit/test_env_example.py, a host-static test

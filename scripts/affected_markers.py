@@ -172,6 +172,9 @@ NO_IMPACT_GLOBS: tuple[str, ...] = (
 NO_IMPACT_EXEMPT: tuple[str, ...] = (
     "docs/endpoints/ENDPOINT_REGISTRY.md",
     ".env.example",
+    # Host-static inputs under the `.github/*` no-impact glob.
+    ".github/workflows/prod-deploy.yml",
+    ".github/workflows/notifs-exchange.yml",
 )
 
 # Everything: shared fixtures, app factory, models, shared strings/schemas,
@@ -277,6 +280,18 @@ HOST_STATIC_GLOBS: tuple[str, ...] = (
     ".env.example",
     "tests/unit/test_makefile_profiles.py",
     "tests/unit/test_compose_hub.py",
+    "tests/unit/test_compose_prod_key_mount.py",
+    "scripts/notifs_hub.py",
+    "scripts/notifs-key-write.sh",
+    ".github/workflows/prod-deploy.yml",
+    "tests/unit/test_notifs_key_write.py",
+    "tests/unit/test_prod_deploy_key_dir.py",
+    ".github/workflows/notifs-exchange.yml",
+    ".notifs/manifest.json",
+    "scripts/notifs-resolve-release-sha.sh",
+    "tests/unit/fixtures/notifs_exchange/*",
+    "tests/unit/test_notifs_exchange_workflow.py",
+    "tests/unit/test_notifs_resolve_release_sha.py",
     "tests/unit/test_compose_profiles.py",
     "tests/unit/test_audit_pins.py",
     "tests/unit/test_playwright_entrypoint.py",
@@ -321,6 +336,13 @@ PATH_MARKERS: tuple[MarkerRow, ...] = (
     (".env.example", ()),
     # Ahead of scripts/*.sh (unit, admin): the worktree script is exercised only by host-static tests.
     ("scripts/worktree.sh", ()),
+    ("scripts/notifs-key-write.sh", ()),
+    ("scripts/notifs-resolve-release-sha.sh", ()),
+    (".github/workflows/prod-deploy.yml", ()),
+    (".github/workflows/notifs-exchange.yml", ()),
+    (".notifs/manifest.json", ()),
+    # Ahead of tests/unit/*: fixtures are read only by the host-static exchange test.
+    ("tests/unit/fixtures/notifs_exchange/*", ()),
     ("docs/endpoints/endpoint-registry.json", ("unit", "cli")),
     ("docs/endpoints/ENDPOINT_REGISTRY.md", ("unit", "cli")),
     # --- tests -----------------------------------------------------------
@@ -529,6 +551,7 @@ PATH_MARKERS: tuple[MarkerRow, ...] = (
     ("scripts/purge_trash.py", ("unit", "trash")),
     ("scripts/purge_short_links.py", ("unit", "short_links")),
     ("scripts/purge_invite_links.py", ("unit", "invite_links")),
+    ("scripts/notifs_hub.py", ("unit",)),
     ("scripts/*.py", ("unit",)),
     ("scripts/*.sh", ("unit", "admin")),
 )

@@ -29,6 +29,8 @@ from pathlib import Path
 import psycopg2
 import psycopg2.extensions
 
+from scripts.notifs_hub import safe_ping
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -157,9 +159,11 @@ if __name__ == "__main__":
             INVITE_LINK_PURGE_RETENTION_DAYS,
             elapsed_ms,
         )
+        safe_ping("purge_invite_links")
         sys.exit(0)
     except Exception as purge_error:
         logger.exception("invite link purge failed: %s", purge_error)
+        safe_ping("purge_invite_links", fail=True)
         sys.exit(1)
     finally:
         if pg_conn_main is not None:
