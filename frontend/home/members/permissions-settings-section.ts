@@ -14,7 +14,10 @@ import type {
 
 const SECTION_ID = "members-permissions";
 
-type PermissionKey = "co_owners_can_remove" | "members_can_add";
+type PermissionKey =
+  | "co_owners_can_remove"
+  | "members_can_add"
+  | "hide_member_list";
 
 interface PermissionRow {
   key: PermissionKey;
@@ -45,6 +48,16 @@ const ROWS: PermissionRow[] = [
       APP_CONFIG.strings.MEMBERS_PERMISSIONS_MEMBERS_ADD_ON_NOTICE,
     offNotice: () =>
       APP_CONFIG.strings.MEMBERS_PERMISSIONS_MEMBERS_ADD_OFF_NOTICE,
+  },
+  {
+    key: "hide_member_list",
+    prefix: "membersPermissionsHideList",
+    label: () => APP_CONFIG.strings.MEMBERS_PERMISSIONS_HIDE_MEMBER_LIST_LABEL,
+    desc: () => APP_CONFIG.strings.MEMBERS_PERMISSIONS_HIDE_MEMBER_LIST_DESC,
+    onNotice: () =>
+      APP_CONFIG.strings.MEMBERS_PERMISSIONS_HIDE_MEMBER_LIST_ON_NOTICE,
+    offNotice: () =>
+      APP_CONFIG.strings.MEMBERS_PERMISSIONS_HIDE_MEMBER_LIST_OFF_NOTICE,
   },
 ];
 

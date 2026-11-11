@@ -6,6 +6,10 @@ from typing import TYPE_CHECKING, Literal
 
 from pydantic import Field, field_serializer
 
+from backend.members.member_visibility import (
+    member_list_hidden_for,
+    viewer_is_manager_from_role,
+)
 from backend.schemas.base import BaseSchema, StatusMessageResponseSchema
 from backend.utils.datetime_utils import to_iso_milliseconds
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
@@ -97,9 +101,9 @@ class UtubSummaryItemSchema(BaseSchema):
         alias=MODELS.URL_COUNT,
         description="Number of live (non-trashed) URLs in the UTub",
     )
-    member_count: int = Field(
+    member_count: int | None = Field(
         alias=MODELS.MEMBER_COUNT,
-        description="Number of members of the UTub",
+        description="Number of members of the UTub, null when hidden from this viewer",
     )
     created_at: datetime = Field(
         alias=MODELS.CREATED_AT,
@@ -205,7 +209,16 @@ class UtubSummaryListSchema(BaseSchema):
                     is_locked=membership.to_utub.is_locked,
                     is_pinned=membership.pinned_at is not None,
                     url_count=counts[membership.to_utub.id][0],
-                    member_count=counts[membership.to_utub.id][1],
+                    member_count=(
+                        None
+                        if member_list_hidden_for(
+                            settings=membership.to_utub.settings,
+                            viewer_is_manager=viewer_is_manager_from_role(
+                                membership.member_role.value
+                            ),
+                        )
+                        else counts[membership.to_utub.id][1]
+                    ),
                     created_at=membership.to_utub.created_at,
                     last_updated=membership.to_utub.last_updated,
                     last_opened_at=membership.last_opened_at,

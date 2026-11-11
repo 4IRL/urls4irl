@@ -18,7 +18,6 @@ from tests.functional.home_ui.test_panel_settings_mobile_ui import (
     _SHEET_OPEN_CLASS_RE,
     _close_sheet_via_close_button,
     _expect_sheet_closed,
-    _go_to_deck_via_navbar,
 )
 from tests.functional.home_ui.test_utub_list_settings_ui import (
     DECK_NAMES,
@@ -39,6 +38,7 @@ from tests.functional.playwright_login_utils import (
     login_user_and_select_utub_by_utubid_mobile,
 )
 from tests.functional.playwright_utils import (
+    go_to_deck_via_navbar,
     login_user_to_home_page,
     wait_for_css_transitions_to_finish,
 )
@@ -161,7 +161,7 @@ def test_gear_is_reachable_after_selecting_a_utub_by_reopening_the_deck(
         app=app, page=page, user_id=USER_ID_FOR_TEST, utub_id=utub_id
     )
     expect(page.locator(HPL.LEFT_PANEL)).to_be_hidden()
-    _go_to_deck_via_navbar(page, HPL.NAVBAR_UTUB_DECK)
+    go_to_deck_via_navbar(page=page, navbar_selector=HPL.NAVBAR_UTUB_DECK)
 
     _open_utubs_sheet(page=page)
     counts_switch(page=page, surface=SHEET).tap()

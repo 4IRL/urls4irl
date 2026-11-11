@@ -43,15 +43,19 @@ from backend.models.user_preferences import (
     ViewMode,
 )
 from backend.models.users import Users
-from backend.models.utub_members import Utub_Members
+from backend.models.utub_members import Member_Role, Utub_Members
+from backend.models.utub_tags import Utub_Tags
 from backend.models.utubs import Utubs
 from backend.schemas.exports import UserDataExportResponseSchema
 from backend.users.constants import DATA_EXPORT_RATE_LIMIT, DataExportErrorCodes
-from backend.users.services.data_export_service import build_user_data_export_core
+from backend.users.services.data_export_service import (
+    build_user_data_export_core,
+)
 from backend.utils.all_routes import ROUTES
 from backend.utils.datetime_utils import utc_now
 from backend.utils.strings.html_identifiers import IDENTIFIERS
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
+from backend.utils.strings.url_strs import HIDDEN_MEMBER_LABEL
 from tests.conftest import AjaxFlaskLoginClient
 from tests.integration.system.metrics_helpers import count_counter_keys
 from tests.integration.utils import assert_response_conforms_to_schema
@@ -589,3 +593,142 @@ def test_data_export_records_data_exported_metric(
         assert response.status_code == 200
 
     assert count_counter_keys(provide_metrics_redis, EventName.DATA_EXPORTED) == 1
+
+
+# --------------------------------------------------------------------------- #
+# Hide member list: the export honors the viewer's visible set
+# --------------------------------------------------------------------------- #
+
+
+def _export_for(app: Flask, hide_list_client, user_id: int) -> tuple[dict, str]:
+    """Export as ``user_id``; returns the parsed ``export`` block and the raw body."""
+    client = hide_list_client(user_id)
+    with app.test_request_context():
+        export_url = url_for(ROUTES.USERS.DATA_EXPORT, user_id=user_id)
+    response = client.get(export_url)
+    assert response.status_code == 200
+    return response.get_json()["export"], response.get_data(as_text=True)
+
+
+def _add_tag_created_by(app: Flask, utub_id: int, user_id: int) -> None:
+    with app.app_context():
+        db.session.add(
+            Utub_Tags(utub_id=utub_id, tag_string="hidetag", created_by=user_id)
+        )
+        db.session.commit()
+
+
+def test_data_export_hides_hidden_members_from_plain_member(
+    app: Flask, seed_hide_list, hide_list_client
+) -> None:
+    """
+    GIVEN a hidden-list UTub (owner, co-owner, plain members A and B, a former member)
+        where B added a URL and created a tag
+    WHEN plain member A exports their data
+    THEN members hold only the owner, the co-owner and A, B's URL and tag are
+        attributed to "a member", B's username is nowhere in the body, and the
+        former member's, A's, the owner's and the co-owner's names are kept
+    """
+    seed = seed_hide_list(True)
+    _add_tag_created_by(app, seed.utub_id, seed.member_b_id)
+
+    export, body = _export_for(app, hide_list_client, seed.member_a_id)
+
+    (utub_export,) = export["utubs"]
+    assert {member["username"] for member in utub_export["members"]} == {
+        seed.usernames[seed.owner_id],
+        seed.usernames[seed.co_owner_id],
+        seed.usernames[seed.member_a_id],
+    }
+    added_by = {url["addedBy"] for url in utub_export["urls"]}
+    assert added_by == {
+        seed.usernames[seed.owner_id],
+        seed.usernames[seed.co_owner_id],
+        seed.usernames[seed.member_a_id],
+        seed.usernames[seed.former_member_id],
+        HIDDEN_MEMBER_LABEL,
+    }
+    assert [tag["createdBy"] for tag in utub_export["tags"]] == [HIDDEN_MEMBER_LABEL]
+    assert seed.usernames[seed.member_b_id] not in body
+
+
+@pytest.mark.parametrize("viewer", ["owner_id", "co_owner_id"])
+def test_data_export_is_unchanged_for_managers_when_list_hidden(
+    app: Flask, seed_hide_list, hide_list_client, viewer: str
+) -> None:
+    """
+    GIVEN a hidden-list UTub
+    WHEN the owner or co-owner exports their data
+    THEN every current member is listed and every adder keeps their username
+    """
+    seed = seed_hide_list(True)
+    _add_tag_created_by(app, seed.utub_id, seed.member_b_id)
+
+    export, _ = _export_for(app, hide_list_client, getattr(seed, viewer))
+
+    (utub_export,) = export["utubs"]
+    assert {member["username"] for member in utub_export["members"]} == {
+        seed.usernames[user_id] for user_id in seed.current_member_ids
+    }
+    assert {url["addedBy"] for url in utub_export["urls"]} == set(
+        seed.usernames.values()
+    )
+    assert [tag["createdBy"] for tag in utub_export["tags"]] == [
+        seed.usernames[seed.member_b_id]
+    ]
+
+
+@pytest.mark.parametrize("hide_member_list", [False, None])
+def test_data_export_is_unchanged_for_plain_member_when_list_visible(
+    app: Flask, seed_hide_list, hide_list_client, hide_member_list: bool | None
+) -> None:
+    """
+    GIVEN a UTub whose member list is not hidden (stored False or absent)
+    WHEN plain member A exports their data
+    THEN every current member and every adder is named
+    """
+    seed = seed_hide_list(hide_member_list)
+
+    export, _ = _export_for(app, hide_list_client, seed.member_a_id)
+
+    (utub_export,) = export["utubs"]
+    assert {member["username"] for member in utub_export["members"]} == {
+        seed.usernames[user_id] for user_id in seed.current_member_ids
+    }
+    assert HIDDEN_MEMBER_LABEL not in {url["addedBy"] for url in utub_export["urls"]}
+
+
+def test_data_export_masking_is_per_utub(
+    app: Flask, seed_hide_list, hide_list_client
+) -> None:
+    """
+    GIVEN plain member A in a hidden-list UTub and in a second UTub with no hide
+        setting, B being a member of both
+    WHEN A exports their data
+    THEN B is named in the second UTub's members and masked in the first
+    """
+    seed = seed_hide_list(True)
+    with app.app_context():
+        second = Utubs(
+            name="Visible UTub", utub_creator=seed.owner_id, utub_description=""
+        )
+        for user_id, role in (
+            (seed.owner_id, Member_Role.CREATOR),
+            (seed.member_a_id, Member_Role.MEMBER),
+            (seed.member_b_id, Member_Role.MEMBER),
+        ):
+            membership = Utub_Members(member_role=role)
+            membership.to_user = Users.query.get(user_id)
+            second.members.append(membership)
+        db.session.add(second)
+        db.session.commit()
+        second_name = second.name
+
+    export, _ = _export_for(app, hide_list_client, seed.member_a_id)
+
+    members_by_utub = {
+        utub_export["name"]: {member["username"] for member in utub_export["members"]}
+        for utub_export in export["utubs"]
+    }
+    assert seed.usernames[seed.member_b_id] in members_by_utub[second_name]
+    assert seed.usernames[seed.member_b_id] not in members_by_utub["Hide list UTub"]

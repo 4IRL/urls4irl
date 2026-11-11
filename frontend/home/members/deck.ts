@@ -15,7 +15,11 @@ import {
 } from "./members.js";
 import { compareMembers } from "./sort.js";
 import { closeMemberRowMenuInRow } from "./row-menu.js";
-import { canAddMembers, viewerRoleFor } from "../utubs/policy.js";
+import {
+  canAddMembers,
+  isMemberListHiddenForViewer,
+  viewerRoleFor,
+} from "../utubs/policy.js";
 import { withMemberControlFocusFallback } from "./focus-fallback.js";
 import { clearMemberDeckNotice } from "./notice.js";
 import { seedMemberDeckPolicySnapshot } from "./policy-attrs.js";
@@ -190,33 +194,39 @@ export function updateMemberDeck(
     oldMembers.map((member) => [member.id, member.memberRole]),
   );
 
-  applyDeckDiff<MemberItem>({
-    oldItems: oldMembers,
-    newItems: newMembers,
-    getID: (member) => member.id,
-    removeElement: (memberID) =>
-      $(".member[memberid=" + memberID + "]").remove(),
-    addElement: (member) => {
-      $("#listMembers").append(
-        createMemberBadge({
-          memberID: member.id,
-          username: member.username,
-          memberRole: member.memberRole,
-          viewerRole: viewerRoleFor({
-            isCurrentUserOwner,
-            isCoCreator: getState().isCoCreator,
-          }),
-          utubID,
-        }),
-      );
-    },
-    // DD-7: a role flip arriving via STALE_DATA_DETECTED/refresh (not just the
-    // local grant/revoke success path) gets the same targeted swap. Uses the
-    // exact helper the Step-4 success handler uses so the paths never drift.
-    updateElement: (id, member) => {
-      if (oldRoleByID.get(id) === member.memberRole) return;
-      swapMemberRoleInRow({ memberID: id, targetRole: member.memberRole });
-    },
+  // A refresh-driven removal (including the hide-list flip) can drop the row or
+  // kebab that holds focus: fall back to the deck header, never <body>.
+  withMemberControlFocusFallback({
+    coverList: true,
+    write: () =>
+      applyDeckDiff<MemberItem>({
+        oldItems: oldMembers,
+        newItems: newMembers,
+        getID: (member) => member.id,
+        removeElement: (memberID) =>
+          $(".member[memberid=" + memberID + "]").remove(),
+        addElement: (member) => {
+          $("#listMembers").append(
+            createMemberBadge({
+              memberID: member.id,
+              username: member.username,
+              memberRole: member.memberRole,
+              viewerRole: viewerRoleFor({
+                isCurrentUserOwner,
+                isCoCreator: getState().isCoCreator,
+              }),
+              utubID,
+            }),
+          );
+        },
+        // DD-7: a role flip arriving via STALE_DATA_DETECTED/refresh (not just the
+        // local grant/revoke success path) gets the same targeted swap. Uses the
+        // exact helper the Step-4 success handler uses so the paths never drift.
+        updateElement: (id, member) => {
+          if (oldRoleByID.get(id) === member.memberRole) return;
+          swapMemberRoleInRow({ memberID: id, targetRole: member.memberRole });
+        },
+      }),
   });
 
   reapplyMemberFilter();
@@ -363,7 +373,10 @@ export function setMemberDeckForUTub(): void {
   }
 
   // Inline member total next to the deck title (replaces the subheader band)
-  $("#MemberDeckCount").text("(" + numOfMembers + ")");
+  // A viewer who cannot see the member list never sees a total either.
+  $("#MemberDeckCount").text(
+    isMemberListHiddenForViewer() ? "" : "(" + numOfMembers + ")",
+  );
 }
 
 on(

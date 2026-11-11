@@ -287,6 +287,10 @@ def _revive_trashed_url_on_edit(
             current_utub=current_utub, url=revived_url, had_tracking=had_tracking
         )
 
+    # Unfiltered member set on purpose: the revive response carries no hide-list mask.
+    # The route decorator (_actor_may_act_as_url_adder) lets a plain member edit only a
+    # URL they added or one whose adder left, so for a plain member the revived adder
+    # below is always themself; a manager can edit anyone's URL but is never hidden.
     member_ids: set[int] = {member.user_id for member in current_utub.members}
     can_keep_tags: bool = can_act_as_url_adder(
         adder_id=locked_trashed.user_id,

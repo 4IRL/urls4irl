@@ -34,10 +34,11 @@ class UtubUrlSchema(BaseSchema):
     added_at: datetime = Field(
         alias="addedAt", description="Timestamp the URL was added to the UTub"
     )
-    added_by_user_id: int = Field(
+    added_by_user_id: int | None = Field(
         alias=ADDED_BY,
         description="User ID of the member who added this URL to the UTub "
-        "(resolved to a username on the frontend via the UTub member list)",
+        "(resolved to a username on the frontend via the UTub member list); "
+        "null means the adder is hidden from this viewer",
     )
     short_link_expires_at: datetime | None = Field(
         alias=MODELS.SHORT_LINK_EXPIRES_AT,
@@ -57,7 +58,22 @@ class UtubUrlSchema(BaseSchema):
         current_user_id: int,
         viewer_is_manager: bool,
         member_ids: AbstractSet[int],
+        *,
+        visible_member_ids: AbstractSet[int] | None,
     ) -> UtubUrlSchema:
+        """Serialize a URL for a viewer.
+
+        ``visible_member_ids`` has no default on purpose: ``None`` means "show every
+        adder", so callers must pass it deliberately. An adder who is a current member
+        (in ``member_ids``) but outside a non-None ``visible_member_ids`` is masked to
+        ``None``; a former member keeps their id.
+        """
+        adder_id = utub_url.user_id
+        masked_adder = (
+            visible_member_ids is not None
+            and adder_id in member_ids
+            and adder_id not in visible_member_ids
+        )
         short_link = utub_url.short_link
         active_short_link = (
             short_link
@@ -89,7 +105,7 @@ class UtubUrlSchema(BaseSchema):
                 member_ids=member_ids,
             ),
             added_at=utub_url.added_at,
-            added_by_user_id=utub_url.user_id,
+            added_by_user_id=None if masked_adder else adder_id,
         )
 
     @field_serializer("added_at")

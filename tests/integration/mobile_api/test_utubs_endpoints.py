@@ -46,7 +46,12 @@ from tests.settings_stub import (
     URLS_DEFAULTS,
     patch_settings_model,
 )
-from tests.utils_for_test import add_short_link, get_utub_url_id, trash_utub
+from tests.utils_for_test import (
+    add_short_link,
+    assert_hidden_list_detail,
+    get_utub_url_id,
+    trash_utub,
+)
 
 pytestmark = pytest.mark.mobile_api
 
@@ -379,6 +384,83 @@ def test_get_utubs_empty_returns_empty_list(
     response_json = response.get_json()
     assert response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert response_json[_UTUBS_KEY] == []
+
+
+@pytest.mark.parametrize(
+    "viewer, expect_hidden",
+    [
+        ("member_a_id", True),
+        ("member_b_id", True),
+        ("owner_id", False),
+        ("co_owner_id", False),
+    ],
+)
+def test_get_utubs_hidden_member_count(
+    app: Flask,
+    api_client: FlaskClient,
+    seed_hide_list,
+    make_bearer_headers,
+    viewer: str,
+    expect_hidden: bool,
+):
+    """
+    GIVEN a UTub whose owner hid the member list from plain members
+    WHEN each role GETs /api/v1/utubs
+    THEN a plain member gets memberCount null and everyone else the real total
+    """
+    _assert_member_count(
+        app=app,
+        api_client=api_client,
+        seed=seed_hide_list(True),
+        make_bearer_headers=make_bearer_headers,
+        viewer=viewer,
+        expect_hidden=expect_hidden,
+    )
+
+
+@pytest.mark.parametrize("hide_member_list", [False, None])
+def test_get_utubs_unhidden_plain_member_gets_int_count(
+    app: Flask,
+    api_client: FlaskClient,
+    seed_hide_list,
+    make_bearer_headers,
+    hide_member_list: bool | None,
+):
+    """
+    GIVEN a UTub whose member list is explicitly shown (False) or unset (None)
+    WHEN a plain member GETs /api/v1/utubs
+    THEN memberCount is the real integer total
+    """
+    _assert_member_count(
+        app=app,
+        api_client=api_client,
+        seed=seed_hide_list(hide_member_list),
+        make_bearer_headers=make_bearer_headers,
+        viewer="member_a_id",
+        expect_hidden=False,
+    )
+
+
+def _assert_member_count(
+    app: Flask,
+    api_client: FlaskClient,
+    seed,
+    make_bearer_headers,
+    viewer: str,
+    expect_hidden: bool,
+) -> None:
+
+    viewer_id: int = getattr(seed, viewer)
+
+    response = api_client.get(
+        _get_utubs_url(app),
+        headers=make_bearer_headers(_token_for_user(app, viewer_id)),
+    )
+
+    assert response.status_code == 200
+    (item,) = response.get_json()[_UTUBS_KEY]
+    expected = None if expect_hidden else len(seed.current_member_ids)
+    assert item[MODELS.MEMBER_COUNT] == expected
 
 
 def test_get_utubs_no_token_is_401(app: Flask, api_client: FlaskClient):
@@ -745,6 +827,34 @@ def test_get_single_utub_as_co_creator(
         if member[MODELS.ID] == creator_id
     )
     assert creator_entry[MODELS.MEMBER_ROLE] == Member_Role.CREATOR.value
+
+
+@pytest.mark.parametrize(
+    "viewer", ["member_a_id", "member_b_id", "owner_id", "co_owner_id"]
+)
+def test_get_single_utub_hidden_member_list(
+    app: Flask,
+    api_client: FlaskClient,
+    seed_hide_list,
+    make_bearer_headers,
+    viewer: str,
+):
+    """
+    GIVEN a UTub whose owner hid the member list from plain members
+    WHEN each role GETs /api/v1/utubs/<id>
+    THEN a plain member sees only owner, co-owner and self with null hidden adders,
+        while the owner and co-owner see everyone
+    """
+    seed = seed_hide_list(True)
+    viewer_id: int = getattr(seed, viewer)
+
+    response = api_client.get(
+        _get_single_utub_url(app, utub_id=seed.utub_id),
+        headers=make_bearer_headers(_token_for_user(app, viewer_id)),
+    )
+
+    assert response.status_code == 200
+    assert_hidden_list_detail(response.get_json(), seed, viewer_id)
 
 
 def test_get_single_utub_no_token_is_401(app: Flask, api_client: FlaskClient):

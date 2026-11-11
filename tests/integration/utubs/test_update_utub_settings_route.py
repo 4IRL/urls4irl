@@ -1013,7 +1013,7 @@ def test_plain_member_cannot_patch_allow_short_links(
 # Owner-only members keys
 # --------------------------------------------------------------------------
 
-MEMBERS_KEYS = ("co_owners_can_remove", "members_can_add")
+MEMBERS_KEYS = ("co_owners_can_remove", "members_can_add", "hide_member_list")
 
 
 def _assert_not_authorized(response: TestResponse) -> None:
@@ -1044,6 +1044,7 @@ def test_owner_can_set_each_members_key(
         "members": expected,
     }
     assert _stored_settings(app) == {"members": {key: True}}
+    assert _get_detail_settings(app, client)["members"][key] is True
 
 
 @pytest.mark.parametrize("key", MEMBERS_KEYS)
@@ -1138,8 +1139,9 @@ def test_owner_non_boolean_members_value_returns_400(
     assert _stored_settings(app) is None
 
 
+@pytest.mark.parametrize("key", MEMBERS_KEYS)
 def test_locked_utub_members_patch_co_owner_gets_not_authorized(
-    add_multiple_users_to_utub_without_logging_in, app
+    add_multiple_users_to_utub_without_logging_in, app, key
 ):
     """
     GIVEN a locked UTub
@@ -1150,17 +1152,17 @@ def test_locked_utub_members_patch_co_owner_gets_not_authorized(
     lock_utub(app, UTUB_ID_VALUE)
 
     with _client_for(app, CO_OWNER_ID) as (client, csrf_token):
-        response = _patch(
-            app, client, csrf_token, {"members": {"members_can_add": True}}
-        )
+        response = _patch(app, client, csrf_token, {"members": {key: True}})
 
     _assert_not_authorized(response)
     assert _stored_settings(app) is None
 
 
+@pytest.mark.parametrize("key", MEMBERS_KEYS)
 def test_locked_utub_members_patch_owner_gets_utub_is_locked(
     add_multiple_users_to_utub_without_logging_in,
     login_first_user_without_register,
+    key,
 ):
     """
     GIVEN a locked UTub
@@ -1170,7 +1172,7 @@ def test_locked_utub_members_patch_owner_gets_utub_is_locked(
     client, csrf_token, _, app = login_first_user_without_register
     lock_utub(app, UTUB_ID_VALUE)
 
-    response = _patch(app, client, csrf_token, {"members": {"members_can_add": True}})
+    response = _patch(app, client, csrf_token, {"members": {key: True}})
 
     assert response.status_code == 403
     assert response.json[STD_JSON.ERROR_CODE] == UTubErrorCodes.UTUB_IS_LOCKED
@@ -1267,4 +1269,5 @@ def test_detail_payload_shows_members_keys_false_by_default(
     assert _get_detail_settings(app, client)["members"] == {
         "co_owners_can_remove": False,
         "members_can_add": False,
+        "hide_member_list": False,
     }

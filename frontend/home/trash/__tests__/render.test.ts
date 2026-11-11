@@ -186,6 +186,20 @@ describe("trash rows", () => {
     expect(row.find(".t-meta").text()).toBe("Deleted by you · 2 days ago");
   });
 
+  it("renders 'a member' when the deleter is hidden from the viewer", () => {
+    const row = buildTrashUrlRow({
+      item: makeUrlItem({
+        deletedByUserID: null,
+        deletedByUsername: null,
+        addedByUserID: null,
+        addedByUsername: null,
+      }),
+      currentUserID: CURRENT_USER,
+      now: NOW,
+    });
+    expect(row.find(".t-meta").text()).toBe("Deleted by a member · 2 days ago");
+  });
+
   it("marks a trashed-origin row with the dashed chip and a listbox Restore to…", () => {
     const row = buildTrashUrlRow({
       item: makeUrlItem({ originUtubTrashed: true }),

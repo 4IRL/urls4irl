@@ -710,6 +710,20 @@ def get_url_row_by_id(*, page: Page, utub_url_id: int) -> Locator:
     return url_row
 
 
+def refocus_window(*, page: Page) -> None:
+    """Fire the window blur -> focus pair that triggers a refresh-on-focus.
+
+    A synthetic visibilitychange keeps visibilityState "visible" in headless
+    Chromium, so the blur -> focus pair is the portable trigger.
+    """
+    page.evaluate(
+        """() => {
+            window.dispatchEvent(new Event('blur'));
+            window.dispatchEvent(new Event('focus'));
+        }"""
+    )
+
+
 # JS-injection helpers (twin the Selenium execute_script bodies verbatim)
 def invalidate_csrf_token_on_page(*, page: Page) -> None:
     page.evaluate("""() => {
@@ -1041,6 +1055,16 @@ def click_on_navbar(*, page: Page) -> None:
     page.locator(GenericPageLocator.NAVBAR_TOGGLER).click()
     expect(navbar_dropdown).to_have_class(re.compile(r"(^|\s)show(\s|$)"))
     expect(navbar_dropdown).not_to_have_class(re.compile(r"collapsing"))
+
+
+def go_to_deck_via_navbar(*, page: Page, navbar_selector: str) -> None:
+    """On a phone, switch decks by opening the navbar dropdown and clicking the
+    given deck entry, then wait for the dropdown's collapse to finish."""
+    click_on_navbar(page=page)
+    wait_then_click_element(page=page, css_selector=navbar_selector)
+    wait_for_class_to_be_removed(
+        page=page, css_selector=HPL.NAVBAR_DROPDOWN, class_name="collapsing"
+    )
 
 
 def close_navbar(*, page: Page) -> None:
