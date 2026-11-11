@@ -24,7 +24,7 @@ cloudflared is installed from an exact release with its sha256 verified; bump `C
 
 ## First run and approval
 
-Run the first exchange only after the first production deploy that contains this change; before it, the key-directory preflight fails because the directory and `notifs-key-write.sh` are not on the host yet. A `workflow_dispatch` `sha` must be reachable from `main` (the resolver refuses anything else).
+Run the first exchange only after the first production deploy that contains this change; before it, the key-directory preflight fails because the directory and `notifs-key-write.sh` are not on the host yet. A `workflow_dispatch` `sha` and a `workflow_run` head sha must both be reachable from `main` (the resolver refuses anything else), and only `.notifs/manifest.json` is checked out from that commit.
 
 The first exchange files an identity request and the action fails ("pending") until the operator approves it in the hub admin UI. Approve, then re-run: `workflow_dispatch` from `main` (leave `sha` empty for the latest release, or pass a commit). Verify the checks appear in the hub and that a ping returns 200.
 

@@ -59,6 +59,8 @@ jobs:
         with:
           ref: ${{ steps.resolve.outputs.sha }}
           persist-credentials: false
+          sparse-checkout: .notifs/manifest.json
+          sparse-checkout-cone-mode: false
           path: release
 
       - name: Install SSH key

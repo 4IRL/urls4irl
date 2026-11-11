@@ -95,19 +95,57 @@ def _gh_calls(env: dict[str, str]) -> list[str]:
     return Path(env["STUB_LOG"]).read_text().splitlines()
 
 
-def test_workflow_run_prints_head_sha_without_gh_calls(stub_env: dict[str, str]):
+@pytest.mark.parametrize("status", ["behind", "identical"])
+def test_workflow_run_with_main_reachable_head_sha_prints_it(
+    stub_env: dict[str, str], status: str
+):
     """
-    GIVEN a workflow_run event with a head sha
+    GIVEN a workflow_run event whose head sha is identical to or behind main
     WHEN the script runs
-    THEN it prints that sha and makes no gh call.
+    THEN it prints that sha after one compare call against main.
     """
     result = _run(
-        stub_env, EVENT_NAME="workflow_run", RUN_HEAD_SHA=RUN_SHA, INPUT_SHA=""
+        stub_env,
+        EVENT_NAME="workflow_run",
+        RUN_HEAD_SHA=RUN_SHA,
+        INPUT_SHA="",
+        STUB_COMPARE_STATUS=status,
     )
 
-    assert result.returncode == 0
+    assert result.returncode == 0, result.stderr
     assert result.stdout == f"{RUN_SHA}\n"
-    assert _gh_calls(stub_env) == []
+    assert _gh_calls(stub_env) == [
+        f"api repos/{REPO}/compare/main...{RUN_SHA} --jq .status"
+    ]
+
+
+@pytest.mark.parametrize(
+    "extra",
+    [
+        pytest.param({"STUB_COMPARE_STATUS": "ahead"}, id="ahead-of-main"),
+        pytest.param({"STUB_COMPARE_STATUS": "diverged"}, id="diverged-from-main"),
+        pytest.param({"STUB_COMPARE_STATUS": ""}, id="empty-status"),
+        pytest.param({"STUB_COMPARE_FAIL": "1"}, id="compare-lookup-fails"),
+    ],
+)
+def test_workflow_run_with_head_sha_not_reachable_from_main_fails_closed(
+    stub_env: dict[str, str], extra: dict[str, str]
+):
+    """
+    GIVEN a workflow_run whose head sha is not an ancestor of main or cannot be compared
+    WHEN the script runs
+    THEN it exits non-zero with no stdout.
+    """
+    result = _run(
+        stub_env,
+        EVENT_NAME="workflow_run",
+        RUN_HEAD_SHA=RUN_SHA,
+        INPUT_SHA="",
+        **extra,
+    )
+
+    assert result.returncode != 0
+    assert result.stdout == ""
 
 
 @pytest.mark.parametrize("status", ["behind", "identical"])

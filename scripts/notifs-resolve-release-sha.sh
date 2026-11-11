@@ -4,7 +4,7 @@
 # (fail closed, never a fallback to main).
 #
 # Inputs (env): EVENT_NAME, RUN_HEAD_SHA, INPUT_SHA, and for the release lookup GH_TOKEN + GH_REPO.
-#   workflow_run                      -> RUN_HEAD_SHA
+#   workflow_run                      -> RUN_HEAD_SHA, only if reachable from main (via gh api compare)
 #   workflow_dispatch, INPUT_SHA set  -> INPUT_SHA, only if reachable from main (via gh api compare)
 #   workflow_dispatch, INPUT_SHA ""   -> commit of the latest published release tag (via gh api)
 set -euo pipefail
@@ -36,8 +36,8 @@ release_commit() {
   esac
 }
 
-# A dispatched sha must already be on main (identical to, or an ancestor of, its head); otherwise a run
-# bound to main could apply the manifest of an unmerged commit. Fails closed on any lookup error.
+# A dispatched or deploy-run sha must already be on main (identical to, or an ancestor of, its head);
+# otherwise a run bound to main could apply the manifest of an unmerged commit. Fails closed on any lookup error.
 require_on_main() {
   local sha="$1" status
   [[ "${sha}" =~ ^[0-9a-f]{40}$ ]] || fail "dispatch sha is not 40 lowercase hex characters"
@@ -52,7 +52,8 @@ require_on_main() {
 selected=""
 case "${EVENT_NAME:-}" in
   workflow_run)
-    selected="${RUN_HEAD_SHA:-}"
+    require_on_main "${RUN_HEAD_SHA:-}"
+    selected="${RUN_HEAD_SHA}"
     ;;
   workflow_dispatch)
     if [ -n "${INPUT_SHA:-}" ]; then

@@ -423,6 +423,18 @@ def test_manifest_checkout_uses_resolved_sha_and_distinct_paths():
     assert len(set(paths)) == 3
 
 
+def test_manifest_checkout_fetches_only_the_manifest_file():
+    """
+    GIVEN the manifest checkout of an untrusted-by-default ref
+    WHEN its inputs are read
+    THEN it is sparse (cone mode off) and fetches only .notifs/manifest.json.
+    """
+    inputs = _checkouts()[1]["with"]
+
+    assert inputs["sparse-checkout"].strip() == ".notifs/manifest.json"
+    assert inputs["sparse-checkout-cone-mode"] is False
+
+
 def test_manifest_paths_point_under_the_manifest_checkout():
     """
     GIVEN the lint step and the exchange step
