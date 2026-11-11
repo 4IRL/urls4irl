@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+import email.message
+import io
 import urllib.error
+import urllib.request
+import urllib.response
 from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock
@@ -58,7 +62,7 @@ def configured(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
 @pytest.fixture
 def urlopen(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     mock = MagicMock(return_value=_ok_response())
-    monkeypatch.setattr("urllib.request.urlopen", mock)
+    monkeypatch.setattr("urllib.request.OpenerDirector.open", mock)
     return mock
 
 
@@ -298,6 +302,108 @@ def test_unset_base_url_is_error_without_request(
     assert notifs_hub.ping("metrics_flush") is False
     urlopen.assert_not_called()
     assert "outcome=error" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize(
+    "base_url",
+    ["http://hub.example.test", "ftp://hub.example.test", "hub.example.test"],
+)
+def test_non_https_base_url_is_error_without_request(
+    configured: Path,
+    urlopen: MagicMock,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys,
+    base_url: str,
+):
+    """
+    GIVEN a NOTIFS_BASE_URL that is not https
+    WHEN a ping is sent
+    THEN the outcome is error with zero requests and no secret in the log.
+    """
+    monkeypatch.setenv("NOTIFS_BASE_URL", base_url)
+    assert notifs_hub.ping("metrics_flush") is False
+    urlopen.assert_not_called()
+    err = capsys.readouterr().err
+    assert "outcome=error" in err
+    assert "must use https" in err
+    assert _KEY not in err
+    assert _CLIENT_SECRET not in err
+
+
+def test_uppercase_https_scheme_is_accepted(
+    configured: Path, urlopen: MagicMock, monkeypatch: pytest.MonkeyPatch
+):
+    """
+    GIVEN a NOTIFS_BASE_URL whose scheme is upper case HTTPS
+    WHEN a ping is sent
+    THEN the request is made.
+    """
+    monkeypatch.setenv("NOTIFS_BASE_URL", "HTTPS://hub.example.test")
+    assert notifs_hub.ping("metrics_flush") is True
+    urlopen.assert_called_once()
+
+
+def test_ping_builds_its_opener_with_the_redirect_refusing_handler(
+    configured: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """
+    GIVEN a configured production environment
+    WHEN a ping is sent
+    THEN the opener is built with the redirect-refusing handler.
+    """
+    opener = MagicMock()
+    opener.open.return_value = _ok_response()
+    build_opener = MagicMock(return_value=opener)
+    monkeypatch.setattr("urllib.request.build_opener", build_opener)
+    assert notifs_hub.ping("metrics_flush") is True
+    build_opener.assert_called_once_with(notifs_hub._RefuseRedirects)
+
+
+class _RedirectingHttpsHandler(urllib.request.HTTPSHandler):
+    """Answers every https request with a 302 and records the URLs it was asked for.
+
+    Subclasses HTTPSHandler so ``build_opener`` replaces the real one (no network).
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.requested: list[str] = []
+
+    def https_open(self, request: urllib.request.Request) -> urllib.response.addinfourl:
+        self.requested.append(request.full_url)
+        message = email.message.Message()
+        message["Location"] = "https://login.example.test/cdn-cgi/access/login"
+        response = urllib.response.addinfourl(
+            io.BytesIO(b""), message, request.full_url, 302
+        )
+        response.msg = "Found"  # type: ignore[attr-defined]
+        return response
+
+
+def test_redirect_is_refused_and_never_followed():
+    """
+    GIVEN a hub answering 302 to another host
+    WHEN a request goes through the redirect-refusing opener
+    THEN an HTTPError 302 is raised and only the original URL was requested.
+    """
+    handler = _RedirectingHttpsHandler()
+    opener = urllib.request.build_opener(notifs_hub._RefuseRedirects, handler)
+    request = urllib.request.Request(f"{_BASE_URL}/v1/heartbeats/urls4irl/x", data=b"")
+    with pytest.raises(urllib.error.HTTPError) as raised:
+        opener.open(request, timeout=1)
+    assert raised.value.code == 302
+    assert handler.requested == [f"{_BASE_URL}/v1/heartbeats/urls4irl/x"]
+
+
+def test_ping_logs_a_redirect_as_http_302(configured: Path, urlopen: MagicMock, capsys):
+    """
+    GIVEN the opener raising the HTTPError a refused redirect produces
+    WHEN a ping is sent
+    THEN it returns False and logs outcome=http_302.
+    """
+    urlopen.side_effect = urllib.error.HTTPError(_BASE_URL, 302, "Found", {}, None)  # type: ignore[arg-type]
+    assert notifs_hub.ping("metrics_flush") is False
+    assert "outcome=http_302" in capsys.readouterr().err
 
 
 def test_nothing_configured_is_missing_key(

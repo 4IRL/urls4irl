@@ -47,6 +47,10 @@ case "$*" in
   "api repos/${GH_REPO}/git/tags/${STUB_REF_SHA}"' --jq .object.type + " " + .object.sha')
     echo "${STUB_TAG_OBJECT_TYPE:-commit} ${STUB_TAG_OBJECT_SHA}"
     ;;
+  "api repos/${GH_REPO}/compare/main..."*' --jq .status')
+    [ -z "${STUB_COMPARE_FAIL:-}" ] || exit 1
+    echo "${STUB_COMPARE_STATUS-behind}"
+    ;;
   *)
     echo "stub gh: unexpected argv: $*" >&2
     exit 8
@@ -106,19 +110,57 @@ def test_workflow_run_prints_head_sha_without_gh_calls(stub_env: dict[str, str])
     assert _gh_calls(stub_env) == []
 
 
-def test_dispatch_with_input_sha_prints_it_without_gh_calls(stub_env: dict[str, str]):
+@pytest.mark.parametrize("status", ["behind", "identical"])
+def test_dispatch_with_main_reachable_sha_prints_it(
+    stub_env: dict[str, str], status: str
+):
     """
-    GIVEN a workflow_dispatch with an explicit sha
+    GIVEN a workflow_dispatch with an explicit sha that is identical to or behind main
     WHEN the script runs
-    THEN it prints that sha and makes no gh call.
+    THEN it prints that sha after one compare call against main.
     """
     result = _run(
-        stub_env, EVENT_NAME="workflow_dispatch", RUN_HEAD_SHA="", INPUT_SHA=INPUT_SHA
+        stub_env,
+        EVENT_NAME="workflow_dispatch",
+        RUN_HEAD_SHA="",
+        INPUT_SHA=INPUT_SHA,
+        STUB_COMPARE_STATUS=status,
     )
 
-    assert result.returncode == 0
+    assert result.returncode == 0, result.stderr
     assert result.stdout == f"{INPUT_SHA}\n"
-    assert _gh_calls(stub_env) == []
+    assert _gh_calls(stub_env) == [
+        f"api repos/{REPO}/compare/main...{INPUT_SHA} --jq .status"
+    ]
+
+
+@pytest.mark.parametrize(
+    "extra",
+    [
+        pytest.param({"STUB_COMPARE_STATUS": "ahead"}, id="ahead-of-main"),
+        pytest.param({"STUB_COMPARE_STATUS": "diverged"}, id="diverged-from-main"),
+        pytest.param({"STUB_COMPARE_STATUS": ""}, id="empty-status"),
+        pytest.param({"STUB_COMPARE_FAIL": "1"}, id="compare-lookup-fails"),
+    ],
+)
+def test_dispatch_with_sha_not_reachable_from_main_fails_closed(
+    stub_env: dict[str, str], extra: dict[str, str]
+):
+    """
+    GIVEN a workflow_dispatch with an explicit sha that is not an ancestor of main or cannot be compared
+    WHEN the script runs
+    THEN it exits non-zero with no stdout.
+    """
+    result = _run(
+        stub_env,
+        EVENT_NAME="workflow_dispatch",
+        RUN_HEAD_SHA="",
+        INPUT_SHA=INPUT_SHA,
+        **extra,
+    )
+
+    assert result.returncode != 0
+    assert result.stdout == ""
 
 
 def test_dispatch_without_sha_resolves_lightweight_tag(stub_env: dict[str, str]):

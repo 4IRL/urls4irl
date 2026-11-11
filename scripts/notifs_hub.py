@@ -19,8 +19,10 @@ Contracts:
 - ``PRODUCTION``, ``NOTIFS_BASE_URL`` and ``NOTIFS_KEY_DIR`` resolve from
   ``os.environ`` first, then from the ``/app/container_environment`` dump,
   because cron jobs do not inherit the compose environment.
-- The network is reached only through ``urllib.request.urlopen`` looked up on
-  the module at call time, so tests patch the global function.
+- The network is reached only through an opener built per call with a handler
+  that refuses redirects (a 3xx is ``outcome=http_<code>``, never followed), so
+  tests patch ``urllib.request.OpenerDirector.open``. ``NOTIFS_BASE_URL`` must be
+  ``https`` (otherwise ``outcome=error`` and no request is made).
 
 CLI: ``python notifs_hub.py ping <check> [--fail]`` always exits 0.
 """
@@ -34,7 +36,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
-from typing import NamedTuple
+from typing import Any, NamedTuple
 
 APP_ID: str = "urls4irl"
 CONTAINER_ENVIRONMENT_FILE: str = "/app/container_environment"
@@ -49,6 +51,17 @@ class Credentials(NamedTuple):
     key: str
     access_client_id: str
     access_client_secret: str
+
+
+class _RefuseRedirects(urllib.request.HTTPRedirectHandler):
+    """Never follow a redirect: a 3xx surfaces as ``HTTPError`` (``outcome=http_3xx``).
+
+    Cloudflare Access answers a rejected token with a 302 to its login domain, and
+    following it would re-send the bearer key and Access secret to that host.
+    """
+
+    def redirect_request(self, *args: Any, **kwargs: Any) -> None:
+        return None
 
 
 def _read_dump_value(name: str) -> str | None:
@@ -139,6 +152,14 @@ def ping(
                 error="NOTIFS_BASE_URL is not set",
             )
             return False
+        if not base_url.lower().startswith("https://"):
+            _log(
+                check=check,
+                fail=fail,
+                outcome="error",
+                error="NOTIFS_BASE_URL must use https",
+            )
+            return False
         path = f"/v1/heartbeats/{APP_ID}/{urllib.parse.quote(check, safe='')}"
         if fail:
             path += "/fail"
@@ -152,7 +173,8 @@ def ping(
                 "Authorization": f"Bearer {credentials.key}",
             },
         )
-        with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
+        opener = urllib.request.build_opener(_RefuseRedirects)
+        with opener.open(request, timeout=timeout_seconds) as response:
             status = response.status
         if status == 200:
             _log(check=check, fail=fail, outcome="ok")

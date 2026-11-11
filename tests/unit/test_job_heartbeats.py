@@ -79,7 +79,7 @@ def urlopen_stub(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> _UrlopenStu
     monkeypatch.setenv("POSTGRES_DB", "d")
     monkeypatch.setenv("METRICS_REDIS_URI", "redis://localhost:6379/0")
     stub = _UrlopenStub()
-    monkeypatch.setattr(urllib.request, "urlopen", stub)
+    monkeypatch.setattr(urllib.request.OpenerDirector, "open", stub)
     return stub
 
 

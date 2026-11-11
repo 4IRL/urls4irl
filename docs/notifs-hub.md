@@ -18,7 +18,13 @@ Runs are serialized by the `notifs-exchange-urls4irl` concurrency group on the j
 
 `/home/u4i/notifs-key/` on the host: owner = deploy user, group gid `1001`, mode `2750`, files `640`: `delivery_key`, `access_client_id`, `access_client_secret` (one line each). Mounted read-only at `/run/notifs` in `web` and `workflow`; env `NOTIFS_BASE_URL` and `NOTIFS_KEY_DIR=/run/notifs`. The production deploy creates or repairs the directory before anything else; on a fresh or rebuilt host without the workflow image run once: `sudo chgrp 1001 /home/u4i/notifs-key` (the deploy fails naming this command).
 
+## SSH host key and cloudflared pin
+
+Both `notifs-exchange.yml` and `prod-deploy.yml` verify the host with `StrictHostKeyChecking yes` against a `known_hosts` file written from the `PROD_SSH_KNOWN_HOSTS` repository variable (the host's public key line(s), e.g. `ssh-keyscan -t ed25519 <host>` output checked against the host's own `/etc/ssh/ssh_host_ed25519_key.pub`); the step fails when it is unset. cloudflared is installed from an exact release with its sha256 verified; bump `CLOUDFLARED_VERSION` and `CLOUDFLARED_SHA256` together (checksums are in the release notes).
+
 ## First run and approval
+
+Run the first exchange only after the first production deploy that contains this change; before it, the key-directory preflight fails because the directory and `notifs-key-write.sh` are not on the host yet. A `workflow_dispatch` `sha` must be reachable from `main` (the resolver refuses anything else).
 
 The first exchange files an identity request and the action fails ("pending") until the operator approves it in the hub admin UI. Approve, then re-run: `workflow_dispatch` from `main` (leave `sha` empty for the latest release, or pass a commit). Verify the checks appear in the hub and that a ping returns 200.
 

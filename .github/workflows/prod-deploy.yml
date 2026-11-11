@@ -68,10 +68,28 @@ jobs:
               echo "${{ secrets.PROD_SSH_PRIVATE_KEY_VALUE }}" > ~/.ssh/${{ secrets.PROD_SSH_PRIVATE_KEY_FILENAME }}
               chmod 600 ~/.ssh/${{ secrets.PROD_SSH_PRIVATE_KEY_FILENAME }}
 
+          # Exact release plus its sha256 (published in the release notes), never `latest`.
           - name: Install Cloudflared
+            env:
+              CLOUDFLARED_VERSION: "2026.10.3"
+              CLOUDFLARED_SHA256: 053b80b0a23031a038fdbf3c073f59f82b8f1f152aa67971d7383ffafc0dbab0
             run: |
-              sudo curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o /usr/bin/cloudflared
-              sudo chmod a+x /usr/bin/cloudflared
+              curl -fsSL "https://github.com/cloudflare/cloudflared/releases/download/${CLOUDFLARED_VERSION}/cloudflared-linux-amd64" -o "${RUNNER_TEMP}/cloudflared"
+              echo "${CLOUDFLARED_SHA256}  ${RUNNER_TEMP}/cloudflared" | sha256sum --check --strict -
+              sudo install -m 0755 "${RUNNER_TEMP}/cloudflared" /usr/bin/cloudflared
+
+          # known_hosts line(s) for the SSH host, from the PROD_SSH_KNOWN_HOSTS repo variable (public key, not a secret).
+          - name: Pin SSH host key
+            env:
+              SSH_KNOWN_HOSTS: ${{ vars.PROD_SSH_KNOWN_HOSTS }}
+            run: |
+              if [ -z "$SSH_KNOWN_HOSTS" ]; then
+                echo "::error::repo variable PROD_SSH_KNOWN_HOSTS is not set"
+                exit 1
+              fi
+              mkdir -p ~/.ssh
+              printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+              chmod 600 ~/.ssh/known_hosts
 
           # Special config file required for cloudflared tunnel ssh connection
           - name: Prepare SSH Config file
@@ -83,6 +101,8 @@ jobs:
                 IdentityFile ~/.ssh/${{ secrets.PROD_SSH_PRIVATE_KEY_FILENAME }}
                 IdentitiesOnly yes
                 AddKeysToAgent yes
+                StrictHostKeyChecking yes
+                UserKnownHostsFile ~/.ssh/known_hosts
                 ProxyCommand /usr/bin/cloudflared access ssh --hostname %h --id ${{ secrets.PROD_SERVICE_TOKEN_ID }} --secret ${{ secrets.PROD_SERVICE_TOKEN_SECRET }}
               EOF
 
@@ -96,13 +116,13 @@ jobs:
 
           - name: SCP Compose File Into Production Server
             run: |
-              scp -T -q -o StrictHostKeyChecking=no docker/compose.yaml scripts/notifs-key-write.sh ${{ secrets.PROD_SSH_HOST }}:/home/u4i/
+              scp -T -qdocker/compose.yaml scripts/notifs-key-write.sh ${{ secrets.PROD_SSH_HOST }}:/home/u4i/
 
           # Create or repair the hub key directory before docker login and before any plaintext secret is written,
           # so a failure here aborts the deploy with nothing to clean up. Failure-visible: set -e plus a final check.
           - name: Prepare Notifs Key Directory
             run: |
-              ssh -T -q -o StrictHostKeyChecking=no ${{ secrets.PROD_SSH_HOST }} '
+              ssh -T -q${{ secrets.PROD_SSH_HOST }} '
               set -e
               mkdir -p /home/u4i/notifs-key
               chmod 2750 /home/u4i/notifs-key
@@ -120,7 +140,7 @@ jobs:
           # Pull updated images, recreate if needed, run as daemon, and prune old images
           - name: Build Docker Network
             run: |
-              ssh -T -q -o StrictHostKeyChecking=no ${{ secrets.PROD_SSH_HOST }} '
+              ssh -T -q${{ secrets.PROD_SSH_HOST }} '
               cd /home/u4i/;
               docker logs --since=24h u4i-prod-flask &> "${{ secrets.PROD_LOG_DIRECTORY }}log_$(date +%Y%m%d_%H%M%S).txt";
               echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin;
@@ -169,7 +189,7 @@ jobs:
           # Verify the three services are up and running after any updates
           - name: Verify Docker Network
             run: >
-              ssh -T -q -o StrictHostKeyChecking=no ${{ secrets.PROD_SSH_HOST }} '
+              ssh -T -q${{ secrets.PROD_SSH_HOST }} '
               cd /home/u4i/;
               hasRedis=$(docker compose -f compose.yaml ps --services --filter "status=running" | grep -x redis);
               hasRedisMetrics=$(docker compose -f compose.yaml ps --services --filter "status=running" | grep -x redis-metrics);
