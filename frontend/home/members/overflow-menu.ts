@@ -161,11 +161,17 @@ export function initMemberOverflowMenu(): () => void {
       if (deck === "members" && collapsed) closeMemberOverflowMenu();
     },
   );
+  // A left-panel collapse reflows the title row, which can hide the trigger
+  // through the container query without a window resize.
+  const disposeLeftPanel = on(AppEvents.LEFT_PANEL_COLLAPSE_CHANGED, () => {
+    closeMemberOverflowMenu();
+  });
   return () => {
     $(BUTTON_SELECTOR).off(NAMESPACE);
     $(MENU_SELECTOR).off(NAMESPACE);
     $(document).off(NAMESPACE);
     $(window).off(NAMESPACE);
     disposeCollapse();
+    disposeLeftPanel();
   };
 }

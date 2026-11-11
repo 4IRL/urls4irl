@@ -151,6 +151,17 @@ describe("member overflow menu", () => {
     expect(isMemberOverflowMenuOpen()).toBe(false);
   });
 
+  it("closes when the left panel collapses or expands", () => {
+    $("#memberBtnOverflow").trigger("click");
+    expect(isMemberOverflowMenuOpen()).toBe(true);
+    emit(AppEvents.LEFT_PANEL_COLLAPSE_CHANGED, { collapsed: true });
+    expect(isMemberOverflowMenuOpen()).toBe(false);
+
+    $("#memberBtnOverflow").trigger("click");
+    emit(AppEvents.LEFT_PANEL_COLLAPSE_CHANGED, { collapsed: false });
+    expect(isMemberOverflowMenuOpen()).toBe(false);
+  });
+
   it("unbinding stops the menu responding", () => {
     dispose();
     $("#memberBtnOverflow").trigger("click");
