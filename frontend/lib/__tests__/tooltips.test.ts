@@ -465,6 +465,10 @@ describe("restoreTooltipIfStillTargeted", () => {
       >,
     );
     restoreInstance.show.mockClear();
+    // The restore re-enters through Bootstrap's `mouseenter` trigger (which marks
+    // the instance hovered, so its fade-in does not self-hide) instead of calling
+    // show() directly; stand in for that listener, whose job is to show.
+    submitBtn().addEventListener("mouseover", () => restoreInstance.show());
   });
 
   afterEach(() => {
