@@ -51,7 +51,8 @@ runs:
 
     # Survives a broken runner resolver: each try is time-boxed, a failed try is retried after a
     # pause, and the runner's DNS is pointed at 1.1.1.1 when the Ubuntu apt mirror name does not
-    # resolve. The cache above only avoids downloads: apt-get update still needs DNS.
+    # resolve. The cache above only avoids downloads: apt-get update still needs DNS. The 1.1.1.1
+    # override is never reverted, so it applies to the rest of the job.
     - name: Install Playwright browser
       shell: bash
       env:
