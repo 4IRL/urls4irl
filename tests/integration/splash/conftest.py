@@ -32,6 +32,13 @@ def patch_email_confirmation_spy(monkeypatch) -> MagicMock:
     return send_spy
 
 
+def patch_password_reset_email_spy(monkeypatch) -> MagicMock:
+    """Replace the password-reset send with an OK-returning spy (no Mailjet call)."""
+    send_spy = MagicMock(return_value=_ok_email_response())
+    monkeypatch.setattr(EmailSender, "send_password_reset_email", send_spy)
+    return send_spy
+
+
 def create_user(
     app: Flask, username: str, email: str, password: str, *, validated: bool
 ) -> None:
