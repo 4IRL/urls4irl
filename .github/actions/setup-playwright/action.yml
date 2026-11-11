@@ -1,5 +1,5 @@
 name: Setup Playwright
-description: Install Playwright's chromium + its apt deps, restoring and saving them via a shared cache. Requires the repo to be checked out and the playwright Python package installed first.
+description: Install Playwright's chromium + its apt deps, restoring and saving them via a shared cache, and survive a broken runner resolver (retries plus a 1.1.1.1 DNS fallback). Requires the repo to be checked out and the playwright Python package installed first.
 
 outputs:
   cache-hit:
@@ -49,9 +49,92 @@ runs:
           'Binary::apt::APT::Keep-Downloaded-Packages "true";' \
           | sudo tee /etc/apt/apt.conf.d/99-u4i-archive-cache > /dev/null
 
+    # Survives a broken runner resolver: each try is time-boxed, a failed try is retried after a
+    # pause, and the runner's DNS is pointed at 1.1.1.1 when the Ubuntu apt mirror name does not
+    # resolve. The cache above only avoids downloads: apt-get update still needs DNS.
     - name: Install Playwright browser
       shell: bash
-      run: python3.11 -m playwright install chromium --with-deps
+      env:
+        ATTEMPTS: '3'
+        ATTEMPT_TIMEOUT_MINUTES: '8'
+      run: |
+        # GitHub runs `bash -e`; the retry loop must see a failed install, not abort on it.
+        set +e
+        set -uo pipefail
+
+        # apt's mirror list (mirror+file:/etc/apt/apt-mirrors.txt) points at this host.
+        MIRROR_HOST="azure.archive.ubuntu.com"
+        # Ubuntu's authoritative nameservers (ns*.canonical.com) can be unreachable from the runner's
+        # Azure resolver while public resolvers still answer, so every Ubuntu name times out.
+        FALLBACK_DNS_SERVERS="1.1.1.1 1.0.0.1"
+        # A failing lookup otherwise blocks about 20s each, which made one diagnostics dump take minutes.
+        LOOKUP_TIMEOUT_SECONDS=5
+
+        lookup_ok() {
+          timeout "$LOOKUP_TIMEOUT_SECONDS" getent hosts "$1" > /dev/null
+        }
+
+        # Name resolution and apt run through the same resolver, so a failed lookup here predicts
+        # the apt failure before it burns a try.
+        print_diagnostics() {
+          echo "::group::DNS diagnostics"
+          echo "--- /etc/resolv.conf"
+          cat /etc/resolv.conf || true
+          echo "--- resolvectl status"
+          resolvectl status 2>&1 | head -30 || true
+          for host in "$MIRROR_HOST" ubuntu-archive-asm.trafficmanager.net archive.ubuntu.com security.ubuntu.com; do
+            if lookup_ok "$host"; then
+              echo "lookup ok:   $host"
+            else
+              echo "lookup FAIL: $host"
+            fi
+          done
+          echo "::endgroup::"
+        }
+
+        use_fallback_dns_if_mirror_unresolvable() {
+          if lookup_ok "$MIRROR_HOST"; then
+            return 0
+          fi
+          echo "::warning::$MIRROR_HOST does not resolve; pointing the runner's DNS at $FALLBACK_DNS_SERVERS"
+          print_diagnostics
+          local default_interface
+          default_interface=$(ip route show default | awk '{for (i = 1; i < NF; i++) if ($i == "dev") {next_field = i + 1; print $next_field; exit}}')
+          if [[ -z "$default_interface" ]]; then
+            echo "::warning::no default network interface found; leaving DNS unchanged"
+            return 0
+          fi
+          # FALLBACK_DNS_SERVERS is intentionally unquoted so each server becomes its own argument.
+          # shellcheck disable=SC2086
+          sudo resolvectl dns "$default_interface" $FALLBACK_DNS_SERVERS
+          sudo resolvectl flush-caches
+          if lookup_ok "$MIRROR_HOST"; then
+            echo "DNS override worked: $MIRROR_HOST resolves via $FALLBACK_DNS_SERVERS on $default_interface"
+          else
+            echo "::warning::$MIRROR_HOST still does not resolve after the DNS override"
+          fi
+        }
+
+        for attempt in $(seq 1 "$ATTEMPTS"); do
+          use_fallback_dns_if_mirror_unresolvable
+          echo "playwright install: attempt $attempt of $ATTEMPTS (limit ${ATTEMPT_TIMEOUT_MINUTES}m)"
+          start_seconds=$SECONDS
+          timeout --kill-after=30s "${ATTEMPT_TIMEOUT_MINUTES}m" python3.11 -m playwright install chromium --with-deps
+          install_rc=$?
+          echo "playwright install: attempt $attempt rc=$install_rc after $((SECONDS - start_seconds))s"
+          if [[ "$install_rc" -eq 0 ]]; then
+            exit 0
+          fi
+          print_diagnostics
+          # A timed-out apt can leave dpkg half-configured, which would fail the next try.
+          sudo dpkg --configure -a || true
+          if [[ "$attempt" -lt "$ATTEMPTS" ]]; then
+            sleep $((attempt * 20))
+          fi
+        done
+
+        echo "::error::playwright install failed after $ATTEMPTS attempts"
+        exit 1
 
     # apt writes the archives (and its lock/partial files) as root; hand them to the runner
     # user so the save step can tar them, dropping the lock and any half-downloaded partials.
