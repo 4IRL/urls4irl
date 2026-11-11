@@ -28,7 +28,10 @@ ANNOUNCEMENT = "#MemberRowActionAnnouncement"
 
 def _open_panel(*, page: Page) -> None:
     page.locator(HPL.BUTTON_MEMBER_INVITE_LINK).click()
-    expect(page.locator(HPL.MEMBER_INVITE_PANEL)).to_be_visible()
+    expect(page.locator(HPL.INVITE_LINK_MODAL)).to_be_visible()
+    # Bootstrap ignores a hide while the fade runs; focus lands inside the modal
+    # only once it has fully shown, so wait for it before acting on the modal.
+    expect(page.locator(f"{HPL.INVITE_LINK_MODAL} :focus")).to_have_count(1)
 
 
 def test_create_shows_live_link_and_copy(
@@ -131,7 +134,7 @@ def test_escape_cancels_confirm_then_closes_panel(
     expect(page.locator(HPL.INVITE_LINK_REVOKE_BTN)).to_be_focused()
 
     page.keyboard.press("Escape")
-    expect(page.locator(HPL.MEMBER_INVITE_PANEL)).to_be_hidden()
+    expect(page.locator(HPL.INVITE_LINK_MODAL)).to_be_hidden()
 
 
 def test_revoke_after_db_revoke_resyncs_to_empty(
@@ -222,5 +225,5 @@ def test_revoke_in_locked_utub_closes_panel_and_hides_trigger(
     page.locator(HPL.INVITE_LINK_REVOKE_BTN).click()
     page.locator(HPL.INVITE_LINK_CONFIRM_ACTION_BTN).click()
 
-    expect(page.locator(HPL.MEMBER_INVITE_PANEL)).to_be_hidden()
+    expect(page.locator(HPL.INVITE_LINK_MODAL)).to_be_hidden()
     expect(page.locator(HPL.BUTTON_MEMBER_INVITE_LINK)).to_be_hidden()

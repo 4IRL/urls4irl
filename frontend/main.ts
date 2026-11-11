@@ -57,6 +57,7 @@ import { registerMembersPermissionsSettingsSection } from "./home/members/permis
 import { initUrlDeckPolicyAttrs } from "./home/urls/deck-view-attrs.js";
 import { initMemberDeckPolicyAttrs } from "./home/members/policy-attrs.js";
 import { initInviteLinkPanel } from "./home/members/invite-link-panel.js";
+import { initMemberOverflowMenu } from "./home/members/overflow-menu.js";
 import { loadInitialTrashCount, renderTrashCount } from "./home/trash/count.js";
 import { initTrashTabs } from "./home/trash/tabs.js";
 import { initTrashPanel } from "./home/trash/panel.js";
@@ -102,6 +103,7 @@ $(document).ready(() => {
   initUrlDeckPolicyAttrs();
   initMemberDeckPolicyAttrs();
   initInviteLinkPanel();
+  initMemberOverflowMenu();
   initTagDragDrop();
   initTagMatchMode();
   initTagDisplaySubscriptions();

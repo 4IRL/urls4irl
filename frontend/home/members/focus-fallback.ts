@@ -7,7 +7,7 @@ const HEADER_SELECTOR = "#MemberDeckHeaderAndCaret";
 const ADD_BUTTON_SELECTOR = "#memberBtnCreate";
 const ADD_WRAP_SELECTOR = "#createMemberWrap";
 const INVITE_TRIGGER_SELECTOR = "#memberBtnInviteLink";
-const INVITE_PANEL_SELECTOR = "#MemberInvitePanel";
+const INVITE_PANEL_SELECTOR = "#inviteLinkModal";
 // The co-owner kebab is the only kebab a policy flip hides.
 // Owner kebabs are covered by `coverList` on a rebuild write.
 const KEBAB_SELECTOR = ".memberRowKebab--coOwner";

@@ -12,6 +12,12 @@ import {
   type InviteLink,
   type InviteLinkLoadFailure,
 } from "../invite-link-client.js";
+import {
+  dismissInviteModal,
+  INVITE_MODAL_FIXTURE,
+  installModalMock,
+  isInviteModalShown,
+} from "../../../__tests__/helpers/invite-modal.js";
 import { APP_CONFIG } from "../../../lib/config.js";
 import { emit } from "../../../lib/metrics-client.js";
 import { UI_EVENTS } from "../../../types/metrics-events.js";
@@ -160,19 +166,8 @@ describe("invite link panel", () => {
         return this.closest(".hidden") === null ? document.body : null;
       },
     });
-    document.body.innerHTML = `
-      <div id="MemberDeck">
-        <button id="MemberDeckHeaderAndCaret"></button>
-        <button id="memberBtnInviteLink" class="hidden" aria-label="Invite link"
-          title="Invite link" aria-expanded="false" aria-controls="MemberInvitePanel"></button>
-        <section id="MemberInvitePanel" class="hidden">
-          <h3 id="MemberInvitePanelHeading" tabindex="-1">Invite link</h3>
-          <div id="MemberInvitePanelBody"></div>
-        </section>
-        <span id="MemberRowActionAnnouncement" aria-live="polite"></span>
-      </div>
-      <span id="MobilePanelAnnouncement" aria-live="polite"></span>
-    `;
+    document.body.innerHTML = INVITE_MODAL_FIXTURE;
+    installModalMock();
     vi.clearAllMocks();
     resetStore();
     becomeManager();
@@ -211,6 +206,11 @@ describe("invite link panel", () => {
     it("has a native title equal to its aria-label", () => {
       expect(trigger().attr("title")).toBe(trigger().attr("aria-label"));
     });
+
+    it("claims a dialog and no expanded panel", () => {
+      expect(trigger().attr("aria-haspopup")).toBe("dialog");
+      expect(trigger().attr("aria-expanded")).toBeUndefined();
+    });
   });
 
   describe("state renders", () => {
@@ -219,26 +219,25 @@ describe("invite link panel", () => {
       vi.mocked(getInviteLink).mockReturnValue(pending.promise);
       trigger().trigger("click");
 
-      expect($("#MemberInvitePanel").hasClass("hidden")).toBe(false);
-      expect($("#MemberInvitePanel").attr("aria-busy")).toBe("true");
-      expect($("#MemberInvitePanelBody").text()).toBe(
+      expect(isInviteModalShown()).toBe(true);
+      expect($("#inviteLinkModal").attr("aria-busy")).toBe("true");
+      expect($("#inviteLinkModalBody").text()).toBe(
         strings.INVITE_LINK_PANEL_LOADING,
       );
-      expect(document.activeElement?.id).toBe("MemberInvitePanelHeading");
-      expect(trigger().attr("aria-expanded")).toBe("true");
+      expect(document.activeElement?.id).toBe("inviteLinkModalTitle");
       expect(emit).toHaveBeenCalledWith({
         event: UI_EVENTS.UI_INVITE_PANEL_OPEN,
       });
 
       pending.resolve(null);
       await settle();
-      expect($("#MemberInvitePanel").attr("aria-busy")).toBeUndefined();
+      expect($("#inviteLinkModal").attr("aria-busy")).toBeUndefined();
     });
 
     it("renders the empty state with 7 days and Unlimited selected, focusing Expires", async () => {
       await openWith(null);
 
-      expect($("#MemberInvitePanelBody").text()).toContain(
+      expect($("#inviteLinkModalBody").text()).toContain(
         strings.INVITE_LINK_PANEL_EMPTY_HINT,
       );
       expect($("#inviteLinkExpiresSelect").val()).toBe("7");
@@ -256,7 +255,7 @@ describe("invite link panel", () => {
         `${window.location.origin}/invite/abcdefghijklmnopqrstuv`,
       );
       expect($("#inviteLinkUrlInput").prop("readOnly")).toBe(true);
-      expect($("#MemberInvitePanelBody .invitePanelMeta").text()).toMatch(
+      expect($("#inviteLinkModalBody .invitePanelMeta").text()).toMatch(
         /^Created by alice · expires .+ · 3 joined$/,
       );
       const disabled = $("#inviteLinkUsesSelect option:disabled")
@@ -267,7 +266,7 @@ describe("invite link panel", () => {
         .get();
       expect(disabled).toEqual(["1"]);
       expect($("#inviteLinkUsesSelect").val()).toBe("10");
-      expect($("#MemberInvitePanelBody").text()).toContain(
+      expect($("#inviteLinkModalBody").text()).toContain(
         "3 people have joined, so the limit can't go below 3.",
       );
       const expiresFirst = $("#inviteLinkExpiresSelect option").first();
@@ -284,11 +283,11 @@ describe("invite link panel", () => {
         liveLink({ creatorUsername: null, useCount: 0, maxUses: null }),
       );
 
-      expect($("#MemberInvitePanelBody .invitePanelMeta").text()).toMatch(
+      expect($("#inviteLinkModalBody .invitePanelMeta").text()).toMatch(
         /^expires .+ · 0 joined$/,
       );
       expect($("#inviteLinkUsesSelect option:disabled").length).toBe(0);
-      expect($("#MemberInvitePanelBody").text()).not.toContain(
+      expect($("#inviteLinkModalBody").text()).not.toContain(
         "people have joined",
       );
     });
@@ -296,8 +295,8 @@ describe("invite link panel", () => {
     it("renders the creator name as text, never markup", async () => {
       await openWith(liveLink({ creatorUsername: "<img src=x>" }));
 
-      expect($("#MemberInvitePanelBody img").length).toBe(0);
-      expect($("#MemberInvitePanelBody .invitePanelMeta").text()).toContain(
+      expect($("#inviteLinkModalBody img").length).toBe(0);
+      expect($("#inviteLinkModalBody .invitePanelMeta").text()).toContain(
         "<img src=x>",
       );
     });
@@ -319,13 +318,13 @@ describe("invite link panel", () => {
       async (status, extra, reason) => {
         await openWith(liveLink({ status, ...extra }));
 
-        expect($("#MemberInvitePanelBody .invitePanelHint").text()).toMatch(
+        expect($("#inviteLinkModalBody .invitePanelHint").text()).toMatch(
           reason,
         );
-        expect($("#MemberInvitePanelBody select").length).toBe(0);
+        expect($("#inviteLinkModalBody select").length).toBe(0);
         expect($("#inviteLinkUrlInput").length).toBe(0);
         expect($("#inviteLinkCreateBtn").length).toBe(1);
-        expect($("#MemberInvitePanelBody .invitePanelMeta").text()).toMatch(
+        expect($("#inviteLinkModalBody .invitePanelMeta").text()).toMatch(
           /^Created by alice · \d+ joined$/,
         );
         expect(document.activeElement?.id).toBe("inviteLinkCreateBtn");
@@ -350,7 +349,7 @@ describe("invite link panel", () => {
       trigger().trigger("click");
       await settle();
 
-      expect($("#MemberInvitePanelBody").text()).toContain(
+      expect($("#inviteLinkModalBody").text()).toContain(
         strings.INVITE_LINK_PANEL_LOAD_FAILED,
       );
       expect(document.activeElement?.id).toBe("inviteLinkTryAgainBtn");
@@ -366,7 +365,7 @@ describe("invite link panel", () => {
       await settle();
 
       expect(isInviteLinkPanelOpen()).toBe(false);
-      expect($("#MemberInvitePanel").hasClass("hidden")).toBe(true);
+      expect(isInviteModalShown()).toBe(false);
       expect(announcement().text()).toBe(strings.INVITE_LINK_PANEL_MANAGE_LOST);
       expect(announcement().attr("aria-live")).toBe("assertive");
       expect(updateUTubOnFindingStaleData).toHaveBeenCalledWith({ utubID: 1 });
@@ -395,10 +394,10 @@ describe("invite link panel", () => {
       $("#inviteLinkTryAgainBtn").trigger("click");
 
       expect($("#inviteLinkTryAgainBtn").length).toBe(0);
-      expect($("#MemberInvitePanelBody").text()).toBe(
+      expect($("#inviteLinkModalBody").text()).toBe(
         strings.INVITE_LINK_PANEL_LOADING,
       );
-      expect(document.activeElement?.id).toBe("MemberInvitePanelHeading");
+      expect(document.activeElement?.id).toBe("inviteLinkModalTitle");
 
       retry.resolve(liveLink());
       await settle();
@@ -470,7 +469,7 @@ describe("invite link panel", () => {
       pending.resolve(liveLink());
       await settle();
 
-      expect($("#MemberInvitePanelBody").children().length).toBe(0);
+      expect($("#inviteLinkModalBody").children().length).toBe(0);
       expect($("#inviteLinkUrlInput").length).toBe(0);
     });
 
@@ -478,7 +477,7 @@ describe("invite link panel", () => {
       const first = deferred<InviteLink | null>();
       vi.mocked(getInviteLink).mockReturnValueOnce(first.promise);
       trigger().trigger("click");
-      trigger().trigger("click");
+      dismissInviteModal();
 
       const second = deferred<InviteLink | null>();
       vi.mocked(getInviteLink).mockReturnValueOnce(second.promise);
@@ -512,40 +511,81 @@ describe("invite link panel", () => {
   });
 
   describe("close paths", () => {
-    it("Escape consumes the event, closes the panel and returns focus to the trigger", async () => {
+    it("Escape (a Bootstrap hide) closes the modal, returns focus to the trigger and empties the body", async () => {
+      trigger().removeClass("hidden");
       await openWith(liveLink());
-      const outer = vi.fn();
-      document.addEventListener("keydown", outer);
 
-      const event = new KeyboardEvent("keydown", {
-        key: "Escape",
-        bubbles: true,
-        cancelable: true,
-      });
-      $("#inviteLinkUrlInput")[0].dispatchEvent(event);
-      document.removeEventListener("keydown", outer);
+      dismissInviteModal();
 
-      expect(event.defaultPrevented).toBe(true);
-      expect(outer).not.toHaveBeenCalled();
       expect(isInviteLinkPanelOpen()).toBe(false);
-      expect($("#MemberInvitePanel").hasClass("hidden")).toBe(true);
-      expect(trigger().attr("aria-expanded")).toBe("false");
+      expect(isInviteModalShown()).toBe(false);
       expect(document.activeElement?.id).toBe("memberBtnInviteLink");
-      expect($("#MemberInvitePanelBody").children().length).toBe(0);
+      expect($("#inviteLinkModalBody").children().length).toBe(0);
     });
 
-    it("the trigger toggles the panel and never pushes history", async () => {
-      const length = window.history.length;
-      await openWith(null);
-      expect(isInviteLinkPanelOpen()).toBe(true);
-      trigger().trigger("click");
+    it("focus returns to the overflow button when the trigger is hidden", async () => {
+      trigger().addClass("hidden");
+      $("#memberBtnOverflow").removeClass("hidden");
+      await openWith(liveLink());
+
+      dismissInviteModal();
+
+      expect(document.activeElement?.id).toBe("memberBtnOverflow");
+    });
+
+    it("focus returns to the deck header when neither the trigger nor the overflow button shows", async () => {
+      trigger().addClass("hidden");
+      await openWith(liveLink());
+
+      dismissInviteModal();
+
+      expect(document.activeElement?.id).toBe("MemberDeckHeaderAndCaret");
+    });
+
+    it("a close never steals focus the user already moved elsewhere", async () => {
+      await openWith(liveLink());
+      $("#MemberDeckHeaderAndCaret")[0].focus();
+
+      dismissInviteModal();
+
+      expect(document.activeElement?.id).toBe("MemberDeckHeaderAndCaret");
+    });
+
+    it("the close button closes even over an open confirm", async () => {
+      await openWith(liveLink());
+      $("#inviteLinkRevokeBtn").trigger("click");
+      expect($("#inviteLinkConfirmActionBtn").length).toBe(1);
+
+      $("#inviteLinkModal .btn-close").trigger("click");
+      dismissInviteModal();
+
       expect(isInviteLinkPanelOpen()).toBe(false);
+    });
+
+    it("a hide over an open confirm only cancels the confirm", async () => {
+      await openWith(liveLink());
+      $("#inviteLinkRevokeBtn").trigger("click");
+
+      dismissInviteModal();
+
+      expect(isInviteLinkPanelOpen()).toBe(true);
+      expect(isInviteModalShown()).toBe(true);
+      expect($("#inviteLinkConfirmActionBtn").length).toBe(0);
+    });
+
+    it("the trigger opens through Bootstrap and never pushes history", async () => {
+      const length = window.history.length;
+      const modal = vi.spyOn(window.jQuery.fn, "modal" as never);
+      await openWith(null);
+
+      expect(modal).toHaveBeenCalledWith("show");
+      expect(isInviteLinkPanelOpen()).toBe(true);
       expect(window.history.length).toBe(length);
     });
 
     it("a user close announces nothing", async () => {
       await openWith(null);
-      trigger().trigger("click");
+      dismissInviteModal();
       await settle();
 
       expect(announcement().text()).toBe("");
@@ -558,6 +598,7 @@ describe("invite link panel", () => {
       await settle();
 
       expect(isInviteLinkPanelOpen()).toBe(false);
+      expect(isInviteModalShown()).toBe(false);
       expect(announcement().text()).toBe("");
       expect(getForcedClosedToken()).toBeNull();
     });
@@ -569,12 +610,18 @@ describe("invite link panel", () => {
 
       expect(isInviteLinkPanelOpen()).toBe(false);
       expect(announcement().text()).toBe("");
-      expect(trigger().attr("aria-expanded")).toBe("false");
+    });
+
+    it("a reset with nothing open never touches the modal plugin", () => {
+      const modal = vi.spyOn(window.jQuery.fn, "modal" as never);
+      resetInviteLinkPanel();
+
+      expect(modal).not.toHaveBeenCalled();
     });
   });
 
-  describe("cross-feature exclusion", () => {
-    it("opening closes the add form, the filter and the Members gear", async () => {
+  describe("opening", () => {
+    it("closes the add form, the filter and the Members gear, then shows the modal", async () => {
       const gearCloser = vi.fn();
       const stopListening = on(AppEvents.INVITE_PANEL_OPENED, gearCloser);
       await openWith(null);
@@ -583,9 +630,10 @@ describe("invite link panel", () => {
       expect(hideAndResetMemberCombobox).toHaveBeenCalledTimes(1);
       expect(closeMemberNameFilter).toHaveBeenCalledTimes(1);
       expect(gearCloser).toHaveBeenCalledTimes(1);
+      expect(isInviteModalShown()).toBe(true);
     });
 
-    it("opens with another home form open and both stay", async () => {
+    it("opens with another home form open and leaves it alone", async () => {
       emitAppEvent(AppEvents.FORM_MODE_CHANGED, { openForm: "url_create" });
       const formChanged = vi.fn();
       const off = on(AppEvents.FORM_MODE_CHANGED, formChanged);
@@ -593,108 +641,44 @@ describe("invite link panel", () => {
       off();
 
       expect(isInviteLinkPanelOpen()).toBe(true);
-      // Opening never touches the other home form (nothing closes it).
       expect(formChanged).not.toHaveBeenCalled();
     });
 
-    it("a later non-null FORM_MODE_CHANGED closes silently without moving focus", async () => {
-      await openWith(liveLink());
-      $("#MemberDeckHeaderAndCaret")[0].focus();
-
-      emitAppEvent(AppEvents.FORM_MODE_CHANGED, { openForm: "url_create" });
-      await settle();
+    it("does not open for a viewer who cannot manage the link", async () => {
+      setState({ isCurrentUserOwner: false, isCoCreator: false });
+      await openWith(null);
 
       expect(isInviteLinkPanelOpen()).toBe(false);
-      expect(announcement().text()).toBe("");
-      expect(document.activeElement?.id).toBe("MemberDeckHeaderAndCaret");
+      expect(isInviteModalShown()).toBe(false);
+      expect(getInviteLink).not.toHaveBeenCalled();
     });
 
-    it("FORM_MODE_CHANGED with null leaves it open", async () => {
+    it("keeps no reverse-exclusion subscriptions: Members surfaces opening later do not close it", async () => {
       await openWith(null);
-      emitAppEvent(AppEvents.FORM_MODE_CHANGED, { openForm: null });
-
-      expect(isInviteLinkPanelOpen()).toBe(true);
-    });
-
-    it.each([
-      [AppEvents.MEMBER_ADD_OPENED],
-      [AppEvents.MEMBER_FILTER_OPENED],
-    ] as const)("%s closes silently", async (eventName) => {
-      await openWith(null);
-      $("#MemberDeckHeaderAndCaret")[0].focus();
-      emitAppEvent(eventName);
-      await settle();
-
-      expect(isInviteLinkPanelOpen()).toBe(false);
-      expect(announcement().text()).toBe("");
-      expect(document.activeElement?.id).toBe("MemberDeckHeaderAndCaret");
-    });
-
-    it("the Members gear closes it silently; the utubs and tags gears do not", async () => {
-      await openWith(null);
-      emitAppEvent(AppEvents.PANEL_SETTINGS_OPENED, { panel: "utubs" });
-      emitAppEvent(AppEvents.PANEL_SETTINGS_OPENED, { panel: "tags" });
-      expect(isInviteLinkPanelOpen()).toBe(true);
-
-      $("#MemberDeckHeaderAndCaret")[0].focus();
-      emitAppEvent(AppEvents.PANEL_SETTINGS_OPENED, { panel: "members" });
-      await settle();
-
-      expect(isInviteLinkPanelOpen()).toBe(false);
-      expect(announcement().text()).toBe("");
-      expect(document.activeElement?.id).toBe("MemberDeckHeaderAndCaret");
-    });
-
-    it.each(["url-deck", "utub-deck", "no-utub", "trash"] as const)(
-      "a mobile switch to %s closes it and focus lands on the deck header",
-      async (target) => {
-        await openWith(liveLink());
-        expect(document.activeElement?.id).toBe("inviteLinkUrlInput");
-
-        emitAppEvent(AppEvents.MOBILE_DECK_SWITCHED, { target });
-
-        expect(isInviteLinkPanelOpen()).toBe(false);
-        expect(document.activeElement?.id).toBe("MemberDeckHeaderAndCaret");
-      },
-    );
-
-    it.each(["member-deck", "desktop"] as const)(
-      "a mobile switch to %s leaves it open",
-      async (target) => {
-        await openWith(null);
-        emitAppEvent(AppEvents.MOBILE_DECK_SWITCHED, { target });
-
-        expect(isInviteLinkPanelOpen()).toBe(true);
-      },
-    );
-
-    it("collapsing the Members deck closes it; other decks and expanding do not", async () => {
-      await openWith(liveLink());
-      emitAppEvent(AppEvents.DECK_COLLAPSE_CHANGED, {
-        deck: "utubs",
-        collapsed: true,
-      });
-      emitAppEvent(AppEvents.DECK_COLLAPSE_CHANGED, {
-        deck: "members",
-        collapsed: false,
-      });
-      expect(isInviteLinkPanelOpen()).toBe(true);
-
-      emitAppEvent(AppEvents.DECK_COLLAPSE_CHANGED, {
-        deck: "members",
-        collapsed: true,
-      });
-
-      expect(isInviteLinkPanelOpen()).toBe(false);
-      expect(document.activeElement?.id).toBe("MemberDeckHeaderAndCaret");
-    });
-
-    it("the unsubscribe removes the bus subscriptions", async () => {
-      await openWith(null);
-      unsubscribe();
       emitAppEvent(AppEvents.MEMBER_ADD_OPENED);
+      emitAppEvent(AppEvents.MEMBER_FILTER_OPENED);
+      emitAppEvent(AppEvents.FORM_MODE_CHANGED, { openForm: "url_create" });
+      emitAppEvent(AppEvents.MOBILE_DECK_SWITCHED, { target: "url-deck" });
+      emitAppEvent(AppEvents.DECK_COLLAPSE_CHANGED, {
+        deck: "members",
+        collapsed: true,
+      });
 
       expect(isInviteLinkPanelOpen()).toBe(true);
+    });
+
+    it("waits for shown.bs.modal before moving focus", async () => {
+      vi.mocked(getInviteLink).mockResolvedValue(liveLink());
+      const plugin = window.jQuery.fn.modal;
+      (window.jQuery.fn as unknown as Record<string, unknown>).modal = vi.fn();
+      trigger().trigger("click");
+      await settle();
+      expect(document.activeElement?.id).not.toBe("inviteLinkUrlInput");
+
+      $("#inviteLinkModal").trigger("shown.bs.modal");
+
+      expect(document.activeElement?.id).toBe("inviteLinkUrlInput");
+      (window.jQuery.fn as unknown as Record<string, unknown>).modal = plugin;
     });
   });
 
@@ -709,6 +693,41 @@ describe("invite link panel", () => {
         strings.INVITE_LINK_PANEL_FORCED_CLOSE,
       );
       expect(trigger().hasClass("hidden")).toBe(true);
+    });
+
+    it("hides the modal once shown when a teardown landed during the fade-in", async () => {
+      // Bootstrap ignores hide()/show() mid-transition: emulate a fade where the
+      // modal only becomes shown (and hide-able) when `shown.bs.modal` fires.
+      const modal = window.jQuery("#inviteLinkModal");
+      const calls: string[] = [];
+      (window.jQuery.fn as unknown as Record<string, unknown>).modal =
+        function (this: JQuery, action: string) {
+          calls.push(action);
+          return this;
+        };
+      trigger().trigger("click");
+      resetInviteLinkPanel();
+      expect(calls).toEqual(["show", "hide"]);
+
+      modal.trigger("shown.bs.modal");
+      expect(calls).toEqual(["show", "hide", "hide"]);
+    });
+
+    it("shows the modal again when a reopen landed during the fade-out", async () => {
+      await openWith(liveLink());
+      const calls: string[] = [];
+      (window.jQuery.fn as unknown as Record<string, unknown>).modal =
+        function (this: JQuery, action: string) {
+          calls.push(action);
+          return this;
+        };
+      resetInviteLinkPanel();
+      trigger().trigger("click");
+      expect(calls).toEqual(["hide", "show"]);
+
+      window.jQuery("#inviteLinkModal").trigger("hidden.bs.modal");
+      expect(calls).toEqual(["hide", "show", "show"]);
+      expect(isInviteLinkPanelOpen()).toBe(true);
     });
 
     it("closes and announces when the UTub is locked while open", async () => {
@@ -733,7 +752,7 @@ describe("invite link panel", () => {
 
       setState({ isCurrentUTubLocked: false });
       await openWith(null);
-      trigger().trigger("click");
+      dismissInviteModal();
       expect(getForcedClosedToken()).toBeNull();
     });
 

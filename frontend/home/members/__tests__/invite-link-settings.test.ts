@@ -11,6 +11,11 @@ import {
   type InviteLink,
   type InviteLinkMutationFailure,
 } from "../invite-link-client.js";
+import {
+  dismissInviteModal,
+  INVITE_MODAL_FIXTURE,
+  installModalMock,
+} from "../../../__tests__/helpers/invite-modal.js";
 import { APP_CONFIG } from "../../../lib/config.js";
 import { emit as emitMetric } from "../../../lib/metrics-client.js";
 import { UI_EVENTS } from "../../../types/metrics-events.js";
@@ -95,11 +100,9 @@ async function pick(selector: string, value: string) {
   await settle();
 }
 
+// Bootstrap hides the modal on Escape.
 function pressEscape() {
-  const event = $.Event("keydown", { key: "Escape" });
-  $(
-    (document.activeElement ?? $("#MemberInvitePanel")[0]) as HTMLElement,
-  ).trigger(event);
+  dismissInviteModal();
 }
 
 function selectEl(id: string): HTMLSelectElement {
@@ -119,19 +122,8 @@ describe("invite link settings saves and copy", () => {
         return this.closest(".hidden") === null ? document.body : null;
       },
     });
-    document.body.innerHTML = `
-      <div id="MemberDeck">
-        <button id="MemberDeckHeaderAndCaret"></button>
-        <button id="memberBtnInviteLink" class="hidden" aria-label="Invite link"
-          aria-expanded="false" aria-controls="MemberInvitePanel"></button>
-        <section id="MemberInvitePanel" class="hidden">
-          <h3 id="MemberInvitePanelHeading" tabindex="-1">Invite link</h3>
-          <div id="MemberInvitePanelBody"></div>
-        </section>
-        <span id="MemberRowActionAnnouncement" aria-live="polite"></span>
-      </div>
-      <span id="MobilePanelAnnouncement" aria-live="polite"></span>
-    `;
+    document.body.innerHTML = INVITE_MODAL_FIXTURE;
+    installModalMock();
     vi.clearAllMocks();
     resetStore();
     setState({
@@ -144,7 +136,7 @@ describe("invite link settings saves and copy", () => {
     // Counts native `change` events: a programmatic restore must fire none.
     changeSpy = vi.fn<(event: Event) => void>();
     document
-      .getElementById("MemberInvitePanelBody")
+      .getElementById("inviteLinkModalBody")
       ?.addEventListener("change", changeSpy);
   });
 
@@ -339,7 +331,7 @@ describe("invite link settings saves and copy", () => {
 
       expect(document.activeElement?.id).toBe("inviteLinkCreateBtn");
       expect(announcement()).toBe(
-        `${strings.INVITE_LINK_PANEL_RESYNC_DEAD_UPDATE} ${$("#MemberInvitePanelBody .invitePanelHint").text()}`,
+        `${strings.INVITE_LINK_PANEL_RESYNC_DEAD_UPDATE} ${$("#inviteLinkModalBody .invitePanelHint").text()}`,
       );
     });
 
@@ -369,8 +361,8 @@ describe("invite link settings saves and copy", () => {
       expect(updateUTubOnFindingStaleData).not.toHaveBeenCalled();
       expect(getInviteLink).not.toHaveBeenCalled();
       expect($("#inviteLinkSaving").length).toBe(0);
-      expect($("#MemberInvitePanel [aria-busy]").length).toBe(0);
-      expect($("#MemberInvitePanel [aria-disabled]").length).toBe(0);
+      expect($("#inviteLinkModal [aria-busy]").length).toBe(0);
+      expect($("#inviteLinkModal [aria-disabled]").length).toBe(0);
     });
 
     it("a PATCH response dropped after a UTub switch announces and refreshes nothing", async () => {
@@ -456,7 +448,7 @@ describe("invite link settings saves and copy", () => {
       expect($("#inviteLinkInlineError").length).toBe(0);
       expect(document.activeElement?.id).toBe("inviteLinkCreateBtn");
       expect(announcement()).toBe(
-        $("#MemberInvitePanelBody .invitePanelHint").text(),
+        $("#inviteLinkModalBody .invitePanelHint").text(),
       );
     });
 

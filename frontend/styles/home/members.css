@@ -523,7 +523,8 @@
    Styles mirror the bulk-copy destination picker's token values, single-select
    variant, scoped under #transferOwnerModal / #transferOwnerPickView.
    ========================================================================== */
-#transferOwnerModal .modal-dialog {
+#transferOwnerModal .modal-dialog,
+#inviteLinkModal .modal-dialog {
     max-width: 480px;
 }
 
@@ -533,29 +534,34 @@
    #crossUtubSearchSettingsModal) but uses fully theme-aware tokens so light mode
    is correct too. Without this, the option text (var(--textPrimary), white in
    dark mode) rendered white-on-white on Bootstrap's default white modal. */
-#transferOwnerModal .modal-content {
+#transferOwnerModal .modal-content,
+#inviteLinkModal .modal-content {
     background: var(--panelBackgroundColor);
     color: var(--textPrimary);
     border: 1px solid var(--borderColor);
 }
 
 #transferOwnerModal .modal-header,
+#inviteLinkModal .modal-header,
 #transferOwnerModal .modal-footer {
     border-color: var(--borderColor);
 }
 
-#transferOwnerModal .modal-title {
+#transferOwnerModal .modal-title,
+#inviteLinkModal .modal-title {
     color: var(--textPrimary);
 }
 
 /* Bootstrap's close glyph is a dark SVG — invert it on the dark surface so the
    × stays visible (covers both explicit dark and system-resolved dark). */
-:root[data-theme="dark"] #transferOwnerModal .btn-close {
+:root[data-theme="dark"] #transferOwnerModal .btn-close,
+:root[data-theme="dark"] #inviteLinkModal .btn-close {
     filter: invert(1) grayscale(1) brightness(1.6);
 }
 
 @media (prefers-color-scheme: dark) {
-    :root[data-theme="system"] #transferOwnerModal .btn-close {
+    :root[data-theme="system"] #transferOwnerModal .btn-close,
+    :root[data-theme="system"] #inviteLinkModal .btn-close {
         filter: invert(1) grayscale(1) brightness(1.6);
     }
 }
@@ -775,9 +781,9 @@
 }
 
 /* ==========================================================================
-   Invite link panel (#MemberInvitePanel, opened by #memberBtnInviteLink).
-   Rendered by members/invite-link-panel.ts. The member list stays visible
-   while it is open.
+   Invite link modal (#inviteLinkModal, opened by #memberBtnInviteLink).
+   Rendered by members/invite-link-panel.ts into #inviteLinkModalBody. The modal
+   surface is themed with the #transferOwnerModal rules above.
    ========================================================================== */
 
 #memberBtnInviteLink {
@@ -785,43 +791,37 @@
     appearance: none;
 }
 
-/* Active outline on the trigger while the panel is open. */
-#memberBtnInviteLink[aria-expanded="true"] {
-    outline: 2px solid var(--deckSelectionGreen);
-    outline-offset: 2px;
-    border-radius: 6px;
-}
-
 #memberBtnInviteLink:focus-visible {
     outline: 2px solid var(--deckSelectionGreen);
     outline-offset: 2px;
 }
 
-#MemberInvitePanel {
-    box-sizing: border-box;
-    margin: 5px 0 8px;
-    padding: 10px 12px;
-    color: var(--textPrimary);
-    background-color: var(--cardBackgroundColor);
-    border: 1px solid var(--borderColor);
-    border-radius: 8px;
-}
-
-#MemberInvitePanel.hidden {
-    display: none;
-}
-
-#MemberInvitePanelHeading {
-    margin: 0 0 8px;
-    font-size: 1rem;
-    font-weight: 600;
-    color: var(--navbarText);
-}
-
-#MemberInvitePanelHeading:focus-visible,
-#MemberInvitePanel :is(button, select, input):focus-visible {
+#inviteLinkModalTitle:focus-visible,
+#inviteLinkModal :is(button, select, input):focus-visible {
     outline: 2px solid var(--deckSelectionGreen);
     outline-offset: 2px;
+}
+
+#inviteLinkModalTitle {
+    font-size: 1.125rem;
+}
+
+/* Mobile sheet: full width, flush to the bottom edge, no horizontal scroll. */
+@media (max-width: 575.98px) {
+    #inviteLinkModal .modal-dialog {
+        max-width: none;
+        width: 100%;
+        margin: 0;
+        min-height: 100%;
+        align-items: flex-end;
+    }
+
+    #inviteLinkModal .modal-content {
+        border-radius: 12px 12px 0 0;
+        max-height: 90vh;
+        max-height: 90dvh;
+        overflow-y: auto;
+    }
 }
 
 .invitePanelHint,
@@ -928,16 +928,122 @@
 }
 
 @media (any-pointer: coarse) {
-    #MemberInvitePanel .invitePanelBtn,
-    #MemberInvitePanel .invitePanelSelect,
-    #MemberInvitePanel .invitePanelLinkInput {
+    #inviteLinkModal .invitePanelBtn,
+    #inviteLinkModal .invitePanelSelect,
+    #inviteLinkModal .invitePanelLinkInput {
         min-height: 2.75rem;
+    }
+
+    #inviteLinkModal .btn-close {
+        box-sizing: border-box;
+        width: 2.75rem;
+        height: 2.75rem;
     }
 }
 
 @media (max-width: 991.98px) {
-    #MemberInvitePanel .invitePanelLinkInput,
-    #MemberInvitePanel .invitePanelSelect {
+    #inviteLinkModal .invitePanelLinkInput,
+    #inviteLinkModal .invitePanelSelect {
         font-size: 16px;
+    }
+}
+
+/* ==========================================================================
+   Members title-row overflow (members/overflow-menu.ts). When the title row is
+   narrow the filter and gear hide and #memberBtnOverflow stands in for them.
+   The row is a size container, so the rule follows the deck width, not the
+   viewport. Threshold: see the measurement note on the @container rule.
+   ========================================================================== */
+
+#MemberDeck .titleElement:first-child {
+    container: memberTitleRow / inline-size;
+}
+
+#MemberDeck .titleElement:first-child > .button-container {
+    position: relative;
+}
+
+#memberBtnOverflow {
+    display: none;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.memberOverflowMenu {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 4px);
+    z-index: 30;
+    display: flex;
+    flex-direction: column;
+    min-width: 11rem;
+    padding: 4px;
+    background: var(--panelBackgroundColor);
+    border: 1px solid var(--borderColor);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-md);
+}
+
+.memberOverflowMenu.hidden {
+    display: none;
+}
+
+.memberOverflowItem {
+    -webkit-appearance: none;
+    appearance: none;
+    display: block;
+    width: 100%;
+    padding: 8px 12px;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--textPrimary);
+    font-size: 0.9375rem;
+    text-align: left;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.memberOverflowItem:hover,
+.memberOverflowItem:focus-visible {
+    background: var(--cardBackgroundColor);
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: -2px;
+}
+
+.memberOverflowItem.hidden {
+    display: none;
+}
+
+@media (any-pointer: coarse) {
+    .memberOverflowItem {
+        min-height: 2.75rem;
+    }
+}
+
+/* Overflow breakpoint, measured with Playwright (Members title row, owner view,
+   four buttons: filter, invite link, add, gear; 30px buttons on a 36px pitch).
+   Row width by viewport: 992-1699px -> 350px; >=1700px -> 422px; phone 360/390/420px
+   -> 360/390/420px (the deck is full width).
+   At 350px the buttons column is 160px and the "Members (N)" header is 167px wide
+   in a 160px column, so it overruns the filter button by 3px (header right edge
+   200px vs filter left edge 197px at 1100/1280/1400px). At 422px the header clears
+   the buttons by 69px. A 360px phone row (133px header, 165px buttons column, 330px
+   content) fits by 32px but leaves too little margin for four buttons, and the 390px
+   phone row (360px content) is only 33px above the 327px that overruns on desktop.
+   All widths here are border-box row widths; the query measures the content box
+   (row minus 15px side padding each side), so a 380px row is a 350px content box:
+   max-width 349.98px content. Below that the filter and gear fold into the
+   three-dot menu: 350px rows (992-1699px viewports) and a 360px phone collapse;
+   390/420px phones and >=1700px stay inline. */
+@container memberTitleRow (max-width: 349.98px) {
+    #MemberDeck #memberNameFilterBtn,
+    #MemberDeck #memberBtnSettings {
+        display: none;
+    }
+
+    #MemberDeck:has(#memberNameFilterBtn:not(.hidden), #memberBtnSettings:not(.hidden))
+        #memberBtnOverflow {
+        display: inline-flex;
     }
 }

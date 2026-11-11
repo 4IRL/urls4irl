@@ -5,12 +5,7 @@ import { fillTemplate } from "../../lib/string-template.js";
 import { emit } from "../../lib/metrics-client.js";
 import { UI_EVENTS } from "../../types/metrics-events.js";
 import { INVITE_LINK_COPY_RESULT } from "../../types/metrics-dim-values.js";
-import {
-  AppEvents,
-  emit as emitAppEvent,
-  on,
-  type AppEventMap,
-} from "../../lib/event-bus.js";
+import { AppEvents, emit as emitAppEvent } from "../../lib/event-bus.js";
 import { getState, subscribe, type AppState } from "../../store/app-store.js";
 import { canManageInviteLink } from "../utubs/policy.js";
 import { updateUTubOnFindingStaleData } from "../utubs/stale-data.js";
@@ -39,9 +34,16 @@ import {
 const log = debug("members");
 
 const TRIGGER_SELECTOR = "#memberBtnInviteLink";
-const PANEL_SELECTOR = "#MemberInvitePanel";
-const HEADING_SELECTOR = "#MemberInvitePanelHeading";
-const BODY_SELECTOR = "#MemberInvitePanelBody";
+const MODAL_SELECTOR = "#inviteLinkModal";
+const HEADING_SELECTOR = "#inviteLinkModalTitle";
+const BODY_SELECTOR = "#inviteLinkModalBody";
+const OVERFLOW_BUTTON_SELECTOR = "#memberBtnOverflow";
+// Where focus returns when the modal closes, first focusable wins.
+const FOCUS_RETURN_SELECTORS = [
+  TRIGGER_SELECTOR,
+  OVERFLOW_BUTTON_SELECTOR,
+  "#MemberDeckHeaderAndCaret",
+] as const;
 const MEMBER_DECK_SELECTOR = "#MemberDeck";
 const MOBILE_ANNOUNCEMENT_SELECTOR = "#MobilePanelAnnouncement";
 const ANNOUNCEMENT_SELECTOR = "#MemberRowActionAnnouncement";
@@ -67,6 +69,11 @@ type Politeness = "polite" | "assertive";
 // session stays silent; only `resetInviteLinkPanel` clears it.
 let _generation = 0;
 let _isOpen = false;
+// The modal's fade has finished (`shown.bs.modal`); until then it cannot take focus.
+let _shown = false;
+// The close button was clicked: it closes even over an open confirm.
+let _closeRequested = false;
+let _state: PanelState = "loading";
 let _openedUTubID: number | null = null;
 let _forcedClosedToken: number | null = null;
 // `_inFlight` (any request) drives the control lock; `_lifecycleInFlight` (only
@@ -328,7 +335,7 @@ function setBody({ nodes, busy }: { nodes: Node[]; busy: boolean }): void {
   _liveLink = null;
   clearCopyRevertTimer();
   body.replaceChildren(...nodes);
-  const panel = $(PANEL_SELECTOR)[0];
+  const panel = $(MODAL_SELECTOR)[0];
   if (busy) panel?.setAttribute("aria-busy", "true");
   else panel?.removeAttribute("aria-busy");
 }
@@ -556,14 +563,18 @@ const ENTERING_FOCUS: Record<PanelState, string> = {
   dead: "#inviteLinkCreateBtn",
 };
 
+// Records the state the modal is in; focus moves only once the modal is shown
+// (`handleModalShown` replays it), since a hidden element cannot take focus.
 function focusEntering({ state }: { state: PanelState }): void {
+  _state = state;
+  if (!_shown) return;
   $(ENTERING_FOCUS[state])[0]?.focus({ preventScroll: true });
 }
 
-// Whether focus is still on the heading or somewhere inside the panel; the
+// Whether focus is still on the heading or somewhere inside the modal; the
 // open and Try-again settles move focus only then.
 function focusIsInPanel(): boolean {
-  const panel = $(PANEL_SELECTOR)[0];
+  const panel = $(MODAL_SELECTOR)[0];
   const active = document.activeElement;
   return (
     panel !== undefined &&
@@ -598,11 +609,13 @@ function isStale({
   );
 }
 
-// Bumps the generation (dropping every in-flight response), hides the panel,
-// empties the body and clears the open session. Silent: announces nothing.
-function teardownPanel(): void {
+// Bumps the generation (dropping every in-flight response) and clears the open
+// session. Silent: announces nothing, leaves the DOM alone.
+function endSession(): void {
   _generation += 1;
   _isOpen = false;
+  _shown = false;
+  _closeRequested = false;
   _openedUTubID = null;
   _inFlight = false;
   _lifecycleInFlight = false;
@@ -610,10 +623,90 @@ function teardownPanel(): void {
   _liveLink = null;
   _pending = null;
   clearCopyRevertTimer();
+}
+
+function clearBody(): void {
   $(`${BODY_SELECTOR} [aria-disabled]`).removeAttr("aria-disabled");
-  $(PANEL_SELECTOR).addClass("hidden").removeAttr("aria-busy");
+  $(MODAL_SELECTOR).removeAttr("aria-busy");
   $(BODY_SELECTOR).empty();
-  $(TRIGGER_SELECTOR).attr("aria-expanded", "false").removeClass("active");
+}
+
+function isFocusable(element: Element | null): element is HTMLElement {
+  return (
+    element instanceof HTMLElement &&
+    element.isConnected &&
+    element.offsetParent !== null &&
+    getComputedStyle(element).visibility !== "hidden"
+  );
+}
+
+// Focus goes back to the trigger, or to the overflow button when the trigger is
+// hidden, else the deck header. It moves only when focus sits in the modal or has
+// dropped to the body, so a close never steals focus from a control the user (or
+// another surface) already moved to.
+function restoreFocus(): void {
+  const active = document.activeElement;
+  const modal = $(MODAL_SELECTOR)[0];
+  const lost =
+    active === null ||
+    active === document.body ||
+    (modal !== undefined && modal.contains(active));
+  if (!lost) return;
+  for (const selector of FOCUS_RETURN_SELECTORS) {
+    const target = $(selector)[0] ?? null;
+    if (isFocusable(target)) {
+      target.focus({ preventScroll: true });
+      return;
+    }
+  }
+}
+
+// A programmatic close (UTub switch, deselect, forced close): ends the session,
+// empties the body at once, moves focus out of the modal and hides it. Silent.
+function teardownPanel(): void {
+  const wasOpen = _isOpen;
+  endSession();
+  clearBody();
+  if (!wasOpen) return;
+  restoreFocus();
+  $(MODAL_SELECTOR).modal("hide");
+}
+
+// Fired when a hide starts: Escape, backdrop, the close button, or our own
+// teardown. A hide that starts while a confirm is open (not from the close button
+// and not mid-request) steps back out of the confirm instead of closing.
+function handleModalHide(event: JQuery.TriggeredEvent): void {
+  if (!_isOpen) return;
+  if (_confirm !== null && !_lifecycleInFlight && !_closeRequested) {
+    event.preventDefault();
+    cancelConfirm();
+    return;
+  }
+  endSession();
+}
+
+function handleModalHidden(): void {
+  _closeRequested = false;
+  // A reopen during the fade-out owns the body and the session, but Bootstrap
+  // ignored its show() mid-transition: show again now that the hide has finished.
+  if (_isOpen) {
+    $(MODAL_SELECTOR).modal("show");
+    return;
+  }
+  clearBody();
+  restoreFocus();
+}
+
+// Bootstrap moves focus to the modal element once the fade ends; land it on the
+// entering control for the state the session is in.
+function handleModalShown(): void {
+  if (!_isOpen) {
+    // A teardown during the fade-in had its hide() ignored (mid-transition).
+    $(MODAL_SELECTOR).modal("hide");
+    return;
+  }
+  _shown = true;
+  focusEntering({ state: _state });
 }
 
 function messageForDenied({ errorCode }: { errorCode: number | null }): string {
@@ -669,14 +762,17 @@ function loadAndRender({
     (link) => {
       if (isStale({ token, utubID })) return;
       const state = renderLink({ link });
-      if (!settle || focusIsInPanel()) focusEntering({ state });
+      if (!settle || !_shown || focusIsInPanel()) focusEntering({ state });
       announceLanding({ link, resyncMessage, state });
     },
     (failure: InviteLinkLoadFailure) => {
       if (isStale({ token, utubID })) return;
       log("invite link load failed", { utubID, kind: failure.kind });
       handleLoadFailure({ failure, utubID });
-      if (failure.kind !== "denied" && (!settle || focusIsInPanel())) {
+      if (
+        failure.kind !== "denied" &&
+        (!settle || !_shown || focusIsInPanel())
+      ) {
         focusEntering({ state: "failed" });
       }
     },
@@ -1393,6 +1489,10 @@ function cancelConfirm(): void {
 function handlePanelClick(event: JQuery.ClickEvent): void {
   const target = (event.target as HTMLElement).closest("button");
   if (target === null) return;
+  if (target.classList.contains("btn-close")) {
+    _closeRequested = true;
+    return;
+  }
   if (target.id === "inviteLinkConfirmCancelBtn") {
     // While a lifecycle request is in flight the confirm is not cancelled.
     if (!_lifecycleInFlight) cancelConfirm();
@@ -1430,99 +1530,32 @@ function handlePanelClick(event: JQuery.ClickEvent): void {
 function openPanel(): void {
   const { activeUTubID } = getState();
   if (activeUTubID === null || !canManageInviteLink()) return;
-  // The panel is the only open Members surface. Another home form (URL create,
-  // UTub create) is deliberately left alone: both may be on screen.
+  // The modal is blocking, so it only has to clear the in-place Members surfaces
+  // (add form, filter, gear popover or sheet). Another home form (URL create,
+  // UTub create) is deliberately left alone.
   hideAndResetMemberCombobox();
   closeMemberNameFilter();
   // Signalled over the bus, not by importing panel-settings: popover.ts reaches
   // client.ts, which reaches this module through the deck graph (an import cycle).
   emitAppEvent(AppEvents.INVITE_PANEL_OPENED);
   _isOpen = true;
+  _shown = false;
+  _closeRequested = false;
   _openedUTubID = activeUTubID;
-  $(PANEL_SELECTOR).removeClass("hidden");
-  $(TRIGGER_SELECTOR).attr("aria-expanded", "true").addClass("active");
   emit({ event: UI_EVENTS.UI_INVITE_PANEL_OPEN });
   renderLoading();
   focusEntering({ state: "loading" });
+  $(MODAL_SELECTOR).modal("show");
   loadAndRender({ settle: true, resyncMessage: null });
 }
 
-// A user-initiated close (trigger or Escape): silent, focus returns to the trigger.
-function closePanelByUser(): void {
-  if (!_isOpen) return;
-  teardownPanel();
-  $(TRIGGER_SELECTOR)[0]?.focus({ preventScroll: true });
-}
-
-// Another surface took over (add form, filter, gear, another home form): close
-// silently and leave focus alone, since it is moving into that surface.
-function closePanelForOtherSurface(): void {
-  if (!_isOpen) return;
-  teardownPanel();
-}
-
-// The deck context went away (mobile deck switch, Members collapse): close
-// silently, keeping focus on a control that still exists.
-function closePanelForDeckLoss(): void {
-  if (!_isOpen) return;
-  withMemberControlFocusFallback({ write: teardownPanel });
-}
-
-const DECK_LOSS_TARGETS: ReadonlyArray<
-  AppEventMap["mobile:deck-switched"]["target"]
-> = ["url-deck", "utub-deck", "no-utub", "trash"];
-
-function subscribeCrossFeatureExclusion(): () => void {
-  const disposers = [
-    on(AppEvents.MEMBER_ADD_OPENED, closePanelForOtherSurface),
-    on(AppEvents.MEMBER_FILTER_OPENED, closePanelForOtherSurface),
-    on(AppEvents.FORM_MODE_CHANGED, ({ openForm }) => {
-      if (openForm !== null) closePanelForOtherSurface();
-    }),
-    on(AppEvents.PANEL_SETTINGS_OPENED, ({ panel }) => {
-      if (panel === "members") closePanelForOtherSurface();
-    }),
-    on(AppEvents.MOBILE_DECK_SWITCHED, ({ target }) => {
-      if (DECK_LOSS_TARGETS.includes(target)) closePanelForDeckLoss();
-    }),
-    on(AppEvents.DECK_COLLAPSE_CHANGED, ({ deck, collapsed }) => {
-      if (deck === "members" && collapsed) closePanelForDeckLoss();
-    }),
-  ];
-  return () => disposers.forEach((dispose) => dispose());
-}
-
-function togglePanel(): void {
-  if (_isOpen) {
-    closePanelByUser();
-    return;
-  }
-  openPanel();
-}
-
-function handlePanelKeydown(event: JQuery.KeyDownEvent): void {
-  if (event.key !== "Escape") return;
-  // No select exception: an Escape that closes a native dropdown never reaches
-  // this handler. Consumed here so document-level Escape handlers never see it.
-  event.preventDefault();
-  event.stopPropagation();
-  // The first Escape cancels an open confirm; a second closes the panel. While
-  // a lifecycle request is in flight Escape closes directly: the confirm is
-  // not cancelled and the late response is dropped by the generation bump.
-  if (_confirm !== null && !_lifecycleInFlight) {
-    cancelConfirm();
-    return;
-  }
-  closePanelByUser();
-}
-
-// The gate flipped to false while the panel was open: close, with focus kept on
+// The gate flipped to false while the modal was open: close, with focus kept on
 // a control that exists, and announce only when the UTub is still the one the
-// panel opened for (a UTub switch or deselect is not a loss of rights).
+// modal opened for (a UTub switch or deselect is not a loss of rights).
 function forceClosePanel(): void {
   const announce = getState().activeUTubID === _openedUTubID;
   _forcedClosedToken = _generation;
-  withMemberControlFocusFallback({ write: teardownPanel });
+  teardownPanel();
   if (announce) {
     announceInviteLinkPanel({
       message: APP_CONFIG.strings.INVITE_LINK_PANEL_FORCED_CLOSE,
@@ -1538,36 +1571,36 @@ export function syncInviteLinkTrigger(): void {
 }
 
 /**
- * Closes and clears the panel silently (UTub switch, deselect or rebuild):
- * body emptied, in-flight responses dropped, `aria-expanded="false"`. Also
- * clears the forced-close mark.
+ * Closes the modal and clears it silently (UTub switch, deselect or rebuild):
+ * body emptied, in-flight responses dropped, modal hidden. Also clears the
+ * forced-close mark.
  */
 export function resetInviteLinkPanel(): void {
   _forcedClosedToken = null;
-  withMemberControlFocusFallback({ write: teardownPanel });
+  teardownPanel();
 }
 
 /**
- * Binds the trigger and the panel's Escape handler and subscribes the gate:
- * the trigger follows `canManageInviteLink`, and a flip to false closes an open
- * panel. Returns the unsubscribe function.
+ * Binds the trigger and the modal's handlers and subscribes the gate: the
+ * trigger follows `canManageInviteLink`, and a flip to false closes an open
+ * modal. Returns the unsubscribe function.
  */
 export function initInviteLinkPanel(): () => void {
-  $(TRIGGER_SELECTOR).off(".invitePanel").on("click.invitePanel", togglePanel);
-  $(PANEL_SELECTOR)
+  $(TRIGGER_SELECTOR).off(".invitePanel").on("click.invitePanel", openPanel);
+  $(MODAL_SELECTOR)
     .off(".invitePanel")
-    .on("keydown.invitePanel", handlePanelKeydown)
+    .on("hide.bs.modal.invitePanel", handleModalHide)
+    .on("hidden.bs.modal.invitePanel", handleModalHidden)
+    .on("shown.bs.modal.invitePanel", handleModalShown)
     .on("click.invitePanel", "button", handlePanelClick)
     .on("change.invitePanel", "select", handleSelectChange);
   syncInviteLinkTrigger();
-  const unsubscribeBus = subscribeCrossFeatureExclusion();
   const unsubscribeStore = subscribe((changedKeys) => {
     if (!RELEVANT_KEYS.some((key) => changedKeys.includes(key))) return;
     withMemberControlFocusFallback({ write: syncInviteLinkTrigger });
     if (_isOpen && !canManageInviteLink()) forceClosePanel();
   });
   return () => {
-    unsubscribeBus();
     unsubscribeStore();
   };
 }

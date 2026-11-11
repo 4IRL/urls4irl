@@ -1,6 +1,5 @@
 import type { MemberItem } from "../types/member.js";
 import type { UtubUrlItem, UtubTag } from "../types/url.js";
-import type { PanelId } from "../types/settings.js";
 import type { OpenFormId } from "./modal-tracking.js";
 
 export interface UtubSelectedPayload {
@@ -54,7 +53,6 @@ export interface AppEventMap {
   "trash:opened": void;
   "trash:closed": void;
   "panel-settings:sections-changed": void;
-  "panel-settings:opened": { panel: PanelId };
   "invite-panel:opened": void;
   "form:mode-changed": { openForm: OpenFormId | null };
   "deck:collapse-changed": {
@@ -89,7 +87,6 @@ export const AppEvents = Object.freeze({
   TRASH_OPENED: "trash:opened",
   TRASH_CLOSED: "trash:closed",
   PANEL_SETTINGS_SECTIONS_CHANGED: "panel-settings:sections-changed",
-  PANEL_SETTINGS_OPENED: "panel-settings:opened",
   INVITE_PANEL_OPENED: "invite-panel:opened",
   FORM_MODE_CHANGED: "form:mode-changed",
   DECK_COLLAPSE_CHANGED: "deck:collapse-changed",

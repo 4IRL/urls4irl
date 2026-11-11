@@ -11,6 +11,11 @@ import {
   type InviteLink,
   type InviteLinkMutationFailure,
 } from "../invite-link-client.js";
+import {
+  dismissInviteModal,
+  INVITE_MODAL_FIXTURE,
+  installModalMock,
+} from "../../../__tests__/helpers/invite-modal.js";
 import { APP_CONFIG } from "../../../lib/config.js";
 import { getState, resetStore, setState } from "../../../store/app-store.js";
 import { updateUTubOnFindingStaleData } from "../../utubs/stale-data.js";
@@ -90,10 +95,9 @@ async function click(selector: string) {
   await settle();
 }
 
+// Bootstrap hides the modal on Escape.
 function pressEscape() {
-  const event = $.Event("keydown", { key: "Escape" });
-  const target = document.activeElement ?? $("#MemberInvitePanel")[0];
-  $(target as HTMLElement).trigger(event);
+  dismissInviteModal();
 }
 
 async function confirmNewLink() {
@@ -118,19 +122,8 @@ describe("invite link lifecycle (create, New link, Revoke)", () => {
         return this.closest(".hidden") === null ? document.body : null;
       },
     });
-    document.body.innerHTML = `
-      <div id="MemberDeck">
-        <button id="MemberDeckHeaderAndCaret"></button>
-        <button id="memberBtnInviteLink" class="hidden" aria-label="Invite link"
-          aria-expanded="false" aria-controls="MemberInvitePanel"></button>
-        <section id="MemberInvitePanel" class="hidden">
-          <h3 id="MemberInvitePanelHeading" tabindex="-1">Invite link</h3>
-          <div id="MemberInvitePanelBody"></div>
-        </section>
-        <span id="MemberRowActionAnnouncement" aria-live="polite"></span>
-      </div>
-      <span id="MobilePanelAnnouncement" aria-live="polite"></span>
-    `;
+    document.body.innerHTML = INVITE_MODAL_FIXTURE;
+    installModalMock();
     vi.clearAllMocks();
     resetStore();
     setState({
@@ -190,7 +183,7 @@ describe("invite link lifecycle (create, New link, Revoke)", () => {
 
       await click("#inviteLinkRevokeBtn");
 
-      const group = $("#MemberInvitePanel [role='group']");
+      const group = $("#inviteLinkModal [role='group']");
       expect(group.length).toBe(1);
       expect(group.attr("aria-label")).toBe(
         strings.INVITE_LINK_PANEL_CONFIRM_GROUP_LABEL,
@@ -528,7 +521,7 @@ describe("invite link lifecycle (create, New link, Revoke)", () => {
       await settle();
 
       expect($("[aria-disabled]").length).toBe(0);
-      expect($("#MemberInvitePanel").attr("aria-busy")).toBeUndefined();
+      expect($("#inviteLinkModal").attr("aria-busy")).toBeUndefined();
       // The late response was dropped: still the empty state.
       expect($("#inviteLinkUrlInput").length).toBe(0);
       // And a fresh request is allowed.
@@ -553,7 +546,7 @@ describe("invite link lifecycle (create, New link, Revoke)", () => {
       await settle();
       expect(announcement()).toBe(strings.INVITE_LINK_PANEL_REVOKED);
       // Dropped render: the closed panel stays empty.
-      expect($("#MemberInvitePanelBody").children().length).toBe(0);
+      expect($("#inviteLinkModalBody").children().length).toBe(0);
     });
 
     it("the in-flight flag is cleared by the close", async () => {

@@ -30,7 +30,10 @@ INVITE_URL_PATTERN = re.compile(r"^https?://[^/]+/invite/[A-Za-z0-9_-]{22}$")
 
 def _open_panel(*, page: Page) -> None:
     page.locator(HPL.BUTTON_MEMBER_INVITE_LINK).click()
-    expect(page.locator(HPL.MEMBER_INVITE_PANEL)).to_be_visible()
+    expect(page.locator(HPL.INVITE_LINK_MODAL)).to_be_visible()
+    # Bootstrap ignores a hide while the fade runs; focus lands inside the modal
+    # only once it has fully shown, so wait for it before acting on the modal.
+    expect(page.locator(f"{HPL.INVITE_LINK_MODAL} :focus")).to_have_count(1)
 
 
 def _seed_live_link_and_open(*, app: Flask, page: Page, max_uses: int | None) -> int:

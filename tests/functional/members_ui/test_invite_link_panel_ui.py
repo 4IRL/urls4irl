@@ -36,7 +36,10 @@ REFRESH_INTERVAL_PASSED_MS = 31_000
 
 def _open_panel(*, page: Page) -> None:
     page.locator(HPL.BUTTON_MEMBER_INVITE_LINK).click()
-    expect(page.locator(HPL.MEMBER_INVITE_PANEL)).to_be_visible()
+    expect(page.locator(HPL.INVITE_LINK_MODAL)).to_be_visible()
+    # Bootstrap ignores a hide while the fade runs; focus lands inside the modal
+    # only once it has fully shown, so wait for it before acting on the modal.
+    expect(page.locator(f"{HPL.INVITE_LINK_MODAL} :focus")).to_have_count(1)
 
 
 def test_trigger_visible_to_owner(
@@ -113,7 +116,11 @@ def test_empty_state_shows_create_form(
     expect(page.locator(HPL.INVITE_LINK_EXPIRES_SELECT)).to_have_value("7")
     expect(page.locator(HPL.INVITE_LINK_USES_SELECT)).to_have_value("")
     expect(page.locator(HPL.BUTTON_MEMBER_INVITE_LINK)).to_have_attribute(
-        "aria-expanded", "true"
+        "aria-haspopup", "dialog"
+    )
+    expect(page.locator(HPL.INVITE_LINK_MODAL)).to_have_attribute("role", "dialog")
+    expect(page.locator(HPL.INVITE_LINK_MODAL)).to_have_attribute(
+        "aria-labelledby", "inviteLinkModalTitle"
     )
 
 
@@ -152,60 +159,90 @@ def test_dead_state_expired_shows_reason(
     )
     login_as(app=app, page=page, user_id=OWNER_ID)
     _open_panel(page=page)
-    expect(page.locator(HPL.MEMBER_INVITE_PANEL_BODY)).to_contain_text(
+    expect(page.locator(HPL.INVITE_LINK_MODAL_BODY)).to_contain_text(
         INVITE_LINK_PANEL.DEAD_EXPIRED.split("{date}")[0]
     )
     expect(page.locator(HPL.INVITE_LINK_URL_INPUT)).to_have_count(0)
 
 
-def test_escape_closes_panel_and_returns_focus_to_trigger(
+def test_escape_closes_modal_and_returns_focus_to_trigger(
     page: Page, create_test_utubmembers, provide_app: Flask
 ):
     """
-    GIVEN an open invite link panel
+    GIVEN an open invite link modal
     WHEN the user presses Escape
-    THEN the panel closes and focus returns to the trigger
+    THEN the modal closes and focus returns to the trigger
     """
     login_as(app=provide_app, page=page, user_id=OWNER_ID)
     _open_panel(page=page)
     page.locator(HPL.INVITE_LINK_EXPIRES_SELECT).focus()
     page.keyboard.press("Escape")
-    expect(page.locator(HPL.MEMBER_INVITE_PANEL)).to_be_hidden()
+    expect(page.locator(HPL.INVITE_LINK_MODAL)).to_be_hidden()
     expect(page.locator(HPL.BUTTON_MEMBER_INVITE_LINK)).to_be_focused()
 
 
-def test_trigger_toggles_panel_closed(
+def test_close_button_closes_modal_and_returns_focus_to_trigger(
     page: Page, create_test_utubmembers, provide_app: Flask
 ):
     """
-    GIVEN an open invite link panel
-    WHEN the trigger is clicked again
-    THEN the panel closes
+    GIVEN an open invite link modal
+    WHEN the user clicks its close button
+    THEN the modal closes and focus returns to the trigger
     """
     login_as(app=provide_app, page=page, user_id=OWNER_ID)
     _open_panel(page=page)
-    page.locator(HPL.BUTTON_MEMBER_INVITE_LINK).click()
-    expect(page.locator(HPL.MEMBER_INVITE_PANEL)).to_be_hidden()
+    page.locator(HPL.INVITE_LINK_MODAL_CLOSE).click()
+    expect(page.locator(HPL.INVITE_LINK_MODAL)).to_be_hidden()
+    expect(page.locator(HPL.BUTTON_MEMBER_INVITE_LINK)).to_be_focused()
 
 
-def test_panel_closes_when_utub_changes(
+def test_backdrop_click_closes_modal(
     page: Page, create_test_utubmembers, provide_app: Flask
 ):
     """
-    GIVEN an open invite link panel
-    WHEN the user selects a different UTub
-    THEN the panel is closed
+    GIVEN an open invite link modal
+    WHEN the user clicks the backdrop outside the dialog
+    THEN the modal closes and the UTub underneath is not switched
     """
-    app = provide_app
-    login_as(app=app, page=page, user_id=OWNER_ID)
+    login_as(app=provide_app, page=page, user_id=OWNER_ID)
+    url_before = page.url
     _open_panel(page=page)
-    other = page.locator(f"{HPL.SELECTORS_UTUB}:not(.active)")
-    expect(other.first).to_be_visible()
-    other.first.click()
-    expect(page.locator(HPL.MEMBER_INVITE_PANEL)).to_be_hidden()
-    expect(page.locator(HPL.BUTTON_MEMBER_INVITE_LINK)).to_have_attribute(
-        "aria-expanded", "false"
-    )
+    page.mouse.click(5, 5)
+    expect(page.locator(HPL.INVITE_LINK_MODAL)).to_be_hidden()
+    expect(page.locator(HPL.BUTTON_MEMBER_INVITE_LINK)).to_be_focused()
+    assert page.url == url_before
+
+
+def test_modal_traps_focus(page: Page, create_test_utubmembers, provide_app: Flask):
+    """
+    GIVEN an open invite link modal
+    WHEN the user tabs repeatedly
+    THEN focus stays inside the modal
+    """
+    login_as(app=provide_app, page=page, user_id=OWNER_ID)
+    _open_panel(page=page)
+    for _ in range(8):
+        page.keyboard.press("Tab")
+        assert page.evaluate(
+            "() => document.getElementById('inviteLinkModal').contains("
+            "document.activeElement)"
+        )
+
+
+def test_trigger_reopens_modal_after_close(
+    page: Page, create_test_utubmembers, provide_app: Flask
+):
+    """
+    GIVEN an invite link modal that was opened and closed
+    WHEN the trigger is activated again
+    THEN the modal reopens with the form
+    """
+    login_as(app=provide_app, page=page, user_id=OWNER_ID)
+    _open_panel(page=page)
+    page.keyboard.press("Escape")
+    expect(page.locator(HPL.INVITE_LINK_MODAL)).to_be_hidden()
+    _open_panel(page=page)
+    expect(page.locator(HPL.INVITE_LINK_CREATE_BTN)).to_be_visible()
 
 
 def test_panel_closes_when_utub_gets_locked(
@@ -231,93 +268,66 @@ def test_panel_closes_when_utub_gets_locked(
             window.dispatchEvent(new Event('focus'));
         }"""
     )
-    expect(page.locator(HPL.MEMBER_INVITE_PANEL)).to_be_hidden()
+    expect(page.locator(HPL.INVITE_LINK_MODAL)).to_be_hidden()
     expect(page.locator(HPL.BUTTON_MEMBER_INVITE_LINK)).to_be_hidden()
     expect(page.locator("#MemberRowActionAnnouncement")).to_have_text(
         INVITE_LINK_PANEL.FORCED_CLOSE
     )
 
 
-def test_opening_add_form_closes_panel_and_panel_closes_add_form(
+def test_opening_panel_closes_open_add_form(
     page: Page, create_test_utubmembers, provide_app: Flask
 ):
     """
-    GIVEN an open invite link panel
-    WHEN the owner opens the add-member form, then reopens the panel
-    THEN each opening closes the other, so only one surface is ever open
+    GIVEN the owner with the add-member form open
+    WHEN they open the invite link modal
+    THEN the add form is closed and the modal is shown
     """
     login_as(app=provide_app, page=page, user_id=OWNER_ID)
-    _open_panel(page=page)
-
     page.locator(HPL.BUTTON_MEMBER_CREATE).click()
     expect(page.locator(HPL.MEMBER_COMBOBOX_WRAP)).to_be_visible()
-    expect(page.locator(HPL.MEMBER_INVITE_PANEL)).to_be_hidden()
-    expect(page.locator(HPL.BUTTON_MEMBER_INVITE_LINK)).to_have_attribute(
-        "aria-expanded", "false"
-    )
 
-    _open_panel(page=page)
+    page.locator(HPL.BUTTON_MEMBER_INVITE_LINK).click()
+    expect(page.locator(HPL.INVITE_LINK_MODAL)).to_be_visible()
     expect(page.locator(HPL.MEMBER_COMBOBOX_WRAP)).to_have_count(0)
 
 
-def test_opening_filter_closes_panel_and_panel_closes_filter(
+def test_opening_panel_closes_open_filter(
     page: Page, create_test_utubmembers, provide_app: Flask
 ):
     """
-    GIVEN an open invite link panel
-    WHEN the owner opens the member filter, then reopens the panel
-    THEN each opening closes the other
+    GIVEN the owner with the member filter open
+    WHEN they open the invite link modal
+    THEN the filter is closed and the modal is shown
     """
     login_as(app=provide_app, page=page, user_id=OWNER_ID)
-    _open_panel(page=page)
-
     page.locator(HPL.BUTTON_MEMBER_NAME_FILTER).click()
     expect(page.locator(HPL.BUTTON_MEMBER_NAME_FILTER_CLOSE)).to_be_visible()
-    expect(page.locator(HPL.MEMBER_INVITE_PANEL)).to_be_hidden()
 
-    _open_panel(page=page)
+    page.locator(HPL.BUTTON_MEMBER_INVITE_LINK).click()
+    expect(page.locator(HPL.INVITE_LINK_MODAL)).to_be_visible()
     expect(page.locator(HPL.BUTTON_MEMBER_NAME_FILTER_CLOSE)).to_be_hidden()
     expect(page.locator(HPL.BUTTON_MEMBER_NAME_FILTER)).to_be_visible()
 
 
-def test_opening_gear_closes_panel_and_panel_closes_gear(
+def test_opening_panel_closes_open_gear_popover(
     page: Page, create_test_utubmembers, provide_app: Flask
 ):
     """
-    GIVEN an open invite link panel
-    WHEN the owner opens the Members gear popover, then reopens the panel
-    THEN each opening closes the other
+    GIVEN the owner with the Members gear popover open
+    WHEN they open the invite link modal from the keyboard
+    THEN the popover is closed and the modal is shown
     """
     login_as(app=provide_app, page=page, user_id=OWNER_ID)
-    _open_panel(page=page)
-
     page.locator(HPL.BUTTON_MEMBER_SETTINGS_GEAR).click()
     expect(page.locator(HPL.PANEL_SETTINGS_POPOVER)).to_be_visible()
-    expect(page.locator(HPL.MEMBER_INVITE_PANEL)).to_be_hidden()
 
     # Keyboard open: not an outside click, so the popover's own dismissal
     # cannot be what hides it.
     page.locator(HPL.BUTTON_MEMBER_INVITE_LINK).focus()
     page.keyboard.press("Enter")
-    expect(page.locator(HPL.MEMBER_INVITE_PANEL)).to_be_visible()
+    expect(page.locator(HPL.INVITE_LINK_MODAL)).to_be_visible()
     expect(page.locator(HPL.PANEL_SETTINGS_POPOVER)).to_be_hidden()
-
-
-def test_collapsing_members_deck_closes_panel_and_focuses_header(
-    page: Page, create_test_utubmembers, provide_app: Flask
-):
-    """
-    GIVEN an open invite link panel with focus inside it
-    WHEN the owner collapses the Members deck
-    THEN the panel closes and focus lands on the deck header, never the body
-    """
-    login_as(app=provide_app, page=page, user_id=OWNER_ID)
-    _open_panel(page=page)
-    page.locator(HPL.INVITE_LINK_EXPIRES_SELECT).focus()
-
-    page.locator(HPL.HEADER_AND_CARET_MEMBER_DECK).click()
-    expect(page.locator(HPL.MEMBER_INVITE_PANEL)).to_be_hidden()
-    expect(page.locator(HPL.HEADER_AND_CARET_MEMBER_DECK)).to_be_focused()
 
 
 def test_hide_member_list_keeps_trigger_for_managers_and_hides_it_from_members(
@@ -345,4 +355,4 @@ def test_hide_member_list_keeps_trigger_for_managers_and_hides_it_from_members(
     # so the deck has been built before the hidden assertions can run.
     expect(page.locator(f"{HPL.MEMBER_DECK} {HPL.BADGES_MEMBERS}")).to_have_count(3)
     expect(page.locator(HPL.BUTTON_MEMBER_INVITE_LINK)).to_be_hidden()
-    expect(page.locator(HPL.MEMBER_INVITE_PANEL)).to_be_hidden()
+    expect(page.locator(HPL.INVITE_LINK_MODAL)).to_be_hidden()

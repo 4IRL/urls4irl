@@ -2,7 +2,7 @@ import { $ } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { KEYS, TABLET_WIDTH } from "../../lib/constants.js";
 import { debug } from "../../lib/debug.js";
-import { AppEvents, emit as emitAppEvent, on } from "../../lib/event-bus.js";
+import { AppEvents, on } from "../../lib/event-bus.js";
 import { hideTooltip } from "../../lib/tooltips.js";
 import { getState, subscribe } from "../../store/app-store.js";
 import type { AppState } from "../../store/app-store.js";
@@ -64,9 +64,15 @@ const FOCUSABLE_SELECTOR =
 // The URL deck has no collapsible header, so it falls back to its header buttons.
 const FOCUS_FALLBACK_SELECTORS: Readonly<Record<PanelId, readonly string[]>> = {
   utubs: ["#UTubDeckHeaderAndCaret"],
-  members: ["#MemberDeckHeaderAndCaret"],
+  members: ["#memberBtnOverflow", "#MemberDeckHeaderAndCaret"],
   tags: ["#TagDeckHeaderAndCaret"],
   urls: ["#urlBtnCreate", "#urlBtnMultiSelect"],
+};
+
+// The Members title row collapses its gear into the overflow menu when narrow
+// (display:none). A popover opened from the menu anchors to the overflow button.
+const OVERFLOW_ANCHOR_SELECTORS: Readonly<Partial<Record<PanelId, string>>> = {
+  members: "#memberBtnOverflow",
 };
 
 // Below the breakpoint the Tag deck lives in the Tag sheet, whose handle is the
@@ -1135,13 +1141,27 @@ function buildSink(): QueueSink {
 
 // -------------------------------------------------------------- position
 
+// The gear itself, or its overflow-menu button when the gear is not rendered.
+function anchorFor({ gear }: { gear: HTMLElement }): HTMLElement {
+  if (gear.offsetParent !== null) return gear;
+  const panel = gear.dataset.panel;
+  const selector = isKnownPanel(panel)
+    ? OVERFLOW_ANCHOR_SELECTORS[panel]
+    : undefined;
+  const anchor =
+    selector === undefined
+      ? null
+      : document.querySelector<HTMLElement>(selector);
+  return anchor !== null && anchor.offsetParent !== null ? anchor : gear;
+}
+
 function positionPopover({ gear }: { gear: HTMLElement }): void {
   const element = popoverElement();
   if (!element) return;
   // Reset the inline cap so the natural height is measured on every call
   // (resize, section toggles); the synchronous re-measure paints once.
   element.style.maxHeight = "";
-  const rect = gear.getBoundingClientRect();
+  const rect = anchorFor({ gear }).getBoundingClientRect();
   const placement = computePopoverPlacement({
     gearRect: rect,
     width: element.offsetWidth,
@@ -1218,10 +1238,6 @@ function openPopover({ gear }: { gear: HTMLElement }): void {
   // A sheet close or Tag sheet close is still unwinding its history entry: the
   // tap is dropped (before any internal close) and stays dropped.
   if (surface === "sheet" && isPanelSettingsSheetSelfBackPending()) return;
-
-  // Emitted before anything renders, after every early return, so a tap that
-  // opens nothing never closes another surface.
-  emitAppEvent(AppEvents.PANEL_SETTINGS_OPENED, { panel });
 
   if (_current !== null) {
     // Switching popovers is a quiet user close; the sheet's gears are inert while

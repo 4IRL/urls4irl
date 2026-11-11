@@ -159,6 +159,9 @@ vi.mock("../home/urls/deck-view-attrs.js", () => ({
 vi.mock("../home/members/policy-attrs.js", () => ({
   initMemberDeckPolicyAttrs: track("initMemberDeckPolicyAttrs"),
 }));
+vi.mock("../home/members/overflow-menu.js", () => ({
+  initMemberOverflowMenu: track("initMemberOverflowMenu"),
+}));
 vi.mock("../home/members/invite-link-panel.js", () => ({
   initInviteLinkPanel: track("initInviteLinkPanel"),
 }));
@@ -214,6 +217,12 @@ describe("main.ts init order", () => {
   it("starts the invite link panel right after the member deck policy attributes", () => {
     expect(callOrder.indexOf("initInviteLinkPanel")).toBe(
       callOrder.indexOf("initMemberDeckPolicyAttrs") + 1,
+    );
+  });
+
+  it("starts the member overflow menu right after the invite link panel", () => {
+    expect(callOrder.indexOf("initMemberOverflowMenu")).toBe(
+      callOrder.indexOf("initInviteLinkPanel") + 1,
     );
   });
 

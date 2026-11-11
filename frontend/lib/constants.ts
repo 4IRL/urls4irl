@@ -11,6 +11,8 @@ export const KEYS = {
   ESCAPE: "Escape",
   ARROW_UP: "ArrowUp",
   ARROW_DOWN: "ArrowDown",
+  HOME: "Home",
+  END: "End",
   BACKSPACE: "Backspace",
   TAB: "Tab",
   SPACE: " ",
