@@ -68,10 +68,15 @@ jobs:
               echo "${{ secrets.PROD_SSH_PRIVATE_KEY_VALUE }}" > ~/.ssh/${{ secrets.PROD_SSH_PRIVATE_KEY_FILENAME }}
               chmod 600 ~/.ssh/${{ secrets.PROD_SSH_PRIVATE_KEY_FILENAME }}
 
+          # Exact release plus its sha256 (published in the release notes), never `latest`.
           - name: Install Cloudflared
+            env:
+              CLOUDFLARED_VERSION: "2026.10.3"
+              CLOUDFLARED_SHA256: 053b80b0a23031a038fdbf3c073f59f82b8f1f152aa67971d7383ffafc0dbab0
             run: |
-              sudo curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o /usr/bin/cloudflared
-              sudo chmod a+x /usr/bin/cloudflared
+              curl -fsSL "https://github.com/cloudflare/cloudflared/releases/download/${CLOUDFLARED_VERSION}/cloudflared-linux-amd64" -o "${RUNNER_TEMP}/cloudflared"
+              echo "${CLOUDFLARED_SHA256}  ${RUNNER_TEMP}/cloudflared" | sha256sum --check --strict -
+              sudo install -m 0755 "${RUNNER_TEMP}/cloudflared" /usr/bin/cloudflared
 
           # Special config file required for cloudflared tunnel ssh connection
           - name: Prepare SSH Config file
@@ -96,7 +101,26 @@ jobs:
 
           - name: SCP Compose File Into Production Server
             run: |
-              scp -T -q -o StrictHostKeyChecking=no docker/compose.yaml ${{ secrets.PROD_SSH_HOST }}:/home/u4i/
+              scp -T -q -o StrictHostKeyChecking=no docker/compose.yaml scripts/notifs-key-write.sh ${{ secrets.PROD_SSH_HOST }}:/home/u4i/
+
+          # Create or repair the hub key directory before docker login and before any plaintext secret is written,
+          # so a failure here aborts the deploy with nothing to clean up. Failure-visible: set -e plus a final check.
+          - name: Prepare Notifs Key Directory
+            run: |
+              ssh -T -q -o StrictHostKeyChecking=no ${{ secrets.PROD_SSH_HOST }} '
+              set -e
+              mkdir -p /home/u4i/notifs-key
+              chmod 2750 /home/u4i/notifs-key
+              if [ "$(stat -c %g /home/u4i/notifs-key)" != "1001" ]; then
+                if docker image inspect ghcr.io/4irl/u4i-workflow:latest > /dev/null 2>&1; then
+                  docker run --rm --user 0 --entrypoint chgrp -v /home/u4i/notifs-key:/d ghcr.io/4irl/u4i-workflow:latest 1001 /d
+                else
+                  echo "ERROR: /home/u4i/notifs-key is not group 1001 and the workflow image is not present locally. Run once on the host: sudo chgrp 1001 /home/u4i/notifs-key"
+                  exit 1
+                fi
+              fi
+              bash /home/u4i/notifs-key-write.sh --check /home/u4i/notifs-key || exit 1
+              '
 
           # Pull updated images, recreate if needed, run as daemon, and prune old images
           - name: Build Docker Network

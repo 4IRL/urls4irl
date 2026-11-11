@@ -21,6 +21,8 @@ from pathlib import Path
 import psycopg2
 import psycopg2.extensions
 
+from scripts.notifs_hub import safe_ping
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -114,9 +116,11 @@ if __name__ == "__main__":
         deleted_row_count = run_purge(pg_conn=pg_conn_main)
         elapsed_ms = int((time.time() - started_at) * 1000)
         logger.info("purged=%d elapsed_ms=%d", deleted_row_count, elapsed_ms)
+        safe_ping("purge_short_links")
         sys.exit(0)
     except Exception as purge_error:
         logger.exception("short-link purge failed: %s", purge_error)
+        safe_ping("purge_short_links", fail=True)
         sys.exit(1)
     finally:
         if pg_conn_main is not None:

@@ -22,6 +22,8 @@ services:
       # Tuning knobs (METRICS_FLUSH_INTERVAL_SECONDS, METRICS_BUCKET_SECONDS,
       # METRICS_BATCH_NONCE_TTL_SECONDS) inherit from backend/config.py defaults.
       - METRICS_ENABLED=true
+      - NOTIFS_BASE_URL=https://notifs-delivery.4irl.app
+      - NOTIFS_KEY_DIR=/run/notifs
     secrets:
       - MAILJET_API_KEY
       - MAILJET_SECRET_KEY
@@ -39,6 +41,7 @@ services:
       - GITHUB_OAUTH_CLIENT_SECRET
     volumes:
       - app_logs:/app/volume
+      - /home/u4i/notifs-key:/run/notifs:ro
 
   db:
     image: postgres:16.3-bookworm
@@ -128,11 +131,14 @@ services:
       - METRICS_FLUSH_LIVENESS_THRESHOLD_SECONDS=180
       - POSTGRES_HOST=db
       - POSTGRES_PORT=5432
+      - NOTIFS_BASE_URL=https://notifs-delivery.4irl.app
+      - NOTIFS_KEY_DIR=/run/notifs
     volumes:
       - app_logs:/app/volume
       - pgdata:/var/lib/postgresql/data:ro
       - workflow_logs:/app/workflow_logs
       - backups:/backups
+      - /home/u4i/notifs-key:/run/notifs:ro
     healthcheck:
       test: ["CMD", "/opt/metrics-venv/bin/python", "/app/check_flush_liveness.py"]
       interval: 60s

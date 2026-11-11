@@ -547,6 +547,19 @@ def test_create_utub_tag_submit_btn_tooltip_restores_after_400(
     expect(restored_tooltip).to_have_count(1)
     expect(restored_tooltip).to_be_visible()
     expect(restored_tooltip).to_have_text(STRINGS.CREATE_UTUB_TAG_TOOLTIP)
+
+    # The bubble must outlive its own fade-in: `shown.bs.tooltip` stamps
+    # aria-hidden on it, and Bootstrap's `_leave()` (the self-hide a restore that
+    # forgot to mark the button hovered used to trigger) runs on a 0ms timer right
+    # after `shown`. Wait for `shown`, let two frames pass, then it must still be
+    # the one shown bubble -- a count/text check made inside the fade-in window
+    # alone cannot tell a restored bubble from one about to dismiss itself.
+    expect(restored_tooltip).to_have_attribute("aria-hidden", "true")
+    page.evaluate(
+        "() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))"
+    )
+    expect(restored_tooltip).to_have_count(1)
+    expect(restored_tooltip).to_have_text(STRINGS.CREATE_UTUB_TAG_TOOLTIP)
     expect(create_utub_tag_submit_btn).to_have_attribute(
         "aria-label", STRINGS.CREATE_UTUB_TAG_TOOLTIP
     )
