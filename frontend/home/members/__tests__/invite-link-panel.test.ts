@@ -562,6 +562,18 @@ describe("invite link panel", () => {
       expect(isInviteLinkPanelOpen()).toBe(false);
     });
 
+    it("a close click whose hide was ignored does not make a later hide close over a confirm", async () => {
+      await openWith(liveLink());
+      $("#inviteLinkModal .btn-close").trigger("click");
+      $("#inviteLinkModal").trigger("shown.bs.modal");
+      $("#inviteLinkRevokeBtn").trigger("click");
+
+      dismissInviteModal();
+
+      expect(isInviteLinkPanelOpen()).toBe(true);
+      expect($("#inviteLinkConfirmActionBtn").length).toBe(0);
+    });
+
     it("a hide over an open confirm only cancels the confirm", async () => {
       await openWith(liveLink());
       $("#inviteLinkRevokeBtn").trigger("click");

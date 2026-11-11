@@ -6,6 +6,7 @@ import {
 import {
   createInviteLink,
   getInviteLink,
+  replaceExpiryDays,
   replaceInviteLink,
   revokeInviteLink,
   type InviteLink,
@@ -268,6 +269,15 @@ describe("invite link lifecycle (create, New link, Revoke)", () => {
       ["just over 7 days", 7 * DAY_MS + 1, 30],
       ["exactly 30 days", 30 * DAY_MS, 30],
     ];
+
+    it("a link whose expiry is already past replaces with expires_in_days 1", () => {
+      expect(
+        replaceExpiryDays({
+          expiresAt: new Date(NOW - DAY_MS).toISOString(),
+          now: NOW,
+        }),
+      ).toBe(1);
+    });
 
     it.each(
       boundaries.flatMap(([name, remaining, days]) =>

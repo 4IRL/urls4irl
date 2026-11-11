@@ -507,6 +507,33 @@ def test_invite_link_revoked_rejects_invalid_dims(bad_dims: dict):
         model_class.model_validate(bad_dims)
 
 
+@pytest.mark.parametrize("result", ["success", "fallback", "failure"])
+def test_invite_link_copy_accepts_each_result(result: str):
+    model_class = DIMENSION_MODELS[EventName.UI_INVITE_LINK_COPY]
+    assert model_class is not None
+    model = model_class.model_validate(
+        {"result": result, "device_type": DeviceType.DESKTOP}
+    )
+    assert model.result == result
+
+
+@pytest.mark.parametrize(
+    "bad_dims",
+    [
+        {"device_type": DeviceType.DESKTOP},
+        {"result": "copied", "device_type": DeviceType.DESKTOP},
+        {"result": "success"},
+        {"result": "success", "device_type": "watch"},
+        {"result": "success", "device_type": DeviceType.DESKTOP, "token": "x"},
+    ],
+)
+def test_invite_link_copy_rejects_invalid_dims(bad_dims: dict):
+    model_class = DIMENSION_MODELS[EventName.UI_INVITE_LINK_COPY]
+    assert model_class is not None
+    with pytest.raises(ValidationError):
+        model_class.model_validate(bad_dims)
+
+
 @pytest.mark.parametrize("viewer_state", ["member", "logged_in", "logged_out"])
 @pytest.mark.parametrize("outcome", ["valid", "dead"])
 def test_invite_link_viewed_accepts_each_combination(viewer_state: str, outcome: str):

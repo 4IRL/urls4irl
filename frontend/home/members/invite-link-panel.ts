@@ -705,6 +705,8 @@ function handleModalShown(): void {
     $(MODAL_SELECTOR).modal("hide");
     return;
   }
+  // A close-button click during the fade-in had its hide ignored by Bootstrap.
+  _closeRequested = false;
   _shown = true;
   focusEntering({ state: _state });
 }
@@ -1429,6 +1431,7 @@ function handleCopy(): void {
 function openConfirm({ kind }: { kind: "revoke" | "new" }): void {
   const footer = $(".invitePanelFooter")[0];
   if (footer === undefined || _confirm !== null) return;
+  _closeRequested = false;
   const { strings } = APP_CONFIG;
   const question =
     kind === "revoke"
