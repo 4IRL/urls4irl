@@ -73,6 +73,7 @@ COPY --chown=workflow:workflow scripts/trash_retention.py /app/scripts/trash_ret
 COPY --chown=workflow:workflow scripts/backup_sentinel.py /app/backup_sentinel.py
 COPY --chown=workflow:workflow scripts/run_backup_if_requested.py /app/run_backup_if_requested.py
 COPY --chown=workflow:workflow scripts/notify.py /app/scripts/notify.py
+COPY --chown=workflow:workflow scripts/notifs_hub.py /app/scripts/notifs_hub.py
 COPY --chown=workflow:workflow backend/extensions/metrics/buckets.py /app/backend/extensions/metrics/buckets.py
 COPY --chown=workflow:workflow backend/metrics/gauges.py /app/backend/metrics/gauges.py
 COPY --chown=workflow:workflow backend/metrics/latency.py /app/backend/metrics/latency.py
@@ -93,6 +94,7 @@ RUN chmod +x /app/*.sh \
     && chmod +x /app/backup_sentinel.py \
     && chmod +x /app/run_backup_if_requested.py \
     && chmod +x /app/scripts/notify.py \
+    && chmod +x /app/scripts/notifs_hub.py \
     && chmod +x /usr/bin/restricted_curl \
     && mv /usr/bin/curl /usr/bin/curl.real \
     && ln -s /usr/bin/restricted_curl /usr/bin/curl

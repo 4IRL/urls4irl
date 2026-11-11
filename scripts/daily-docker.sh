@@ -4,10 +4,42 @@ set +x # Disable command echoing
 
 SENSITIVE_VARS=("R2_ENDPOINT" "SECRET_ACCESS_KEY" "ACCESS_KEY" "DB_PASS" "DB_USER" "DB_NAME" "ACCESS_TOKEN" "DB_BACKUP_DIR" "DB_BACKUP_FILE" "COMPRESSED_DB_BACKUP_FILE" "LOG_DIR" "LOG_FILE" "COMPRESSED_LOG_FILE" "FINAL_LOG_FILE" "TMP_LOG_DIR" "NOTIFICATION_URL" "RCLONE_CONFIG_REMOTE_ACCESS_KEY_ID" "RCLONE_CONFIG_REMOTE_SECRET_ACCESS_KEY" "RCLONE_CONFIG_REMOTE_ENDPOINT" PGPASSWORD)
 
+# Heartbeat state for the EXIT trap. Failing defaults so an early exit or a
+# set -e abort reports a failure and the trap never trips set -u. The outcome
+# flips to "ok" only just before the final exit when every leg succeeded.
+heartbeat_outcome="fail"
+heartbeat_sent="false"
+heartbeat_armed="false"
+database_backed_up="false"
+logs_backed_up="false"
+remote_exit=1
+
+# One dead-man's-switch ping per scheduled run (never for a manual trigger, which
+# must neither hide a missed nightly run nor raise a heartbeat alert).
+ping_heartbeat() {
+  local fail_flag=""
+  local kind="success"
+  if [[ "${heartbeat_outcome:-fail}" != "ok" ]]; then
+    fail_flag="--fail"
+    kind="fail"
+  fi
+  if [[ "${BACKUP_TRIGGER_SOURCE:-scheduled}" != "scheduled" ]]; then
+    echo "notifs_hub lane=heartbeat check=daily_backup path=hub kind=${kind} outcome=skip error=manual_trigger"
+    return 0
+  fi
+  # shellcheck disable=SC2086 # fail_flag is empty or a single flag
+  /opt/metrics-venv/bin/python /app/scripts/notifs_hub.py ping daily_backup ${fail_flag} || true
+}
+
 # Cleanup function
 cleanup_secrets() {
   local exit_code=$?
   echo "----------------------------------------------------"
+
+  if [[ "${heartbeat_armed:-false}" == "true" && "${heartbeat_sent:-false}" == "false" ]]; then
+    heartbeat_sent="true"
+    ping_heartbeat || true
+  fi
 
   if [[ $exit_code -ne 0 ]]; then
     echo -e "\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
@@ -42,6 +74,9 @@ trap cleanup_secrets EXIT
 # Make sure cron jobs load the Docker compose environment
 if [[ -f /app/container_environment ]]; then
   . /app/container_environment
+  # From here on every exit path sends exactly one heartbeat (see cleanup_secrets).
+  # A missing container_environment exits before PRODUCTION is known: no ping.
+  heartbeat_armed="true"
 else
   echo "ERROR: /app/container_environment not found!"
   exit 1
@@ -139,6 +174,10 @@ if [[ "$database_backed_up" == "true" ]]; then
   if ! METRICS_REDIS_URI="${METRICS_REDIS_URI:-}" /opt/metrics-venv/bin/python "$SCRIPT_DIR/backup_sentinel.py"; then
     echo "Warning: backup last-success sentinel stamp failed"
   fi
+fi
+
+if [[ "$database_backed_up" == "true" && "$logs_backed_up" == "true" && $remote_exit -eq 0 ]]; then
+  heartbeat_outcome="ok"
 fi
 
 exit $remote_exit

@@ -89,6 +89,8 @@ _metrics_strs_module = _load_module_direct(
 )
 _latency_module = _load_module_direct("_metrics_latency", "backend/metrics/latency.py")
 _notify_module = _load_module_direct("_notify", "scripts/notify.py")
+_notifs_hub_module = _load_module_direct("_notifs_hub", "scripts/notifs_hub.py")
+safe_ping = _notifs_hub_module.safe_ping
 epoch_to_aware_datetime = _buckets_module.epoch_to_aware_datetime
 METRICS_REDIS = _metrics_strs_module.METRICS_REDIS
 LATENCY_SAMPLE_CAP_DEFAULT = _latency_module.LATENCY_SAMPLE_CAP_DEFAULT
@@ -749,9 +751,11 @@ if __name__ == "__main__":
         )
         elapsed_ms = int((time.time() - started_at) * 1000)
         logger.info("upserted=%d elapsed_ms=%d", upserted_rows, elapsed_ms)
+        safe_ping("metrics_flush", timeout_seconds=3.0)
         sys.exit(0)
     except Exception as flush_error:
         logger.exception("flush failed: %s", flush_error)
+        safe_ping("metrics_flush", fail=True, timeout_seconds=3.0)
         sys.exit(1)
     finally:
         if pg_conn_main is not None:

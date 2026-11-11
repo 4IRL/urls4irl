@@ -19,6 +19,8 @@
 #   METRICS_FLUSH_LIVENESS_THRESHOLD_SECONDS
 #   METRICS_REDIS_URI
 #   NOTIFICATION_URL
+#   NOTIFS_BASE_URL
+#   NOTIFS_KEY_DIR
 #   POSTGRES_DB
 #   POSTGRES_HOST
 #   POSTGRES_PASSWORD
@@ -46,6 +48,10 @@ MAILTO=""
 # metrics:backup:trigger_requested flag and starts daily-docker.sh when set
 * * * * * set -a && . /app/container_environment && set +a && /opt/metrics-venv/bin/python /app/run_backup_if_requested.py >> /app/workflow_logs/backup-trigger.log 2>&1
 
+# Every job below (and the daily backup above) sends a hub heartbeat when it finishes
+# (success, or /fail on error; never changes the exit status) — see scripts/notifs_hub.py.
+# metrics_flush has a 1m period / 5m grace, so a deploy that recreates this container
+# can leave a pings gap (documented in docs/notifs-hub.md).
 # Anonymous metrics flush — every minute (uses the set -a env pattern above)
 * * * * * set -a && . /app/container_environment && set +a && /opt/metrics-venv/bin/python /app/flush_metrics.py >> /app/workflow_logs/metrics-flush.log 2>&1
 

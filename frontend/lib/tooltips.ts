@@ -480,7 +480,16 @@ export function restoreTooltipIfStillTargeted(
     window.setTimeout(() => {
       _pendingRestoreTimers.delete(element);
       if (!isStillTargeted(element)) return;
-      bootstrap.Tooltip.getInstance(element)?.show();
+      if (!bootstrap.Tooltip.getInstance(element)) return;
+      // Re-enter through Bootstrap's own hover listener rather than calling
+      // `show()`. `hide()` left `_isHovered` unset/false, and a bare `show()`
+      // never sets it, so the bubble's own fade-in `complete()` saw "not
+      // hovered" and called `_leave()`: the restored bubble hid itself ~150ms
+      // after appearing with the pointer still on the button. `mouseover`
+      // (Bootstrap's `mouseenter` trigger) runs `_enter()`, which marks it
+      // hovered and then shows it. Non-bubbling: only the instance's own
+      // listener on the element needs it.
+      element.dispatchEvent(new MouseEvent("mouseover", { bubbles: false }));
     }, TOOLTIP_RESTORE_DELAY_MS),
   );
 }

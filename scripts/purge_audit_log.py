@@ -24,6 +24,8 @@ from pathlib import Path
 import psycopg2
 import psycopg2.extensions
 
+from scripts.notifs_hub import safe_ping
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -130,9 +132,11 @@ if __name__ == "__main__":
             AUDIT_LOG_RETENTION_DAYS,
             elapsed_ms,
         )
+        safe_ping("purge_audit_log")
         sys.exit(0)
     except Exception as purge_error:
         logger.exception("audit-log purge failed: %s", purge_error)
+        safe_ping("purge_audit_log", fail=True)
         sys.exit(1)
     finally:
         if pg_conn_main is not None:
