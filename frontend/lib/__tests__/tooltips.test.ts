@@ -453,6 +453,7 @@ describe("restoreTooltipIfStillTargeted", () => {
   // implementation, and vi.clearAllMocks() clears call history but NOT
   // implementations — so pin a known instance for every test here.
   const restoreInstance = { show: vi.fn(), hide: vi.fn(), dispose: vi.fn() };
+  let mouseoverEvents: Event[] = [];
 
   beforeEach(async () => {
     vi.clearAllMocks();
@@ -468,7 +469,11 @@ describe("restoreTooltipIfStillTargeted", () => {
     // The restore re-enters through Bootstrap's `mouseenter` trigger (which marks
     // the instance hovered, so its fade-in does not self-hide) instead of calling
     // show() directly; stand in for that listener, whose job is to show.
-    submitBtn().addEventListener("mouseover", () => restoreInstance.show());
+    mouseoverEvents = [];
+    submitBtn().addEventListener("mouseover", (event) => {
+      mouseoverEvents.push(event);
+      restoreInstance.show();
+    });
   });
 
   afterEach(() => {
@@ -524,6 +529,21 @@ describe("restoreTooltipIfStillTargeted", () => {
     expect(vi.mocked(bootstrap.Tooltip.getInstance)).toHaveBeenCalledWith(
       submitBtn(),
     );
+  });
+
+  it("restores through Bootstrap's mouseenter trigger, not a bare show()", async () => {
+    // A bare show() leaves the instance un-hovered, so the bubble's own fade-in
+    // hides it again ~150ms later with the pointer still on the button. Only a
+    // dispatched `mouseover` runs Bootstrap's `_enter()` and marks it hovered.
+    const { restoreTooltipIfStillTargeted, TOOLTIP_RESTORE_DELAY_MS } =
+      await import("../tooltips.js");
+    vi.spyOn(submitBtn(), "matches").mockReturnValue(true);
+
+    restoreTooltipIfStillTargeted(submitBtn());
+    vi.advanceTimersByTime(TOOLTIP_RESTORE_DELAY_MS);
+
+    expect(mouseoverEvents).toHaveLength(1);
+    expect(mouseoverEvents[0].bubbles).toBe(false);
   });
 
   it("re-checks hover when the timer fires and skips the show if the cursor left", async () => {
