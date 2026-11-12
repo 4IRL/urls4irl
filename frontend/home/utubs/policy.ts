@@ -65,6 +65,26 @@ export function canAddMembers(
   );
 }
 
+// Whether the viewer may manage the active UTub's invite link: an owner or
+// co-owner of an unlocked UTub. Fails closed: a missing or non-true flag, or no
+// active UTub, means false.
+export function canManageInviteLink(
+  state: Pick<
+    AppState,
+    | "isCurrentUserOwner"
+    | "isCoCreator"
+    | "isCurrentUTubLocked"
+    | "activeUTubID"
+  > = getState(),
+): boolean {
+  return (
+    (state.isCurrentUserOwner === true || state.isCoCreator === true) &&
+    state.isCurrentUTubLocked === false &&
+    state.activeUTubID !== null &&
+    state.activeUTubID !== undefined
+  );
+}
+
 // Whether the active UTub's member list (and total) is hidden from the viewer:
 // false only for the owner, co-owners, or when the resolved setting is exactly
 // false. Missing settings fail closed (hidden); the server is the authority.

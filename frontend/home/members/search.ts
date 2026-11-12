@@ -163,6 +163,9 @@ export function setMemberSelectorSearchEventListener(): void {
             // re-expand it.
             if (isFocusable("memberNameFilterBtn")) {
               $("#memberNameFilterBtn").trigger("focus");
+            } else if (isFocusable("memberBtnOverflow")) {
+              // Narrow title row: the funnel is folded into the overflow menu.
+              $("#memberBtnOverflow").trigger("focus");
             } else {
               $("#MemberDeckHeaderAndCaret").trigger("focus");
             }

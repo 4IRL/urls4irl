@@ -66,6 +66,9 @@ _MIN_TOUCH_TARGET_PX = 44
 _MIN_PICKER_TOGGLE_HEIGHT_PX = 46
 _PHONE_WIDTHS = (320, 390)
 _PHONE_HEIGHT_PX = 800
+# Members title-row width below which the filter and gear fold into the overflow
+# menu (full-width row on a phone; the container query in members.css).
+_MEMBERS_OVERFLOW_ROW_PX = 380
 _PHONE_PORTRAIT_VIEWPORT = {"width": 420, "height": 900}
 _DESKTOP_VIEWPORT = {"width": 1100, "height": 900}
 _SHEET_DRAG_DISMISS_PX = 500
@@ -329,7 +332,12 @@ def test_revealed_gears_fit_their_headers_on_small_phones(
     check_fit(HPL.BUTTON_TAG_SETTINGS_GEAR)
 
     go_to_deck_via_navbar(page=page, navbar_selector=HPL.NAVBAR_MEMBER_DECK)
-    check_fit(HPL.BUTTON_MEMBER_SETTINGS_GEAR)
+    # Below a 380px title row the Members gear folds into the overflow menu (the
+    # measured breakpoint in members.css), so the overflow button is what must fit.
+    if viewport_width < _MEMBERS_OVERFLOW_ROW_PX:
+        check_fit(HPL.BUTTON_MEMBER_OVERFLOW)
+    else:
+        check_fit(HPL.BUTTON_MEMBER_SETTINGS_GEAR)
 
     go_to_deck_via_navbar(page=page, navbar_selector=HPL.NAVBAR_UTUB_DECK)
     check_fit(HPL.BUTTON_UTUB_SETTINGS_GEAR)

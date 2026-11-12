@@ -4473,8 +4473,10 @@
       "handler": "backend/invite_links/routes.py:revoke_invite_link",
       "js": {
         "indirect": null,
-        "no_js": "panel-pending",
-        "route_keys": [],
+        "no_js": null,
+        "route_keys": [
+          "revokeInviteLink"
+        ],
         "template_url_for": []
       },
       "methods": [
@@ -4506,8 +4508,10 @@
       "handler": "backend/invite_links/routes.py:get_invite_link",
       "js": {
         "indirect": null,
-        "no_js": "panel-pending",
-        "route_keys": [],
+        "no_js": null,
+        "route_keys": [
+          "getInviteLink"
+        ],
         "template_url_for": []
       },
       "methods": [
@@ -4539,8 +4543,10 @@
       "handler": "backend/invite_links/routes.py:update_invite_link",
       "js": {
         "indirect": null,
-        "no_js": "panel-pending",
-        "route_keys": [],
+        "no_js": null,
+        "route_keys": [
+          "updateInviteLink"
+        ],
         "template_url_for": []
       },
       "methods": [
@@ -4575,8 +4581,10 @@
       "handler": "backend/invite_links/routes.py:create_invite_link",
       "js": {
         "indirect": null,
-        "no_js": "panel-pending",
-        "route_keys": [],
+        "no_js": null,
+        "route_keys": [
+          "createInviteLink"
+        ],
         "template_url_for": []
       },
       "methods": [
@@ -4612,8 +4620,10 @@
       "handler": "backend/invite_links/routes.py:replace_invite_link",
       "js": {
         "indirect": null,
-        "no_js": "panel-pending",
-        "route_keys": [],
+        "no_js": null,
+        "route_keys": [
+          "replaceInviteLink"
+        ],
         "template_url_for": []
       },
       "methods": [

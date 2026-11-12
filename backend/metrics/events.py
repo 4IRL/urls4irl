@@ -131,6 +131,8 @@ class EventName(StrEnum):
     UI_TAG_SHEET_TOGGLE = "ui_tag_sheet_toggle"
     # — Members
     UI_MEMBER_INVITE_OPEN = "ui_member_invite_open"
+    UI_INVITE_PANEL_OPEN = "ui_invite_panel_open"
+    UI_INVITE_LINK_COPY = "ui_invite_link_copy"
     UI_MEMBER_REMOVE_OPEN = "ui_member_remove_open"
     UI_MEMBER_REMOVE_CONFIRM = "ui_member_remove_confirm"
     UI_MEMBER_REMOVE_CANCEL = "ui_member_remove_cancel"

@@ -81,6 +81,11 @@ PER_EVENT_VALID_DIMS: tuple[tuple[EventName, dict], ...] = (
             "device_type": DeviceType.MOBILE,
         },
     ),
+    (EventName.UI_INVITE_PANEL_OPEN, {"device_type": DeviceType.DESKTOP}),
+    (
+        EventName.UI_INVITE_LINK_COPY,
+        {"result": "fallback", "device_type": DeviceType.MOBILE},
+    ),
     (EventName.UI_URL_EDIT_UNDONE, {"device_type": DeviceType.DESKTOP}),
     (EventName.UI_URL_DELETE_UNDONE, {"device_type": DeviceType.DESKTOP}),
     (
@@ -497,6 +502,33 @@ def test_invite_link_revoked_accepts_each_reason(reason: str):
 )
 def test_invite_link_revoked_rejects_invalid_dims(bad_dims: dict):
     model_class = DIMENSION_MODELS[EventName.INVITE_LINK_REVOKED]
+    assert model_class is not None
+    with pytest.raises(ValidationError):
+        model_class.model_validate(bad_dims)
+
+
+@pytest.mark.parametrize("result", ["success", "fallback", "failure"])
+def test_invite_link_copy_accepts_each_result(result: str):
+    model_class = DIMENSION_MODELS[EventName.UI_INVITE_LINK_COPY]
+    assert model_class is not None
+    model = model_class.model_validate(
+        {"result": result, "device_type": DeviceType.DESKTOP}
+    )
+    assert model.result == result
+
+
+@pytest.mark.parametrize(
+    "bad_dims",
+    [
+        {"device_type": DeviceType.DESKTOP},
+        {"result": "copied", "device_type": DeviceType.DESKTOP},
+        {"result": "success"},
+        {"result": "success", "device_type": "watch"},
+        {"result": "success", "device_type": DeviceType.DESKTOP, "token": "x"},
+    ],
+)
+def test_invite_link_copy_rejects_invalid_dims(bad_dims: dict):
+    model_class = DIMENSION_MODELS[EventName.UI_INVITE_LINK_COPY]
     assert model_class is not None
     with pytest.raises(ValidationError):
         model_class.model_validate(bad_dims)

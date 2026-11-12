@@ -617,6 +617,15 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
         description="Member invite form opened",
         category=EventCategory.UI,
     ),
+    EventName.UI_INVITE_PANEL_OPEN: EventRegistryEntry(
+        description="Invite link panel opened from the Members deck",
+        category=EventCategory.UI,
+    ),
+    EventName.UI_INVITE_LINK_COPY: EventRegistryEntry(
+        description="Invite link copy attempted from the invite link panel",
+        category=EventCategory.UI,
+        dimensions={"result": ("success", "fallback", "failure")},
+    ),
     EventName.UI_MEMBER_REMOVE_OPEN: EventRegistryEntry(
         description="Member-remove confirm modal opened",
         category=EventCategory.UI,

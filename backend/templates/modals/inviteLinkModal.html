@@ -1,0 +1,17 @@
+{# Invite link modal: opened by #memberBtnInviteLink, body rendered by
+   frontend/home/members/invite-link-panel.ts. Bootstrap modal driven by jQuery
+   .modal("show"|"hide"), like #transferOwnerModal. #}
+<div class="modal fade" id="inviteLinkModal" tabindex="-1" role="dialog"
+     aria-labelledby="inviteLinkModalTitle" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h4 id="inviteLinkModalTitle" class="modal-title" tabindex="-1">Invite link</h4>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div id="inviteLinkModalBody"></div>
+      </div>
+    </div>
+  </div>
+</div>

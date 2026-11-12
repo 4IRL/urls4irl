@@ -48,6 +48,7 @@ const SEARCH_HTML = `
     <p id="UTubSearchNoResults" class="hidden"></p>
     <span id="UTubSearchAnnouncement" class="visually-hidden" aria-live="polite"></span>
     <button id="memberBtnCreate"></button>
+    <button id="memberBtnInviteLink" style="visibility: hidden"></button>
     <!-- The Member deck's own disclosure button. It lives in the sibling
          #MemberDeck in production; it is mounted here because the Escape
          handler's last-resort focus target is this button, and without it the
@@ -249,6 +250,40 @@ describe("UTub Search", () => {
 
       expect(document.activeElement).toBe(
         document.getElementById("MemberDeckHeaderAndCaret"),
+      );
+    });
+  });
+
+  describe("Escape focus chain through the invite trigger", () => {
+    it("tries #memberBtnInviteLink after #memberBtnCreate and before the deck header", () => {
+      $("#listUTubs").empty();
+      const memberBtnCreate = document.getElementById(
+        "memberBtnCreate",
+      ) as HTMLElement;
+      memberBtnCreate.style.visibility = "hidden";
+      (
+        document.getElementById("memberBtnInviteLink") as HTMLElement
+      ).style.visibility = "visible";
+
+      $("#UTubNameSearch").trigger("focus");
+      $("#UTubNameSearch").trigger($.Event("keydown", { key: "Escape" }));
+
+      expect(document.activeElement).toBe(
+        document.getElementById("memberBtnInviteLink"),
+      );
+    });
+
+    it("prefers #memberBtnCreate when both are focusable", () => {
+      $("#listUTubs").empty();
+      (
+        document.getElementById("memberBtnInviteLink") as HTMLElement
+      ).style.visibility = "visible";
+
+      $("#UTubNameSearch").trigger("focus");
+      $("#UTubNameSearch").trigger($.Event("keydown", { key: "Escape" }));
+
+      expect(document.activeElement).toBe(
+        document.getElementById("memberBtnCreate"),
       );
     });
   });
