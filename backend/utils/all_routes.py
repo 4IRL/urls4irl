@@ -344,6 +344,14 @@ JS_ROUTES: dict[str, JsRoute] = {
     "transferUtubOwnership": JsRoute(
         MEMBER_ROUTES.TRANSFER_UTUB_OWNERSHIP, {"utub_id": -1}
     ),
+    # Invite link manager routes
+    "getInviteLink": JsRoute(INVITE_LINK_ROUTES.GET_INVITE_LINK, {"utub_id": -1}),
+    "createInviteLink": JsRoute(INVITE_LINK_ROUTES.CREATE_INVITE_LINK, {"utub_id": -1}),
+    "updateInviteLink": JsRoute(INVITE_LINK_ROUTES.UPDATE_INVITE_LINK, {"utub_id": -1}),
+    "replaceInviteLink": JsRoute(
+        INVITE_LINK_ROUTES.REPLACE_INVITE_LINK, {"utub_id": -1}
+    ),
+    "revokeInviteLink": JsRoute(INVITE_LINK_ROUTES.REVOKE_INVITE_LINK, {"utub_id": -1}),
     # Splash routes
     "login": JsRoute(SPLASH_ROUTES.LOGIN, {}),
     "register": JsRoute(SPLASH_ROUTES.REGISTER, {}),
@@ -455,7 +463,6 @@ class NoJsReason(StrEnum):
     BROWSER_REDIRECT = "browser-redirect"
     INFRA_PROBE = "infra-probe"
     PUBLIC_SHARE_LINK = "public-share-link"
-    PANEL_PENDING = "panel-pending"
 
 
 # Keys are exact endpoints, or `<blueprint>.*` for a whole blueprint. A
@@ -475,13 +482,6 @@ NO_JS_ENDPOINTS: dict[str, NoJsReason] = {
     "splash.oauth_link": NoJsReason.BROWSER_REDIRECT,
     # Public share-link page opened from outside the app (confirmation page).
     "short_links.resolve_short_link": NoJsReason.PUBLIC_SHARE_LINK,
-    # Invite link manager API: no web-JS caller until the manager panel lands.
-    # Exact keys, not `invite_links.*`: the public join routes join this blueprint.
-    "invite_links.get_invite_link": NoJsReason.PANEL_PENDING,
-    "invite_links.create_invite_link": NoJsReason.PANEL_PENDING,
-    "invite_links.update_invite_link": NoJsReason.PANEL_PENDING,
-    "invite_links.replace_invite_link": NoJsReason.PANEL_PENDING,
-    "invite_links.revoke_invite_link": NoJsReason.PANEL_PENDING,
 }
 
 

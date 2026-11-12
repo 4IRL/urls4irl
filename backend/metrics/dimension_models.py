@@ -164,6 +164,10 @@ class _DimShortLinkCopy(UIBaseDimensions):
     result: Literal["success", "fallback", "failure"]
 
 
+class _DimInviteLinkCopy(UIBaseDimensions):
+    result: Literal["success", "fallback", "failure"]
+
+
 class _DimUrlParamsTrimmed(UIBaseDimensions):
     form: Literal["url_create", "url_string_edit"]
     action: Literal["toggle", "drop_all", "keep_all", "undo"]
@@ -680,6 +684,8 @@ DIMENSION_MODELS: dict[EventName, type[BaseModel] | None] = {
     EventName.UI_TAG_SHEET_TOGGLE: _DimTagSheetToggle,
     # UI — Members
     EventName.UI_MEMBER_INVITE_OPEN: _DimDeviceOnly,
+    EventName.UI_INVITE_PANEL_OPEN: _DimDeviceOnly,
+    EventName.UI_INVITE_LINK_COPY: _DimInviteLinkCopy,
     EventName.UI_MEMBER_REMOVE_OPEN: _DimDeviceOnly,
     EventName.UI_MEMBER_REMOVE_CONFIRM: _DimDeviceOnly,
     EventName.UI_MEMBER_REMOVE_CANCEL: _DimDeviceOnly,

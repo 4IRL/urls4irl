@@ -159,6 +159,11 @@ export type DimTagSheetToggle = {
   trigger: "tap" | "history_nav";
 };
 
+export type DimInviteLinkCopy = {
+  device_type: DeviceType;
+  result: "success" | "fallback" | "failure";
+};
+
 export type DimFormSubmit = {
   device_type: DeviceType;
   trigger: "enter_key" | "button_click";
@@ -278,6 +283,8 @@ export type UIEventDimensions = {
   ui_tag_filter_toggle: DimDeviceOnly;
   ui_tag_sheet_toggle: DimTagSheetToggle;
   ui_member_invite_open: DimDeviceOnly;
+  ui_invite_panel_open: DimDeviceOnly;
+  ui_invite_link_copy: DimInviteLinkCopy;
   ui_member_remove_open: DimDeviceOnly;
   ui_member_remove_confirm: DimDeviceOnly;
   ui_member_remove_cancel: DimDeviceOnly;

@@ -530,6 +530,7 @@ button {
 
 @media (max-width: 767.98px) {
 
+    #memberBtnInviteLink,
     #memberBtnCreate,
     #utubBtnCreate {
         margin-inline: 0px !important;

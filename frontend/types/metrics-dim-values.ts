@@ -135,6 +135,12 @@ export const FORM_SUBMIT_TRIGGER = {
   BUTTON_CLICK: "button_click",
 } as const;
 
+export const INVITE_LINK_COPY_RESULT = {
+  SUCCESS: "success",
+  FALLBACK: "fallback",
+  FAILURE: "failure",
+} as const;
+
 export const LHS_COLLAPSE_SOURCE = {
   SEAM: "seam",
   URL_HEADER: "url_header",
@@ -169,11 +175,7 @@ export const ONBOARDING_TIP_DISMISSED_TIP_ID = {
 
 export const ONBOARDING_TIP_SHOWN_TIP_ID = ONBOARDING_TIP_DISMISSED_TIP_ID;
 
-export const SHORT_LINK_COPY_RESULT = {
-  SUCCESS: "success",
-  FALLBACK: "fallback",
-  FAILURE: "failure",
-} as const;
+export const SHORT_LINK_COPY_RESULT = INVITE_LINK_COPY_RESULT;
 
 export const TAG_SEARCH_CLOSE_TARGET = {
   TAGS: "tags",

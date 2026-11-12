@@ -53,6 +53,11 @@ export interface AppRoutes {
   restoreUTub: (id: number) => string;
   purgeUTub: (id: number) => string;
   transferUtubOwnership: (id: number) => string;
+  getInviteLink: (utubID: number) => string;
+  createInviteLink: (utubID: number) => string;
+  updateInviteLink: (utubID: number) => string;
+  replaceInviteLink: (utubID: number) => string;
+  revokeInviteLink: (utubID: number) => string;
   updateUTubName: (id: number) => string;
   updateUTubDescription: (id: number) => string;
   updateUTubSettings: (id: number) => string;
@@ -210,6 +215,16 @@ export const APP_CONFIG: AppConfig = Object.freeze({
       rawConfig.routes.purgeUTub.replace("-1", String(id)),
     transferUtubOwnership: (id: number) =>
       rawConfig.routes.transferUtubOwnership.replace("-1", String(id)),
+    getInviteLink: (utubID: number) =>
+      rawConfig.routes.getInviteLink.replace("-1", String(utubID)),
+    createInviteLink: (utubID: number) =>
+      rawConfig.routes.createInviteLink.replace("-1", String(utubID)),
+    updateInviteLink: (utubID: number) =>
+      rawConfig.routes.updateInviteLink.replace("-1", String(utubID)),
+    replaceInviteLink: (utubID: number) =>
+      rawConfig.routes.replaceInviteLink.replace("-1", String(utubID)),
+    revokeInviteLink: (utubID: number) =>
+      rawConfig.routes.revokeInviteLink.replace("-1", String(utubID)),
     updateUTubName: (id: number) =>
       rawConfig.routes.updateUTubName.replace("-1", String(id)),
     updateUTubDescription: (id: number) =>

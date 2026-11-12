@@ -53,6 +53,7 @@ export interface AppEventMap {
   "trash:opened": void;
   "trash:closed": void;
   "panel-settings:sections-changed": void;
+  "invite-panel:opened": void;
   "form:mode-changed": { openForm: OpenFormId | null };
   "deck:collapse-changed": {
     deck: "utubs" | "members" | "tags";
@@ -86,6 +87,7 @@ export const AppEvents = Object.freeze({
   TRASH_OPENED: "trash:opened",
   TRASH_CLOSED: "trash:closed",
   PANEL_SETTINGS_SECTIONS_CHANGED: "panel-settings:sections-changed",
+  INVITE_PANEL_OPENED: "invite-panel:opened",
   FORM_MODE_CHANGED: "form:mode-changed",
   DECK_COLLAPSE_CHANGED: "deck:collapse-changed",
   LEFT_PANEL_COLLAPSE_CHANGED: "left-panel:collapse-changed",

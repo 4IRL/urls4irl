@@ -251,6 +251,37 @@ describe("panel settings popover", () => {
       expect(hideTooltip).toHaveBeenCalledWith(gear("urls"));
     });
 
+    describe("INVITE_PANEL_OPENED", () => {
+      it("closes an open Members gear silently", () => {
+        initPopover();
+        registerControlled({ panel: "members" });
+        selectUTub();
+        openGear("members");
+        expect(isOpen()).toBe(true);
+
+        emit(AppEvents.INVITE_PANEL_OPENED);
+
+        expect(isOpen()).toBe(false);
+        expect(announced()).toBe("");
+      });
+
+      it("leaves another deck's gear open", () => {
+        setupUrls();
+        openGear("urls");
+
+        emit(AppEvents.INVITE_PANEL_OPENED);
+
+        expect(isOpen()).toBe(true);
+      });
+
+      it("is harmless with nothing open", () => {
+        setupUrls();
+        emit(AppEvents.INVITE_PANEL_OPENED);
+
+        expect(isOpen()).toBe(false);
+      });
+    });
+
     it("prevents the gear tooltip from re-showing while expanded", () => {
       setupUrls();
       const beforeOpen = new Event("show.bs.tooltip", { cancelable: true });

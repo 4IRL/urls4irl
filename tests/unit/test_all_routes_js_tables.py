@@ -59,6 +59,12 @@ EXPECTED_JS_ROUTE_URLS: dict[str, str] = {
     "removeMember": "/utubs/-1/members/-4",
     "modifyMemberRole": "/utubs/-1/members/-4",
     "transferUtubOwnership": "/utubs/-1/owner",
+    # Invite link manager routes
+    "getInviteLink": "/utubs/-1/invite-link",
+    "createInviteLink": "/utubs/-1/invite-link",
+    "updateInviteLink": "/utubs/-1/invite-link",
+    "replaceInviteLink": "/utubs/-1/invite-link/replace",
+    "revokeInviteLink": "/utubs/-1/invite-link",
     # Splash routes
     "login": "/login",
     "register": "/register",

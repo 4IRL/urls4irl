@@ -70,6 +70,16 @@ describe("APP_CONFIG shape", () => {
     it("routes.updateUTubPin substitutes the utub id", () => {
       expect(APP_CONFIG.routes.updateUTubPin(7)).toBe("/utubs/7/pin");
     });
+
+    it.each([
+      ["getInviteLink", "/utubs/7/invite-link"],
+      ["createInviteLink", "/utubs/7/invite-link"],
+      ["updateInviteLink", "/utubs/7/invite-link"],
+      ["replaceInviteLink", "/utubs/7/invite-link/replace"],
+      ["revokeInviteLink", "/utubs/7/invite-link"],
+    ] as const)("routes.%s substitutes the utub id", (key, expected) => {
+      expect(APP_CONFIG.routes[key](7)).toBe(expected);
+    });
   });
 
   describe("two-param dynamic routes", () => {

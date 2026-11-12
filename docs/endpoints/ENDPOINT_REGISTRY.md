@@ -758,7 +758,7 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Service:** `backend.invite_links.services.manage_invite_link:revoke_invite_link_for_utub`
 - **Schema:** response: `backend.schemas.base.StatusMessageResponseSchema`; status: 200 `backend.schemas.base.StatusMessageResponseSchema`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`
 - **Template:** —
-- **JS:** no-js: panel-pending
+- **JS:** keys: `revokeInviteLink`
 
 ### `GET /utubs/<int:utub_id>/invite-link` — `invite_links.get_invite_link`
 
@@ -767,7 +767,7 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Service:** `backend.invite_links.services.manage_invite_link:read_invite_link`
 - **Schema:** response: `backend.schemas.invite_links.InviteLinkResponseSchema`; status: 200 `backend.schemas.invite_links.InviteLinkResponseSchema`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`
 - **Template:** —
-- **JS:** no-js: panel-pending
+- **JS:** keys: `getInviteLink`
 
 ### `PATCH /utubs/<int:utub_id>/invite-link` — `invite_links.update_invite_link`
 
@@ -776,7 +776,7 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Service:** `backend.invite_links.services.manage_invite_link:update_invite_link_for_utub`
 - **Schema:** request: `backend.schemas.requests.invite_links.UpdateInviteLinkRequest`; response: `backend.schemas.invite_links.InviteLinkResponseSchema`; status: 200 `backend.schemas.invite_links.InviteLinkResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`, 409 `backend.schemas.errors.ErrorResponse`
 - **Template:** —
-- **JS:** no-js: panel-pending
+- **JS:** keys: `updateInviteLink`
 
 ### `POST /utubs/<int:utub_id>/invite-link` — `invite_links.create_invite_link`
 
@@ -785,7 +785,7 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Service:** `backend.invite_links.services.manage_invite_link:create_invite_link_for_utub`
 - **Schema:** request: `backend.schemas.requests.invite_links.InviteLinkSettingsRequest`; response: `backend.schemas.invite_links.InviteLinkResponseSchema`; status: 201 `backend.schemas.invite_links.InviteLinkResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`, 409 `backend.schemas.errors.ErrorResponse`, 429 `backend.schemas.errors.ErrorResponse`
 - **Template:** —
-- **JS:** no-js: panel-pending
+- **JS:** keys: `createInviteLink`
 
 ### `POST /utubs/<int:utub_id>/invite-link/replace` — `invite_links.replace_invite_link`
 
@@ -794,7 +794,7 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Service:** `backend.invite_links.services.manage_invite_link:replace_invite_link_for_utub`
 - **Schema:** request: `backend.schemas.requests.invite_links.InviteLinkSettingsRequest`; response: `backend.schemas.invite_links.InviteLinkResponseSchema`; status: 201 `backend.schemas.invite_links.InviteLinkResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`, 429 `backend.schemas.errors.ErrorResponse`
 - **Template:** —
-- **JS:** no-js: panel-pending
+- **JS:** keys: `replaceInviteLink`
 
 ## members
 

@@ -79,6 +79,11 @@ const appConfig = {
     restoreUTub: "/utubs/-1/restore",
     purgeUTub: "/utubs/-1/purge",
     transferUtubOwnership: "/utubs/-1/owner",
+    getInviteLink: "/utubs/-1/invite-link",
+    createInviteLink: "/utubs/-1/invite-link",
+    updateInviteLink: "/utubs/-1/invite-link",
+    replaceInviteLink: "/utubs/-1/invite-link/replace",
+    revokeInviteLink: "/utubs/-1/invite-link",
     updateUTubName: "/utubs/-1/name",
     updateUTubDescription: "/utubs/-1/description",
     updateUTubSettings: "/utubs/-1/settings",
@@ -487,6 +492,70 @@ const appConfig = {
       "Anyone who has this link will no longer be able to open it. It would otherwise expire on {date}.",
     SHORT_LINK_SHORT_LINKS_DISABLED:
       "Short links are turned off for this UTub.",
+    INVITE_LINK_PANEL_LOADING: "Loading invite link…",
+    INVITE_LINK_PANEL_LOAD_FAILED: "Couldn't load the invite link.",
+    INVITE_LINK_PANEL_TRY_AGAIN: "Try again",
+    INVITE_LINK_PANEL_EMPTY_HINT:
+      "Anyone with the link can join this UTub as a member.",
+    INVITE_LINK_PANEL_EXPIRES_LABEL: "Expires",
+    INVITE_LINK_PANEL_USES_LABEL: "Uses",
+    INVITE_LINK_PANEL_EXPIRES_IN_1: "in 1 day",
+    INVITE_LINK_PANEL_EXPIRES_IN_7: "in 7 days",
+    INVITE_LINK_PANEL_EXPIRES_IN_30: "in 30 days",
+    INVITE_LINK_PANEL_EXPIRES_FROM_NOW_1: "1 day from now",
+    INVITE_LINK_PANEL_EXPIRES_FROM_NOW_7: "7 days from now",
+    INVITE_LINK_PANEL_EXPIRES_FROM_NOW_30: "30 days from now",
+    INVITE_LINK_PANEL_USES_UNLIMITED: "Unlimited",
+    INVITE_LINK_PANEL_USES_ONE: "1 use",
+    INVITE_LINK_PANEL_USES_MANY: "{count} uses",
+    INVITE_LINK_PANEL_CREATE_LINK: "Create link",
+    INVITE_LINK_PANEL_COPY: "Copy",
+    INVITE_LINK_PANEL_LINK_LABEL: "Invite link URL",
+    INVITE_LINK_PANEL_NEW_LINK: "New link",
+    INVITE_LINK_PANEL_REVOKE: "Revoke",
+    INVITE_LINK_PANEL_META_CREATED_BY: "Created by {user}",
+    INVITE_LINK_PANEL_META_EXPIRES: "expires {date}",
+    INVITE_LINK_PANEL_META_JOINED: "{count} joined",
+    INVITE_LINK_PANEL_USES_FLOOR_HINT_ONE:
+      "1 person has joined, so the limit can't go below 1.",
+    INVITE_LINK_PANEL_USES_FLOOR_HINT:
+      "{count} people have joined, so the limit can't go below {count}.",
+    INVITE_LINK_PANEL_DEAD_EXPIRED: "This link expired on {date}.",
+    INVITE_LINK_PANEL_DEAD_USED_UP: "This link reached its limit of {uses}.",
+    INVITE_LINK_PANEL_DEAD_CREATOR_DEMOTED:
+      "This link stopped working because the person who made it is no longer an owner or co-owner.",
+    INVITE_LINK_PANEL_FORCED_CLOSE:
+      "The invite link panel closed because you can no longer manage this UTub's invite link.",
+    INVITE_LINK_PANEL_MANAGE_LOST:
+      "You can no longer manage this UTub's invite link.",
+    INVITE_LINK_PANEL_ERROR_GENERIC: "Something went wrong. Try again.",
+    INVITE_LINK_PANEL_CANCEL: "Cancel",
+    INVITE_LINK_PANEL_CREATED: "Invite link created.",
+    INVITE_LINK_PANEL_REPLACED:
+      "New invite link created. The old link no longer works.",
+    INVITE_LINK_PANEL_REVOKED: "Invite link revoked.",
+    INVITE_LINK_PANEL_RESYNC_REVOKED: "This invite link was already revoked.",
+    INVITE_LINK_PANEL_RESYNC_LIVE_EXISTS:
+      "This UTub already has a live invite link.",
+    INVITE_LINK_PANEL_CONFIRM_GROUP_LABEL: "Confirm invite link action",
+    INVITE_LINK_PANEL_CONFIRM_REVOKE_QUESTION:
+      "Revoke this link? It stops working right away. People who already joined stay in the UTub.",
+    INVITE_LINK_PANEL_CONFIRM_REVOKE_ACTION: "Revoke link",
+    INVITE_LINK_PANEL_CONFIRM_NEW_QUESTION:
+      "Make a new link? The current link stops working. People who already joined stay in the UTub.",
+    INVITE_LINK_PANEL_CONFIRM_NEW_ACTION: "Make new link",
+    INVITE_LINK_PANEL_COPIED: "Copied",
+    INVITE_LINK_PANEL_COPY_SUCCESS: "Invite link copied.",
+    INVITE_LINK_PANEL_COPY_FALLBACK:
+      "Couldn't copy automatically. The link is selected: press Ctrl+C (⌘C on Mac).",
+    INVITE_LINK_PANEL_SAVING: "Saving…",
+    INVITE_LINK_PANEL_EXPIRES_SET: "Link now expires {date}.",
+    INVITE_LINK_PANEL_USES_SET: "Use limit set to {label}.",
+    INVITE_LINK_PANEL_RESYNC_DEAD_UPDATE: "This invite link no longer works.",
+    INVITE_LINK_PANEL_USES_BELOW_JOINED_ONE:
+      "1 person has already joined. Choose a limit of at least 1.",
+    INVITE_LINK_PANEL_USES_BELOW_JOINED:
+      "{count} people have already joined. Choose a limit of at least {count}.",
     TRASH_LOCKED: "That UTub is locked, so this item can't be changed.",
     TRASH_ORIGIN_UNAVAILABLE:
       "That UTub is no longer available. Choose a UTub to restore this URL into.",

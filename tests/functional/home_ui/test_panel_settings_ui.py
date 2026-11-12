@@ -39,6 +39,12 @@ _ALL_GEARS: tuple[str, ...] = (
     HPL.BUTTON_URL_SETTINGS_GEAR,
 )
 
+# Every gear except Members', which folds into the title-row overflow menu on a
+# narrow Members row (members.css container query).
+_GEARS_NEVER_FOLDED: tuple[str, ...] = tuple(
+    gear for gear in _ALL_GEARS if gear != HPL.BUTTON_MEMBER_SETTINGS_GEAR
+)
+
 _NARROW_DESKTOP_VIEWPORT = {"width": 1000, "height": 900}
 # Wide enough for the 992px desktop layout but narrow enough that the left
 # panel (25% wide) sits on its 350px minimum.
@@ -82,10 +88,22 @@ def _assert_urls_and_utubs_gears_visible(page: Page) -> None:
     """The UTubs, URLs and Members panels have a registered section; Tags does not."""
     expect(page.locator(HPL.BUTTON_UTUB_SETTINGS_GEAR)).to_be_visible()
     expect(page.locator(HPL.BUTTON_URL_SETTINGS_GEAR)).to_be_visible()
-    expect(page.locator(HPL.BUTTON_MEMBER_SETTINGS_GEAR)).to_be_visible()
+    _assert_members_gear_reachable(page)
     for gear_selector in _GEARS_WITHOUT_SECTION:
         expect(page.locator(gear_selector)).to_be_attached()
         expect(page.locator(gear_selector)).to_be_hidden()
+
+
+def _assert_members_gear_reachable(page: Page) -> None:
+    """Exactly one of the Members gear and the title-row overflow button shows: the
+    gear folds into the overflow menu when the title row is under 380px (the
+    measured breakpoint in members.css; every desktop width up to 1699px)."""
+    expect(
+        page.locator(
+            f"{HPL.BUTTON_MEMBER_SETTINGS_GEAR}:visible, "
+            f"{HPL.BUTTON_MEMBER_OVERFLOW}:visible"
+        )
+    ).to_have_count(1)
 
 
 def _assert_live_region_idle(page: Page) -> None:
@@ -523,8 +541,16 @@ def test_urls_and_utubs_gears_with_section_at_both_widths(
         _assert_urls_and_utubs_gears_visible(page)
 
     _reveal_gears(page)
-    for gear_selector in _ALL_GEARS:
+    for gear_selector in _GEARS_NEVER_FOLDED:
         assert _computed_display(page, gear_selector) != "none"
+    if viewport_width == _AT_DESKTOP_WIDTH_PX:
+        # The title row is under 380px, so the un-hidden Members gear folds into the
+        # overflow button (by display, not the `hidden` class).
+        assert _computed_display(page, HPL.BUTTON_MEMBER_SETTINGS_GEAR) == "none"
+        assert _computed_display(page, HPL.BUTTON_MEMBER_OVERFLOW) != "none"
+    else:
+        # In the hidden left panel there is no size container, so no fold applies.
+        assert _computed_display(page, HPL.BUTTON_MEMBER_SETTINGS_GEAR) != "none"
 
 
 @pytest.mark.parametrize("viewport_width", [1280, 420])
@@ -571,8 +597,9 @@ def test_gears_visible_at_992(page: Page, create_test_utubmembers, provide_app: 
     )
     _reveal_gears(page)
 
-    for gear_selector in _ALL_GEARS:
+    for gear_selector in _GEARS_NEVER_FOLDED:
         expect(page.locator(gear_selector)).to_be_visible()
+    _assert_members_gear_reachable(page)
 
 
 def test_revealed_gears_do_not_overflow_or_wrap_headers_at_left_panel_minimum(
@@ -586,7 +613,8 @@ def test_revealed_gears_do_not_overflow_or_wrap_headers_at_left_panel_minimum(
     """
     page.set_viewport_size(_LEFT_PANEL_MIN_VIEWPORT)
     _login_and_select_owned_utub(provide_app, page)
-    expect(page.locator(HPL.BUTTON_MEMBER_SETTINGS_GEAR)).to_be_visible()
+    # At the 350px minimum the Members gear is folded into the overflow button.
+    expect(page.locator(HPL.BUTTON_MEMBER_OVERFLOW)).to_be_visible()
 
     _reveal_gears(page)
     left_panel_width = page.evaluate(
@@ -594,7 +622,7 @@ def test_revealed_gears_do_not_overflow_or_wrap_headers_at_left_panel_minimum(
     )
 
     for gear_selector in (
-        HPL.BUTTON_MEMBER_SETTINGS_GEAR,
+        HPL.BUTTON_MEMBER_OVERFLOW,
         HPL.BUTTON_TAG_SETTINGS_GEAR,
     ):
         expect(page.locator(gear_selector)).to_be_visible()
@@ -632,7 +660,14 @@ def test_opened_popover_never_covers_its_gear_and_stays_in_viewport(
     page.set_viewport_size({"width": 1280, "height": 900})
     _login_and_select_owned_utub(provide_app, page)
 
-    wait_then_click_element(page=page, css_selector=gear_selector)
+    if gear_selector == HPL.BUTTON_MEMBER_SETTINGS_GEAR:
+        # At 1280px the Members gear is folded into the overflow menu: the popover
+        # opens from its menu item and anchors to the visible overflow button.
+        gear_selector = HPL.BUTTON_MEMBER_OVERFLOW
+        wait_then_click_element(page=page, css_selector=gear_selector)
+        wait_then_click_element(page=page, css_selector=HPL.MEMBER_OVERFLOW_SETTINGS)
+    else:
+        wait_then_click_element(page=page, css_selector=gear_selector)
     expect(page.locator(HPL.PANEL_SETTINGS_POPOVER)).to_be_visible()
 
     geometry = page.evaluate(
