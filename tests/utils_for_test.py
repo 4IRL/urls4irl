@@ -302,6 +302,20 @@ def set_members_settings(app: Flask, utub_id: int, members: dict[str, bool]) -> 
         db.session.commit()
 
 
+def set_tags_settings(app: Flask, utub_id: int, tags: dict[str, Any]) -> None:
+    """Seed a UTub's stored ``tags`` settings section, in place.
+
+    Args:
+        app (Flask): The Flask client for providing an app context
+        utub_id (int): The ID of the UTub to update
+        tags (dict[str, Any]): Stored overrides, e.g. {"members_can_tag": False}
+    """
+    with app.app_context():
+        utub: Utubs = Utubs.query.get(utub_id)
+        utub.settings = {"tags": tags}
+        db.session.commit()
+
+
 class HideListSeed(NamedTuple):
     """Ids of the shared 5-user hide-list UTub shape (see ``seed_hide_list_utub``)."""
 

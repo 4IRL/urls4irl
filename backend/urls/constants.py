@@ -19,6 +19,7 @@ class URLErrorCodes(IntEnum):
     UNABLE_TO_RESTORE_URL_ERROR = 15
     UNABLE_TO_RESTORE_URLS_ERROR = 16
     SHORT_LINKS_DISABLED = 17
+    TAGGING_NOT_ALLOWED = 18
 
 
 class UrlRestoreTarget(StrEnum):

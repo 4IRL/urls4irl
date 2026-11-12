@@ -466,6 +466,7 @@ def generate_openapi_spec(app: Flask, strict: bool = False) -> dict[str, Any]:
         status_codes = view_fn._api_route_status_codes
         auth_decorator = getattr(view_fn, "_auth_decorator", None)
         error_code_enum = getattr(view_fn, "_api_route_error_code_enum", None)
+        typed_403 = getattr(view_fn, "_api_route_typed_403", False)
 
         # Convert path
         openapi_path = _flask_path_to_openapi(rule.rule)
@@ -538,13 +539,13 @@ def generate_openapi_spec(app: Flask, strict: bool = False) -> dict[str, Any]:
 
                     # Determine response schema representation.
                     # Typed error schemas (narrowing errorCode to the
-                    # operation's IntEnum) only apply to 400/409 where
-                    # application-specific error codes are meaningful.
-                    # Other error codes (401, 403, 404, 429) use the
+                    # operation's IntEnum) apply to 400/409, and to 403 only
+                    # for routes that opt in with typed_403=True.
+                    # Other error codes (401, 404, 429) use the
                     # plain ErrorResponse reference.
                     if code >= 400:
                         if (
-                            code in (400, 409)
+                            (code in (400, 409) or (code == 403 and typed_403))
                             and error_code_enum is not None
                             and issubclass(error_code_enum, IntEnum)
                         ):

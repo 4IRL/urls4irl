@@ -1386,7 +1386,7 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Handler:** `backend/tags/utub_tag_routes.py:create_utub_tag`
 - **Decorators:** `utub_membership_required`, `api_route`
 - **Service:** `backend.tags.services.create_utub_tag:create_tag_in_utub`
-- **Schema:** request: `backend.schemas.requests.tags.AddTagRequest`; response: `backend.schemas.tags.UtubTagAddedToUtubResponseSchema`; status: 200 `backend.schemas.tags.UtubTagAddedToUtubResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`
+- **Schema:** request: `backend.schemas.requests.tags.AddTagRequest`; response: `backend.schemas.tags.UtubTagAddedToUtubResponseSchema`; status: 200 `backend.schemas.tags.UtubTagAddedToUtubResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`
 - **Template:** —
 - **JS:** keys: `createUTubTag`
 
@@ -1395,7 +1395,7 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Handler:** `backend/tags/utub_tag_routes.py:delete_utub_tag`
 - **Decorators:** `utub_membership_with_valid_utub_tag`, `api_route`
 - **Service:** `backend.tags.services.delete_utub_tag:delete_utub_tag_from_utub_and_utub_urls`
-- **Schema:** response: `backend.schemas.tags.UtubTagDeletedFromUtubResponseSchema`; status: 200 `backend.schemas.tags.UtubTagDeletedFromUtubResponseSchema`, 404 `backend.schemas.errors.ErrorResponse`
+- **Schema:** response: `backend.schemas.tags.UtubTagDeletedFromUtubResponseSchema`; status: 200 `backend.schemas.tags.UtubTagDeletedFromUtubResponseSchema`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`
 - **Template:** —
 - **JS:** keys: `deleteUTubTag`
 
@@ -1406,7 +1406,7 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Handler:** `backend/tags/url_tag_routes.py:create_utub_url_tag`
 - **Decorators:** `utub_membership_with_valid_url_in_utub_required`, `api_route`
 - **Service:** `backend.tags.services.create_url_tag:add_tag_to_url_if_valid`
-- **Schema:** request: `backend.schemas.requests.tags.AddTagRequest`; response: `backend.schemas.tags.UrlTagModifiedResponseSchema`; status: 200 `backend.schemas.tags.UrlTagModifiedResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`
+- **Schema:** request: `backend.schemas.requests.tags.AddTagRequest`; response: `backend.schemas.tags.UrlTagModifiedResponseSchema`; status: 200 `backend.schemas.tags.UrlTagModifiedResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`
 - **Template:** —
 - **JS:** keys: `createURLTag`
 
@@ -1415,7 +1415,7 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Handler:** `backend/tags/url_tag_routes.py:delete_utub_url_tag`
 - **Decorators:** `utub_membership_with_valid_url_tag`, `api_route`
 - **Service:** `backend.tags.services.delete_url_tag:delete_url_tag`
-- **Schema:** response: `backend.schemas.tags.UrlTagModifiedResponseSchema`; status: 200 `backend.schemas.tags.UrlTagModifiedResponseSchema`, 404 `backend.schemas.errors.ErrorResponse`
+- **Schema:** response: `backend.schemas.tags.UrlTagModifiedResponseSchema`; status: 200 `backend.schemas.tags.UrlTagModifiedResponseSchema`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`
 - **Template:** —
 - **JS:** keys: `deleteURLTag`
 
@@ -1424,7 +1424,7 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Handler:** `backend/tags/url_tag_routes.py:create_utub_url_tags`
 - **Decorators:** `utub_membership_with_valid_url_in_utub_required`, `api_route`
 - **Service:** `backend.tags.services.create_url_tag:add_batch_tags_to_existing_url`
-- **Schema:** request: `backend.schemas.requests.tags.AddTagsRequest`; response: `backend.schemas.tags.UrlTagsModifiedResponseSchema`; status: 200 `backend.schemas.tags.UrlTagsModifiedResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`
+- **Schema:** request: `backend.schemas.requests.tags.AddTagsRequest`; response: `backend.schemas.tags.UrlTagsModifiedResponseSchema`; status: 200 `backend.schemas.tags.UrlTagsModifiedResponseSchema`, 400 `backend.schemas.errors.ErrorResponse`, 403 `backend.schemas.errors.ErrorResponse`, 404 `backend.schemas.errors.ErrorResponse`
 - **Template:** —
 - **JS:** keys: `createURLTagsBatch`
 

@@ -5069,6 +5069,7 @@
         "status_codes": {
           "200": "backend.schemas.tags.UtubTagAddedToUtubResponseSchema",
           "400": "backend.schemas.errors.ErrorResponse",
+          "403": "backend.schemas.errors.ErrorResponse",
           "404": "backend.schemas.errors.ErrorResponse"
         }
       },
@@ -5103,6 +5104,7 @@
         "response": "backend.schemas.tags.UtubTagDeletedFromUtubResponseSchema",
         "status_codes": {
           "200": "backend.schemas.tags.UtubTagDeletedFromUtubResponseSchema",
+          "403": "backend.schemas.errors.ErrorResponse",
           "404": "backend.schemas.errors.ErrorResponse"
         }
       },
@@ -5426,6 +5428,7 @@
         "status_codes": {
           "200": "backend.schemas.tags.UrlTagModifiedResponseSchema",
           "400": "backend.schemas.errors.ErrorResponse",
+          "403": "backend.schemas.errors.ErrorResponse",
           "404": "backend.schemas.errors.ErrorResponse"
         }
       },
@@ -5460,6 +5463,7 @@
         "response": "backend.schemas.tags.UrlTagModifiedResponseSchema",
         "status_codes": {
           "200": "backend.schemas.tags.UrlTagModifiedResponseSchema",
+          "403": "backend.schemas.errors.ErrorResponse",
           "404": "backend.schemas.errors.ErrorResponse"
         }
       },
@@ -5495,6 +5499,7 @@
         "status_codes": {
           "200": "backend.schemas.tags.UrlTagsModifiedResponseSchema",
           "400": "backend.schemas.errors.ErrorResponse",
+          "403": "backend.schemas.errors.ErrorResponse",
           "404": "backend.schemas.errors.ErrorResponse"
         }
       },

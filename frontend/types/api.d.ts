@@ -2558,7 +2558,7 @@ export interface components {
      * @description Error codes for URLTagErrorCodes
      * @enum {integer}
      */
-    URLTagErrorCodes: 1 | 2 | 3;
+    URLTagErrorCodes: 1 | 2 | 3 | 4;
     AddTagsRequest: {
       /**
        * @description Tags to apply to the URL
@@ -2599,7 +2599,7 @@ export interface components {
      * @description Error codes for UTubTagErrorCodes
      * @enum {integer}
      */
-    UTubTagErrorCodes: 1 | 2 | 3;
+    UTubTagErrorCodes: 1 | 2 | 3 | 4 | 5;
     UtubTagDeletedFromUtubResponseSchema: {
       /** @description Tag that was deleted from the UTub */
       utubTag: components["schemas"]["UtubTagOnAddDeleteSchema"];
@@ -2685,7 +2685,8 @@ export interface components {
       | 14
       | 15
       | 16
-      | 17;
+      | 17
+      | 18;
     UtubUrlDetailSchema: {
       /** @description Unique ID of the URL within the UTub */
       utubUrlID: number;
@@ -3117,8 +3118,19 @@ export interface components {
       /** @description Whether dropping a tag on a URL also opens that URL */
       tagDropOpensUrl: boolean;
     };
-    /** @description Settings for the tags panel (no settings yet). */
-    TagsSettings: Record<string, never>;
+    /** @description Settings for the tags panel: who may tag and delete tags. */
+    TagsSettings: {
+      /**
+       * @description Whether plain members can create tags and add or remove tags on URLs
+       * @default true
+       */
+      members_can_tag: boolean;
+      /**
+       * @description Whether plain members can delete tags; only effective while members_can_tag is on
+       * @default true
+       */
+      members_can_delete_tags: boolean;
+    };
     /** @description Settings for the URLs panel: default link type and selector visibility. */
     UrlsSettings: {
       /**
@@ -12627,6 +12639,15 @@ export interface operations {
           "application/json": components["schemas"]["ErrorResponse_URLTagErrorCodes"];
         };
       };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_URLTagErrorCodes"];
+        };
+      };
       /** @description Not found */
       404: {
         headers: {
@@ -12666,6 +12687,15 @@ export interface operations {
       };
       /** @description Bad request */
       400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_URLTagErrorCodes"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
         headers: {
           [name: string]: unknown;
         };
@@ -12724,7 +12754,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ErrorResponse"];
+          "application/json": components["schemas"]["ErrorResponse_URLTagErrorCodes"];
         };
       };
       /** @description Not found */
@@ -12759,6 +12789,15 @@ export interface operations {
         content: {
           "application/json": components["schemas"]["SuccessEnvelope"] &
             components["schemas"]["UrlTagModifiedResponseSchema"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_URLTagErrorCodes"];
         };
       };
       /** @description Not found */
@@ -12806,6 +12845,15 @@ export interface operations {
           "application/json": components["schemas"]["ErrorResponse_UTubTagErrorCodes"];
         };
       };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_UTubTagErrorCodes"];
+        };
+      };
       /** @description Not found */
       404: {
         headers: {
@@ -12837,6 +12885,15 @@ export interface operations {
         content: {
           "application/json": components["schemas"]["SuccessEnvelope"] &
             components["schemas"]["UtubTagDeletedFromUtubResponseSchema"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_UTubTagErrorCodes"];
         };
       };
       /** @description Not found */
