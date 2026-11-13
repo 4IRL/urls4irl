@@ -17,6 +17,10 @@ from backend.invite_links.constants import (
     InviteLinkErrorCodes,
 )
 from backend.invite_links.guards import lock_current_invite_for_update
+from backend.invite_links.preview import (
+    apply_preview_change,
+    compute_effective_preview,
+)
 from backend.invite_links.token_generator import generate_invite_token
 from backend.invite_links.validity import (
     evaluate_invite,
@@ -56,14 +60,21 @@ def build_invite_link_schema(invite: Utub_Invite_Links) -> InviteLinkSchema:
     ``evaluate_invite`` (first-match order) mapped to the manager-facing status.
     Pure read: writes nothing and takes no lock.
     """
+    state = evaluate_invite(invite)
+    preview = compute_effective_preview(invite, state=state)
     return InviteLinkSchema(
         token=invite.token,
-        status=invite_state_to_link_status(evaluate_invite(invite)),
+        status=invite_state_to_link_status(state),
         expires_at=invite.expires_at,
         max_uses=invite.max_uses,
         use_count=invite.use_count,
         created_at=invite.created_at,
         creator_username=None if invite.creator is None else invite.creator.username,
+        preview_enabled=invite.preview_enabled,
+        preview_window_days=invite.preview_window_days,
+        preview_ends_at=invite.preview_ends_at,
+        preview_effective_enabled=preview.enabled,
+        preview_effective_ends_at=preview.ends_at,
     )
 
 
@@ -292,6 +303,12 @@ def update_invite_link_for_utub(
         invite.max_uses = update.max_uses
     if update.expires_in_days is not None:
         invite.expires_at = utc_now() + timedelta(days=update.expires_in_days)
+    if {"preview_enabled", "preview_window_days"} & update.model_fields_set:
+        apply_preview_change(
+            invite,
+            enabled=update.preview_enabled,
+            window_days=update.preview_window_days,
+        )
     db.session.flush()
 
     response: FlaskResponse = APIResponse(

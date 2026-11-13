@@ -230,7 +230,8 @@ def join_invite_page(token: str) -> Response:
     tags=[OPEN_API.MEMBERS],
     description=(
         "Get the UTub's current invite link and its status, or null when there is "
-        "none (owner and co-owner only)"
+        "none (owner and co-owner only). Includes the stored and effective preview "
+        "values; a new link starts with preview off."
     ),
     status_codes={
         200: InviteLinkResponseSchema,
@@ -261,7 +262,8 @@ def get_invite_link(utub_id: int, current_utub: Utubs) -> FlaskResponse:
     tags=[OPEN_API.MEMBERS],
     description=(
         "Create the UTub's invite link with an expiry and an optional use limit "
-        "(owner and co-owner only). A dead unrevoked link is revoked first."
+        "(owner and co-owner only). A dead unrevoked link is revoked first. The new "
+        "link starts with preview off."
     ),
     status_codes={
         201: InviteLinkResponseSchema,
@@ -306,9 +308,10 @@ def create_invite_link(
     error_code=InviteLinkErrorCodes.INVALID_FORM_INPUT,
     tags=[OPEN_API.MEMBERS],
     description=(
-        "Change the expiry and/or use limit of the UTub's live invite link "
+        "Change the expiry, use limit and/or logged-out preview (preview_enabled, "
+        "preview_window_days of 1, 3 or 7) of the UTub's live invite link "
         "(owner and co-owner only). An absent field is unchanged; a null "
-        "max_uses means unlimited."
+        "max_uses means unlimited; a null preview field is rejected."
     ),
     status_codes={
         200: InviteLinkResponseSchema,
@@ -347,7 +350,7 @@ def update_invite_link(
     tags=[OPEN_API.MEMBERS],
     description=(
         "Revoke the UTub's invite link and create a new one with the given "
-        "settings (owner and co-owner only)"
+        "settings (owner and co-owner only). The new link starts with preview off."
     ),
     status_codes={
         201: InviteLinkResponseSchema,

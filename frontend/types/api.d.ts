@@ -591,16 +591,16 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** @description Get the UTub's current invite link and its status, or null when there is none (owner and co-owner only) */
+    /** @description Get the UTub's current invite link and its status, or null when there is none (owner and co-owner only). Includes the stored and effective preview values; a new link starts with preview off. */
     get: operations["apiV1GetInviteLink"];
     put?: never;
-    /** @description Create the UTub's invite link with an expiry and an optional use limit (owner and co-owner only). A dead unrevoked link is revoked first. */
+    /** @description Create the UTub's invite link with an expiry and an optional use limit (owner and co-owner only). A dead unrevoked link is revoked first. The new link starts with preview off. */
     post: operations["apiV1CreateInviteLink"];
     /** @description Revoke the UTub's invite link (owner and co-owner only) */
     delete: operations["apiV1RevokeInviteLink"];
     options?: never;
     head?: never;
-    /** @description Change the expiry and/or use limit of the UTub's live invite link (owner and co-owner only). An absent field is unchanged; a null max_uses means unlimited. */
+    /** @description Change the expiry, use limit and/or logged-out preview (preview_enabled, preview_window_days of 1, 3 or 7) of the UTub's live invite link (owner and co-owner only). An absent field is unchanged; a null max_uses means unlimited; a null preview field is rejected. */
     patch: operations["apiV1UpdateInviteLink"];
     trace?: never;
   };
@@ -613,7 +613,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** @description Revoke the UTub's invite link and create a new one with the given settings (owner and co-owner only) */
+    /** @description Revoke the UTub's invite link and create a new one with the given settings (owner and co-owner only). The new link starts with preview off. */
     post: operations["apiV1ReplaceInviteLink"];
     delete?: never;
     options?: never;
@@ -973,16 +973,16 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** @description Get the UTub's current invite link and its status, or null when there is none (owner and co-owner only) */
+    /** @description Get the UTub's current invite link and its status, or null when there is none (owner and co-owner only). Includes the stored and effective preview values; a new link starts with preview off. */
     get: operations["getInviteLink"];
     put?: never;
-    /** @description Create the UTub's invite link with an expiry and an optional use limit (owner and co-owner only). A dead unrevoked link is revoked first. */
+    /** @description Create the UTub's invite link with an expiry and an optional use limit (owner and co-owner only). A dead unrevoked link is revoked first. The new link starts with preview off. */
     post: operations["createInviteLink"];
     /** @description Revoke the UTub's invite link (owner and co-owner only) */
     delete: operations["revokeInviteLink"];
     options?: never;
     head?: never;
-    /** @description Change the expiry and/or use limit of the UTub's live invite link (owner and co-owner only). An absent field is unchanged; a null max_uses means unlimited. */
+    /** @description Change the expiry, use limit and/or logged-out preview (preview_enabled, preview_window_days of 1, 3 or 7) of the UTub's live invite link (owner and co-owner only). An absent field is unchanged; a null max_uses means unlimited; a null preview field is rejected. */
     patch: operations["updateInviteLink"];
     trace?: never;
   };
@@ -995,7 +995,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** @description Revoke the UTub's invite link and create a new one with the given settings (owner and co-owner only) */
+    /** @description Revoke the UTub's invite link and create a new one with the given settings (owner and co-owner only). The new link starts with preview off. */
     post: operations["replaceInviteLink"];
     delete?: never;
     options?: never;
@@ -2480,6 +2480,16 @@ export interface components {
       createdAt: string;
       /** @description Username of the link's creator; null when that account was erased */
       creatorUsername: string | null;
+      /** @description Stored manager choice: show logged-out visitors a read-only preview */
+      previewEnabled: boolean;
+      /** @description Stored preview window in days: 1, 3 or 7 */
+      previewWindowDays: number;
+      /** @description Stored UTC ISO-8601 window end; null while the preview is off */
+      previewEndsAt: string | null;
+      /** @description True when visitors can see the preview right now */
+      previewEffectiveEnabled: boolean;
+      /** @description UTC ISO-8601 end of the preview, capped at the link's expiry; null while the preview is off */
+      previewEffectiveEndsAt: string | null;
     };
     /** @enum {string} */
     InviteLinkStatus: "live" | "expired" | "used_up" | "creator_demoted";
@@ -2529,6 +2539,16 @@ export interface components {
        * @default null
        */
       max_uses: (1 | 5 | 10 | 25) | null;
+      /**
+       * @description Show logged-out visitors a read-only preview; absent is unchanged
+       * @default null
+       */
+      preview_enabled: boolean | null;
+      /**
+       * @description Days the preview stays available: 1, 3 or 7
+       * @default null
+       */
+      preview_window_days: (1 | 3 | 7) | null;
     };
     AddTagRequest: {
       /**

@@ -2930,7 +2930,7 @@
             "bearerAuth": []
           }
         ],
-        "description": "Get the UTub's current invite link and its status, or null when there is none (owner and co-owner only)",
+        "description": "Get the UTub's current invite link and its status, or null when there is none (owner and co-owner only). Includes the stored and effective preview values; a new link starts with preview off.",
         "parameters": [
           {
             "name": "utub_id",
@@ -2997,7 +2997,7 @@
             "bearerAuth": []
           }
         ],
-        "description": "Create the UTub's invite link with an expiry and an optional use limit (owner and co-owner only). A dead unrevoked link is revoked first.",
+        "description": "Create the UTub's invite link with an expiry and an optional use limit (owner and co-owner only). A dead unrevoked link is revoked first. The new link starts with preview off.",
         "parameters": [
           {
             "name": "utub_id",
@@ -3103,7 +3103,7 @@
             "bearerAuth": []
           }
         ],
-        "description": "Change the expiry and/or use limit of the UTub's live invite link (owner and co-owner only). An absent field is unchanged; a null max_uses means unlimited.",
+        "description": "Change the expiry, use limit and/or logged-out preview (preview_enabled, preview_window_days of 1, 3 or 7) of the UTub's live invite link (owner and co-owner only). An absent field is unchanged; a null max_uses means unlimited; a null preview field is rejected.",
         "parameters": [
           {
             "name": "utub_id",
@@ -3268,7 +3268,7 @@
             "bearerAuth": []
           }
         ],
-        "description": "Revoke the UTub's invite link and create a new one with the given settings (owner and co-owner only)",
+        "description": "Revoke the UTub's invite link and create a new one with the given settings (owner and co-owner only). The new link starts with preview off.",
         "parameters": [
           {
             "name": "utub_id",
@@ -5496,7 +5496,7 @@
             "sessionAuth": []
           }
         ],
-        "description": "Get the UTub's current invite link and its status, or null when there is none (owner and co-owner only)",
+        "description": "Get the UTub's current invite link and its status, or null when there is none (owner and co-owner only). Includes the stored and effective preview values; a new link starts with preview off.",
         "parameters": [
           {
             "name": "utub_id",
@@ -5554,7 +5554,7 @@
             "csrfToken": []
           }
         ],
-        "description": "Create the UTub's invite link with an expiry and an optional use limit (owner and co-owner only). A dead unrevoked link is revoked first.",
+        "description": "Create the UTub's invite link with an expiry and an optional use limit (owner and co-owner only). A dead unrevoked link is revoked first. The new link starts with preview off.",
         "parameters": [
           {
             "name": "utub_id",
@@ -5651,7 +5651,7 @@
             "csrfToken": []
           }
         ],
-        "description": "Change the expiry and/or use limit of the UTub's live invite link (owner and co-owner only). An absent field is unchanged; a null max_uses means unlimited.",
+        "description": "Change the expiry, use limit and/or logged-out preview (preview_enabled, preview_window_days of 1, 3 or 7) of the UTub's live invite link (owner and co-owner only). An absent field is unchanged; a null max_uses means unlimited; a null preview field is rejected.",
         "parameters": [
           {
             "name": "utub_id",
@@ -5798,7 +5798,7 @@
             "csrfToken": []
           }
         ],
-        "description": "Revoke the UTub's invite link and create a new one with the given settings (owner and co-owner only)",
+        "description": "Revoke the UTub's invite link and create a new one with the given settings (owner and co-owner only). The new link starts with preview off.",
         "parameters": [
           {
             "name": "utub_id",
@@ -12333,6 +12333,42 @@
               }
             ],
             "description": "Username of the link's creator; null when that account was erased"
+          },
+          "previewEnabled": {
+            "description": "Stored manager choice: show logged-out visitors a read-only preview",
+            "type": "boolean"
+          },
+          "previewWindowDays": {
+            "description": "Stored preview window in days: 1, 3 or 7",
+            "type": "integer"
+          },
+          "previewEndsAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Stored UTC ISO-8601 window end; null while the preview is off"
+          },
+          "previewEffectiveEnabled": {
+            "description": "True when visitors can see the preview right now",
+            "type": "boolean"
+          },
+          "previewEffectiveEndsAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "UTC ISO-8601 end of the preview, capped at the link's expiry; null while the preview is off"
           }
         },
         "required": [
@@ -12342,7 +12378,12 @@
           "maxUses",
           "useCount",
           "createdAt",
-          "creatorUsername"
+          "creatorUsername",
+          "previewEnabled",
+          "previewWindowDays",
+          "previewEndsAt",
+          "previewEffectiveEnabled",
+          "previewEffectiveEndsAt"
         ],
         "type": "object"
       },
@@ -12453,6 +12494,31 @@
             ],
             "default": null,
             "description": "How many people may join with the link: 1, 5, 10 or 25; null means unlimited"
+          },
+          "preview_enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Show logged-out visitors a read-only preview; absent is unchanged"
+          },
+          "preview_window_days": {
+            "anyOf": [
+              {
+                "enum": [1, 3, 7],
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Days the preview stays available: 1, 3 or 7"
           }
         },
         "type": "object"
