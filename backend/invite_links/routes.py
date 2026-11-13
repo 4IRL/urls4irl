@@ -94,16 +94,17 @@ def _build_page_view(
             if show_login_message and not is_join_ready
             else None
         )
-        show_preview = preview is not None and not is_join_ready
+        page_preview: InvitePreview | None = None
         if is_join_ready:
             page_kind: InvitePageKind = "join_ready"
-        elif show_preview:
+        elif preview is not None:
             page_kind = "preview"
+            page_preview = preview
         else:
             page_kind = "login_required"
         return InvitePageView(
             kind=page_kind,
-            preview=preview if show_preview else None,
+            preview=page_preview,
             page_title=INVITE_LINK_PAGE.TITLE_JOIN,
             inviter=invite.creator.username,
             utub_name=invite.utub.name,

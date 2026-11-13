@@ -1,4 +1,5 @@
 import re
+import time
 from contextlib import contextmanager
 from datetime import datetime, timedelta
 from typing import Any, Generator
@@ -62,6 +63,11 @@ BAR_AT_BOTTOM_JS = """(tolerance) => {
 SCROLL_BOTTOM_JS = """() => window.scrollTo({
     top: document.documentElement.scrollHeight, behavior: 'instant'
 })"""
+AT_BOTTOM_JS = """() => {
+    const el = document.scrollingElement;
+    return el.scrollTop > 0 && el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
+}"""
+POLL_INTERVAL_MS = 50
 ACTIVE_MATCHES_JS = "(selector) => document.activeElement?.matches(selector) ?? false"
 CONTRAST_JS = """(el) => {
     const parse = (color) => color.match(/[\\d.]+/g).slice(0, 3).map(Number);
@@ -171,6 +177,15 @@ def _box(*, page: Page, selector: str) -> dict:
     box = page.locator(selector).bounding_box()
     assert box is not None, selector
     return box
+
+
+def _wait_scrolled_to_bottom(*, page: Page, timeout_ms: int = 5000) -> None:
+    """Poll until the page is scrolled to its max (evaluate works with JS disabled,
+    unlike wait_for_function)."""
+    deadline = time.monotonic() + timeout_ms / 1000
+    while not page.evaluate(AT_BOTTOM_JS):
+        assert time.monotonic() < deadline, "page never reached max scroll"
+        page.wait_for_timeout(POLL_INTERVAL_MS)
 
 
 def _assert_last_card_and_footer_above_bar(*, page: Page) -> None:
@@ -592,7 +607,7 @@ def test_no_js_fallback_keeps_last_card_and_footer_reachable(
         assert padding == NO_JS_BODY_PADDING
         # No JS: scroll with the keyboard-free API Playwright exposes.
         visitor.mouse.wheel(0, 100_000)
-        visitor.wait_for_timeout(100)
+        _wait_scrolled_to_bottom(page=visitor)
         bar_top = _box(page=visitor, selector=IPL.PREVIEW_BAR)["y"]
         last_card = visitor.locator(IPL.PREVIEW_CARD).last.bounding_box()
         assert last_card is not None

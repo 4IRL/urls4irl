@@ -46,7 +46,6 @@ def apply_preview_change(
         and invite.preview_ends_at is not None
         and invite.preview_ends_at > now
     )
-    stored_enabled = invite.preview_enabled
 
     if window_days is not None:
         invite.preview_window_days = window_days
@@ -61,5 +60,5 @@ def apply_preview_change(
         invite.preview_ends_at = now + timedelta(days=invite.preview_window_days)
         return
 
-    if window_days is not None and stored_enabled:
+    if window_days is not None and already_on:
         invite.preview_ends_at = now + timedelta(days=invite.preview_window_days)

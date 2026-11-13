@@ -87,7 +87,7 @@
   </section>
 </main>
 {% if page.kind == "preview" %}
-<div id="invitePreviewBar" class="invite-preview-bar" role="region" aria-label="{{ invite_strings.PREVIEW_BAR_LABEL }}" tabindex="-1">
+<div id="invitePreviewBar" role="region" aria-label="{{ invite_strings.PREVIEW_BAR_LABEL }}" tabindex="-1">
   <p class="invite-preview-bar-heading">{{ invite_strings.PREVIEW_BAR_HEADING }}</p>
   <p class="invite-preview-bar-text">{{ invite_strings.PREVIEW_BAR_TEMPLATE.format(utub_name=page.utub_name) }}</p>
   <div class="invite-preview-bar-actions">

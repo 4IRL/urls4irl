@@ -45,7 +45,7 @@ def _patch(app: Flask, body: Any) -> Response:
     )
 
 
-def _patch_in(app: Flask, client: FlaskClient, csrf_token: str, body: Any) -> Response:
+def _patch_in(client: FlaskClient, csrf_token: str, body: Any) -> Response:
     """PATCH within one logged-in session (a fresh session per write fails CSRF)."""
     url = url_for(ROUTES.INVITE_LINKS.UPDATE_INVITE_LINK, utub_id=FIRST_UTUB_ID)
     return client.patch(url, json=body, headers={"X-CSRFToken": csrf_token})
@@ -243,13 +243,11 @@ def test_shorten_then_lengthen_expiry_keeps_stored_window(
     )
     with logged_in_as(app, CREATOR_ID) as (client, csrf_token):
         enabled = _patch_in(
-            app, client, csrf_token, {"preview_enabled": True, "preview_window_days": 7}
+            client, csrf_token, {"preview_enabled": True, "preview_window_days": 7}
         )
         stored_end = _when(link_of(enabled), MODELS.PREVIEW_ENDS_AT)
-        shortened = link_of(_patch_in(app, client, csrf_token, {"expires_in_days": 1}))
-        lengthened = link_of(
-            _patch_in(app, client, csrf_token, {"expires_in_days": 30})
-        )
+        shortened = link_of(_patch_in(client, csrf_token, {"expires_in_days": 1}))
+        lengthened = link_of(_patch_in(client, csrf_token, {"expires_in_days": 30}))
 
     assert shortened[MODELS.PREVIEW_WINDOW_DAYS] == 7
     assert _when(shortened, MODELS.PREVIEW_ENDS_AT) == stored_end
@@ -270,9 +268,9 @@ def test_turning_off_nulls_end_and_keeps_days(every_user_in_every_utub, app: Fla
     add_invite_link(app, FIRST_UTUB_ID, CREATOR_ID)
     with logged_in_as(app, CREATOR_ID) as (client, csrf_token):
         _patch_in(
-            app, client, csrf_token, {"preview_enabled": True, "preview_window_days": 7}
+            client, csrf_token, {"preview_enabled": True, "preview_window_days": 7}
         )
-        link = link_of(_patch_in(app, client, csrf_token, {"preview_enabled": False}))
+        link = link_of(_patch_in(client, csrf_token, {"preview_enabled": False}))
 
     assert link[MODELS.PREVIEW_ENABLED] is False
     assert link[MODELS.PREVIEW_WINDOW_DAYS] == 7
@@ -391,10 +389,9 @@ def test_unlock_resumes_stored_on_preview(every_user_in_every_utub, app: Flask):
     assert _stored(app) == (True, 3, end)
     page = _anonymous_invite_page(app, token)
     assert page.status_code == 200
-    assert 'id="invitePreviewList"' in page.get_data(as_text=True) or (
-        'id="invitePreviewEmpty"' in page.get_data(as_text=True)
-    )
-    assert 'id="invitePreviewBar"' in page.get_data(as_text=True)
+    body = page.get_data(as_text=True)
+    assert 'id="invitePreviewEmpty"' in body
+    assert 'id="invitePreviewBar"' in body
 
 
 def test_window_only_patch_on_off_row_stores_days_only(

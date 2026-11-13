@@ -134,6 +134,19 @@ def test_apply_on_from_off_anchors_now_plus_days() -> None:
     assert invite.preview_ends_at == NOW + timedelta(days=3)
 
 
+def test_apply_window_change_on_lapsed_row_does_not_rearm() -> None:
+    """
+    GIVEN a stored-on row whose end has already passed
+    WHEN only a different window is sent
+    THEN the days are stored but the row is not re-armed
+    """
+    lapsed_end = NOW - timedelta(hours=1)
+    invite = _row(enabled=True, window_days=3, ends_at=lapsed_end)
+    _apply(invite, enabled=None, window_days=7)
+    assert invite.preview_window_days == 7
+    assert invite.preview_ends_at == lapsed_end
+
+
 def test_apply_window_change_while_on_reanchors() -> None:
     """
     GIVEN a live stored-on row
@@ -205,18 +218,6 @@ def test_apply_on_for_lapsed_row_reanchors() -> None:
     _apply(invite, enabled=True, window_days=None)
     assert invite.preview_ends_at == NOW + timedelta(days=3)
     assert _effective(invite).enabled is True
-
-
-def test_apply_window_on_lapsed_row_reanchors() -> None:
-    """
-    GIVEN a stored-on row whose end has passed
-    WHEN a window is sent
-    THEN the days are stored and the end is re-anchored
-    """
-    invite = _row(enabled=True, window_days=3, ends_at=NOW - timedelta(days=1))
-    _apply(invite, enabled=None, window_days=1)
-    assert invite.preview_window_days == 1
-    assert invite.preview_ends_at == NOW + timedelta(days=1)
 
 
 def test_apply_both_fields_anchors_once_with_new_days() -> None:
