@@ -25,7 +25,7 @@ DEFAULT_SETTINGS_DICT: dict[str, dict[str, Any]] = {
         "members_can_add": False,
         "hide_member_list": False,
     },
-    "tags": {},
+    "tags": {"members_can_tag": True, "members_can_delete_tags": True},
     "urls": dict(URLS_DEFAULTS),
 }
 

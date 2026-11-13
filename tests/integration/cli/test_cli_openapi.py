@@ -11,6 +11,7 @@ from pydantic import BaseModel
 from backend.api_common.parse_request import api_route
 from backend.cli.openapi import register_openapi_cli
 from backend.schemas.base import StatusMessageResponseSchema
+from backend.tags.constants import URLTagErrorCodes
 from backend.urls.constants import URLErrorCodes
 from backend.utubs.constants import UTubErrorCodes
 
@@ -1105,6 +1106,7 @@ def test_typed_error_response_scoped_to_400_and_409_only(runner, tmp_path):
     GIVEN a generated OpenAPI spec
     WHEN we inspect PATCH /utubs/{utub_id}/urls/{utub_url_id} which has
          error_code_enum=URLErrorCodes and status codes 400, 403, 404, 409
+         but does not opt in to typed_403
     THEN 400 and 409 reference the typed ErrorResponse_URLErrorCodes,
          while 403 and 404 reference the plain ErrorResponse
     """
@@ -1132,6 +1134,24 @@ def test_typed_error_response_scoped_to_400_and_409_only(runner, tmp_path):
         assert schema_ref == "#/components/schemas/ErrorResponse", (
             f"Expected plain ErrorResponse for {plain_code}, got: {schema_ref}"
         )
+
+
+def test_typed_403_opt_in_types_tag_route_403(runner, tmp_path):
+    """
+    GIVEN a generated OpenAPI spec
+    WHEN we inspect POST /utubs/{utub_id}/urls/{utub_url_id}/tags, which opts in
+         with typed_403=True
+    THEN its 403 references the typed ErrorResponse_URLTagErrorCodes
+    """
+    spec = _generate_spec(runner, tmp_path)
+
+    post_op = spec["paths"]["/utubs/{utub_id}/urls/{utub_url_id}/tags"]["post"]
+    schema_ref = post_op["responses"]["403"]["content"]["application/json"]["schema"][
+        "$ref"
+    ]
+    assert (
+        schema_ref == f"#/components/schemas/ErrorResponse_{URLTagErrorCodes.__name__}"
+    )
 
 
 def test_component_schemas_have_no_title_fields(runner, tmp_path):

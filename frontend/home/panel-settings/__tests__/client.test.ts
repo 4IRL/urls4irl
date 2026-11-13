@@ -68,7 +68,7 @@ function settingsWith(
       members_can_add: false,
       hide_member_list: false,
     },
-    tags: {},
+    tags: { members_can_tag: true, members_can_delete_tags: true },
     ...overrides,
     urls: { ...URLS_DEFAULTS, ...overrides.urls },
   };
@@ -190,7 +190,11 @@ describe("patchUtubSettings", () => {
       });
       await first.result;
 
-      expect(getState().settings?.tags).toEqual({ t: 1 });
+      expect(getState().settings?.tags).toEqual({
+        members_can_tag: true,
+        members_can_delete_tags: true,
+        t: 1,
+      });
       expect(getState().settings?.urls).toEqual({ ...URLS_DEFAULTS, u: 1 });
       expect(getState().settingsVersion).toBe(2);
     });

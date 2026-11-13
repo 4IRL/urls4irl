@@ -166,7 +166,7 @@ describe("getSelectedUTubInfo — out-of-order UTub responses", () => {
         members_can_add: false,
         hide_member_list: false,
       },
-      tags: {},
+      tags: { members_can_tag: true, members_can_delete_tags: true },
       urls: {
         default_url_scheme: "https",
         hide_scheme_selector: false,
@@ -194,6 +194,70 @@ describe("getSelectedUTubInfo — out-of-order UTub responses", () => {
       expect(utubSelectedEmits()).toHaveLength(1);
     });
     expect(getState().settings?.urls.allow_short_links).toBe(false);
+  });
+
+  it("keeps learned-off tags keys against a stale in-flight payload", async () => {
+    setState({ activeUTubID: 1 });
+    selectUTub(1, $(".UTubSelector[utubid='1']"));
+    setState({
+      policyLearnedVersion: 2,
+      learnedOffPolicies: {
+        "tags.members_can_tag": 1,
+        "tags.members_can_delete_tags": 2,
+      },
+    });
+
+    firstRequest.resolve(
+      makeUtubDetail({
+        id: 1,
+        settings: {
+          tags: { members_can_tag: true, members_can_delete_tags: true },
+        } as never,
+      }),
+    );
+
+    await vi.waitFor(() => {
+      expect(utubSelectedEmits()).toHaveLength(1);
+    });
+    expect(getState().settings?.tags).toEqual({
+      members_can_tag: false,
+      members_can_delete_tags: false,
+    });
+  });
+
+  it("clears a tags key learned off before the fetch when the fresh payload says on", async () => {
+    setState({
+      activeUTubID: 1,
+      policyLearnedVersion: 1,
+      learnedOffPolicies: { "tags.members_can_tag": 1 },
+    });
+    selectUTub(1, $(".UTubSelector[utubid='1']"));
+
+    firstRequest.resolve(makeUtubDetail({ id: 1 }));
+
+    await vi.waitFor(() => {
+      expect(utubSelectedEmits()).toHaveLength(1);
+    });
+    expect(getState().settings?.tags.members_can_tag).toBe(true);
+  });
+
+  it("forces only the learned tags key off", async () => {
+    setState({ activeUTubID: 1 });
+    selectUTub(1, $(".UTubSelector[utubid='1']"));
+    setState({
+      policyLearnedVersion: 1,
+      learnedOffPolicies: { "tags.members_can_delete_tags": 1 },
+    });
+
+    firstRequest.resolve(makeUtubDetail({ id: 1 }));
+
+    await vi.waitFor(() => {
+      expect(utubSelectedEmits()).toHaveLength(1);
+    });
+    expect(getState().settings?.tags).toEqual({
+      members_can_tag: true,
+      members_can_delete_tags: false,
+    });
   });
 
   it("populates the store's members before UTUB_SELECTED is emitted (cards never see an empty member list)", async () => {

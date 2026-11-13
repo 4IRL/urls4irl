@@ -44,11 +44,13 @@ utub_url_tags = Blueprint("utub_url_tags", __name__)
     response_schema=UrlTagModifiedResponseSchema,
     error_message=TAGS_FAILURE.UNABLE_TO_ADD_TAG_TO_URL,
     error_code=URLTagErrorCodes.INVALID_FORM_INPUT,
+    typed_403=True,
     tags=[OPEN_API.TAGS],
     description="Add a tag to a URL in a UTub",
     status_codes={
         200: UrlTagModifiedResponseSchema,
         400: ErrorResponse,
+        403: ErrorResponse,
         404: ErrorResponse,
     },
 )
@@ -85,11 +87,13 @@ def create_utub_url_tag(
     response_schema=UrlTagsModifiedResponseSchema,
     error_message=TAGS_FAILURE.UNABLE_TO_ADD_TAG_TO_URL,
     error_code=URLTagErrorCodes.INVALID_FORM_INPUT,
+    typed_403=True,
     tags=[OPEN_API.TAGS],
     description="Apply multiple tags to a URL in a UTub",
     status_codes={
         200: UrlTagsModifiedResponseSchema,
         400: ErrorResponse,
+        403: ErrorResponse,
         404: ErrorResponse,
     },
 )
@@ -124,6 +128,7 @@ def create_utub_url_tags(
     response_schema=AddTagsToUrlsResponseSchema,
     error_message=TAGS_FAILURE.UNABLE_TO_ADD_TAG_TO_URL,
     error_code=URLTagErrorCodes.INVALID_FORM_INPUT,
+    typed_403=True,
     tags=[OPEN_API.TAGS],
     description="Apply tags to multiple URLs in a UTub",
     status_codes={
@@ -162,9 +167,15 @@ def apply_tags_to_utub_urls(
 @utub_membership_with_valid_url_tag
 @api_route(
     response_schema=UrlTagModifiedResponseSchema,
+    error_code=URLTagErrorCodes.INVALID_FORM_INPUT,
+    typed_403=True,
     tags=[OPEN_API.TAGS],
     description="Remove a tag from a URL in a UTub",
-    status_codes={200: UrlTagModifiedResponseSchema, 404: ErrorResponse},
+    status_codes={
+        200: UrlTagModifiedResponseSchema,
+        403: ErrorResponse,
+        404: ErrorResponse,
+    },
 )
 def delete_utub_url_tag(
     utub_id: int,

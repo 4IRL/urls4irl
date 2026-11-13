@@ -11129,6 +11129,16 @@
               }
             }
           },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_URLTagErrorCodes"
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not found",
             "content": {
@@ -11205,6 +11215,16 @@
           },
           "400": {
             "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_URLTagErrorCodes"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
             "content": {
               "application/json": {
                 "schema": {
@@ -11294,7 +11314,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "$ref": "#/components/schemas/ErrorResponse_URLTagErrorCodes"
                 }
               }
             }
@@ -11372,6 +11392,16 @@
               }
             }
           },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_URLTagErrorCodes"
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not found",
             "content": {
@@ -11381,6 +11411,11 @@
                 }
               }
             }
+          }
+        },
+        "x-error-codes": {
+          "URLTagErrorCodes": {
+            "$ref": "#/components/schemas/URLTagErrorCodes"
           }
         }
       }
@@ -11435,6 +11470,16 @@
           },
           "400": {
             "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_UTubTagErrorCodes"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
             "content": {
               "application/json": {
                 "schema": {
@@ -11508,6 +11553,16 @@
               }
             }
           },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_UTubTagErrorCodes"
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not found",
             "content": {
@@ -11517,6 +11572,11 @@
                 }
               }
             }
+          }
+        },
+        "x-error-codes": {
+          "UTubTagErrorCodes": {
+            "$ref": "#/components/schemas/UTubTagErrorCodes"
           }
         }
       }
@@ -12522,11 +12582,12 @@
       },
       "URLTagErrorCodes": {
         "type": "integer",
-        "enum": [1, 2, 3],
+        "enum": [1, 2, 3, 4],
         "x-enum-varnames": [
           "UNKNOWN_EXCEPTION",
           "INVALID_FORM_INPUT",
-          "UTUB_IS_LOCKED"
+          "UTUB_IS_LOCKED",
+          "TAGGING_NOT_ALLOWED"
         ],
         "description": "Error codes for URLTagErrorCodes"
       },
@@ -12618,11 +12679,13 @@
       },
       "UTubTagErrorCodes": {
         "type": "integer",
-        "enum": [1, 2, 3],
+        "enum": [1, 2, 3, 4, 5],
         "x-enum-varnames": [
           "UNKNOWN_EXCEPTION",
           "INVALID_FORM_INPUT",
-          "UTUB_IS_LOCKED"
+          "UTUB_IS_LOCKED",
+          "TAGGING_NOT_ALLOWED",
+          "TAG_DELETE_NOT_ALLOWED"
         ],
         "description": "Error codes for UTubTagErrorCodes"
       },
@@ -12763,7 +12826,7 @@
       },
       "URLErrorCodes": {
         "type": "integer",
-        "enum": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17],
+        "enum": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18],
         "x-enum-varnames": [
           "UNKNOWN_ERROR",
           "INVALID_FORM_INPUT",
@@ -12781,7 +12844,8 @@
           "URL_ALREADY_IN_DESTINATION",
           "UNABLE_TO_RESTORE_URL_ERROR",
           "UNABLE_TO_RESTORE_URLS_ERROR",
-          "SHORT_LINKS_DISABLED"
+          "SHORT_LINKS_DISABLED",
+          "TAGGING_NOT_ALLOWED"
         ],
         "description": "Error codes for URLErrorCodes"
       },
@@ -13676,8 +13740,19 @@
       },
       "TagsSettings": {
         "additionalProperties": false,
-        "description": "Settings for the tags panel (no settings yet).",
-        "properties": {},
+        "description": "Settings for the tags panel: who may tag and delete tags.",
+        "properties": {
+          "members_can_tag": {
+            "default": true,
+            "description": "Whether plain members can create tags and add or remove tags on URLs",
+            "type": "boolean"
+          },
+          "members_can_delete_tags": {
+            "default": true,
+            "description": "Whether plain members can delete tags; only effective while members_can_tag is on",
+            "type": "boolean"
+          }
+        },
         "type": "object"
       },
       "UrlsSettings": {

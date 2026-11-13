@@ -7,9 +7,19 @@ export const LEARNABLE_POLICY_KEYS = [
   "urls.allow_short_links",
   "members.members_can_add",
   "members.co_owners_can_remove",
+  "tags.members_can_tag",
+  "tags.members_can_delete_tags",
 ] as const;
 
 export type LearnablePolicyKey = (typeof LEARNABLE_POLICY_KEYS)[number];
+
+// Store keys the policy-driven subscribers (tag/member controls and attrs) react to.
+export const POLICY_STATE_KEYS: ReadonlyArray<keyof AppState> = [
+  "settings",
+  "activeUTubID",
+  "isCurrentUserOwner",
+  "isCoCreator",
+];
 
 // Records that a refused request proved `key` is off for the active UTub. Writes
 // only that key, bumps `policyLearnedVersion` and records the key at the new
@@ -30,6 +40,7 @@ export function learnPolicyOff({
     ...settings,
     urls: { ...settings.urls },
     members: { ...settings.members },
+    tags: { ...settings.tags },
   };
   switch (key) {
     case "urls.allow_short_links":
@@ -40,6 +51,12 @@ export function learnPolicyOff({
       break;
     case "members.co_owners_can_remove":
       nextSettings.members.co_owners_can_remove = false;
+      break;
+    case "tags.members_can_tag":
+      nextSettings.tags.members_can_tag = false;
+      break;
+    case "tags.members_can_delete_tags":
+      nextSettings.tags.members_can_delete_tags = false;
       break;
   }
   setState({
@@ -82,6 +99,39 @@ export function canManageInviteLink(
     state.isCurrentUTubLocked === false &&
     state.activeUTubID !== null &&
     state.activeUTubID !== undefined
+  );
+}
+
+// Whether the viewer may create tags and add or remove tags on URLs: the owner
+// and co-owners always, a plain member only while the setting is exactly true.
+// Missing settings mean false (fail closed).
+export function canTag(
+  state: Pick<
+    AppState,
+    "isCurrentUserOwner" | "isCoCreator" | "settings"
+  > = getState(),
+): boolean {
+  return (
+    state.isCurrentUserOwner ||
+    state.isCoCreator ||
+    state.settings?.tags.members_can_tag === true
+  );
+}
+
+// Whether the viewer may delete a UTub tag: the owner and co-owners always, a
+// plain member only while both switches are exactly true (delete is effective
+// only while tagging is on). Missing settings mean false.
+export function canDeleteTags(
+  state: Pick<
+    AppState,
+    "isCurrentUserOwner" | "isCoCreator" | "settings"
+  > = getState(),
+): boolean {
+  return (
+    state.isCurrentUserOwner ||
+    state.isCoCreator ||
+    (state.settings?.tags.members_can_tag === true &&
+      state.settings.tags.members_can_delete_tags === true)
   );
 }
 

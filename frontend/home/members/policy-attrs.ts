@@ -1,8 +1,12 @@
 import { $ } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { debug } from "../../lib/debug.js";
-import { getState, subscribe, type AppState } from "../../store/app-store.js";
-import { canAddMembers, canCoOwnerRemoveMembers } from "../utubs/policy.js";
+import { getState, subscribe } from "../../store/app-store.js";
+import {
+  POLICY_STATE_KEYS,
+  canAddMembers,
+  canCoOwnerRemoveMembers,
+} from "../utubs/policy.js";
 import { closeAllMemberRowMenus } from "./row-menu.js";
 import { dismissAddMemberTipIfActive } from "../onboarding/nudges.js";
 import { setupShowCreateMemberFormEventListeners } from "./create.js";
@@ -14,13 +18,6 @@ const log = debug("members");
 
 const MEMBERS_CAN_ADD_KEY = "members.members_can_add";
 const CO_OWNERS_CAN_REMOVE_KEY = "members.co_owners_can_remove";
-const RELEVANT_KEYS: ReadonlyArray<keyof AppState> = [
-  "settings",
-  "activeUTubID",
-  "isCurrentUserOwner",
-  "isCoCreator",
-];
-
 // What the subscription last saw. `utubID` is the UTub it describes;
 // `learnedAddVersion` is the counter value the add policy was learned off at (a
 // 403), so a revoke caused by the viewer's own refusal can be told apart from one
@@ -173,7 +170,7 @@ export function initMemberDeckPolicyAttrs(): () => void {
   seedMemberDeckPolicySnapshot();
   applyMemberDeckAttrs();
   return subscribe((changedKeys) => {
-    if (!RELEVANT_KEYS.some((key) => changedKeys.includes(key))) return;
+    if (!POLICY_STATE_KEYS.some((key) => changedKeys.includes(key))) return;
     const previous = _snapshot;
     const next = readSnapshot();
     _snapshot = next;
