@@ -48,6 +48,17 @@ class INVITE_LINK_PAGE:
     TITLE_DEAD = "Invite unavailable - URLS4IRL"
     TITLE_CSRF = "Page expired - URLS4IRL"
     TITLE_RATE_LIMIT = "Too many attempts - URLS4IRL"
+    PREVIEW_BADGE_LABEL = "Read-only preview"
+    PREVIEW_URL_COUNT_ONE = "1 URL"
+    PREVIEW_URL_COUNT_TEMPLATE = "{count} URLs"
+    PREVIEW_AVAILABLE_UNTIL = "available until"
+    PREVIEW_MORE_TEMPLATE = "and {count} more, join to see all"
+    PREVIEW_EMPTY = "This UTub has no URLs yet. Join to add the first one."
+    PREVIEW_BAR_HEADING = "Want to add your own links?"
+    PREVIEW_BAR_TEMPLATE = "Create a free account to join {utub_name}."
+    PREVIEW_BAR_LABEL = "Join this UTub"
+    PREVIEW_NEW_TAB = "(opens in a new tab)"
+    PREVIEW_SKIP_LINK = "Skip to join options"
 
 
 # Copy the Members-deck invite link panel renders from TypeScript. Bridged to

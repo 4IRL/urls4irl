@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from typing import Any
 
 import pytest
-from flask import Flask, url_for
+from flask import Flask, g, url_for
 from flask.testing import FlaskClient
 from flask.wrappers import Response
 
@@ -26,6 +26,8 @@ from tests.integration.invite_links.invite_route_helpers import (
 from tests.integration.short_links.short_link_helpers import (
     CREATOR_ID,
     FIRST_UTUB_ID,
+    NON_XHR_HEADERS,
+    anonymous_client,
     logged_in_as,
 )
 from tests.utils_for_test import add_invite_link, lock_utub, unlock_utub
@@ -57,6 +59,22 @@ def _get(app: Flask) -> Response:
 
 def _post(app: Flask, route: str, body: Any) -> Response:
     return request_as(app, CREATOR_ID, "POST", invite_url(route), body)
+
+
+def _anonymous_invite_page(app: Flask, token: str) -> Response:
+    def drop_request_caches() -> None:
+        # The fixture's open app context keeps the last viewer's user and CSRF token
+        # on ``g``; clear them so they neither leak in nor out of this request.
+        with app.test_request_context():
+            g.pop("_login_user", None)
+            g.pop("csrf_token", None)
+
+    drop_request_caches()
+    with app.test_request_context():
+        url = url_for(ROUTES.INVITE_LINKS.INVITE_PAGE, token=token)
+    response = anonymous_client(app).get(url, headers=NON_XHR_HEADERS)
+    drop_request_caches()
+    return response
 
 
 def _when(link: dict[str, Any], key: str) -> datetime:
@@ -363,12 +381,20 @@ def test_unlock_resumes_stored_on_preview(every_user_in_every_utub, app: Flask):
     )
     lock_utub(app, FIRST_UTUB_ID)
     assert link_of(_get(app))[MODELS.PREVIEW_EFFECTIVE_ENABLED] is False
+    token = rows(app)[0].token
+    assert _anonymous_invite_page(app, token).status_code == 404
 
     unlock_utub(app, FIRST_UTUB_ID)
 
     link = link_of(_get(app))
     assert link[MODELS.PREVIEW_EFFECTIVE_ENABLED] is True
     assert _stored(app) == (True, 3, end)
+    page = _anonymous_invite_page(app, token)
+    assert page.status_code == 200
+    assert 'id="invitePreviewList"' in page.get_data(as_text=True) or (
+        'id="invitePreviewEmpty"' in page.get_data(as_text=True)
+    )
+    assert 'id="invitePreviewBar"' in page.get_data(as_text=True)
 
 
 def test_window_only_patch_on_off_row_stores_days_only(

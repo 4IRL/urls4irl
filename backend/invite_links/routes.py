@@ -24,17 +24,21 @@ from backend.invite_links.data_models import (
 )
 from backend.invite_links.lookup import find_invite_by_token
 from backend.invite_links.page_response import (
+    InvitePageKind,
     InvitePageView,
+    InvitePreview,
     build_invite_splash_urls,
     invite_redirect,
     render_invite_page,
 )
+from backend.invite_links.preview import compute_effective_preview
 from backend.invite_links.rate_limit import (
     invite_link_join_rate_key,
     invite_link_manage_rate_key,
 )
 from backend.invite_links.responses import no_store
 from backend.invite_links.services.invite_page import resolve_invite_page
+from backend.invite_links.services.invite_preview import build_invite_preview
 from backend.invite_links.services.join_via_invite import join_via_invite
 from backend.invite_links.services.manage_invite_link import (
     create_invite_link_for_utub,
@@ -43,6 +47,7 @@ from backend.invite_links.services.manage_invite_link import (
     revoke_invite_link_for_utub,
     update_invite_link_for_utub,
 )
+from backend.invite_links.validity import evaluate_invite
 from backend.metrics.events import EventName
 from backend.models.users import Users
 from backend.models.utubs import Utubs
@@ -65,6 +70,7 @@ def _build_page_view(
     resolution: InvitePageResolution,
     token: str,
     show_login_message: bool = False,
+    preview: InvitePreview | None = None,
 ) -> InvitePageView:
     """Map a classifier resolution to the view the template renders (never a member).
 
@@ -73,6 +79,8 @@ def _build_page_view(
         token (str): The raw token from the request path (for the splash URLs).
         show_login_message (bool): Whether state 2 carries the "log in" message
             (the join POST re-render for a logged-out visitor).
+        preview (InvitePreview | None): The read-only preview; only honored for the
+            logged-out state, which then renders as state 3.
     """
     invite = resolution.invite
     if resolution.state in (
@@ -86,8 +94,16 @@ def _build_page_view(
             if show_login_message and not is_join_ready
             else None
         )
+        show_preview = preview is not None and not is_join_ready
+        if is_join_ready:
+            page_kind: InvitePageKind = "join_ready"
+        elif show_preview:
+            page_kind = "preview"
+        else:
+            page_kind = "login_required"
         return InvitePageView(
-            kind="join_ready" if is_join_ready else "login_required",
+            kind=page_kind,
+            preview=preview if show_preview else None,
             page_title=INVITE_LINK_PAGE.TITLE_JOIN,
             inviter=invite.creator.username,
             utub_name=invite.utub.name,
@@ -153,7 +169,20 @@ def invite_page(token: str) -> Response:
     if resolution.state == InvitePageState.MEMBER_REDIRECT:
         return invite_redirect(f"/home?UTubID={resolution.utub_id}")
 
-    page = _build_page_view(resolution=resolution, token=token)
+    preview: InvitePreview | None = None
+    invite = resolution.invite
+    if (
+        resolution.state is InvitePageState.LOGIN_REQUIRED
+        and visitor is None
+        and invite is not None
+    ):
+        effective = compute_effective_preview(invite, state=evaluate_invite(invite))
+        if effective.enabled and effective.ends_at is not None:
+            preview = build_invite_preview(
+                utub_id=invite.utub_id, available_until=effective.ends_at
+            )
+
+    page = _build_page_view(resolution=resolution, token=token, preview=preview)
     status_code = HTTPStatus.NOT_FOUND if page.kind == "dead" else HTTPStatus.OK
     return render_invite_page(page=page, status_code=status_code)
 

@@ -12,7 +12,7 @@
     {% include 'components/head/head.html' %}
 </head>
 
-<body class="flex-column{% if is_invite_page %} invite-page{% endif %}">
+<body class="flex-column{% if is_invite_page %} invite-page{% endif %}{% if is_invite_preview_page %} invite-preview{% endif %}">
     <!-- Includes jinja2 generated routes globally and all backend constants for use by frontend -->
     {% include '_config.html' %}
 
