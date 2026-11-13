@@ -14,6 +14,9 @@ INVITE_REGISTER_HINT_SEGMENT: str = "register"
 # DD-5 closed sets; the request schema Literals must mirror these exactly.
 INVITE_LINK_EXPIRY_DAYS_VALUES: tuple[int, ...] = (1, 7, 30)
 INVITE_LINK_MAX_USES_VALUES: tuple[int, ...] = (1, 5, 10, 25)
+INVITE_LINK_PREVIEW_WINDOW_DAYS_VALUES: tuple[int, ...] = (1, 3, 7)
+INVITE_LINK_PREVIEW_DEFAULT_WINDOW_DAYS: int = 3
+INVITE_LINK_PREVIEW_MAX_URLS: int = 25
 INVITE_LINK_MANAGE_RATE_LIMIT: str = "30 per minute"
 # One shared bucket for web and mobile create/replace, per manager.
 INVITE_LINK_MANAGE_RATE_SCOPE: str = "invite_link_manage"
@@ -40,6 +43,9 @@ INVITE_LINK_METRIC_VIEW_OUTCOME_VALUES: tuple[str, ...] = ("valid", "dead")
 
 UNIQUE_INVITE_LINK_TOKEN: str = "unique_utub_invite_link_token"
 ONE_ACTIVE_INVITE_LINK_PER_UTUB: str = "uq_utub_invite_links_one_active_per_utub"
+CK_INVITE_PREVIEW_END_WHEN_ENABLED: str = (
+    "ck_utub_invite_links_preview_end_when_enabled"
+)
 FK_EMAIL_VALIDATIONS_PENDING_INVITE: str = "fk_email_validations_pending_invite"
 FK_INVITE_ACCEPTANCES_INVITE: str = "fk_utub_invite_acceptances_invite"
 FK_INVITE_ACCEPTANCES_UTUB: str = "fk_utub_invite_acceptances_utub"

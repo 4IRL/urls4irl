@@ -471,6 +471,10 @@ def add_invite_link(
     max_uses: int | None = None,
     use_count: int = 0,
     revoked: bool = False,
+    *,
+    preview_enabled: bool = False,
+    preview_window_days: int = 3,
+    preview_ends_at: datetime | None = None,
 ) -> int:
     """Seed a ``UtubInviteLinks`` row directly, bypassing the manage routes.
 
@@ -483,6 +487,9 @@ def add_invite_link(
         max_uses (int | None): Use limit, or None for unlimited
         use_count (int): How many joins the link already has
         revoked (bool): Whether to stamp ``revoked_at`` so the row is revoked
+        preview_enabled (bool): Stored preview switch
+        preview_window_days (int): Stored preview window choice
+        preview_ends_at (datetime | None): Stored preview end
 
     Returns:
         int: The new UtubInviteLinks row ID
@@ -500,6 +507,9 @@ def add_invite_link(
             max_uses=max_uses,
         )
         invite.use_count = use_count
+        invite.preview_enabled = preview_enabled
+        invite.preview_window_days = preview_window_days
+        invite.preview_ends_at = preview_ends_at
         if revoked:
             invite.revoked_at = utc_now()
         db.session.add(invite)

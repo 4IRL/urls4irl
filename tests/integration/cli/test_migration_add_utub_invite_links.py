@@ -48,6 +48,9 @@ _EXPECTED_COLUMNS: dict[str, bool] = {
     "maxUses": True,
     "useCount": False,
     "revokedAt": True,
+    "previewEnabled": False,
+    "previewWindowDays": False,
+    "previewEndsAt": True,
 }
 _EXPECTED_FOREIGN_KEYS: dict[str, tuple[str, str]] = {
     "utubID": ("Utubs", "CASCADE"),
