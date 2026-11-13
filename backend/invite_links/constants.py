@@ -40,6 +40,11 @@ INVITE_LINK_METRIC_VIEWER_STATE_VALUES: tuple[str, ...] = (
     "logged_out",
 )
 INVITE_LINK_METRIC_VIEW_OUTCOME_VALUES: tuple[str, ...] = ("valid", "dead")
+INVITE_LINK_METRIC_PREVIEW_LIST_STATES: tuple[str, ...] = (
+    "empty",
+    "full",
+    "truncated",
+)
 
 UNIQUE_INVITE_LINK_TOKEN: str = "unique_utub_invite_link_token"
 ONE_ACTIVE_INVITE_LINK_PER_UTUB: str = "uq_utub_invite_links_one_active_per_utub"

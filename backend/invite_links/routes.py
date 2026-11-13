@@ -183,6 +183,17 @@ def invite_page(token: str) -> Response:
             )
 
     page = _build_page_view(resolution=resolution, token=token, preview=preview)
+    if page.kind == "preview" and page.preview is not None:
+        if page.preview.total_count == 0:
+            list_state = "empty"
+        elif page.preview.hidden_count > 0:
+            list_state = "truncated"
+        else:
+            list_state = "full"
+        record_event(
+            EventName.INVITE_LINK_PREVIEW_VIEWED,
+            dimensions={"list_state": list_state},
+        )
     status_code = HTTPStatus.NOT_FOUND if page.kind == "dead" else HTTPStatus.OK
     return render_invite_page(page=page, status_code=status_code)
 
