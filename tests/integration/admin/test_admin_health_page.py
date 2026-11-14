@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import socket
+import time
 from datetime import datetime, timedelta, timezone
 from typing import Tuple
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 from urllib.parse import quote, urlsplit
 
 import pytest
@@ -13,6 +15,7 @@ import backend.admin.health_service as health_service
 from backend import db
 from backend.admin.health_service import (
     STATUS_DOWN,
+    STATUS_NOT_CONFIGURED,
     STATUS_UP,
     SystemResources,
     _probe_system_resources,
@@ -30,6 +33,7 @@ from backend.utils.strings.admin_portal_strs import (
     ADMIN_AUDIT_ACTIONS,
     ADMIN_PORTAL_STRINGS,
 )
+from backend.utils.strings.config_strs import CONFIG_ENVS
 
 pytestmark = pytest.mark.admin
 
@@ -48,6 +52,8 @@ _QUIET_ENDPOINT: str = "utubs.quiet_endpoint"
 _GET_METHOD: str = "GET"
 _POST_METHOD: str = "POST"
 _MISSING_MEMINFO_PATH: str = "/proc/definitely-not-a-real-meminfo-file"
+# Two calls (probe + snapshot) each wait at most 2 / 4 s to connect/PING.
+_BLACK_HOLE_BOUND_SECONDS: float = 8.0
 
 
 def _ensure_api_hit_event_registered() -> None:
@@ -666,3 +672,93 @@ def test_probe_system_resources_none_on_missing_meminfo(
         resources = _probe_system_resources()
 
     assert resources is None
+
+
+def test_collect_health_snapshot_session_redis_not_configured_under_cachelib(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN REDIS_URI is memory:// and SESSION_REDIS is '' (the cachelib state)
+    WHEN collect_health_snapshot() is called
+    THEN the session Redis status is "not configured", not "down"; and patching
+         only SESSION_REDIS (REDIS_URI stays real) does not change the result.
+    """
+    _, _, _, app = login_admin_user_with_register
+
+    with patch.dict(
+        app.config,
+        {CONFIG_ENVS.REDIS_URI: "memory://", "SESSION_REDIS": ""},
+    ):
+        with app.app_context():
+            snapshot = collect_health_snapshot()
+    assert snapshot.session_redis_status == STATUS_NOT_CONFIGURED
+
+    redis_uri = app.config.get(CONFIG_ENVS.REDIS_URI)
+    if not redis_uri or redis_uri == "memory://":
+        pytest.skip(
+            "REDIS_URI is memory:// here; SESSION_REDIS-only half needs a real Redis"
+        )
+    with patch.dict(app.config, {"SESSION_REDIS": ""}):
+        with app.app_context():
+            snapshot = collect_health_snapshot()
+    assert snapshot.session_redis_status == STATUS_UP
+
+
+def test_probe_metrics_redis_black_hole_is_down_within_bound(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN a metrics Redis URI that accepts connections but never responds
+    WHEN collect_health_snapshot() runs with the real (unstubbed) metrics probe
+    THEN the metrics status is "down", the tuple shape is preserved, and the
+         call returns well within the bounded timeouts.
+    """
+    _, _, _, app = login_admin_user_with_register
+
+    listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        listener.bind(("127.0.0.1", 0))
+        listener.listen(1)
+        black_hole_uri = f"redis://127.0.0.1:{listener.getsockname()[1]}/0"
+        with patch.dict(app.config, {CONFIG_ENVS.METRICS_REDIS_URI: black_hole_uri}):
+            with app.app_context():
+                started_at = time.monotonic()
+                probe_result = health_service._probe_metrics_redis()
+                snapshot = collect_health_snapshot()
+                elapsed = time.monotonic() - started_at
+    finally:
+        listener.close()
+
+    assert probe_result == (STATUS_DOWN, None, None, None)
+    assert snapshot.metrics_redis_status == STATUS_DOWN
+    assert elapsed < _BLACK_HOLE_BOUND_SECONDS
+
+
+def test_probe_metrics_redis_reads_sentinels_in_one_pipeline(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN a configured metrics Redis
+    WHEN the admin metrics probe reads its three sentinels
+    THEN they go through one pipeline execute, with no separate get calls.
+    """
+    _, _, _, app = login_admin_user_with_register
+    client = MagicMock()
+    client.pipeline.return_value.execute.return_value = [b"1700000000", None, None]
+
+    with patch.dict(
+        app.config, {CONFIG_ENVS.METRICS_REDIS_URI: "redis://127.0.0.1:1/0"}
+    ):
+        with app.app_context():
+            with patch.object(
+                health_service, "bounded_redis_client", return_value=client
+            ):
+                status, flush_at, gauge_at, backup_at = (
+                    health_service._probe_metrics_redis()
+                )
+
+    assert status == STATUS_UP
+    assert flush_at is not None
+    assert gauge_at is None and backup_at is None
+    client.pipeline.return_value.execute.assert_called_once()
+    client.get.assert_not_called()

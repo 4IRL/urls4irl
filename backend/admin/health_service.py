@@ -15,18 +15,20 @@ from backend.metrics.events import EventName
 from backend.metrics.latency import LatencyMetricName
 from backend.metrics.query_service import latency_percentiles
 from backend.models.anonymous_metrics import Anonymous_Metrics
+from backend.system.health_checks import (
+    MEMORY_URI,
+    METRICS_REDIS_OPERATION_COUNT,
+    STATUS_DOWN,
+    STATUS_NOT_CONFIGURED,
+    STATUS_UP,
+    bounded_redis_client,
+    mask_userinfo,
+    probe_session_redis,
+)
 from backend.utils.strings.config_strs import CONFIG_ENVS
 from backend.utils.strings.metrics_strs import METRICS_REDIS
 
-STATUS_UP: str = "up"
-STATUS_DOWN: str = "down"
-STATUS_NOT_CONFIGURED: str = "not configured"
-
-_MEMORY_URI: str = "memory://"
 _DISK_PROBE_PATH: str = "/"
-# Flask-Session stores the live Redis client under this config key when
-# SESSION_TYPE == "redis" (see backend/config.py); absent under cachelib.
-_SESSION_REDIS_CONFIG_KEY: str = "SESSION_REDIS"
 
 # Lookback windows for the derived operational stats.
 _SLOWEST_ENDPOINT_WINDOW_DAYS: int = 7
@@ -135,15 +137,7 @@ def _probe_database() -> tuple[str, int | None, int | None]:
 
 
 def _probe_session_redis() -> str:
-    session_redis: Redis | None = current_app.config.get(_SESSION_REDIS_CONFIG_KEY)
-    if session_redis is None:
-        return STATUS_NOT_CONFIGURED
-    try:
-        session_redis.ping()
-        return STATUS_UP
-    except Exception as redis_error:
-        warning_log(f"health snapshot: session redis probe failed: {redis_error}")
-        return STATUS_DOWN
+    return probe_session_redis()
 
 
 def _epoch_bytes_to_datetime(epoch_bytes: bytes | None) -> datetime | None:
@@ -167,15 +161,21 @@ def _probe_metrics_redis() -> tuple[
     double as "sidecar cron last ran" signals readable from the web container.
     """
     metrics_uri: str | None = current_app.config.get(CONFIG_ENVS.METRICS_REDIS_URI)
-    if not metrics_uri or metrics_uri == _MEMORY_URI:
+    if not metrics_uri or metrics_uri == MEMORY_URI:
         return STATUS_NOT_CONFIGURED, None, None, None
     metrics_redis: Redis | None = None
     try:
-        metrics_redis = Redis.from_url(metrics_uri)
+        metrics_redis = bounded_redis_client(
+            metrics_uri, operation_count=METRICS_REDIS_OPERATION_COUNT
+        )
+        if metrics_redis is None:
+            return STATUS_DOWN, None, None, None
         metrics_redis.ping()
-        flush_epoch = metrics_redis.get(METRICS_REDIS.FLUSH_LAST_SUCCESS_KEY)
-        gauge_epoch = metrics_redis.get(METRICS_REDIS.GAUGE_LAST_SUCCESS_KEY)
-        backup_epoch = metrics_redis.get(METRICS_REDIS.BACKUP_LAST_SUCCESS_KEY)
+        sentinel_pipeline = metrics_redis.pipeline(transaction=False)
+        sentinel_pipeline.get(METRICS_REDIS.FLUSH_LAST_SUCCESS_KEY)
+        sentinel_pipeline.get(METRICS_REDIS.GAUGE_LAST_SUCCESS_KEY)
+        sentinel_pipeline.get(METRICS_REDIS.BACKUP_LAST_SUCCESS_KEY)
+        flush_epoch, gauge_epoch, backup_epoch = sentinel_pipeline.execute()
         return (
             STATUS_UP,
             _epoch_bytes_to_datetime(flush_epoch),
@@ -183,7 +183,9 @@ def _probe_metrics_redis() -> tuple[
             _epoch_bytes_to_datetime(backup_epoch),
         )
     except Exception as redis_error:
-        warning_log(f"health snapshot: metrics redis probe failed: {redis_error}")
+        warning_log(
+            f"health snapshot: metrics redis probe failed: {mask_userinfo(str(redis_error))}"
+        )
         return STATUS_DOWN, None, None, None
     finally:
         if metrics_redis is not None:
