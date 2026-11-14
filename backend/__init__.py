@@ -5,7 +5,18 @@ from typing import Mapping, NotRequired, TypedDict
 from urllib.parse import urljoin
 
 from authlib.integrations.flask_client import OAuth
-from flask import Flask, Response, abort, current_app, g, request, session, url_for
+from flask import (
+    Flask,
+    Request,
+    Response,
+    abort,
+    current_app,
+    g,
+    request,
+    session,
+    url_for,
+)
+from flask.sessions import SessionMixin
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_login import LoginManager, user_logged_in
@@ -164,6 +175,7 @@ def create_app(
     app_logger.init_app(app, show_test_logs)
 
     sess.init_app(app)
+    make_health_paths_session_free(app)
     db.init_app(app)
 
     csrf.init_app(app)
@@ -409,6 +421,28 @@ _HEALTH_CSP = "default-src 'none'; frame-ancestors 'none'"
 
 def _is_session_free_request() -> bool:
     return request.endpoint in _SESSION_FREE_ENDPOINTS
+
+
+def make_health_paths_session_free(app: Flask) -> None:
+    """
+    Flask opens the session before routing, so the store is read (and a Redis
+    outage 500s) even for a probe that never uses it. Swap the installed
+    interface's class for a subclass that hands the exact probe paths a null
+    session (never saved); every other path uses the real session.
+    """
+    base_interface = type(app.session_interface)
+
+    class SessionFreeHealthInterface(base_interface):  # type: ignore[valid-type, misc]
+        def open_session(self, app: Flask, request: Request) -> SessionMixin | None:
+            session_free_paths = {
+                app.url_map.bind("").build(endpoint)
+                for endpoint in _SESSION_FREE_ENDPOINTS
+            }
+            if request.path in session_free_paths:
+                return self.make_null_session(app)
+            return super().open_session(app, request)
+
+    app.session_interface.__class__ = SessionFreeHealthInterface
 
 
 def _set_static_security_headers(response: Response) -> None:

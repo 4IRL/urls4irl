@@ -265,6 +265,81 @@ def test_session_redis_outage_cookieless(app: Flask):
     assert health_response.get_json() == {STD_JSON.STATUS: STD_JSON.SUCCESS}
 
 
+def test_session_redis_outage_with_stale_session_cookie(app: Flask):
+    """
+    GIVEN the session Redis is unreachable and the caller sends a session cookie
+    WHEN /health and /health/deep (valid token) are requested
+    THEN /health returns 200, deep returns 503 with session_redis down (not 500),
+        and neither response sets a session cookie
+    """
+    if not isinstance(app.session_interface, RedisSessionInterface):
+        pytest.skip("session interface is not Redis (memory:// fallback)")
+
+    cookie_name = app.config["SESSION_COOKIE_NAME"]
+    original_client = app.session_interface.client
+    outage_client = Redis.from_url(UNREACHABLE_REDIS_URI)
+    config = {
+        CONFIG_ENVS.HEALTH_CHECK_TOKEN: TOKEN,
+        CONFIG_ENVS.REDIS_URI: UNREACHABLE_REDIS_URI,
+    }
+    try:
+        app.session_interface.client = outage_client
+        with mock.patch.dict(app.config, config):
+            with app.test_client() as cookie_client:
+                cookie_client.set_cookie(cookie_name, "stale-abc123")
+                health_response = cookie_client.get("/health")
+                deep_response = cookie_client.get(HEALTH_DEEP_URL, headers=AUTH_HEADERS)
+    finally:
+        app.session_interface.client = original_client
+        outage_client.close()
+
+    assert health_response.status_code == 200
+    assert deep_response.status_code == 503
+    deep_body = deep_response.get_json()
+    assert deep_body[HEALTH_STRS.COMPONENTS][HEALTH_STRS.SESSION_REDIS] == STATUS_DOWN
+    for response in (health_response, deep_response):
+        assert "Set-Cookie" not in response.headers
+
+
+@pytest.mark.parametrize(
+    "path", ["/health/", "/health/deep/", "/healthx", "/health/deep/x", "/"]
+)
+def test_other_paths_still_use_the_real_session(app: Flask, path: str):
+    """
+    GIVEN a path that is not exactly /health or /health/deep
+    WHEN requested
+    THEN the null session is never applied (the real session interface opens it)
+    """
+    interface_type = type(app.session_interface)
+    with mock.patch.object(
+        interface_type, "make_null_session", autospec=True
+    ) as null_session:
+        with app.test_client() as other_client:
+            other_client.get(path)
+
+    null_session.assert_not_called()
+
+
+@pytest.mark.parametrize("path", ["/health", HEALTH_DEEP_URL])
+def test_exact_health_paths_get_the_null_session(app: Flask, path: str):
+    """
+    GIVEN the exact health paths
+    WHEN requested
+    THEN the session is the null session (the store is never read)
+    """
+    interface_type = type(app.session_interface)
+    with mock.patch.object(
+        interface_type,
+        "make_null_session",
+        autospec=True,
+        side_effect=interface_type.make_null_session,
+    ) as null_session:
+        with app.test_client() as health_client:
+            health_client.get(path)
+
+    null_session.assert_called_once()
+
+
 def test_unauthorized_log_levels(app: Flask, caplog: pytest.LogCaptureFixture):
     """
     GIVEN the 401 paths
