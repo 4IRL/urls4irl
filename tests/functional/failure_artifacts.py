@@ -437,7 +437,7 @@ def write_run_index(*, root: Path, run_id: str) -> Path | None:
     for failure_path in current_run_dir.glob(f"*/{FAILURE_FILE}"):
         try:
             record = json.loads(failure_path.read_text(encoding="utf-8"))
-        except (OSError, ValueError):
+        except OSError, ValueError:
             continue
         if not isinstance(record, dict):
             continue

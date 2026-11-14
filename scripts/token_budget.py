@@ -276,7 +276,7 @@ def parse_meminfo(text: str, key: str) -> int | None:
         if name == key:
             try:
                 return int(rest.split()[0]) * BYTES_PER_KB
-            except (IndexError, ValueError):
+            except IndexError, ValueError:
                 return None
     return None
 
@@ -295,7 +295,7 @@ def parse_cgroup_max(text: str) -> int | None:
 def _read_optional(path: Path) -> str | None:
     try:
         return path.read_text()
-    except (OSError, UnicodeDecodeError):
+    except OSError, UnicodeDecodeError:
         return None
 
 
@@ -351,7 +351,7 @@ def hub_vm_meminfo(hub_project: str, docker: DockerRunner) -> str | None:
         if not container_ids:
             return None
         meminfo = docker(["exec", container_ids[0], "cat", "/proc/meminfo"])
-    except (OSError, subprocess.SubprocessError, UnicodeDecodeError):
+    except OSError, subprocess.SubprocessError, UnicodeDecodeError:
         return None
     return meminfo.stdout if meminfo.returncode == 0 else None
 
@@ -486,7 +486,7 @@ def _holders(
             continue
         try:
             fields = _parse_slot(path.read_text())
-        except (OSError, UnicodeDecodeError):
+        except OSError, UnicodeDecodeError:
             fields = {}
         pid = fields.get("pid", "")
         if not probe_locks and not _pid_alive(pid):
@@ -521,7 +521,7 @@ def _settling_run(lock_dir: Path) -> tuple[str, float] | None:
     settling, else None. Read best-effort by a runner that couldn't lock it."""
     try:
         fields = _parse_slot((lock_dir / TURNSTILE_NAME).read_text())
-    except (OSError, UnicodeDecodeError):
+    except OSError, UnicodeDecodeError:
         return None
     try:
         settle_seconds = float(fields.get("settle_seconds", ""))

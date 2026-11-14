@@ -285,7 +285,10 @@ def test_second_section_patch_does_not_clobber_first(
     assert first.status_code == 200
     assert second.status_code == 200
     assert second.json[MODELS.SETTINGS]["urls"] == {**URLS_DEFAULTS, STUB_KEY: True}
-    assert second.json[MODELS.SETTINGS]["tags"] == {STUB_COUNT_KEY: 5}
+    assert second.json[MODELS.SETTINGS]["tags"] == {
+        **DEFAULT_SETTINGS_DICT["tags"],
+        STUB_COUNT_KEY: 5,
+    }
     assert _stored_settings(app) == {
         "urls": {STUB_KEY: True},
         "tags": {STUB_COUNT_KEY: 5},
@@ -1271,3 +1274,157 @@ def test_detail_payload_shows_members_keys_false_by_default(
         "members_can_add": False,
         "hide_member_list": False,
     }
+
+
+# --------------------------------------------------------------------------
+# Tags section: members_can_tag / members_can_delete_tags
+# --------------------------------------------------------------------------
+
+TAGS_KEYS = ("members_can_tag", "members_can_delete_tags")
+
+
+@pytest.mark.parametrize("key", TAGS_KEYS)
+def test_owner_can_set_each_tags_key(
+    add_multiple_users_to_utub_without_logging_in,
+    login_first_user_without_register,
+    key,
+):
+    """
+    GIVEN the UTub owner
+    WHEN they PATCH one tags key to false
+    THEN 200 with full resolved settings, and only the sent key is stored
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+
+    response = _patch(app, client, csrf_token, {"tags": {key: False}})
+
+    assert response.status_code == 200
+    assert response.json[MODELS.SETTINGS]["tags"] == {
+        **DEFAULT_SETTINGS_DICT["tags"],
+        key: False,
+    }
+    assert _stored_settings(app) == {"tags": {key: False}}
+
+
+@pytest.mark.parametrize("key", TAGS_KEYS)
+def test_co_owner_can_set_each_tags_key(
+    add_multiple_users_to_utub_without_logging_in, app, key
+):
+    """
+    GIVEN a co-owner
+    WHEN they PATCH one tags key to false
+    THEN 200 and only that key is stored (tags keys are not owner-only)
+    """
+    _seed_roles(app)
+
+    with _client_for(app, CO_OWNER_ID) as (client, csrf_token):
+        response = _patch(app, client, csrf_token, {"tags": {key: False}})
+
+    assert response.status_code == 200
+    assert _stored_settings(app) == {"tags": {key: False}}
+
+
+@pytest.mark.parametrize("key", TAGS_KEYS)
+def test_plain_member_cannot_patch_tags_key(
+    add_multiple_users_to_utub_without_logging_in, app, key
+):
+    """
+    GIVEN a plain member
+    WHEN they PATCH a tags key
+    THEN the existing 403 is returned and nothing is stored
+    """
+    with _client_for(app, PLAIN_MEMBER_ID) as (client, csrf_token):
+        response = _patch(app, client, csrf_token, {"tags": {key: False}})
+
+    _assert_not_authorized(response)
+    assert _stored_settings(app) is None
+
+
+@pytest.mark.parametrize("key", TAGS_KEYS)
+def test_locked_utub_rejects_tags_patch(
+    add_multiple_users_to_utub_without_logging_in,
+    login_first_user_without_register,
+    key,
+):
+    """
+    GIVEN a locked UTub
+    WHEN the owner PATCHes a tags key
+    THEN UTUB_IS_LOCKED is returned and nothing is stored
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+    lock_utub(app, UTUB_ID_VALUE)
+
+    response = _patch(app, client, csrf_token, {"tags": {key: False}})
+
+    assert response.status_code == 403
+    assert response.json[STD_JSON.ERROR_CODE] == UTubErrorCodes.UTUB_IS_LOCKED
+    assert _stored_settings(app) is None
+
+
+@pytest.mark.parametrize("key", TAGS_KEYS)
+def test_non_bool_tags_value_returns_400(
+    add_multiple_users_to_utub_without_logging_in,
+    login_first_user_without_register,
+    key,
+):
+    """
+    GIVEN a manager
+    WHEN they PATCH a non-bool tags value
+    THEN 400 is keyed by the dotted key and nothing is stored
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+
+    response = _patch(app, client, csrf_token, {"tags": {key: "nope"}})
+
+    _assert_400(response, {f"tags.{key}"})
+    assert _stored_settings(app) is None
+
+
+def test_tags_round_trip_never_rewrites_delete_value(
+    add_multiple_users_to_utub_without_logging_in,
+    login_first_user_without_register,
+):
+    """
+    GIVEN delete stored false
+    WHEN tagging is switched off and back on
+    THEN the stored and returned delete value stays false throughout
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+
+    first = _patch(
+        app, client, csrf_token, {"tags": {"members_can_delete_tags": False}}
+    )
+    assert first.status_code == 200
+    off = _patch(app, client, csrf_token, {"tags": {"members_can_tag": False}})
+    on = _patch(app, client, csrf_token, {"tags": {"members_can_tag": True}})
+
+    assert off.status_code == 200
+    assert on.status_code == 200
+    assert off.json[MODELS.SETTINGS]["tags"] == {
+        "members_can_tag": False,
+        "members_can_delete_tags": False,
+    }
+    assert on.json[MODELS.SETTINGS]["tags"] == {
+        "members_can_tag": True,
+        "members_can_delete_tags": False,
+    }
+    assert _stored_settings(app) == {
+        "tags": {"members_can_tag": True, "members_can_delete_tags": False}
+    }
+
+
+def test_tags_patch_of_one_key_stores_only_that_key(
+    add_multiple_users_to_utub_without_logging_in,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a UTub with no stored settings
+    WHEN only members_can_tag is patched
+    THEN storage is sparse: only that key is stored
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+
+    response = _patch(app, client, csrf_token, {"tags": {"members_can_tag": False}})
+
+    assert response.status_code == 200
+    assert _stored_settings(app) == {"tags": {"members_can_tag": False}}

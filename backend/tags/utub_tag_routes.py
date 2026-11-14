@@ -32,11 +32,13 @@ utub_tags = Blueprint("utub_tags", __name__)
     response_schema=UtubTagAddedToUtubResponseSchema,
     error_message=TAGS_FAILURE.UNABLE_TO_ADD_TAG_TO_UTUB,
     error_code=UTubTagErrorCodes.INVALID_FORM_INPUT,
+    typed_403=True,
     tags=[OPEN_API.TAGS],
     description="Add a tag to a UTub",
     status_codes={
         200: UtubTagAddedToUtubResponseSchema,
         400: ErrorResponse,
+        403: ErrorResponse,
         404: ErrorResponse,
     },
 )
@@ -63,9 +65,15 @@ def create_utub_tag(
 @utub_membership_with_valid_utub_tag
 @api_route(
     response_schema=UtubTagDeletedFromUtubResponseSchema,
+    error_code=UTubTagErrorCodes.INVALID_FORM_INPUT,
+    typed_403=True,
     tags=[OPEN_API.TAGS],
     description="Delete a tag from a UTub",
-    status_codes={200: UtubTagDeletedFromUtubResponseSchema, 404: ErrorResponse},
+    status_codes={
+        200: UtubTagDeletedFromUtubResponseSchema,
+        403: ErrorResponse,
+        404: ErrorResponse,
+    },
 )
 def delete_utub_tag(
     utub_id: int, utub_tag_id: int, current_utub: Utubs, current_utub_tag: Utub_Tags

@@ -1,4 +1,9 @@
-import { canAddMembers, learnPolicyOff } from "../policy.js";
+import {
+  canAddMembers,
+  canDeleteTags,
+  canTag,
+  learnPolicyOff,
+} from "../policy.js";
 import { getState, resetStore, setState } from "../../../store/app-store.js";
 import { resolveUtubSettings } from "../../../types/settings.js";
 
@@ -44,6 +49,93 @@ describe("canAddMembers", () => {
         settings: null,
       }),
     ).toBe(true);
+  });
+});
+
+function tagSettingsWith({ tag, del }: { tag?: boolean; del?: boolean }) {
+  return resolveUtubSettings({
+    tags: { members_can_tag: tag, members_can_delete_tags: del },
+  } as never);
+}
+
+describe("canTag / canDeleteTags", () => {
+  beforeEach(() => resetStore());
+
+  it("allows the owner and a co-owner regardless of settings", () => {
+    const off = tagSettingsWith({ tag: false, del: false });
+    setState({ isCurrentUserOwner: true, settings: off });
+    expect(canTag()).toBe(true);
+    expect(canDeleteTags()).toBe(true);
+    setState({ isCurrentUserOwner: false, isCoCreator: true, settings: null });
+    expect(canTag()).toBe(true);
+    expect(canDeleteTags()).toBe(true);
+  });
+
+  it("lets a plain member follow the flags", () => {
+    setState({ settings: tagSettingsWith({ tag: true, del: true }) });
+    expect(canTag()).toBe(true);
+    expect(canDeleteTags()).toBe(true);
+    setState({ settings: tagSettingsWith({ tag: true, del: false }) });
+    expect(canTag()).toBe(true);
+    expect(canDeleteTags()).toBe(false);
+  });
+
+  it("evaluates a passed state instead of the store", () => {
+    const settings = tagSettingsWith({ tag: true, del: false });
+    const plain = { isCurrentUserOwner: false, isCoCreator: false, settings };
+    expect(canTag(plain)).toBe(true);
+    expect(canDeleteTags(plain)).toBe(false);
+    expect(canDeleteTags({ ...plain, isCoCreator: true })).toBe(true);
+  });
+
+  it("denies delete for a plain member when tagging is off", () => {
+    setState({ settings: tagSettingsWith({ tag: false, del: true }) });
+    expect(canTag()).toBe(false);
+    expect(canDeleteTags()).toBe(false);
+  });
+
+  it("denies a plain member when settings are missing or not true", () => {
+    setState({ settings: null });
+    expect(canTag()).toBe(false);
+    expect(canDeleteTags()).toBe(false);
+    const nonTrue = {
+      ...tagSettingsWith({}),
+      tags: { members_can_tag: "yes", members_can_delete_tags: 1 },
+    } as never;
+    setState({ settings: nonTrue });
+    expect(canTag()).toBe(false);
+    expect(canDeleteTags()).toBe(false);
+  });
+});
+
+describe("learnPolicyOff for tags keys", () => {
+  beforeEach(() => {
+    resetStore();
+    setState({
+      activeUTubID: 7,
+      settings: tagSettingsWith({ tag: true, del: true }),
+    });
+  });
+
+  it("turns off members_can_tag only, without mutating the old settings", () => {
+    const before = getState().settings;
+    expect(learnPolicyOff({ utubID: 7, key: "tags.members_can_tag" })).toBe(
+      true,
+    );
+    const state = getState();
+    expect(state.settings?.tags.members_can_tag).toBe(false);
+    expect(state.settings?.tags.members_can_delete_tags).toBe(true);
+    expect(before?.tags.members_can_tag).toBe(true);
+    expect(state.settings?.tags).not.toBe(before?.tags);
+    expect(state.learnedOffPolicies["tags.members_can_tag"]).toBe(1);
+  });
+
+  it("turns off members_can_delete_tags only", () => {
+    learnPolicyOff({ utubID: 7, key: "tags.members_can_delete_tags" });
+    const state = getState();
+    expect(state.settings?.tags.members_can_delete_tags).toBe(false);
+    expect(state.settings?.tags.members_can_tag).toBe(true);
+    expect(state.learnedOffPolicies["tags.members_can_delete_tags"]).toBe(1);
   });
 });
 

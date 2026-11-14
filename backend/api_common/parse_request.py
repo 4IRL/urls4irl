@@ -97,6 +97,7 @@ def api_route(
     tags: list[str] | None = None,
     description: str | None = None,
     status_codes: dict[int, Type[BaseSchema]] | None = None,
+    typed_403: bool = False,
 ) -> Callable:
     """Unified decorator that handles request body validation and response schema
     declaration for API routes.
@@ -120,6 +121,9 @@ def api_route(
     ``requestBody``. No parsing, no kwarg injection, no runtime effect. It is
     mutually exclusive with ``request_schema`` and requires ``error_code`` (the
     ``x-error-codes`` rule for operations with a ``requestBody``).
+
+    ``typed_403`` is OpenAPI-only metadata: opts the route's 403 response into
+    the typed ``ErrorResponse_<ErrorCodes>`` schema (default: plain 403).
 
     ``response_schema`` is stashed on the wrapped function for introspection
     (e.g. OpenAPI generation) and has no runtime effect.
@@ -210,6 +214,7 @@ def api_route(
         wrapper._api_route_tags = tags
         wrapper._api_route_description = description
         wrapper._api_route_status_codes = status_codes
+        wrapper._api_route_typed_403 = typed_403
         wrapper._api_route_error_code_enum = None
         if isinstance(error_code, IntEnum):
             wrapper._api_route_error_code_enum = type(error_code)

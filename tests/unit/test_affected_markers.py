@@ -569,8 +569,6 @@ def test_frontend_dir_resolves_through_the_path_table() -> None:
     "path",
     [
         "README.md",
-        ".github/workflows/test.yml",
-        ".github/actions/setup-playwright/action.yml",
         ".claude/x",
         "frontend/lib/__tests__/csrf.test.ts",
         "frontend/eslint-rules/destructured-params.js",
@@ -751,6 +749,28 @@ def test_notifs_host_inputs_select_host_static_only(path: str) -> None:
         glob, the manifest, the two bash scripts, the exchange fixtures)
     WHEN it resolves
     THEN host_static is set, no markers, and no broader scripts/*.sh, tests/unit/* or .github/* row swallows it
+    """
+    selection = _resolve([path])
+
+    assert selection.host_static
+    assert selection.markers == frozenset()
+    assert not selection.everything
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        ".github/workflows/test.yml",
+        ".github/actions/setup-playwright/action.yml",
+        "scripts/host_venv_check.sh",
+    ],
+)
+def test_python_pin_host_inputs_select_host_static_only(path: str) -> None:
+    """
+    GIVEN a file read only by the python-pin host-static tests (test.yml, the setup-playwright action,
+        host_venv_check.sh)
+    WHEN it resolves
+    THEN host_static is set, no markers, and no broader scripts/*.sh or .github/* row swallows it
     """
     selection = _resolve([path])
 

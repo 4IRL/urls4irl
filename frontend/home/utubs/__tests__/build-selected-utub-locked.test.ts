@@ -194,7 +194,7 @@ describe("buildSelectedUTub — locked-UTub affordances", () => {
         members_can_add: false,
         hide_member_list: false,
       },
-      tags: {},
+      tags: { members_can_tag: true, members_can_delete_tags: true },
       urls: {
         default_url_scheme: "https",
         hide_scheme_selector: false,

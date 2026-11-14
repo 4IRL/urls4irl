@@ -231,6 +231,7 @@ export function resolveIncomingSettings({
   const resolved = resolveUtubSettings(settings);
   const urls = { ...resolved.urls };
   const members = { ...resolved.members };
+  const tags = { ...resolved.tags };
   for (const key of forceOffKeys) {
     switch (key) {
       case "urls.allow_short_links":
@@ -242,9 +243,15 @@ export function resolveIncomingSettings({
       case "members.co_owners_can_remove":
         members.co_owners_can_remove = false;
         break;
+      case "tags.members_can_tag":
+        tags.members_can_tag = false;
+        break;
+      case "tags.members_can_delete_tags":
+        tags.members_can_delete_tags = false;
+        break;
     }
   }
-  return { ...resolved, urls, members };
+  return { ...resolved, urls, members, tags };
 }
 
 export type TagDisplayDefaults = Pick<

@@ -83,7 +83,16 @@ class MembersSettings(SettingsSection):
 
 
 class TagsSettings(SettingsSection):
-    """Settings for the tags panel (no settings yet)."""
+    """Settings for the tags panel: who may tag and delete tags."""
+
+    members_can_tag: bool = Field(
+        default=True,
+        description="Whether plain members can create tags and add or remove tags on URLs",
+    )
+    members_can_delete_tags: bool = Field(
+        default=True,
+        description="Whether plain members can delete tags; only effective while members_can_tag is on",
+    )
 
 
 class UrlsSettings(SettingsSection):

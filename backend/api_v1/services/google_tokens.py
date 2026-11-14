@@ -51,7 +51,7 @@ def verify_google_id_token(*, id_token: str) -> GoogleIdTokenClaims | None:
             algorithms=[GOOGLE_ID_TOKEN_ALGORITHM],
             audience=google_client_id,
         )
-    except (JWTExceptions.PyJWTError, ValueError, ConnectionError):
+    except JWTExceptions.PyJWTError, ValueError, ConnectionError:
         return None
 
     if claims.get("iss") not in GOOGLE_ISSUERS:

@@ -613,7 +613,12 @@ ALL_API_ROUTES = [
         UtubTagAddedToUtubResponseSchema,
         [OPEN_API.TAGS],
         "Add a tag to a UTub",
-        {200: UtubTagAddedToUtubResponseSchema, 400: ErrorResponse, 404: ErrorResponse},
+        {
+            200: UtubTagAddedToUtubResponseSchema,
+            400: ErrorResponse,
+            403: ErrorResponse,
+            404: ErrorResponse,
+        },
     ),
     (
         "utub_tags.delete_utub_tag",
@@ -621,7 +626,11 @@ ALL_API_ROUTES = [
         UtubTagDeletedFromUtubResponseSchema,
         [OPEN_API.TAGS],
         "Delete a tag from a UTub",
-        {200: UtubTagDeletedFromUtubResponseSchema, 404: ErrorResponse},
+        {
+            200: UtubTagDeletedFromUtubResponseSchema,
+            403: ErrorResponse,
+            404: ErrorResponse,
+        },
     ),
     # URL tag routes
     (
@@ -630,7 +639,12 @@ ALL_API_ROUTES = [
         UrlTagModifiedResponseSchema,
         [OPEN_API.TAGS],
         "Add a tag to a URL in a UTub",
-        {200: UrlTagModifiedResponseSchema, 400: ErrorResponse, 404: ErrorResponse},
+        {
+            200: UrlTagModifiedResponseSchema,
+            400: ErrorResponse,
+            403: ErrorResponse,
+            404: ErrorResponse,
+        },
     ),
     (
         "utub_url_tags.delete_utub_url_tag",
@@ -638,7 +652,11 @@ ALL_API_ROUTES = [
         UrlTagModifiedResponseSchema,
         [OPEN_API.TAGS],
         "Remove a tag from a URL in a UTub",
-        {200: UrlTagModifiedResponseSchema, 404: ErrorResponse},
+        {
+            200: UrlTagModifiedResponseSchema,
+            403: ErrorResponse,
+            404: ErrorResponse,
+        },
     ),
     # Contact routes
     (

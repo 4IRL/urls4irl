@@ -2041,7 +2041,7 @@
         },
         "responses": {
           "201": {
-            "description": "One funnel in the admin flow builder: a built-in or a saved custom flow.\n\n    Returned by the list, create and update endpoints in the same shape, so the\n    builder renders every funnel from one type.",
+            "description": "One funnel in the admin flow builder: a built-in or a saved custom flow.\n\nReturned by the list, create and update endpoints in the same shape, so the\nbuilder renders every funnel from one type.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2201,7 +2201,7 @@
         },
         "responses": {
           "200": {
-            "description": "Envelope returned by `GET /api/metrics/query/flow`.\n\n    A `steps` wrapper (not a bare list) is required because\n    `APIResponse.to_response()` spreads the payload via `**data_dict`, which\n    needs a `BaseModel`-derived schema; the wire payload is `{\"steps\": [...]}`.\n\n    Serves both the built-in funnels and stored `custom_<id>` flows. A\n    well-formed custom id with no saved flow answers 404; a saved flow that no\n    longer validates (or raises a count-time `ValueError`) answers 422 with\n    `FlowInvalidResponseSchema` instead of this envelope.",
+            "description": "Envelope returned by `GET /api/metrics/query/flow`.\n\nA `steps` wrapper (not a bare list) is required because\n`APIResponse.to_response()` spreads the payload via `**data_dict`, which\nneeds a `BaseModel`-derived schema; the wire payload is `{\"steps\": [...]}`.\n\nServes both the built-in funnels and stored `custom_<id>` flows. A\nwell-formed custom id with no saved flow answers 404; a saved flow that no\nlonger validates (or raises a count-time `ValueError`) answers 422 with\n`FlowInvalidResponseSchema` instead of this envelope.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2288,7 +2288,7 @@
         },
         "responses": {
           "200": {
-            "description": "One funnel in the admin flow builder: a built-in or a saved custom flow.\n\n    Returned by the list, create and update endpoints in the same shape, so the\n    builder renders every funnel from one type.",
+            "description": "One funnel in the admin flow builder: a built-in or a saved custom flow.\n\nReturned by the list, create and update endpoints in the same shape, so the\nbuilder renders every funnel from one type.",
             "content": {
               "application/json": {
                 "schema": {
@@ -4716,7 +4716,7 @@
         },
         "responses": {
           "200": {
-            "description": "Response for the transfer-ownership endpoint (web + /api/v1 twin).\n\n    Reuses the role-carrying ``UtubMemberSchema`` for both the promoted member\n    (now ``CREATOR``) and the demoted outgoing owner (now ``CO_CREATOR``), so\n    the client can update both role displays without a reload.",
+            "description": "Response for the transfer-ownership endpoint (web + /api/v1 twin).\n\nReuses the role-carrying ``UtubMemberSchema`` for both the promoted member\n(now ``CREATOR``) and the demoted outgoing owner (now ``CO_CREATOR``), so\nthe client can update both role displays without a reload.",
             "content": {
               "application/json": {
                 "schema": {
@@ -4802,7 +4802,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Wrapper list of co-member add candidates for the target UTub.\n\n    A wrapper (never a bare list) because ``APIResponse`` spreads the data dict\n    at the top level via ``**data_dict``.",
+            "description": "Wrapper list of co-member add candidates for the target UTub.\n\nA wrapper (never a bare list) because ``APIResponse`` spreads the data dict\nat the top level via ``**data_dict``.",
             "content": {
               "application/json": {
                 "schema": {
@@ -5381,7 +5381,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Documents an HTML page render (not a JSON body) returned for an\n    error/reject state.",
+            "description": "Documents an HTML page render (not a JSON body) returned for an\nerror/reject state.",
             "content": {
               "application/json": {
                 "schema": {
@@ -5391,7 +5391,7 @@
             }
           },
           "302": {
-            "description": "Documents an HTML page render (not a JSON body) returned for an\n    error/reject state.",
+            "description": "Documents an HTML page render (not a JSON body) returned for an\nerror/reject state.",
             "content": {
               "application/json": {
                 "schema": {
@@ -5445,7 +5445,7 @@
         ],
         "responses": {
           "302": {
-            "description": "Documents an HTML page render (not a JSON body) returned for an\n    error/reject state.",
+            "description": "Documents an HTML page render (not a JSON body) returned for an\nerror/reject state.",
             "content": {
               "application/json": {
                 "schema": {
@@ -6081,7 +6081,7 @@
         },
         "responses": {
           "200": {
-            "description": "Response for the transfer-ownership endpoint (web + /api/v1 twin).\n\n    Reuses the role-carrying ``UtubMemberSchema`` for both the promoted member\n    (now ``CREATOR``) and the demoted outgoing owner (now ``CO_CREATOR``), so\n    the client can update both role displays without a reload.",
+            "description": "Response for the transfer-ownership endpoint (web + /api/v1 twin).\n\nReuses the role-carrying ``UtubMemberSchema`` for both the promoted member\n(now ``CREATOR``) and the demoted outgoing owner (now ``CO_CREATOR``), so\nthe client can update both role displays without a reload.",
             "content": {
               "application/json": {
                 "schema": {
@@ -6253,7 +6253,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Wrapper list of co-member add candidates for the target UTub.\n\n    A wrapper (never a bare list) because ``APIResponse`` spreads the data dict\n    at the top level via ``**data_dict``.",
+            "description": "Wrapper list of co-member add candidates for the target UTub.\n\nA wrapper (never a bare list) because ``APIResponse`` spreads the data dict\nat the top level via ``**data_dict``.",
             "content": {
               "application/json": {
                 "schema": {
@@ -6335,7 +6335,7 @@
         },
         "responses": {
           "200": {
-            "description": "Response payload returned by `POST /api/metrics`.\n\n    `accepted` is the number of events that the route handed off to\n    `record_event(...)`. Because the writer is log-and-drop, individual events\n    may have been silently dropped at the Redis layer; the field is informative\n    but not authoritative.",
+            "description": "Response payload returned by `POST /api/metrics`.\n\n`accepted` is the number of events that the route handed off to\n`record_event(...)`. Because the writer is log-and-drop, individual events\nmay have been silently dropped at the Redis layer; the field is informative\nbut not authoritative.",
             "content": {
               "application/json": {
                 "schema": {
@@ -7115,7 +7115,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Envelope returned by `GET /api/metrics/query/grouped-timeseries`.\n\n    Unlike the single-series `timeseries` endpoint, the grouped variant does\n    NOT zero-fill empty `(bucket, dim-tuple)` combinations. Cross-product\n    expansion is expensive; the frontend renderer treats absent combos as\n    \"no segment for that bucket\".",
+            "description": "Envelope returned by `GET /api/metrics/query/grouped-timeseries`.\n\nUnlike the single-series `timeseries` endpoint, the grouped variant does\nNOT zero-fill empty `(bucket, dim-tuple)` combinations. Cross-product\nexpansion is expensive; the frontend renderer treats absent combos as\n\"no segment for that bucket\".",
             "content": {
               "application/json": {
                 "schema": {
@@ -7218,7 +7218,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Envelope returned by `GET /api/metrics/query/flow`.\n\n    A `steps` wrapper (not a bare list) is required because\n    `APIResponse.to_response()` spreads the payload via `**data_dict`, which\n    needs a `BaseModel`-derived schema; the wire payload is `{\"steps\": [...]}`.\n\n    Serves both the built-in funnels and stored `custom_<id>` flows. A\n    well-formed custom id with no saved flow answers 404; a saved flow that no\n    longer validates (or raises a count-time `ValueError`) answers 422 with\n    `FlowInvalidResponseSchema` instead of this envelope.",
+            "description": "Envelope returned by `GET /api/metrics/query/flow`.\n\nA `steps` wrapper (not a bare list) is required because\n`APIResponse.to_response()` spreads the payload via `**data_dict`, which\nneeds a `BaseModel`-derived schema; the wire payload is `{\"steps\": [...]}`.\n\nServes both the built-in funnels and stored `custom_<id>` flows. A\nwell-formed custom id with no saved flow answers 404; a saved flow that no\nlonger validates (or raises a count-time `ValueError`) answers 422 with\n`FlowInvalidResponseSchema` instead of this envelope.",
             "content": {
               "application/json": {
                 "schema": {
@@ -7321,7 +7321,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Batched envelope returned by `GET /api/metrics/query/gauges/timeseries`.\n\n    Carries every gauge's windowed series in one response (mirrors\n    `GroupedTimeseriesResponseSchema`'s envelope shape). A gauge with no rows in\n    the window is absent from `gauges` rather than zero-filled.",
+            "description": "Batched envelope returned by `GET /api/metrics/query/gauges/timeseries`.\n\nCarries every gauge's windowed series in one response (mirrors\n`GroupedTimeseriesResponseSchema`'s envelope shape). A gauge with no rows in\nthe window is absent from `gauges` rather than zero-filled.",
             "content": {
               "application/json": {
                 "schema": {
@@ -7744,7 +7744,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Documents an HTML page render (not a JSON body) returned for an\n    error/reject state.",
+            "description": "Documents an HTML page render (not a JSON body) returned for an\nerror/reject state.",
             "content": {
               "application/json": {
                 "schema": {
@@ -8069,7 +8069,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Documents an HTML page render (not a JSON body) returned for an\n    error/reject state.",
+            "description": "Documents an HTML page render (not a JSON body) returned for an\nerror/reject state.",
             "content": {
               "application/json": {
                 "schema": {
@@ -8155,7 +8155,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Documents an HTML page render (not a JSON body) returned for an\n    error/reject state.",
+            "description": "Documents an HTML page render (not a JSON body) returned for an\nerror/reject state.",
             "content": {
               "application/json": {
                 "schema": {
@@ -9405,7 +9405,7 @@
         },
         "responses": {
           "200": {
-            "description": "Response for the authenticated change-username endpoint.\n\n    One shape for every 200 response \u2014 the success branch and the no-op branch\n    both populate all three fields, differing only in ``status``/``message``\n    (DD-12: the banner text is server-sourced off ``message``). Carries the\n    echoed ``username`` on top of the ``StatusMessageResponseSchema`` shape so\n    the client can refresh the on-page displays without a reload (DD-15).",
+            "description": "Response for the authenticated change-username endpoint.\n\nOne shape for every 200 response \u2014 the success branch and the no-op branch\nboth populate all three fields, differing only in ``status``/``message``\n(DD-12: the banner text is server-sourced off ``message``). Carries the\nechoed ``username`` on top of the ``StatusMessageResponseSchema`` shape so\nthe client can refresh the on-page displays without a reload (DD-15).",
             "content": {
               "application/json": {
                 "schema": {
@@ -9484,7 +9484,7 @@
         },
         "responses": {
           "200": {
-            "description": "Response for the authenticated update-preferences endpoint\n    (``PUT /users/<id>/preferences``).\n\n    One shape for every 200 response \u2014 the success branch and the no-op branch\n    both echo all five persisted preference values (each an enum ``.value``\n    string), differing only in ``status``/``message`` (the banner text is\n    server-sourced off ``message``, mirroring ``ChangeUsernameResponseSchema``).\n    Echoing the stored values lets the client refresh its in-memory state\n    without a reload.",
+            "description": "Response for the authenticated update-preferences endpoint\n(``PUT /users/<id>/preferences``).\n\nOne shape for every 200 response \u2014 the success branch and the no-op branch\nboth echo all five persisted preference values (each an enum ``.value``\nstring), differing only in ``status``/``message`` (the banner text is\nserver-sourced off ``message``, mirroring ``ChangeUsernameResponseSchema``).\nEchoing the stored values lets the client refresh its in-memory state\nwithout a reload.",
             "content": {
               "application/json": {
                 "schema": {
@@ -9543,7 +9543,7 @@
         },
         "responses": {
           "200": {
-            "description": "Response for ``PATCH /users/preferences/utubs``.\n\n    Always echoes all three resolved UTub-list preferences (never the request\n    values); ``status`` is ``No change`` when nothing differed (no row created).",
+            "description": "Response for ``PATCH /users/preferences/utubs``.\n\nAlways echoes all three resolved UTub-list preferences (never the request\nvalues); ``status`` is ``No change`` when nothing differed (no row created).",
             "content": {
               "application/json": {
                 "schema": {
@@ -9592,7 +9592,7 @@
         },
         "responses": {
           "200": {
-            "description": "Response for ``PATCH /users/preferences/members``.\n\n    Echoes the resolved member sort (never the request value); ``status`` is\n    ``No change`` when nothing differed (no row created).",
+            "description": "Response for ``PATCH /users/preferences/members``.\n\nEchoes the resolved member sort (never the request value); ``status`` is\n``No change`` when nothing differed (no row created).",
             "content": {
               "application/json": {
                 "schema": {
@@ -9641,7 +9641,7 @@
         },
         "responses": {
           "200": {
-            "description": "Response for ``PATCH /users/preferences/tags``.\n\n    Always echoes all six resolved tag display defaults (never the request\n    values); ``status`` is ``No change`` when nothing differed (no row created).",
+            "description": "Response for ``PATCH /users/preferences/tags``.\n\nAlways echoes all six resolved tag display defaults (never the request\nvalues); ``status`` is ``No change`` when nothing differed (no row created).",
             "content": {
               "application/json": {
                 "schema": {
@@ -9700,7 +9700,7 @@
         },
         "responses": {
           "200": {
-            "description": "Response for the authenticated change-password endpoint.\n\n    No data to return beyond status/message, so it reuses the\n    ``StatusMessageResponseSchema`` shape (matching the\n    ``RegisterResponseSchema``/``ResetPasswordResponseSchema`` convention).",
+            "description": "Response for the authenticated change-password endpoint.\n\nNo data to return beyond status/message, so it reuses the\n``StatusMessageResponseSchema`` shape (matching the\n``RegisterResponseSchema``/``ResetPasswordResponseSchema`` convention).",
             "content": {
               "application/json": {
                 "schema": {
@@ -9779,7 +9779,7 @@
         },
         "responses": {
           "200": {
-            "description": "Response for the authenticated change-email START endpoint\n    (``PUT /users/<id>/email``).\n\n    Carries ``status``/``message`` (DD-12 banner text is server-sourced off\n    ``message``) plus the just-staged ``pending_email`` (DD-6) so the client can\n    patch the account-info card in place without a reload. ``pending_email`` is\n    optional/``None``-defaulted because the no-op guard (guard 5) also builds\n    this schema and nothing is staged in that branch.",
+            "description": "Response for the authenticated change-email START endpoint\n(``PUT /users/<id>/email``).\n\nCarries ``status``/``message`` (DD-12 banner text is server-sourced off\n``message``) plus the just-staged ``pending_email`` (DD-6) so the client can\npatch the account-info card in place without a reload. ``pending_email`` is\noptional/``None``-defaulted because the no-op guard (guard 5) also builds\nthis schema and nothing is staged in that branch.",
             "content": {
               "application/json": {
                 "schema": {
@@ -9858,7 +9858,7 @@
         },
         "responses": {
           "200": {
-            "description": "Response for the self-service account-removal / session-revocation\n    endpoints (``DELETE /users/<id>`` and\n    ``POST /users/<id>/logout-everywhere``).\n\n    Carries ``status``/``message`` (banner text is server-sourced off\n    ``message``) plus a ``redirect_url`` (mirroring ``LoginRedirectResponseSchema``)\n    so the client navigates to splash after the acting session is logged out.\n    Shared by the delete and logout-everywhere flows (and the OAuth-proof\n    round-trip initiator, which returns the provider-redirect URL in the same\n    field).",
+            "description": "Response for the self-service account-removal / session-revocation\nendpoints (``DELETE /users/<id>`` and\n``POST /users/<id>/logout-everywhere``).\n\nCarries ``status``/``message`` (banner text is server-sourced off\n``message``) plus a ``redirect_url`` (mirroring ``LoginRedirectResponseSchema``)\nso the client navigates to splash after the acting session is logged out.\nShared by the delete and logout-everywhere flows (and the OAuth-proof\nround-trip initiator, which returns the provider-redirect URL in the same\nfield).",
             "content": {
               "application/json": {
                 "schema": {
@@ -9928,7 +9928,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Response for the self-service account-removal / session-revocation\n    endpoints (``DELETE /users/<id>`` and\n    ``POST /users/<id>/logout-everywhere``).\n\n    Carries ``status``/``message`` (banner text is server-sourced off\n    ``message``) plus a ``redirect_url`` (mirroring ``LoginRedirectResponseSchema``)\n    so the client navigates to splash after the acting session is logged out.\n    Shared by the delete and logout-everywhere flows (and the OAuth-proof\n    round-trip initiator, which returns the provider-redirect URL in the same\n    field).",
+            "description": "Response for the self-service account-removal / session-revocation\nendpoints (``DELETE /users/<id>`` and\n``POST /users/<id>/logout-everywhere``).\n\nCarries ``status``/``message`` (banner text is server-sourced off\n``message``) plus a ``redirect_url`` (mirroring ``LoginRedirectResponseSchema``)\nso the client navigates to splash after the acting session is logged out.\nShared by the delete and logout-everywhere flows (and the OAuth-proof\nround-trip initiator, which returns the provider-redirect URL in the same\nfield).",
             "content": {
               "application/json": {
                 "schema": {
@@ -9977,7 +9977,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Response envelope for ``GET /users/<id>/data-export``.\n\n    Nests the full export under a single ``export`` key (on top of the standard\n    ``status``/``message`` envelope fields) so the client can blob ``response.export``\n    cleanly for the downloaded file without the envelope metadata leaking into it.",
+            "description": "Response envelope for ``GET /users/<id>/data-export``.\n\nNests the full export under a single ``export`` key (on top of the standard\n``status``/``message`` envelope fields) so the client can blob ``response.export``\ncleanly for the downloaded file without the envelope metadata leaking into it.",
             "content": {
               "application/json": {
                 "schema": {
@@ -11131,6 +11131,16 @@
               }
             }
           },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_URLTagErrorCodes"
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not found",
             "content": {
@@ -11207,6 +11217,16 @@
           },
           "400": {
             "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_URLTagErrorCodes"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
             "content": {
               "application/json": {
                 "schema": {
@@ -11296,7 +11316,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "$ref": "#/components/schemas/ErrorResponse_URLTagErrorCodes"
                 }
               }
             }
@@ -11374,6 +11394,16 @@
               }
             }
           },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_URLTagErrorCodes"
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not found",
             "content": {
@@ -11383,6 +11413,11 @@
                 }
               }
             }
+          }
+        },
+        "x-error-codes": {
+          "URLTagErrorCodes": {
+            "$ref": "#/components/schemas/URLTagErrorCodes"
           }
         }
       }
@@ -11437,6 +11472,16 @@
           },
           "400": {
             "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_UTubTagErrorCodes"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
             "content": {
               "application/json": {
                 "schema": {
@@ -11510,6 +11555,16 @@
               }
             }
           },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_UTubTagErrorCodes"
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not found",
             "content": {
@@ -11519,6 +11574,11 @@
                 }
               }
             }
+          }
+        },
+        "x-error-codes": {
+          "UTubTagErrorCodes": {
+            "$ref": "#/components/schemas/UTubTagErrorCodes"
           }
         }
       }
@@ -12590,11 +12650,12 @@
       },
       "URLTagErrorCodes": {
         "type": "integer",
-        "enum": [1, 2, 3],
+        "enum": [1, 2, 3, 4],
         "x-enum-varnames": [
           "UNKNOWN_EXCEPTION",
           "INVALID_FORM_INPUT",
-          "UTUB_IS_LOCKED"
+          "UTUB_IS_LOCKED",
+          "TAGGING_NOT_ALLOWED"
         ],
         "description": "Error codes for URLTagErrorCodes"
       },
@@ -12686,11 +12747,13 @@
       },
       "UTubTagErrorCodes": {
         "type": "integer",
-        "enum": [1, 2, 3],
+        "enum": [1, 2, 3, 4, 5],
         "x-enum-varnames": [
           "UNKNOWN_EXCEPTION",
           "INVALID_FORM_INPUT",
-          "UTUB_IS_LOCKED"
+          "UTUB_IS_LOCKED",
+          "TAGGING_NOT_ALLOWED",
+          "TAG_DELETE_NOT_ALLOWED"
         ],
         "description": "Error codes for UTubTagErrorCodes"
       },
@@ -12831,7 +12894,7 @@
       },
       "URLErrorCodes": {
         "type": "integer",
-        "enum": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17],
+        "enum": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18],
         "x-enum-varnames": [
           "UNKNOWN_ERROR",
           "INVALID_FORM_INPUT",
@@ -12849,7 +12912,8 @@
           "URL_ALREADY_IN_DESTINATION",
           "UNABLE_TO_RESTORE_URL_ERROR",
           "UNABLE_TO_RESTORE_URLS_ERROR",
-          "SHORT_LINKS_DISABLED"
+          "SHORT_LINKS_DISABLED",
+          "TAGGING_NOT_ALLOWED"
         ],
         "description": "Error codes for URLErrorCodes"
       },
@@ -13744,8 +13808,19 @@
       },
       "TagsSettings": {
         "additionalProperties": false,
-        "description": "Settings for the tags panel (no settings yet).",
-        "properties": {},
+        "description": "Settings for the tags panel: who may tag and delete tags.",
+        "properties": {
+          "members_can_tag": {
+            "default": true,
+            "description": "Whether plain members can create tags and add or remove tags on URLs",
+            "type": "boolean"
+          },
+          "members_can_delete_tags": {
+            "default": true,
+            "description": "Whether plain members can delete tags; only effective while members_can_tag is on",
+            "type": "boolean"
+          }
+        },
         "type": "object"
       },
       "UrlsSettings": {
