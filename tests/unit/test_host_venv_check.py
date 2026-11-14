@@ -138,6 +138,41 @@ def test_unresolvable_expected_python_fails_closed(
     assert (venv / ".u4i-host-static.stamp").exists()
 
 
+def test_too_few_arguments_fail_closed_with_usage(tmp_path: Path) -> None:
+    """
+    GIVEN only the primary root and no expected-python command
+    WHEN the check runs
+    THEN it exits 1 and stderr prints the usage line
+    """
+    assert BASH is not None
+
+    result = subprocess.run(
+        [BASH, str(SCRIPT), str(tmp_path)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 1
+    assert "usage" in result.stderr
+
+
+def test_non_directory_root_fails_closed(tmp_path: Path) -> None:
+    """
+    GIVEN a primary root that does not exist
+    WHEN the check runs
+    THEN it exits 1 and stderr names the missing directory
+    """
+    expected = _stub_python(tmp_path / "pinned" / "python", "3.14")
+    missing = tmp_path / "no-such-root"
+
+    result = _run(missing, expected)
+
+    assert result.returncode == 1
+    assert "not a directory" in result.stderr
+    assert str(missing) in result.stderr
+
+
 def test_missing_expected_python_executable_fails_closed(tmp_path: Path) -> None:
     """
     GIVEN an expected-python command that does not exist

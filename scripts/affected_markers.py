@@ -797,7 +797,7 @@ def resolve_markers(
 
     for path in changed_files:
         if (
-            path not in NO_IMPACT_EXEMPT
+            _first_match(path, NO_IMPACT_EXEMPT) is None
             and _first_match(path, NO_IMPACT_GLOBS) is not None
         ):
             reasons.append((path, NO_IMPACT_REASON, ()))

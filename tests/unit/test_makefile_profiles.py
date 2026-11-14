@@ -1914,6 +1914,22 @@ def test_host_static_reinstalls_the_pre_commit_hook_after_a_rebuild() -> None:
     assert HOST_STATIC_PYTEST_FRAGMENT not in reinstall_line
 
 
+def test_makefile_and_script_agree_on_the_rebuilt_exit_code() -> None:
+    # The Makefile treats this rc as "venv rebuilt, carry on"; drift from the script's literal aborts it.
+    makefile_match = re.search(
+        r"^HOST_VENV_REBUILT_RC\s*:=\s*(\d+)\s*$",
+        MAKEFILE.read_text(),
+        re.MULTILINE,
+    )
+    script_match = re.search(
+        r"^REBUILT_EXIT=(\d+)\s*$",
+        (REPO_ROOT / VENV_CHECK_SCRIPT).read_text(),
+        re.MULTILINE,
+    )
+    assert makefile_match is not None and script_match is not None
+    assert makefile_match.group(1) == script_match.group(1)
+
+
 @pytest.mark.skipif(GIT_BINARY is None, reason="needs `git`")
 def test_hooks_checks_the_venv_version_with_the_main_checkout_root() -> None:
     output = _successful_dry_run("hooks")

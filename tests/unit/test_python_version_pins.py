@@ -236,6 +236,31 @@ def test_repo_python_versions_agree() -> None:
     assert find_violations(_read_repo_files()) == []
 
 
+MULTIARCH_WORKFLOW_PATH: Path = (
+    REPO_ROOT / ".github/workflows/multiarch-build-check.yml"
+)
+# The local dev image is amd64-only tooling; the other python images ship on arm64 too.
+MULTIARCH_EXEMPT_DOCKERFILES: frozenset[str] = frozenset({"docker/Dockerfile.Local"})
+MATRIX_FILE_PATTERN: re.Pattern[str] = re.compile(
+    r"^\s+file:\s*(docker/Dockerfile\S*)\s*$", re.MULTILINE
+)
+
+
+@pytest.mark.skipif(
+    not MULTIARCH_WORKFLOW_PATH.exists(),
+    reason=".github/ is not mounted in web",
+)
+def test_multiarch_matrix_covers_the_python_image_dockerfiles() -> None:
+    """
+    GIVEN the multiarch-build-check.yml matrix
+    WHEN its `file:` entries are compared with PYTHON_IMAGE_DOCKERFILES
+    THEN every python-image Dockerfile except the exempt local one is built, and nothing else is
+    """
+    matrix_files = set(MATRIX_FILE_PATTERN.findall(MULTIARCH_WORKFLOW_PATH.read_text()))
+
+    assert matrix_files == set(PYTHON_IMAGE_DOCKERFILES) - MULTIARCH_EXEMPT_DOCKERFILES
+
+
 # --- negative tests (synthetic content) -----------------------------------------
 
 GOOD_FILES: dict[str, str] = {
@@ -414,6 +439,61 @@ def test_flags_a_ruff_target_version_that_differs_from_the_pin() -> None:
 
     assert find_violations(files) == [
         'pyproject.toml:2: `target-version = "py312"` should be "py314"'
+    ]
+
+
+def test_flags_a_python_image_dockerfile_missing_from_the_repo() -> None:
+    """
+    GIVEN a repo without docker/Dockerfile.Local
+    WHEN find_violations runs
+    THEN a single "missing" finding names it
+    """
+    files = {
+        path: text
+        for path, text in GOOD_FILES.items()
+        if path != "docker/Dockerfile.Local"
+    }
+
+    assert find_violations(files) == [
+        "docker/Dockerfile.Local: missing, cannot check its python base"
+    ]
+
+
+def test_setup_python_expression_is_exempt_from_the_literal_check() -> None:
+    """
+    GIVEN a setup-python version given as a `${{ matrix.python }}` expression
+    WHEN find_violations runs
+    THEN it is not compared with the pin
+    """
+    files = _with(
+        ".github/workflows/test.yml",
+        "          python-version: ${{ matrix.python }}\n",
+    )
+
+    assert find_violations(files) == []
+
+
+def test_flags_a_pyproject_without_a_target_version_line() -> None:
+    """
+    GIVEN a pyproject.toml with no ruff target-version
+    WHEN find_violations runs
+    THEN that is reported instead of passing
+    """
+    files = _with(PYPROJECT_PATH, "[tool.ruff]\nline-length = 88\n")
+
+    assert find_violations(files) == ["pyproject.toml: no `target-version` line found"]
+
+
+def test_flags_a_prod_requirements_without_a_psycopg2_binary_pin() -> None:
+    """
+    GIVEN requirements-prod.txt with no psycopg2-binary pin
+    WHEN find_violations runs
+    THEN the missing pin is reported against that file
+    """
+    files = _with(PROD_REQUIREMENTS_PATH, "flask==3.1.0\n")
+
+    assert find_violations(files) == [
+        "requirements/requirements-prod.txt: no `psycopg2-binary==` pin found"
     ]
 
 
