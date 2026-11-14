@@ -690,7 +690,7 @@ def _applied_marks(text: str) -> set[str]:
     mark`), which over-selects rather than under-selects."""
     try:
         tree = ast.parse(text)
-    except (SyntaxError, MemoryError, RecursionError):
+    except SyntaxError, MemoryError, RecursionError:
         return set(_MARK_PATTERN.findall(text))
     marks: set[str] = set()
     for node in ast.walk(tree):

@@ -64,7 +64,7 @@ def verify_dump(*, path: str, min_size_bytes: int) -> tuple[int, str]:
                 if not chunk:
                     break
                 decompressed_bytes += len(chunk)
-    except (gzip.BadGzipFile, EOFError, OSError):
+    except gzip.BadGzipFile, EOFError, OSError:
         return (EXIT_FAILURE, f"backup corrupt: {path}")
 
     if decompressed_bytes < min_size_bytes:

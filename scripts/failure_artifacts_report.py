@@ -56,7 +56,7 @@ def _read_json_object(path: Path) -> dict[str, object] | None:
     """The JSON object at `path`, or None if it is missing, unreadable or not an object."""
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, UnicodeDecodeError, ValueError, RecursionError):
+    except OSError, UnicodeDecodeError, ValueError, RecursionError:
         return None
     return payload if isinstance(payload, dict) else None
 

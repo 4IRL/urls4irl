@@ -119,7 +119,7 @@ def confirm_email_change_for_user(token: str) -> WerkzeugResponse:
     # _handle_invalid_verification_token here.
     try:
         verify_result = verify_token(token, EMAILS.CHANGE_EMAIL)
-    except (NotFound, KeyError):
+    except NotFound, KeyError:
         warning_log("Change-email token invalid or resolved to no user")
         return _redirect_to_splash_with_status(EMAIL_CHANGE_STATUS_INVALID)
 
