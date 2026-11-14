@@ -94,10 +94,7 @@ UI_EVENT_NAMES: tuple[str, ...] = tuple(
 )
 
 
-# PEP 646 star-unpack into Literal. Verified at container
-# startup — see Step 1 instructions in the plan. If support for 3.10 ever
-# becomes required, build the union via `Literal[tuple_member_0, ...]`
-# explicitly.
+# PEP 646 star-unpack into Literal.
 UIEventNameLiteral = Literal[*UI_EVENT_NAMES]  # type: ignore[valid-type]
 
 

@@ -255,7 +255,7 @@ def test_mise_toml_accepts_exact_tools() -> None:
     THEN nothing is reported
     """
     text = (
-        'min_version = "2026.6.14"\n\n[tools]\npython = "3.11.14"\nnode = "24.18.0"\n'
+        'min_version = "2026.6.14"\n\n[tools]\npython = "3.14.10"\nnode = "24.18.0"\n'
     )
     assert audit_pins.check_mise_toml(text, SAMPLE_PATH) == []
 
@@ -266,7 +266,7 @@ def test_mise_toml_flags_partial_version() -> None:
     WHEN check_mise_toml scans it
     THEN node is reported on its own line
     """
-    text = '[tools]\npython = "3.11.14"\nnode = "24"\n'
+    text = '[tools]\npython = "3.14.10"\nnode = "24"\n'
 
     findings = audit_pins.check_mise_toml(text, SAMPLE_PATH)
 
@@ -290,7 +290,7 @@ def test_mise_toml_reports_non_table_tools() -> None:
 @pytest.mark.parametrize(
     "dockerfile",
     [
-        "FROM python:3.11.14-slim-bookworm\n",
+        "FROM python:3.14.10-slim-bookworm\n",
         "FROM node:24.18.0-bookworm-slim AS builder\nFROM builder\n",
         "FROM --platform=linux/amd64 node:24.18.0-bookworm-slim\n",
         "FROM debian:12.15-slim\n",
@@ -301,19 +301,19 @@ def test_mise_toml_reports_non_table_tools() -> None:
         "FROM mcr.microsoft.com/playwright:v${PLAYWRIGHT_VERSION}-noble\n"
         "ARG PLAYWRIGHT_VERSION\n",
         "FROM scratch\n",
-        "# syntax=docker/dockerfile:1.5\nFROM python:3.11.14-slim\n",
-        "FROM python:3.11.14-slim\nARG RCLONE_VERSION=v1.72.1\n",
-        "FROM python:3.11.14-slim\nRUN pip install pip==26.2.1\n",
-        "FROM python:3.11.14-slim\nRUN pip install --no-cache-dir --upgrade pip==26.2.1"
+        "# syntax=docker/dockerfile:1.5\nFROM python:3.14.10-slim\n",
+        "FROM python:3.14.10-slim\nARG RCLONE_VERSION=v1.72.1\n",
+        "FROM python:3.14.10-slim\nRUN pip install pip==26.2.1\n",
+        "FROM python:3.14.10-slim\nRUN pip install --no-cache-dir --upgrade pip==26.2.1"
         " -r requirements.txt -e .\n",
-        "FROM python:3.11.14-slim\n"
+        "FROM python:3.14.10-slim\n"
         "RUN /venv/bin/pip install --no-cache-dir \\\n"
         "    redis==5.0.1 \\\n"
         "    psycopg2-binary==2.9.9\n",
         "ARG NODE_VERSION=24.18.0\nFROM node:$NODE_VERSION-bookworm-slim\n",
         'ARG NODE_VERSION="24.18.0"\nFROM node:${NODE_VERSION}-bookworm-slim\n',
         "FROM node:${NODE_VERSION:-24.18.0}-bookworm-slim\n",
-        "FROM python:3.11.14-slim\n"
+        "FROM python:3.14.10-slim\n"
         "RUN pip install \\\n"
         "    # pip install commented-out \\\n"
         "    redis==5.0.1\n",
@@ -334,24 +334,24 @@ def test_dockerfile_accepts_pinned(dockerfile: str) -> None:
         ("FROM node:22-bookworm-slim AS builder\n", 1),
         ("FROM node\n", 1),
         ("FROM node:latest\n", 1),
-        ("FROM python:3.11-slim\n", 1),
+        ("FROM python:3.14-slim\n", 1),
         ("FROM debian:12-slim\n", 1),
         ("FROM mcr.microsoft.com/playwright:v${UNKNOWN}-noble\n", 1),
-        ("FROM python:3.11.14-slim\nARG PNPM_VERSION=11\n", 2),
-        ("FROM python:3.11.14-slim\nRUN pip install --upgrade pip\n", 2),
-        ("FROM python:3.11.14-slim\nRUN python3 -m pip install -U pip\n", 2),
-        ("FROM python:3.11.14-slim\nRUN pip install redis>=5.0\n", 2),
+        ("FROM python:3.14.10-slim\nARG PNPM_VERSION=11\n", 2),
+        ("FROM python:3.14.10-slim\nRUN pip install --upgrade pip\n", 2),
+        ("FROM python:3.14.10-slim\nRUN python3 -m pip install -U pip\n", 2),
+        ("FROM python:3.14.10-slim\nRUN pip install redis>=5.0\n", 2),
         (
-            "FROM python:3.11.14-slim\n"
+            "FROM python:3.14.10-slim\n"
             "RUN python3 -m venv /venv \\\n"
             "    && /venv/bin/pip install --no-cache-dir --upgrade pip \\\n"
             "    && /venv/bin/pip install redis==5.0.1\n",
             3,
         ),
         ("FROM redis AS redis\n", 1),
-        ("FROM python:3.11.14-slim\nRUN pip3.11 install redis\n", 2),
+        ("FROM python:3.14.10-slim\nRUN pip3.14 install redis\n", 2),
         (
-            "FROM python:3.11.14-slim\n"
+            "FROM python:3.14.10-slim\n"
             "RUN pip install \\\n"
             "    # a note between continued lines\n"
             "    redis\n",
@@ -438,7 +438,7 @@ WORKFLOW_CLEAN: str = _dedent(
             uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
           - run: |
               # pip install anything is a comment here
-              python3.11 -m pip install --upgrade pip==26.2.1;
+              python3.14 -m pip install --upgrade pip==26.2.1;
               pip install -r requirements/requirements-test.txt;
       reuse:
         uses: ./.github/workflows/lint.yml
@@ -516,7 +516,7 @@ def _clean_repo(root: Path) -> None:
     _write(root, "frontend/package.json", _package_json({"vite": "7.3.5"}))
     _write(root, "frontend/pnpm-workspace.yaml", PNPM_WORKSPACE_CLEAN)
     _write(root, ".mise.toml", '[tools]\nnode = "24.18.0"\n')
-    _write(root, "docker/Dockerfile", "FROM python:3.11.14-slim\n")
+    _write(root, "docker/Dockerfile", "FROM python:3.14.10-slim\n")
     _write(root, "docker/compose.yaml", "services:\n  r:\n    image: redis:6.2.16\n")
     _write(root, ".github/workflows/ci.yml", WORKFLOW_CLEAN)
     _write(
