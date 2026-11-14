@@ -14,7 +14,7 @@ Flask app factory pattern in `backend/__init__.py` with `create_app()`. Config c
 - `tags` (2 blueprints: `utub_tags`, `utub_url_tags`) - tag CRUD
 - `users` - user profile, password change
 - `contact` - contact form
-- `system` - health check
+- `system` - health checks: `/health` (plain, `?db=true`) and token-protected `/health/deep` (Postgres, session Redis, metrics Redis). Both are session-free: the nonce hooks in `backend/__init__.py` skip `session`/`g.nonce` for them and send a fixed restrictive CSP, so a session-Redis outage reports a clean 503 (deep) or 200 (plain) for cookieless callers (a request carrying a session cookie still 500s, since Flask-Session reads the store first). Deep probes live in `backend/system/health_checks.py`; one `Budget` (`DEEP_CHECK_DEADLINE_SECONDS` = 7 s) is shared by the probes, each Redis operation is capped at `min(2 s, remaining / operations)`, and Postgres uses a dedicated connection with a 2 s `connect_timeout` plus a `statement_timeout` split over its statements. Both are in the metrics `_SKIP_ENDPOINTS`
 - `assets` - static asset serving
 - `debug` - dev-only debug routes (excluded in test/prod)
 

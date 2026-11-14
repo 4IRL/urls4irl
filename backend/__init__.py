@@ -48,6 +48,7 @@ from backend.utils.oauth_config import (
     should_register_google_oauth,
 )
 from backend.utils.session_utils import restamp_current_session
+from backend.utils.all_routes import SYSTEM_ROUTES
 from backend.utils.strings.config_strs import CONFIG_ENVS
 # isort: on
 
@@ -399,6 +400,27 @@ def apply_proxy_fix(app: Flask) -> None:
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=2, x_proto=1)
 
 
+# Probe endpoints stay off the session: a session-Redis outage must not 500 them.
+_SESSION_FREE_ENDPOINTS: frozenset[str] = frozenset(
+    {SYSTEM_ROUTES.HEALTH, SYSTEM_ROUTES.HEALTH_DEEP}
+)
+_HEALTH_CSP = "default-src 'none'; frame-ancestors 'none'"
+
+
+def _is_session_free_request() -> bool:
+    return request.endpoint in _SESSION_FREE_ENDPOINTS
+
+
+def _set_static_security_headers(response: Response) -> None:
+    response.headers[CONFIG_ENVS.X_CONTENT_TYPE_OPTIONS] = "nosniff"
+    response.headers[CONFIG_ENVS.X_FRAME_OPTIONS] = "DENY"
+    # setdefault: a route may set its own policy (the share page sends no-referrer)
+    response.headers.setdefault(
+        CONFIG_ENVS.REFERRER_POLICY, CONFIG_ENVS.DEFAULT_REFERRER_POLICY_VALUE
+    )
+    response.headers[CONFIG_ENVS.CROSS_ORIGIN_RESOURCE_POLICY] = "same-origin"
+
+
 def add_security_headers(app: Flask):
     @app.context_processor
     def nonce_processor():
@@ -410,12 +432,21 @@ def add_security_headers(app: Flask):
     # Keep the before_request for the CSP headers
     @app.before_request
     def set_nonce():
+        if _is_session_free_request():
+            return
         if "nonce" not in session:
             session["nonce"] = secrets.token_urlsafe(16)
         g.nonce = session["nonce"]
 
     @app.after_request
     def _add_security_headers(response: Response):
+        if _is_session_free_request():
+            response.headers[CONFIG_ENVS.CONTENT_SECURITY_POLICY] = _HEALTH_CSP
+            # An intermediary caching a probe result would mask an outage.
+            response.headers["Cache-Control"] = "no-store"
+            _set_static_security_headers(response)
+            return response
+
         if "nonce" not in session:
             session["nonce"] = secrets.token_urlsafe(16)
         g.nonce = session["nonce"]
@@ -498,13 +529,7 @@ def add_security_headers(app: Flask):
             + "frame-ancestors 'none'; "
         )
 
-        response.headers[CONFIG_ENVS.X_CONTENT_TYPE_OPTIONS] = "nosniff"
-        response.headers[CONFIG_ENVS.X_FRAME_OPTIONS] = "DENY"
-        # setdefault: a route may set its own policy (the share page sends no-referrer)
-        response.headers.setdefault(
-            CONFIG_ENVS.REFERRER_POLICY, CONFIG_ENVS.DEFAULT_REFERRER_POLICY_VALUE
-        )
-        response.headers[CONFIG_ENVS.CROSS_ORIGIN_RESOURCE_POLICY] = "same-origin"
+        _set_static_security_headers(response)
         return response
 
 

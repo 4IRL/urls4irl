@@ -137,6 +137,20 @@ def test_middleware_skips_health(
     assert _api_hit_keys(provide_metrics_redis) == []
 
 
+def test_middleware_skips_health_deep(
+    metrics_enabled_app: Flask,
+    client: FlaskClient,
+    provide_metrics_redis: Redis,
+):
+    """
+    GIVEN the system.health_deep endpoint is in the skip set
+    WHEN /health/deep is requested (even unauthorized)
+    THEN no api_hit counter key is recorded.
+    """
+    client.get("/health/deep")
+    assert _api_hit_keys(provide_metrics_redis) == []
+
+
 def test_middleware_skips_metrics_blueprint_self(
     metrics_enabled_app: Flask,
     client: FlaskClient,

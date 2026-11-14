@@ -1123,6 +1123,15 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 - **Template:** —
 - **JS:** no-js: infra-probe
 
+### `GET /health/deep` — `system.health_deep`
+
+- **Handler:** `backend/system/routes.py:health_deep`
+- **Decorators:** `limiter.exempt`, `api_route`
+- **Service:** —
+- **Schema:** response: `backend.schemas.system.DeepHealthResponseSchema`; status: 200 `backend.schemas.system.DeepHealthResponseSchema`, 401 `backend.schemas.base.StatusMessageResponseSchema`, 503 `backend.schemas.system.DeepHealthResponseSchema`
+- **Template:** —
+- **JS:** no-js: infra-probe
+
 ## urls
 
 ### `POST /utubs/<int:utub_id>/urls` — `urls.create_url`

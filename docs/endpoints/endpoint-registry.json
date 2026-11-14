@@ -3156,6 +3156,37 @@
       "templates": []
     },
     {
+      "blueprint": "system",
+      "decorators": [
+        "limiter.exempt",
+        "api_route"
+      ],
+      "endpoint": "system.health_deep",
+      "handler": "backend/system/routes.py:health_deep",
+      "js": {
+        "indirect": null,
+        "no_js": "infra-probe",
+        "route_keys": [],
+        "template_url_for": []
+      },
+      "methods": [
+        "GET"
+      ],
+      "rule": "/health/deep",
+      "schemas": {
+        "query": null,
+        "request": null,
+        "response": "backend.schemas.system.DeepHealthResponseSchema",
+        "status_codes": {
+          "200": "backend.schemas.system.DeepHealthResponseSchema",
+          "401": "backend.schemas.base.StatusMessageResponseSchema",
+          "503": "backend.schemas.system.DeepHealthResponseSchema"
+        }
+      },
+      "services": [],
+      "templates": []
+    },
+    {
       "blueprint": "utubs",
       "decorators": [
         "email_validation_required"
