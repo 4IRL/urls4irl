@@ -404,7 +404,7 @@ CI's `Tests-Integration` matrix (`.github/workflows/test.yml`) runs 13 parallel 
 
 ## Docker
 
-- `docker/Dockerfile` - production multi-stage build (Python 3.11-slim)
+- `docker/Dockerfile` - production multi-stage build (Python 3.14-slim)
 - `docker/Dockerfile.Local` - local dev
 - `docker/Dockerfile.Vite` - Vite dev server container
 - `docker/Dockerfile.Playwright` - the hub's derived Playwright browser-server image (`u4i-playwright:<version>`): the `mcr.microsoft.com/playwright` base with the matching `playwright` CLI baked in, `docker/playwright-entrypoint.sh` as entrypoint, and a node TCP `HEALTHCHECK` byte-identical to the compose one. Its `ARG PLAYWRIGHT_VERSION` is unit-tested against the `playwright==` pin in `requirements/requirements-test.txt`

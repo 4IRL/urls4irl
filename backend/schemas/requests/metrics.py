@@ -94,7 +94,7 @@ UI_EVENT_NAMES: tuple[str, ...] = tuple(
 )
 
 
-# Python 3.11+ star-unpack into Literal (PEP 646). Verified at container
+# PEP 646 star-unpack into Literal. Verified at container
 # startup — see Step 1 instructions in the plan. If support for 3.10 ever
 # becomes required, build the union via `Literal[tuple_member_0, ...]`
 # explicitly.
