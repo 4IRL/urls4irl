@@ -7,7 +7,7 @@
 # U4I_PLAYWRIGHT_IDLE_MINUTES with no clients (see docker/playwright-entrypoint.sh).
 
 # One source for the version: keep in lockstep with requirements/requirements-test.txt (unit-tested).
-ARG PLAYWRIGHT_VERSION=1.60.0
+ARG PLAYWRIGHT_VERSION=1.65.1
 FROM mcr.microsoft.com/playwright:v${PLAYWRIGHT_VERSION}-noble
 ARG PLAYWRIGHT_VERSION
 # Browsers are already in /ms-playwright; install only the CLI so a start never hits the npm registry.

@@ -120,7 +120,7 @@ runs:
           use_fallback_dns_if_mirror_unresolvable
           echo "playwright install: attempt $attempt of $ATTEMPTS (limit ${ATTEMPT_TIMEOUT_MINUTES}m)"
           start_seconds=$SECONDS
-          timeout --kill-after=30s "${ATTEMPT_TIMEOUT_MINUTES}m" python3.11 -m playwright install chromium --with-deps
+          timeout --kill-after=30s "${ATTEMPT_TIMEOUT_MINUTES}m" python3.14 -m playwright install chromium --with-deps
           install_rc=$?
           echo "playwright install: attempt $attempt rc=$install_rc after $((SECONDS - start_seconds))s"
           if [[ "$install_rc" -eq 0 ]]; then

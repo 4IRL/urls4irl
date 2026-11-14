@@ -1866,11 +1866,76 @@ def test_host_static_still_runs_its_host_pytest_line() -> None:
 
 @pytest.mark.skipif(GIT_BINARY is None, reason="needs `git`")
 def test_host_static_never_writes_bytecode_into_the_bind_mounted_tree() -> None:
-    # tests/ and backend/ are bind-mounted into `web` (same CPython 3.11), which would reuse
+    # tests/ and backend/ are bind-mounted into `web` (same CPython minor), which would reuse
     # host-written __pycache__ files whose code objects carry host paths.
     output = _successful_dry_run("test-host-static")
     host_line = _single_line_containing(output, HOST_STATIC_PYTEST_FRAGMENT)
     assert host_line.startswith("PYTHONDONTWRITEBYTECODE=1 ")
+
+
+VENV_CHECK_SCRIPT: str = "scripts/host_venv_check.sh"
+MISE_PYTHON_COMMAND: str = "mise exec python -- python"
+
+
+@pytest.mark.skipif(GIT_BINARY is None, reason="needs `git`")
+def test_host_static_checks_the_venv_version_before_creating_the_venv() -> None:
+    # The version check must run first (it may delete venv/), then the venv-create line.
+    lines = _successful_dry_run("test-host-static").splitlines()
+    check_index, check_line = next(
+        (index, line) for index, line in enumerate(lines) if VENV_CHECK_SCRIPT in line
+    )
+    create_index = next(
+        index for index, line in enumerate(lines) if "-m venv venv" in line
+    )
+    assert check_index < create_index
+    assert f'"{_primary_root()}" {MISE_PYTHON_COMMAND}' in check_line
+    assert HOST_STATIC_PYTEST_FRAGMENT not in check_line
+
+
+@pytest.mark.skipif(GIT_BINARY is None, reason="needs `git`")
+def test_host_static_reinstalls_the_pre_commit_hook_after_a_rebuild() -> None:
+    # A rebuilt venv has no pre-commit, so an installed hook would point at a missing binary.
+    lines = _successful_dry_run("test-host-static").splitlines()
+    reinstall_index, reinstall_line = next(
+        (index, line)
+        for index, line in enumerate(lines)
+        if "venv/bin/pre-commit install" in line
+    )
+    pin_index = next(
+        index for index, line in enumerate(lines) if '/venv/bin/pip" install' in line
+    )
+    pytest_index = next(
+        index for index, line in enumerate(lines) if HOST_STATIC_PYTEST_FRAGMENT in line
+    )
+    assert pin_index < reinstall_index < pytest_index
+    assert "git rev-parse --git-path hooks/pre-commit" in reinstall_line
+    assert "grep -E '^pre-commit=='" in reinstall_line
+    assert "requirements-dev.txt" in reinstall_line
+    assert HOST_STATIC_PYTEST_FRAGMENT not in reinstall_line
+
+
+def test_makefile_and_script_agree_on_the_rebuilt_exit_code() -> None:
+    # The Makefile treats this rc as "venv rebuilt, carry on"; drift from the script's literal aborts it.
+    makefile_match = re.search(
+        r"^HOST_VENV_REBUILT_RC\s*:=\s*(\d+)\s*$",
+        MAKEFILE.read_text(),
+        re.MULTILINE,
+    )
+    script_match = re.search(
+        r"^REBUILT_EXIT=(\d+)\s*$",
+        (REPO_ROOT / VENV_CHECK_SCRIPT).read_text(),
+        re.MULTILINE,
+    )
+    assert makefile_match is not None and script_match is not None
+    assert makefile_match.group(1) == script_match.group(1)
+
+
+@pytest.mark.skipif(GIT_BINARY is None, reason="needs `git`")
+def test_hooks_checks_the_venv_version_with_the_main_checkout_root() -> None:
+    output = _successful_dry_run("hooks")
+    check_line = _single_line_containing(output, VENV_CHECK_SCRIPT)
+    assert f'"$main" {MISE_PYTHON_COMMAND}' in check_line
+    assert output.index(VENV_CHECK_SCRIPT) < output.index("-m venv venv")
 
 
 def test_agent_documents_the_token_budget() -> None:

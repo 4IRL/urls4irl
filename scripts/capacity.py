@@ -415,7 +415,7 @@ def parse_meminfo(text: str, key: str) -> int | None:
         if name == key:
             try:
                 return int(rest.split()[0]) * BYTES_PER_KB
-            except (IndexError, ValueError):
+            except IndexError, ValueError:
                 return None
     return None
 
@@ -468,7 +468,7 @@ def run_docker_info() -> str:
 def _read_optional(path: Path) -> str | None:
     try:
         return path.read_text()
-    except (OSError, UnicodeDecodeError):
+    except OSError, UnicodeDecodeError:
         return None
 
 
@@ -826,7 +826,7 @@ def hub_vm_meminfo(hub_project: str, docker: DockerRunner) -> str | None:
         if not container_ids:
             return None
         meminfo = docker(["exec", container_ids[0], "cat", "/proc/meminfo"])
-    except (DockerRunError, OSError, UnicodeDecodeError):
+    except DockerRunError, OSError, UnicodeDecodeError:
         return None
     return meminfo.stdout if meminfo.returncode == 0 else None
 

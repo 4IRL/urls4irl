@@ -139,7 +139,7 @@ class MetricsWriter:
             return None
         try:
             return int(raw_value)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             return None
 
     def reserve_batch(self, batch_id: str) -> bool:

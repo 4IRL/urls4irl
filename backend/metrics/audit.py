@@ -137,7 +137,7 @@ def _parse_python_file(file_path: Path) -> ast.AST | None:
     """Parse a Python file to AST. Returns `None` on syntax errors (skip silently)."""
     try:
         source = file_path.read_text(encoding="utf-8")
-    except (OSError, UnicodeDecodeError):
+    except OSError, UnicodeDecodeError:
         return None
     try:
         return ast.parse(source, filename=str(file_path))
