@@ -1,0 +1,56 @@
+name: Multi-arch build check
+permissions:
+  contents: read
+  packages: read
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'docker/Dockerfile*'
+      - 'requirements/**'
+      - '.mise.toml'
+      - '.github/workflows/multiarch-build-check.yml'
+
+jobs:
+  MultiArchBuildCheck:
+    name: Build check (amd64 + arm64) for ${{ matrix.image }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: u4i-dev
+            file: docker/Dockerfile
+          - image: u4i-workflow
+            file: docker/Dockerfile.Workflow
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set lowercase image owner
+        run: echo "OWNER_LC=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_ENV"
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.7.0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
+
+      - name: Log in to GHCR (read-only cache)
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build only (no push, no cache write)
+        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
+        with:
+          context: .
+          file: ${{ matrix.file }}
+          platforms: linux/amd64,linux/arm64
+          push: false
+          cache-from: type=registry,ref=ghcr.io/${{ env.OWNER_LC }}/${{ matrix.image }}:buildcache
