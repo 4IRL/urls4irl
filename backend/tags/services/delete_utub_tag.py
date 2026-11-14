@@ -1,3 +1,5 @@
+from flask import g
+
 from backend import db
 from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.app_logger import safe_add_many_logs
@@ -12,8 +14,9 @@ from backend.schemas.tags import (
     UtubTagOnAddDeleteSchema,
 )
 from backend.tags.constants import UTubTagErrorCodes
+from backend.tags.services.tag_permissions import utub_tag_delete_refusal_response
 from backend.utils.strings.tag_strs import TAGS_SUCCESS
-from backend.utubs.guards import reject_if_utub_locked
+from backend.utubs.guards import UtubAccess, lock_and_reauthorize
 
 
 def delete_utub_tag_from_utub_and_utub_urls(
@@ -31,11 +34,21 @@ def delete_utub_tag_from_utub_and_utub_urls(
         - Response: JSON response on success
         - int: HTTP status code 200
     """
-    utub_locked_error: FlaskResponse | None = reject_if_utub_locked(
-        utub, error_code=UTubTagErrorCodes.UTUB_IS_LOCKED
+    utub_locked_error: FlaskResponse | None = lock_and_reauthorize(
+        utub,
+        required_access=UtubAccess.MEMBER,
+        error_code=UTubTagErrorCodes.UTUB_IS_LOCKED,
     )
     if utub_locked_error is not None:
+        db.session.rollback()
         return utub_locked_error
+
+    policy_refusal: FlaskResponse | None = utub_tag_delete_refusal_response(
+        utub, is_manager=g.is_manager
+    )
+    if policy_refusal is not None:
+        db.session.rollback()
+        return policy_refusal
 
     utub_url_ids_with_utub_tag = _get_utub_url_ids_for_utub_tag(utub, utub_tag)
 
