@@ -297,7 +297,7 @@ def test_mise_toml_reports_non_table_tools() -> None:
         "FROM postgres:16.3-bookworm\n",
         "FROM node@sha256:" + "a" * 64 + "\n",
         "FROM ghcr.io/4irl/u4i-prod:latest\n",
-        "ARG PLAYWRIGHT_VERSION=1.60.0\n"
+        "ARG PLAYWRIGHT_VERSION=1.65.1\n"
         "FROM mcr.microsoft.com/playwright:v${PLAYWRIGHT_VERSION}-noble\n"
         "ARG PLAYWRIGHT_VERSION\n",
         "FROM scratch\n",
@@ -382,7 +382,7 @@ def test_dockerfile_flags_unpinned(dockerfile: str, flagged_line: int) -> None:
         "redis:6.2.16",
         "cloudflare/cloudflared:2026.6.1",
         "ghcr.io/4irl/u4i-prod:latest",
-        "u4i-playwright:1.60.0",
+        "u4i-playwright:1.65.1",
         "'redis:6.2.16-alpine'",
         "redis@sha256:" + "b" * 64,
     ],
