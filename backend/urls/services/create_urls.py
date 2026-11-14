@@ -1,6 +1,6 @@
 import time
 
-from flask import current_app
+from flask import current_app, g
 from flask_login import current_user
 
 from backend import db
@@ -42,6 +42,10 @@ from backend.tags.services.create_url_tag import (
     get_tag_applied_counts,
     record_tag_applied_events,
 )
+from backend.tags.services.tag_permissions import (
+    url_create_tags_refusal_response,
+    url_restore_preserved_tags_refusal_response,
+)
 from backend.urls.constants import URLErrorCodes, URLNormalizationResult, URLState
 from backend.urls.data_models import NormalizedUrl, ValidatedUrl
 from backend.urls.permissions import can_act_as_url_adder
@@ -51,7 +55,11 @@ from backend.urls.services.trashed_url_tags import (
 )
 from backend.utils.datetime_utils import utc_now
 from backend.utils.strings.url_strs import URL_FAILURE, URL_SUCCESS
-from backend.utubs.guards import reject_if_utub_locked
+from backend.utubs.guards import (
+    UtubAccess,
+    lock_and_reauthorize,
+    reject_if_utub_locked,
+)
 
 
 def create_url_in_utub(
@@ -79,11 +87,34 @@ def create_url_in_utub(
     """
     if tag_strings is None:
         tag_strings = []
-    utub_locked_error: FlaskResponse | None = reject_if_utub_locked(
-        current_utub, error_code=URLErrorCodes.UTUB_IS_LOCKED
-    )
-    if utub_locked_error is not None:
-        return utub_locked_error
+    utub_locked_error: FlaskResponse | None
+    if tag_strings:
+        # Tag-bearing create: lock the UTub row and gate on the tagging policy
+        # before any Urls/UtubUrls/association row is created or revived. The guarantee
+        # is check-time only: the row lock is released by the first commit after it
+        # (get_or_create_url's commit for a fresh URL, otherwise the association or
+        # revive commit), so a manager flip after this check does not affect the
+        # in-flight create.
+        utub_locked_error = lock_and_reauthorize(
+            current_utub,
+            required_access=UtubAccess.MEMBER,
+            error_code=URLErrorCodes.UTUB_IS_LOCKED,
+        )
+        if utub_locked_error is not None:
+            db.session.rollback()
+            return utub_locked_error
+        policy_refusal: FlaskResponse | None = url_create_tags_refusal_response(
+            current_utub, is_manager=g.is_manager
+        )
+        if policy_refusal is not None:
+            db.session.rollback()
+            return policy_refusal
+    else:
+        utub_locked_error = reject_if_utub_locked(
+            current_utub, error_code=URLErrorCodes.UTUB_IS_LOCKED
+        )
+        if utub_locked_error is not None:
+            return utub_locked_error
     had_tracking: bool = safe_get_url_validator(current_app).contains_tracking_params(
         url_string
     )
@@ -664,6 +695,19 @@ def _revive_trashed_url_in_utub(
         is_manager=is_current_utub_manager(),
         member_ids=member_ids,
     )
+
+    # Keeping the preserved tags is a tag write: follow the tagging policy.
+    restore_policy_refusal: FlaskResponse | None = (
+        url_restore_preserved_tags_refusal_response(
+            current_utub,
+            is_manager=is_current_utub_manager(),
+            has_preserved_tags=can_keep_tags
+            and bool(locked_utub_url.associated_tag_ids),
+        )
+    )
+    if restore_policy_refusal is not None:
+        db.session.rollback()
+        return restore_policy_refusal
 
     # Read everything that depends on the trashed state before any write.
     lost_tag_count: int = (
