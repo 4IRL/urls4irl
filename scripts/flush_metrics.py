@@ -345,7 +345,7 @@ def run_flush(
             bucket_epoch, event_name, dims = parsed
             try:
                 count_value = int(raw_value)
-            except (TypeError, ValueError):
+            except TypeError, ValueError:
                 continue
             bucket_start_dt = epoch_to_aware_datetime(bucket_epoch)
             if event_name == "api_hit":
@@ -412,7 +412,7 @@ def _resolve_bucket_seconds() -> int:
     """
     try:
         return int(os.environ.get("METRICS_BUCKET_SECONDS", DEFAULT_BUCKET_SECONDS))
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return DEFAULT_BUCKET_SECONDS
 
 
@@ -474,7 +474,7 @@ def run_latency_flush(
         for raw_duration in drained_values:
             try:
                 duration_value = float(raw_duration)
-            except (TypeError, ValueError):
+            except TypeError, ValueError:
                 continue
             rows.append(
                 (
@@ -550,7 +550,7 @@ def run_latency_rollup(
     if raw_last_rollup is not None:
         try:
             last_rollup_epoch = int(raw_last_rollup)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             last_rollup_epoch = 0
         if now_epoch - last_rollup_epoch < LATENCY_ROLLUP_INTERVAL_SECONDS:
             return 0
@@ -610,7 +610,7 @@ def prune_latency_samples(
     if raw_last_prune is not None:
         try:
             last_prune_epoch = int(raw_last_prune)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             last_prune_epoch = 0
         if now_epoch - last_prune_epoch < LATENCY_PRUNE_INTERVAL_SECONDS:
             return

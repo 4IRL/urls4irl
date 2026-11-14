@@ -29,7 +29,7 @@ URLS4IRL is a collaborative URL sharing platform where users organize links into
 
 **Recommended:** Docker & Docker Compose
 
-**Without Docker:** Python 3.11, PostgreSQL, Redis, Node.js
+**Without Docker:** Python 3.14, PostgreSQL, Redis, Node.js
 
 ### First-time clone setup
 
@@ -42,7 +42,7 @@ make setup
 `make setup` is idempotent (safe to re-run, and safe in a git worktree) and runs three steps:
 
 1. `make tools` needs [mise](https://mise.jdx.dev/installing-mise.html). It installs the host lint
-   toolchain pinned in `.mise.toml` (Python 3.11.14, node, pnpm, ruff, shellcheck, shfmt,
+   toolchain pinned in `.mise.toml` (Python 3.14.10, node, pnpm, ruff, shellcheck, shfmt,
    actionlint), runs `pnpm install --frozen-lockfile --ignore-scripts` in `frontend/`, and points
    `git blame` at `.git-blame-ignore-revs`. Don't run `mise trust`: the config must stay pin-only,
    and `make mise-config-check` enforces that.

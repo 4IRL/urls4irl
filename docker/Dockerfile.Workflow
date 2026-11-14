@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.5
-FROM debian:12.15-slim
+FROM python:3.14.10-slim-bookworm
 LABEL org.opencontainers.image.source="https://github.com/4IRL/urls4irl/daily-workflow"
 
 # Install system dependencies
@@ -14,15 +14,12 @@ RUN apt-get update \
         cron \
         wget \
         gnupg \
-        lsb-release \
         ca-certificates \
         unzip \
         file \
         procps \
-        python3-minimal \
-        python3-venv \
     && wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor -o /usr/share/keyrings/postgresql.gpg \
-    && echo "deb [signed-by=/usr/share/keyrings/postgresql.gpg] http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list \
+    && echo "deb [signed-by=/usr/share/keyrings/postgresql.gpg] http://apt.postgresql.org/pub/repos/apt $(. /etc/os-release && echo "$VERSION_CODENAME")-pgdg main" > /etc/apt/sources.list.d/pgdg.list \
     && apt-get update \
     && apt-get install -y --no-install-recommends postgresql-client-16 \
     && RCLONE_VERSION=${RCLONE_VERSION} curl -fsSL https://rclone.org/install.sh | bash \
@@ -36,7 +33,7 @@ RUN python3 -m venv /opt/metrics-venv \
     && /opt/metrics-venv/bin/pip install --no-cache-dir --upgrade pip==26.2.1 \
     && /opt/metrics-venv/bin/pip install --no-cache-dir \
          redis==5.0.1 \
-         psycopg2-binary==2.9.9
+         psycopg2-binary==2.9.13
 
 # Create non-root user for running cron jobs
 RUN groupadd --gid 1001 workflow \

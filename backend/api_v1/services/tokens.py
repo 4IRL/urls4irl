@@ -85,7 +85,7 @@ def decode_access_token(*, token: str) -> Users | None:
     subject = payload.get(API_AUTH.SUBJECT_CLAIM)
     try:
         user_id = int(subject)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None
 
     return Users.query.get(user_id)

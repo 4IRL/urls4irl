@@ -258,7 +258,7 @@ def _parse_row_pk(model_class: type, raw_pk: str) -> tuple | object | None:
     for pk_column, raw_part in zip(primary_key_columns, raw_parts):
         try:
             coerced_parts.append(pk_column.type.python_type(raw_part))
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             return None
 
     if len(coerced_parts) == 1:

@@ -151,7 +151,7 @@ def _epoch_bytes_to_datetime(epoch_bytes: bytes | None) -> datetime | None:
         return None
     try:
         return datetime.fromtimestamp(int(epoch_bytes), tz=timezone.utc)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None
 
 
@@ -345,7 +345,7 @@ def _probe_system_resources() -> SystemResources | None:
     """
     try:
         load_avg_1m = os.getloadavg()[0]
-    except (AttributeError, OSError):
+    except AttributeError, OSError:
         return None
     try:
         with open(_MEMINFO_PATH, "r", encoding="utf-8") as meminfo_file:
