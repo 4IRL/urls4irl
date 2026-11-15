@@ -11,6 +11,7 @@ from pydantic import ValidationError
 from backend.invite_links.constants import (
     INVITE_LINK_EXPIRY_DAYS_VALUES,
     INVITE_LINK_MAX_USES_VALUES,
+    INVITE_LINK_PREVIEW_WINDOW_DAYS_VALUES,
     InviteLinkErrorCodes,
     InviteLinkStatus,
     InviteState,
@@ -221,6 +222,11 @@ def test_link_schema_camel_case_and_iso_dates() -> None:
         use_count=2,
         created_at=moment,
         creator_username=None,
+        preview_enabled=True,
+        preview_window_days=7,
+        preview_ends_at=moment,
+        preview_effective_enabled=False,
+        preview_effective_ends_at=None,
     )
     dumped = link.model_dump(by_alias=True)
     assert dumped == {
@@ -231,7 +237,79 @@ def test_link_schema_camel_case_and_iso_dates() -> None:
         "useCount": 2,
         "createdAt": moment.isoformat(),
         "creatorUsername": None,
+        "previewEnabled": True,
+        "previewWindowDays": 7,
+        "previewEndsAt": moment.isoformat(),
+        "previewEffectiveEnabled": False,
+        "previewEffectiveEndsAt": None,
     }
+
+
+@pytest.mark.parametrize("days", INVITE_LINK_PREVIEW_WINDOW_DAYS_VALUES)
+def test_update_accepts_preview_window_values(days: int) -> None:
+    """
+    GIVEN each allowed preview window
+    WHEN validated as a preview-only update
+    THEN it is accepted and only that field is set
+    """
+    request = UpdateInviteLinkRequest.model_validate({"preview_window_days": days})
+    assert request.preview_window_days == days
+    assert request.model_fields_set == {"preview_window_days"}
+
+
+def test_preview_window_literal_matches_constants() -> None:
+    """
+    GIVEN the preview window constant
+    WHEN compared with the update schema Literal
+    THEN they are identical
+    """
+    assert _literal_values(UpdateInviteLinkRequest, "preview_window_days") == set(
+        INVITE_LINK_PREVIEW_WINDOW_DAYS_VALUES
+    )
+
+
+@pytest.mark.parametrize("bad", [2, 0, True, 3.0, "3", None, 30])
+def test_update_rejects_bad_preview_window(bad: Any) -> None:
+    """
+    GIVEN a preview window outside the set, of the wrong type, or null
+    WHEN validated as an update
+    THEN it is rejected
+    """
+    with pytest.raises(ValidationError):
+        UpdateInviteLinkRequest.model_validate({"preview_window_days": bad})
+
+
+@pytest.mark.parametrize("bad", [1, 0, "true", None])
+def test_update_rejects_bad_preview_enabled(bad: Any) -> None:
+    """
+    GIVEN a non-boolean or null preview_enabled
+    WHEN validated as an update
+    THEN it is rejected
+    """
+    with pytest.raises(ValidationError):
+        UpdateInviteLinkRequest.model_validate({"preview_enabled": bad})
+
+
+@pytest.mark.parametrize("enabled", [True, False])
+def test_update_accepts_preview_only_body(enabled: bool) -> None:
+    """
+    GIVEN a body with only preview_enabled
+    WHEN validated
+    THEN it is accepted and only that field is set
+    """
+    request = UpdateInviteLinkRequest.model_validate({"preview_enabled": enabled})
+    assert request.preview_enabled is enabled
+    assert request.model_fields_set == {"preview_enabled"}
+
+
+def test_update_empty_body_message_names_preview_fields() -> None:
+    """
+    GIVEN an empty update body
+    WHEN validated
+    THEN the error names every updatable field including the preview ones
+    """
+    with pytest.raises(ValidationError, match="preview_enabled or preview_window_days"):
+        UpdateInviteLinkRequest.model_validate({})
 
 
 _EXPECTED_STATUS: dict[InviteState, InviteLinkStatus | None] = {
