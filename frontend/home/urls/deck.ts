@@ -83,14 +83,35 @@ export function resetURLDeckOnDeleteUTub(): void {
   disableURLSearch();
 }
 
-export function showURLDeckBannerError(errorMessage: string): void {
+// The pending hide timer of the banner currently up. A newer banner clears it so
+// it gets its full display time instead of losing its last seconds to an older call.
+let bannerHideTimeout: ReturnType<typeof setTimeout> | null = null;
+
+/**
+ * Shows `errorMessage` in the URL deck banner for 3.5s. The banner has a static
+ * `role="alert"`, so a text change is announced even when focus is not moved.
+ *
+ * The text is cleared and then set again so a repeat of the same message is
+ * announced anew; the final text is present synchronously on return.
+ *
+ * @param errorMessage - The text to show.
+ * @param options.takeFocus - Move focus to the banner (default true). Policy
+ *   refusals pass false so they never steal focus from the control in use.
+ */
+export function showURLDeckBannerError(
+  errorMessage: string,
+  { takeFocus = true }: { takeFocus?: boolean } = {},
+): void {
   const SECONDS_TO_SHOW_ERROR = 3.5;
   const errorBanner = $("#URLDeckErrorIndicator");
   const CLASS_TO_SHOW = "URLDeckErrorIndicatorShow";
-  errorBanner.text(errorMessage).addClass(CLASS_TO_SHOW).trigger("focus");
+  errorBanner.text("").text(errorMessage).addClass(CLASS_TO_SHOW);
+  if (takeFocus) errorBanner.trigger("focus");
 
-  setTimeout(() => {
+  if (bannerHideTimeout !== null) clearTimeout(bannerHideTimeout);
+  bannerHideTimeout = setTimeout(() => {
     errorBanner.removeClass(CLASS_TO_SHOW);
+    bannerHideTimeout = null;
   }, 1000 * SECONDS_TO_SHOW_ERROR);
 }
 
