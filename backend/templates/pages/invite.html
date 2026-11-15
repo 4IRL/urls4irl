@@ -38,6 +38,39 @@
       <a class="short-link-secondary" href="{{ page.login_url }}">Log in</a>
     </div>
     {% endif %}
+    {% elif page.kind == "preview" %}
+    {% set preview = page.preview %}
+    <a id="invitePreviewSkip" class="invite-preview-skip" href="#invitePreviewBar">{{ invite_strings.PREVIEW_SKIP_LINK }}</a>
+    <p class="short-link-eyebrow">{{ invite_strings.EYEBROW_TEMPLATE.format(inviter=page.inviter) }}</p>
+    <h1 id="inviteHeading" class="short-link-heading">{{ page.utub_name }}</h1>
+    {% if page.utub_description %}
+    <p class="invite-description">{{ page.utub_description }}</p>
+    {% endif %}
+    <span id="invitePreviewBadge" class="invite-preview-badge">{{ invite_strings.PREVIEW_BADGE_LABEL }} &middot; {% if preview.total_count == 1 %}{{ invite_strings.PREVIEW_URL_COUNT_ONE }}{% else %}{{ invite_strings.PREVIEW_URL_COUNT_TEMPLATE.format(count=preview.total_count) }}{% endif %} &middot; {{ invite_strings.PREVIEW_AVAILABLE_UNTIL }} <time datetime="{{ preview.available_until_iso }}">{{ preview.available_until_label }}</time></span>
+    {% if preview.total_count == 0 %}
+    <p id="invitePreviewEmpty" class="invite-preview-empty">{{ invite_strings.PREVIEW_EMPTY }}</p>
+    {% else %}
+    <ul id="invitePreviewList" class="invite-preview-list" role="list">
+      {% for item in preview.urls %}
+      <li class="invite-preview-card">
+        {% if item.title %}<span class="invite-preview-title">{{ item.title }}</span>{% endif %}
+        {% if item.is_web_url %}
+        <a class="invite-preview-url" href="{{ item.url }}" target="_blank" rel="noopener noreferrer nofollow">{{ item.url }}<span aria-hidden="true"> &#8599;</span><span class="visually-hidden"> {{ invite_strings.PREVIEW_NEW_TAB }}</span></a>
+        {% else %}
+        <span class="invite-preview-url">{{ item.url }}</span>
+        {% endif %}
+        {% if item.tags %}
+        <ul class="invite-preview-tags" role="list">
+          {% for tag in item.tags %}<li class="invite-preview-tag">{{ tag }}</li>{% endfor %}
+        </ul>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+    {% if preview.hidden_count > 0 %}
+    <p id="invitePreviewMore" class="invite-preview-more">{{ invite_strings.PREVIEW_MORE_TEMPLATE.format(count=preview.hidden_count) }}</p>
+    {% endif %}
+    {% endif %}
     {% elif page.kind == "error" %}
     <p class="invite-message" role="{{ page.message_role or 'alert' }}">{{ page.message }}</p>
     <h1 id="inviteHeading" class="short-link-heading">{{ page.heading }}</h1>
@@ -53,6 +86,16 @@
     {% endif %}
   </section>
 </main>
+{% if page.kind == "preview" %}
+<div id="invitePreviewBar" role="region" aria-label="{{ invite_strings.PREVIEW_BAR_LABEL }}" tabindex="-1">
+  <p class="invite-preview-bar-heading">{{ invite_strings.PREVIEW_BAR_HEADING }}</p>
+  <p class="invite-preview-bar-text">{{ invite_strings.PREVIEW_BAR_TEMPLATE.format(utub_name=page.utub_name) }}</p>
+  <div class="invite-preview-bar-actions">
+    <a id="invitePreviewCreateAccount" class="splash-button" href="{{ page.register_url }}">Create account</a>
+    <a id="invitePreviewLogIn" class="invite-preview-secondary" href="{{ page.login_url }}">Log in</a>
+  </div>
+</div>
+{% endif %}
 
 <!-- Initialized by frontend/invite.ts -->
 <script nonce="{{ nonce }}" type="module" src="{{ vite_asset('invite.ts') }}"></script>

@@ -3237,7 +3237,8 @@
         }
       },
       "services": [
-        "backend.invite_links.services.invite_page:resolve_invite_page"
+        "backend.invite_links.services.invite_page:resolve_invite_page",
+        "backend.invite_links.services.invite_preview:build_invite_preview"
       ],
       "templates": []
     },

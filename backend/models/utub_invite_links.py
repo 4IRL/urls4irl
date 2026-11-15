@@ -4,6 +4,8 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
     Column,
     DateTime,
     ForeignKey,
@@ -16,6 +18,8 @@ from sqlalchemy import (
 
 from backend import db
 from backend.invite_links.constants import (
+    CK_INVITE_PREVIEW_END_WHEN_ENABLED,
+    INVITE_LINK_PREVIEW_DEFAULT_WINDOW_DAYS,
     INVITE_LINK_TOKEN_LENGTH,
     ONE_ACTIVE_INVITE_LINK_PER_UTUB,
     UNIQUE_INVITE_LINK_TOKEN,
@@ -39,6 +43,10 @@ class Utub_Invite_Links(db.Model):
 
     __tablename__ = "UtubInviteLinks"
     __table_args__ = (
+        CheckConstraint(
+            '"previewEnabled" = false OR "previewEndsAt" IS NOT NULL',
+            name=CK_INVITE_PREVIEW_END_WHEN_ENABLED,
+        ),
         UniqueConstraint("token", name=UNIQUE_INVITE_LINK_TOKEN),
         Index(
             ONE_ACTIVE_INVITE_LINK_PER_UTUB,
@@ -74,6 +82,24 @@ class Utub_Invite_Links(db.Model):
     )
     revoked_at: datetime | None = Column(
         DateTime(timezone=True), nullable=True, name="revokedAt"
+    )
+
+    preview_enabled: bool = Column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default=text("false"),
+        name="previewEnabled",
+    )
+    preview_window_days: int = Column(
+        Integer,
+        nullable=False,
+        default=INVITE_LINK_PREVIEW_DEFAULT_WINDOW_DAYS,
+        server_default=str(INVITE_LINK_PREVIEW_DEFAULT_WINDOW_DAYS),
+        name="previewWindowDays",
+    )
+    preview_ends_at: datetime | None = Column(
+        DateTime(timezone=True), nullable=True, default=None, name="previewEndsAt"
     )
 
     utub: Utubs = db.relationship("Utubs")

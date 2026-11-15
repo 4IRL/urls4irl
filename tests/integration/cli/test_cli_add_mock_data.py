@@ -581,6 +581,36 @@ def test_add_all_mock_data_invite_links_are_idempotent(runner):
         )
 
 
+def test_add_all_mock_data_seeds_only_live_limited_invite_with_preview_on(runner):
+    """
+    GIVEN a developer running `flask addmock all`
+    THEN only the live_limited invite link has the preview on (window 3, end below
+        its expiry) and every other mock link stays off.
+
+    Args:
+        runner (pytest.fixture): Provides a Flask application, and a FlaskCLIRunner
+    """
+    app, cli_runner = runner
+
+    result = cli_runner.invoke(args=["addmock", "all", "--no-dupes"])
+    assert result.exit_code == 0, result.output
+
+    labels = [state.label for state in MOCK_INVITE_LINK_STATES]
+    with app.app_context():
+        links = Utub_Invite_Links.query.order_by(Utub_Invite_Links.id).all()
+        assert len(links) == len(labels)
+        previews_on = [link for link in links if link.preview_enabled]
+        assert len(previews_on) == 1
+        limited = previews_on[0]
+        assert limited.max_uses is not None
+        assert limited.preview_window_days == 3
+        assert limited.preview_ends_at is not None
+        assert limited.preview_ends_at < limited.expires_at
+        for link in links:
+            if link is not limited:
+                assert link.preview_ends_at is None
+
+
 def test_add_metric_flows_raises_on_invalid_sample_payload(runner, monkeypatch):
     """
     GIVEN a sample metric flow payload that fails validation (a single step)

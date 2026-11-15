@@ -38,9 +38,35 @@ class InviteLinkSchema(BaseSchema):
         description="Username of the link's creator; null when that account was erased",
     )
 
+    preview_enabled: bool = Field(
+        alias=MODELS.PREVIEW_ENABLED,
+        description="Stored manager choice: show logged-out visitors a read-only preview",
+    )
+    preview_window_days: int = Field(
+        alias=MODELS.PREVIEW_WINDOW_DAYS,
+        description="Stored preview window in days: 1, 3 or 7",
+    )
+    preview_ends_at: datetime | None = Field(
+        alias=MODELS.PREVIEW_ENDS_AT,
+        description="Stored UTC ISO-8601 window end; null while the preview is off",
+    )
+    preview_effective_enabled: bool = Field(
+        alias=MODELS.PREVIEW_EFFECTIVE_ENABLED,
+        description="True when visitors can see the preview right now",
+    )
+    preview_effective_ends_at: datetime | None = Field(
+        alias=MODELS.PREVIEW_EFFECTIVE_ENDS_AT,
+        description="UTC ISO-8601 end of the preview, capped at the link's expiry; "
+        "null while the preview is off",
+    )
+
     @field_serializer("expires_at", "created_at")
     def serialize_datetimes(self, value: datetime) -> str:
         return value.isoformat()
+
+    @field_serializer("preview_ends_at", "preview_effective_ends_at")
+    def serialize_optional_datetimes(self, value: datetime | None) -> str | None:
+        return None if value is None else value.isoformat()
 
 
 class JoinViaInviteResponseSchema(BaseSchema):

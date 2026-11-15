@@ -23,7 +23,28 @@ from backend.utils.strings.invite_link_strs import INVITE_LINK_PAGE
 
 _INVITE_PAGE_TEMPLATE = "pages/invite.html"
 
-InvitePageKind = Literal["join_ready", "login_required", "dead", "error"]
+InvitePageKind = Literal["join_ready", "login_required", "preview", "dead", "error"]
+
+
+@dataclass(frozen=True)
+class InvitePreviewUrl:
+    """One URL card of the logged-out preview: the allowlisted fields only."""
+
+    title: str
+    url: str
+    is_web_url: bool
+    tags: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class InvitePreview:
+    """The read-only preview list for state 3 (primitives only, keeps this a leaf)."""
+
+    urls: tuple[InvitePreviewUrl, ...]
+    total_count: int
+    hidden_count: int
+    available_until_iso: str
+    available_until_label: str
 
 
 @dataclass(frozen=True)
@@ -43,6 +64,7 @@ class InvitePageView:
     heading: str | None = None
     back_url: str | None = None
     show_home_link: bool = False
+    preview: InvitePreview | None = None
 
 
 def _stamp_privacy_headers(response: Response) -> Response:
@@ -66,6 +88,7 @@ def render_invite_page(*, page: InvitePageView, status_code: int) -> Response:
         render_template(
             _INVITE_PAGE_TEMPLATE,
             is_invite_page=True,
+            is_invite_preview_page=page.kind == "preview",
             page=page,
             page_title=page.page_title,
             invite_strings=INVITE_LINK_PAGE,

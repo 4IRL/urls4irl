@@ -564,6 +564,29 @@ def test_invite_link_viewed_rejects_invalid_dims(bad_dims: dict):
         model_class.model_validate(bad_dims)
 
 
+@pytest.mark.parametrize("list_state", ["empty", "full", "truncated"])
+def test_invite_link_preview_viewed_accepts_each_list_state(list_state: str):
+    model_class = DIMENSION_MODELS[EventName.INVITE_LINK_PREVIEW_VIEWED]
+    assert model_class is not None
+    model = model_class.model_validate({"list_state": list_state})
+    assert model.list_state == list_state
+
+
+@pytest.mark.parametrize(
+    "bad_dims",
+    [
+        {},
+        {"list_state": "partial"},
+        {"list_state": "full", "utub_id": "1"},
+    ],
+)
+def test_invite_link_preview_viewed_rejects_invalid_dims(bad_dims: dict):
+    model_class = DIMENSION_MODELS[EventName.INVITE_LINK_PREVIEW_VIEWED]
+    assert model_class is not None
+    with pytest.raises(ValidationError):
+        model_class.model_validate(bad_dims)
+
+
 def test_per_event_models_reject_missing_required_keys():
     """Omitting a required field raises ValidationError."""
     with pytest.raises(ValidationError):

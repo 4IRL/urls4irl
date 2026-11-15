@@ -48,13 +48,294 @@ button.splash-button {
     outline-offset: 2px;
 }
 
+/* State 3: read-only preview (body.invite-preview) */
+
+.short-link-panel > * {
+    min-width: 0;
+}
+
+.invite-preview-skip {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.invite-preview-skip:focus,
+.invite-preview-skip:focus-visible {
+    position: static;
+    width: auto;
+    height: auto;
+    margin: 0;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
+    color: var(--UTubDescriptionColor);
+    outline: 3px solid var(--deckSelectionGreen);
+    outline-offset: 2px;
+}
+
+.invite-preview-badge {
+    align-self: flex-start;
+    padding: 2px 10px;
+    border: 1px solid var(--tagCountBorderColor);
+    border-radius: var(--radius-pill);
+    color: var(--navbarText);
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-bold);
+}
+
+.invite-preview-list {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    padding: 0;
+    border-radius: var(--radius-card);
+    list-style: none;
+    overflow: hidden;
+}
+
+.invite-preview-card {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+    padding: var(--space-3) var(--space-4);
+    background: var(--evenUrlCardsBackgroundColor);
+}
+
+.invite-preview-card:nth-child(odd) {
+    background: var(--oddUrlCardsBackgroundColor);
+}
+
+.invite-preview-title {
+    color: var(--UTubDescriptionColor);
+    font-size: var(--fs-md);
+    font-weight: var(--fw-bold);
+    overflow-wrap: anywhere;
+}
+
+.invite-preview-url {
+    color: var(--UTubDescriptionColor);
+    font-size: var(--fs-sm);
+    word-break: break-all;
+}
+
+a.invite-preview-url {
+    color: var(--linkColor);
+    text-decoration: none;
+}
+
+a.invite-preview-url:hover {
+    text-decoration: underline;
+}
+
+a.invite-preview-url > span[aria-hidden="true"] {
+    margin-left: 4px;
+    color: var(--UTubDescriptionColor);
+}
+
+.invite-preview-url:focus-visible,
+#invitePreviewBar .splash-button:focus-visible,
+#invitePreviewBar .invite-preview-secondary:focus-visible {
+    outline: 3px solid var(--deckSelectionGreen);
+    outline-offset: 2px;
+    border-radius: 2px;
+}
+
+.invite-preview-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.invite-preview-tag {
+    padding: 1px 9px;
+    border: 1px solid var(--tagCountBorderColor);
+    border-radius: var(--radius-pill);
+    background: var(--tagBackgroundColor);
+    color: var(--UTubDescriptionColor);
+    font-size: var(--fs-xs);
+    overflow-wrap: anywhere;
+}
+
+.invite-preview-more {
+    margin: 0;
+    color: var(--navbarText);
+    font-size: var(--fs-sm);
+}
+
+.invite-preview-empty {
+    margin: 0;
+    padding: var(--space-4);
+    border: 1px dashed var(--tagCountBorderColor);
+    border-radius: var(--radius-card);
+    color: var(--navbarText);
+    font-size: var(--fs-sm);
+    text-align: center;
+}
+
+/* Sticky create-account bar; --invite-banner-offset is written by initPreviewBar(). */
+#invitePreviewBar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: var(--invite-banner-offset, 0px);
+    z-index: 1000;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: var(--space-4);
+    padding: var(--space-3) var(--space-4);
+    padding-bottom: calc(var(--space-3) + env(safe-area-inset-bottom, 0px));
+    background: var(--panelBackgroundColor);
+    border-top: 2px solid var(--darkSplashLabelGreen);
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.4);
+    color: var(--UTubDescriptionColor);
+    transition: bottom 200ms ease-out;
+}
+
+#invitePreviewBar:focus-visible {
+    outline: 3px solid var(--deckSelectionGreen);
+    outline-offset: -3px;
+}
+
+#invitePreviewBar p {
+    margin: 0;
+    font-size: var(--fs-sm);
+    overflow-wrap: anywhere;
+}
+
+.invite-preview-bar-heading {
+    grid-column: 1;
+    font-weight: var(--fw-bold);
+}
+
+.invite-preview-bar-text {
+    grid-column: 1;
+    color: var(--navbarText);
+}
+
+.invite-preview-bar-actions {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    display: flex;
+    gap: var(--space-2);
+}
+
+#invitePreviewBar .splash-button,
+#invitePreviewBar .invite-preview-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.75rem;
+    padding: var(--space-2) var(--space-4);
+    border-radius: var(--radius-md);
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-bold);
+    text-decoration: none;
+}
+
+#invitePreviewBar .splash-button {
+    border: 1px solid var(--darkSplashLabelGreen);
+    background-color: var(--darkSplashLabelGreen);
+    color: #fff;
+}
+
+#invitePreviewBar .splash-button:hover {
+    background-color: var(--splashGreen);
+}
+
+#invitePreviewBar .invite-preview-secondary {
+    border: 1px solid var(--navbarText);
+    color: var(--UTubDescriptionColor);
+    font-weight: 500;
+}
+
+/* Static fallbacks keep the last card and footer reachable if invite.ts does not run. */
+body.invite-preview {
+    padding-bottom: calc(
+        var(--invite-bar-height, 9rem) + var(--invite-banner-offset, 0px)
+    );
+}
+
+html:has(body.invite-preview) {
+    scroll-padding-bottom: calc(
+        var(--invite-bar-height, 9rem) + var(--invite-banner-offset, 0px)
+    );
+}
+
 @media (max-width: 767.98px) {
     .short-link-main {
         padding-bottom: calc(var(--space-16) + 8rem); /* clear of the cookie banner */
     }
 
+    body.invite-preview .short-link-main {
+        padding-bottom: var(--space-8);
+    }
+
     .short-link-cta-row a,
     .short-link-cta-row button {
         width: 100%;
+    }
+
+    a.invite-preview-url {
+        display: block;
+        padding: var(--space-3) 0;
+    }
+
+    #invitePreviewBar {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .invite-preview-bar-heading {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        margin: -1px;
+        padding: 0;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+    }
+
+    .invite-preview-bar-actions {
+        grid-column: 1;
+        grid-row: auto;
+        margin-top: var(--space-2);
+    }
+
+    .invite-preview-bar-actions > a {
+        flex: 1 1 0;
+    }
+}
+
+@media (max-height: 480px) {
+    #invitePreviewBar {
+        position: static;
+        bottom: auto;
+    }
+
+    body.invite-preview {
+        padding-bottom: var(--invite-banner-offset, 0px);
+    }
+
+    html:has(body.invite-preview) {
+        scroll-padding-bottom: var(--invite-banner-offset, 0px);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #invitePreviewBar {
+        transition: none;
     }
 }

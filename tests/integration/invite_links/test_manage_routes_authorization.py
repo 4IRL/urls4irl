@@ -27,6 +27,12 @@ ROUTE_CASES = [
     pytest.param(
         ROUTES.INVITE_LINKS.UPDATE_INVITE_LINK, "PATCH", {"max_uses": 5}, id="update"
     ),
+    pytest.param(
+        ROUTES.INVITE_LINKS.UPDATE_INVITE_LINK,
+        "PATCH",
+        {"preview_enabled": True, "preview_window_days": 7},
+        id="update-preview",
+    ),
     pytest.param(ROUTES.INVITE_LINKS.REPLACE_INVITE_LINK, "POST", {}, id="replace"),
     pytest.param(ROUTES.INVITE_LINKS.REVOKE_INVITE_LINK, "DELETE", None, id="revoke"),
 ]
@@ -36,13 +42,29 @@ def _assert_row_unchanged(app: Flask, before: tuple) -> None:
     all_rows = rows(app)
     assert len(all_rows) == 1
     row = all_rows[0]
-    assert (row.token, row.expires_at, row.max_uses, row.revoked_at) == before
+    assert (
+        row.token,
+        row.expires_at,
+        row.max_uses,
+        row.revoked_at,
+        row.preview_enabled,
+        row.preview_window_days,
+        row.preview_ends_at,
+    ) == before
 
 
 def _seed(app: Flask) -> tuple:
     add_invite_link(app, FIRST_UTUB_ID, CREATOR_ID, max_uses=10)
     row = rows(app)[0]
-    return (row.token, row.expires_at, row.max_uses, row.revoked_at)
+    return (
+        row.token,
+        row.expires_at,
+        row.max_uses,
+        row.revoked_at,
+        row.preview_enabled,
+        row.preview_window_days,
+        row.preview_ends_at,
+    )
 
 
 @pytest.mark.parametrize("route, method, body", ROUTE_CASES)
