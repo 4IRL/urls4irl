@@ -767,6 +767,224 @@ def test_signup_from_invite_lands_on_invite_join_without_membership(
     )
 
 
+def _create_copy_link_in_panel(
+    *,
+    app: Flask,
+    page: Page,
+    clipboard_mock: ClipboardMockHelper,
+    turn_preview_on: bool,
+) -> tuple[int, str, str]:
+    """The owner creates (and copies) a link in the panel, optionally turning the
+    preview on through the switch. Returns (utub_id, invite_url, token)."""
+    utub_id = get_utub_this_user_created(app, CREATOR_ID).id
+    login_user_and_select_utub_by_utubid(
+        app=app, page=page, user_id=CREATOR_ID, utub_id=utub_id
+    )
+    clipboard_mock.setup_clipboard_mock()
+    page.locator(HPL.BUTTON_MEMBER_INVITE_LINK).click()
+    page.locator(HPL.INVITE_LINK_CREATE_BTN).click()
+    expect(page.locator(HPL.INVITE_LINK_COPY_BTN)).to_be_visible()
+    if turn_preview_on:
+        page.locator(HPL.INVITE_LINK_PREVIEW_SWITCH).click()
+        # Wait for the save to settle before a visitor opens the link.
+        expect(page.locator(HPL.INVITE_LINK_PREVIEW_WARNING)).to_be_visible()
+        expect(page.locator(HPL.INVITE_LINK_PREVIEW_SWITCH)).not_to_have_attribute(
+            "aria-busy", "true"
+        )
+    page.locator(HPL.INVITE_LINK_COPY_BTN).click()
+    clipboard_mock.wait_for_write_count(count=1)
+    invite_url = clipboard_mock.get_clipboard_content()
+    token = invite_url.rsplit("/", 1)[1]
+    assert invite_url == f"{current_base_url(page=page)}/invite/{token}"
+    with app.app_context():
+        link = Utub_Invite_Links.query.filter_by(token=token).one()
+        assert link.preview_enabled is turn_preview_on
+    return utub_id, invite_url, token
+
+
+def test_panel_link_signup_handoff_ends_in_utub_with_one_join_click(
+    page: Page,
+    build_page_browser: Browser,
+    create_test_users,
+    create_test_utubs,
+    provide_app: Flask,
+    clipboard_mock: ClipboardMockHelper,
+):
+    """
+    GIVEN a link the owner created and copied in the panel
+    WHEN a logged-out visitor opens it, creates an account, validates the email
+         and clicks Join once
+    THEN the visitor lands in the UTub as a MEMBER and one use is counted, with no
+         membership or use before the click
+    """
+    utub_id, invite_url, token = _create_copy_link_in_panel(
+        app=provide_app, page=page, clipboard_mock=clipboard_mock, turn_preview_on=False
+    )
+
+    visitor_context = build_page_browser.new_context()
+    try:
+        visitor_context.set_default_timeout(10_000)
+        visitor_context.set_default_navigation_timeout(30_000)
+        add_playwright_cookie_banner_cookie(
+            context=visitor_context, base_url=current_base_url(page=page)
+        )
+        visitor = visitor_context.new_page()
+        visitor.goto(invite_url)
+        expect(visitor.locator(IPL.LINK_CREATE_ACCOUNT)).to_be_visible()
+        visitor.locator(IPL.LINK_CREATE_ACCOUNT).click()
+        wait_for_modal_ready(page=visitor, modal_selector=SPL.REGISTER_MODAL)
+        fill_register_fields(
+            page=visitor,
+            username=SIGNUP_USERNAME,
+            email=SIGNUP_EMAIL,
+            password=SIGNUP_PASSWORD,
+        )
+        user_id = _submit_signup_and_open_validation_link(app=provide_app, page=visitor)
+
+        visitor.wait_for_url(invite_url)
+        expect(visitor.locator(IPL.BUTTON_JOIN)).to_have_text(UTS.INVITE_JOIN_LABEL)
+        with provide_app.app_context():
+            assert (
+                Utub_Members.query.filter_by(utub_id=utub_id, user_id=user_id).count()
+                == 0
+            )
+            assert _use_count(token=token) == 0
+
+        visitor.locator(IPL.BUTTON_JOIN).click()
+
+        _assert_joined_as_member(
+            app=provide_app,
+            page=visitor,
+            utub_id=utub_id,
+            user_id=user_id,
+            token=token,
+        )
+    finally:
+        visitor_context.close()
+
+
+def test_preview_login_handoff_ends_with_one_join_click(
+    page: Page,
+    build_page_browser: Browser,
+    create_test_users,
+    create_test_utubs,
+    provide_app: Flask,
+    clipboard_mock: ClipboardMockHelper,
+):
+    """
+    GIVEN a link whose preview the owner turned on in the panel
+    WHEN a logged-out non-member opens it, uses the bar's Log in, logs in and
+         clicks Join once
+    THEN the visitor lands on the invite page without the preview, is not a member
+         before the click, and is a MEMBER with one use after it
+    """
+    utub_id, invite_url, token = _create_copy_link_in_panel(
+        app=provide_app, page=page, clipboard_mock=clipboard_mock, turn_preview_on=True
+    )
+
+    visitor_context = build_page_browser.new_context()
+    try:
+        visitor_context.set_default_timeout(10_000)
+        visitor_context.set_default_navigation_timeout(30_000)
+        add_playwright_cookie_banner_cookie(
+            context=visitor_context, base_url=current_base_url(page=page)
+        )
+        visitor = visitor_context.new_page()
+        visitor.goto(invite_url)
+        expect(visitor.locator(IPL.PREVIEW_BAR)).to_be_visible()
+        visitor.locator(IPL.PREVIEW_BAR_LOG_IN).click()
+        wait_for_modal_ready(page=visitor, modal_selector=SPL.LOGIN_MODAL)
+        input_login_fields(
+            page=visitor,
+            username=UTS.TEST_USERNAME_2,
+            password=UTS.TEST_USERNAME_2 + EMAIL_SUFFIX,
+        )
+        visitor.locator(SPL.LOGIN_BUTTON_SUBMIT).click()
+
+        visitor.wait_for_url(invite_url)
+        expect(visitor.locator(IPL.BUTTON_JOIN)).to_have_text(UTS.INVITE_JOIN_LABEL)
+        expect(visitor.locator(IPL.PREVIEW_BAR)).to_have_count(0)
+        expect(visitor.locator(IPL.PREVIEW_LIST)).to_have_count(0)
+        _assert_visitor_is_not_member(app=provide_app, utub_id=utub_id)
+        with provide_app.app_context():
+            assert _use_count(token=token) == 0
+
+        visitor.locator(IPL.BUTTON_JOIN).click()
+
+        _assert_joined_as_member(
+            app=provide_app,
+            page=visitor,
+            utub_id=utub_id,
+            user_id=VISITOR_ID,
+            token=token,
+        )
+    finally:
+        visitor_context.close()
+
+
+def test_preview_signup_handoff_ends_with_one_join_click(
+    page: Page,
+    build_page_browser: Browser,
+    create_test_users,
+    create_test_utubs,
+    provide_app: Flask,
+    clipboard_mock: ClipboardMockHelper,
+):
+    """
+    GIVEN a link whose preview the owner turned on in the panel
+    WHEN a logged-out visitor opens it, uses the bar's Create account, validates
+         the email and clicks Join once
+    THEN the visitor lands on the invite page without the preview, is not a member
+         before the click, and is a MEMBER with one use after it
+    """
+    utub_id, invite_url, token = _create_copy_link_in_panel(
+        app=provide_app, page=page, clipboard_mock=clipboard_mock, turn_preview_on=True
+    )
+
+    visitor_context = build_page_browser.new_context()
+    try:
+        visitor_context.set_default_timeout(10_000)
+        visitor_context.set_default_navigation_timeout(30_000)
+        add_playwright_cookie_banner_cookie(
+            context=visitor_context, base_url=current_base_url(page=page)
+        )
+        visitor = visitor_context.new_page()
+        visitor.goto(invite_url)
+        expect(visitor.locator(IPL.PREVIEW_BAR)).to_be_visible()
+        visitor.locator(IPL.PREVIEW_BAR_CREATE_ACCOUNT).click()
+        wait_for_modal_ready(page=visitor, modal_selector=SPL.REGISTER_MODAL)
+        fill_register_fields(
+            page=visitor,
+            username=SIGNUP_USERNAME,
+            email=SIGNUP_EMAIL,
+            password=SIGNUP_PASSWORD,
+        )
+        user_id = _submit_signup_and_open_validation_link(app=provide_app, page=visitor)
+
+        visitor.wait_for_url(invite_url)
+        expect(visitor.locator(IPL.BUTTON_JOIN)).to_have_text(UTS.INVITE_JOIN_LABEL)
+        expect(visitor.locator(IPL.PREVIEW_BAR)).to_have_count(0)
+        expect(visitor.locator(IPL.PREVIEW_LIST)).to_have_count(0)
+        with provide_app.app_context():
+            assert (
+                Utub_Members.query.filter_by(utub_id=utub_id, user_id=user_id).count()
+                == 0
+            )
+            assert _use_count(token=token) == 0
+
+        visitor.locator(IPL.BUTTON_JOIN).click()
+
+        _assert_joined_as_member(
+            app=provide_app,
+            page=visitor,
+            utub_id=utub_id,
+            user_id=user_id,
+            token=token,
+        )
+    finally:
+        visitor_context.close()
+
+
 def test_signup_from_plain_splash_lands_on_home(
     page: Page,
     create_test_users,
