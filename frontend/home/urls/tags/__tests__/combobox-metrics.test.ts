@@ -84,6 +84,7 @@ vi.mock("../../../../lib/jquery-plugins.js", () => ({
 
 vi.mock("../../../../store/app-store.js", () => ({
   getState: vi.fn(() => ({
+    isCurrentUserOwner: true,
     urls: [{ utubUrlID: 1, utubUrlTagIDs: [] }],
     tags: [{ id: 1, tagString: "python", tagApplied: 5 }],
   })),

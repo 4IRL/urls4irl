@@ -10,6 +10,11 @@ import { emit } from "../../../lib/metrics-client.js";
 import { UI_EVENTS } from "../../../types/metrics-events.js";
 import { isTagInURL } from "./tags.js";
 import {
+  getForbiddenErrorCode,
+  handleTaggingRefusal,
+  URL_TAG_POLICY_ERROR_CODES,
+} from "../../tags/policy-banner.js";
+import {
   setTimeoutAndShowURLCardLoadingIcon,
   clearTimeoutIDAndHideLoadingIcon,
 } from "../cards/loading.js";
@@ -71,7 +76,7 @@ export async function deleteURLTag(
     });
 
     request.fail(function (xhr: JQuery.jqXHR) {
-      deleteURLTagFail(xhr);
+      deleteURLTagFail({ xhr, utubID });
     });
 
     request.always(function () {
@@ -149,9 +154,28 @@ function deleteURLTagSuccess(
 /**
  * Displays appropriate prompts and options to user following a failed removal of a URL
  */
-function deleteURLTagFail(xhr: JQuery.jqXHR): void {
+function deleteURLTagFail({
+  xhr,
+  utubID,
+}: {
+  xhr: JQuery.jqXHR;
+  utubID: number;
+}): void {
   if (is429Handled(xhr)) return;
   if (isUtubLockedHandled(xhr)) return;
+
+  if (
+    getForbiddenErrorCode(xhr) ===
+    URL_TAG_POLICY_ERROR_CODES.TAGGING_NOT_ALLOWED
+  ) {
+    // A manager turned tagging off while this tab still showed removal on. No form
+    // is open and the badge is kept, so focus stays on the clicked remove control.
+    handleTaggingRefusal({
+      message: APP_CONFIG.strings.TAG_REMOVE_NOT_ALLOWED,
+      utubID,
+    });
+    return;
+  }
 
   if (
     xhr.status === 403 &&
