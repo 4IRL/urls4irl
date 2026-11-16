@@ -165,6 +165,9 @@ vi.mock("../home/members/overflow-menu.js", () => ({
 vi.mock("../home/members/invite-link-panel.js", () => ({
   initInviteLinkPanel: track("initInviteLinkPanel"),
 }));
+vi.mock("../home/tags/policy-attrs.js", () => ({
+  initTagPolicyAttrs: track("initTagPolicyAttrs"),
+}));
 vi.mock("../home/utubs/refresh-on-focus.js", () => ({
   initUTubRefreshOnFocus: track("initUTubRefreshOnFocus"),
 }));
@@ -223,6 +226,12 @@ describe("main.ts init order", () => {
   it("starts the member overflow menu right after the invite link panel", () => {
     expect(callOrder.indexOf("initMemberOverflowMenu")).toBe(
       callOrder.indexOf("initInviteLinkPanel") + 1,
+    );
+  });
+
+  it("starts the tag policy attributes right after the member overflow menu", () => {
+    expect(callOrder.indexOf("initTagPolicyAttrs")).toBe(
+      callOrder.indexOf("initMemberOverflowMenu") + 1,
     );
   });
 
