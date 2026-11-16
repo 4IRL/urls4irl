@@ -1,3 +1,4 @@
+from flask import g
 from flask_login import current_user
 
 from backend import db
@@ -16,8 +17,9 @@ from backend.schemas.tags import (
     UtubTagOnAddDeleteSchema,
 )
 from backend.tags.constants import UTubTagErrorCodes
+from backend.tags.services.tag_permissions import utub_tag_create_refusal_response
 from backend.utils.strings.tag_strs import TAGS_FAILURE, TAGS_SUCCESS
-from backend.utubs.guards import reject_if_utub_locked
+from backend.utubs.guards import UtubAccess, lock_and_reauthorize
 
 
 def create_tag_in_utub(tag_string: str, current_utub: Utubs) -> FlaskResponse:
@@ -34,16 +36,28 @@ def create_tag_in_utub(tag_string: str, current_utub: Utubs) -> FlaskResponse:
         - Response: JSON response on success or duplicate UTub tag.
         - int: HTTP status code 200 (Success) / 400 (Duplicate UTub tag)
     """
-    utub_locked_error: FlaskResponse | None = reject_if_utub_locked(
-        current_utub, error_code=UTubTagErrorCodes.UTUB_IS_LOCKED
+    utub_locked_error: FlaskResponse | None = lock_and_reauthorize(
+        current_utub,
+        required_access=UtubAccess.MEMBER,
+        error_code=UTubTagErrorCodes.UTUB_IS_LOCKED,
     )
     if utub_locked_error is not None:
+        db.session.rollback()
         return utub_locked_error
+
+    policy_refusal: FlaskResponse | None = utub_tag_create_refusal_response(
+        current_utub, is_manager=g.is_manager
+    )
+    if policy_refusal is not None:
+        db.session.rollback()
+        return policy_refusal
+
     tag_to_add = tag_string.strip()
 
     is_duplicate_utub_tag = _check_if_duplicate_utub_tag(tag_to_add, current_utub)
 
     if is_duplicate_utub_tag:
+        db.session.rollback()
         return build_message_error_response(message=TAGS_FAILURE.TAG_ALREADY_IN_UTUB)
 
     return _create_new_utub_tag(tag_to_add, current_utub)

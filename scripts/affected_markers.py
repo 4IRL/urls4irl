@@ -175,6 +175,9 @@ NO_IMPACT_EXEMPT: tuple[str, ...] = (
     # Host-static inputs under the `.github/*` no-impact glob.
     ".github/workflows/prod-deploy.yml",
     ".github/workflows/notifs-exchange.yml",
+    # Read by test_python_version_pins.py (python-version / python3.N literals).
+    ".github/workflows/*",
+    ".github/actions/*",
 )
 
 # Everything: shared fixtures, app factory, models, shared strings/schemas,
@@ -295,6 +298,11 @@ HOST_STATIC_GLOBS: tuple[str, ...] = (
     "tests/unit/test_compose_profiles.py",
     "tests/unit/test_audit_pins.py",
     "tests/unit/test_playwright_entrypoint.py",
+    "scripts/host_venv_check.sh",
+    "tests/unit/test_host_venv_check.py",
+    "tests/unit/test_python_version_pins.py",
+    ".github/workflows/*",
+    ".github/actions/*",
     # Imported by test_audit_pins.py (a host-static test).
     "tests/unit/stdlib_only_utils.py",
     # Imported by test_worktree_script.py and test_makefile_profiles.py (host-static tests).
@@ -336,10 +344,13 @@ PATH_MARKERS: tuple[MarkerRow, ...] = (
     (".env.example", ()),
     # Ahead of scripts/*.sh (unit, admin): the worktree script is exercised only by host-static tests.
     ("scripts/worktree.sh", ()),
+    ("scripts/host_venv_check.sh", ()),
     ("scripts/notifs-key-write.sh", ()),
     ("scripts/notifs-resolve-release-sha.sh", ()),
     (".github/workflows/prod-deploy.yml", ()),
     (".github/workflows/notifs-exchange.yml", ()),
+    (".github/workflows/*", ()),
+    (".github/actions/*", ()),
     (".notifs/manifest.json", ()),
     # Ahead of tests/unit/*: fixtures are read only by the host-static exchange test.
     ("tests/unit/fixtures/notifs_exchange/*", ()),
@@ -690,7 +701,7 @@ def _applied_marks(text: str) -> set[str]:
     mark`), which over-selects rather than under-selects."""
     try:
         tree = ast.parse(text)
-    except (SyntaxError, MemoryError, RecursionError):
+    except SyntaxError, MemoryError, RecursionError:
         return set(_MARK_PATTERN.findall(text))
     marks: set[str] = set()
     for node in ast.walk(tree):
@@ -786,7 +797,7 @@ def resolve_markers(
 
     for path in changed_files:
         if (
-            path not in NO_IMPACT_EXEMPT
+            _first_match(path, NO_IMPACT_EXEMPT) is None
             and _first_match(path, NO_IMPACT_GLOBS) is not None
         ):
             reasons.append((path, NO_IMPACT_REASON, ()))

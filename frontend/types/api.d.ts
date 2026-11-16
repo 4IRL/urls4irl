@@ -591,16 +591,16 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** @description Get the UTub's current invite link and its status, or null when there is none (owner and co-owner only) */
+    /** @description Get the UTub's current invite link and its status, or null when there is none (owner and co-owner only). Includes the stored and effective preview values; a new link starts with preview off. */
     get: operations["apiV1GetInviteLink"];
     put?: never;
-    /** @description Create the UTub's invite link with an expiry and an optional use limit (owner and co-owner only). A dead unrevoked link is revoked first. */
+    /** @description Create the UTub's invite link with an expiry and an optional use limit (owner and co-owner only). A dead unrevoked link is revoked first. The new link starts with preview off. */
     post: operations["apiV1CreateInviteLink"];
     /** @description Revoke the UTub's invite link (owner and co-owner only) */
     delete: operations["apiV1RevokeInviteLink"];
     options?: never;
     head?: never;
-    /** @description Change the expiry and/or use limit of the UTub's live invite link (owner and co-owner only). An absent field is unchanged; a null max_uses means unlimited. */
+    /** @description Change the expiry, use limit and/or logged-out preview (preview_enabled, preview_window_days of 1, 3 or 7) of the UTub's live invite link (owner and co-owner only). An absent field is unchanged; a null max_uses means unlimited; a null preview field is rejected. */
     patch: operations["apiV1UpdateInviteLink"];
     trace?: never;
   };
@@ -613,7 +613,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** @description Revoke the UTub's invite link and create a new one with the given settings (owner and co-owner only) */
+    /** @description Revoke the UTub's invite link and create a new one with the given settings (owner and co-owner only). The new link starts with preview off. */
     post: operations["apiV1ReplaceInviteLink"];
     delete?: never;
     options?: never;
@@ -973,16 +973,16 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** @description Get the UTub's current invite link and its status, or null when there is none (owner and co-owner only) */
+    /** @description Get the UTub's current invite link and its status, or null when there is none (owner and co-owner only). Includes the stored and effective preview values; a new link starts with preview off. */
     get: operations["getInviteLink"];
     put?: never;
-    /** @description Create the UTub's invite link with an expiry and an optional use limit (owner and co-owner only). A dead unrevoked link is revoked first. */
+    /** @description Create the UTub's invite link with an expiry and an optional use limit (owner and co-owner only). A dead unrevoked link is revoked first. The new link starts with preview off. */
     post: operations["createInviteLink"];
     /** @description Revoke the UTub's invite link (owner and co-owner only) */
     delete: operations["revokeInviteLink"];
     options?: never;
     head?: never;
-    /** @description Change the expiry and/or use limit of the UTub's live invite link (owner and co-owner only). An absent field is unchanged; a null max_uses means unlimited. */
+    /** @description Change the expiry, use limit and/or logged-out preview (preview_enabled, preview_window_days of 1, 3 or 7) of the UTub's live invite link (owner and co-owner only). An absent field is unchanged; a null max_uses means unlimited; a null preview field is rejected. */
     patch: operations["updateInviteLink"];
     trace?: never;
   };
@@ -995,7 +995,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** @description Revoke the UTub's invite link and create a new one with the given settings (owner and co-owner only) */
+    /** @description Revoke the UTub's invite link and create a new one with the given settings (owner and co-owner only). The new link starts with preview off. */
     post: operations["replaceInviteLink"];
     delete?: never;
     options?: never;
@@ -2497,6 +2497,16 @@ export interface components {
       createdAt: string;
       /** @description Username of the link's creator; null when that account was erased */
       creatorUsername: string | null;
+      /** @description Stored manager choice: show logged-out visitors a read-only preview */
+      previewEnabled: boolean;
+      /** @description Stored preview window in days: 1, 3 or 7 */
+      previewWindowDays: number;
+      /** @description Stored UTC ISO-8601 window end; null while the preview is off */
+      previewEndsAt: string | null;
+      /** @description True when visitors can see the preview right now */
+      previewEffectiveEnabled: boolean;
+      /** @description UTC ISO-8601 end of the preview, capped at the link's expiry; null while the preview is off */
+      previewEffectiveEndsAt: string | null;
     };
     /** @enum {string} */
     InviteLinkStatus: "live" | "expired" | "used_up" | "creator_demoted";
@@ -2546,6 +2556,16 @@ export interface components {
        * @default null
        */
       max_uses: (1 | 5 | 10 | 25) | null;
+      /**
+       * @description Show logged-out visitors a read-only preview; absent is unchanged
+       * @default null
+       */
+      preview_enabled: boolean | null;
+      /**
+       * @description Days the preview stays available: 1, 3 or 7
+       * @default null
+       */
+      preview_window_days: (1 | 3 | 7) | null;
     };
     AddTagRequest: {
       /**
@@ -6497,8 +6517,8 @@ export interface operations {
       /**
        * @description One funnel in the admin flow builder: a built-in or a saved custom flow.
        *
-       *         Returned by the list, create and update endpoints in the same shape, so the
-       *         builder renders every funnel from one type.
+       *     Returned by the list, create and update endpoints in the same shape, so the
+       *     builder renders every funnel from one type.
        */
       201: {
         headers: {
@@ -6600,14 +6620,14 @@ export interface operations {
       /**
        * @description Envelope returned by `GET /api/metrics/query/flow`.
        *
-       *         A `steps` wrapper (not a bare list) is required because
-       *         `APIResponse.to_response()` spreads the payload via `**data_dict`, which
-       *         needs a `BaseModel`-derived schema; the wire payload is `{"steps": [...]}`.
+       *     A `steps` wrapper (not a bare list) is required because
+       *     `APIResponse.to_response()` spreads the payload via `**data_dict`, which
+       *     needs a `BaseModel`-derived schema; the wire payload is `{"steps": [...]}`.
        *
-       *         Serves both the built-in funnels and stored `custom_<id>` flows. A
-       *         well-formed custom id with no saved flow answers 404; a saved flow that no
-       *         longer validates (or raises a count-time `ValueError`) answers 422 with
-       *         `FlowInvalidResponseSchema` instead of this envelope.
+       *     Serves both the built-in funnels and stored `custom_<id>` flows. A
+       *     well-formed custom id with no saved flow answers 404; a saved flow that no
+       *     longer validates (or raises a count-time `ValueError`) answers 422 with
+       *     `FlowInvalidResponseSchema` instead of this envelope.
        */
       200: {
         headers: {
@@ -6665,8 +6685,8 @@ export interface operations {
       /**
        * @description One funnel in the admin flow builder: a built-in or a saved custom flow.
        *
-       *         Returned by the list, create and update endpoints in the same shape, so the
-       *         builder renders every funnel from one type.
+       *     Returned by the list, create and update endpoints in the same shape, so the
+       *     builder renders every funnel from one type.
        */
       200: {
         headers: {
@@ -8345,9 +8365,9 @@ export interface operations {
       /**
        * @description Response for the transfer-ownership endpoint (web + /api/v1 twin).
        *
-       *         Reuses the role-carrying ``UtubMemberSchema`` for both the promoted member
-       *         (now ``CREATOR``) and the demoted outgoing owner (now ``CO_CREATOR``), so
-       *         the client can update both role displays without a reload.
+       *     Reuses the role-carrying ``UtubMemberSchema`` for both the promoted member
+       *     (now ``CREATOR``) and the demoted outgoing owner (now ``CO_CREATOR``), so
+       *     the client can update both role displays without a reload.
        */
       200: {
         headers: {
@@ -8410,8 +8430,8 @@ export interface operations {
       /**
        * @description Wrapper list of co-member add candidates for the target UTub.
        *
-       *         A wrapper (never a bare list) because ``APIResponse`` spreads the data dict
-       *         at the top level via ``**data_dict``.
+       *     A wrapper (never a bare list) because ``APIResponse`` spreads the data dict
+       *     at the top level via ``**data_dict``.
        */
       200: {
         headers: {
@@ -8823,7 +8843,7 @@ export interface operations {
     responses: {
       /**
        * @description Documents an HTML page render (not a JSON body) returned for an
-       *         error/reject state.
+       *     error/reject state.
        */
       200: {
         headers: {
@@ -8835,7 +8855,7 @@ export interface operations {
       };
       /**
        * @description Documents an HTML page render (not a JSON body) returned for an
-       *         error/reject state.
+       *     error/reject state.
        */
       302: {
         headers: {
@@ -8878,7 +8898,7 @@ export interface operations {
     responses: {
       /**
        * @description Documents an HTML page render (not a JSON body) returned for an
-       *         error/reject state.
+       *     error/reject state.
        */
       302: {
         headers: {
@@ -9316,9 +9336,9 @@ export interface operations {
       /**
        * @description Response for the transfer-ownership endpoint (web + /api/v1 twin).
        *
-       *         Reuses the role-carrying ``UtubMemberSchema`` for both the promoted member
-       *         (now ``CREATOR``) and the demoted outgoing owner (now ``CO_CREATOR``), so
-       *         the client can update both role displays without a reload.
+       *     Reuses the role-carrying ``UtubMemberSchema`` for both the promoted member
+       *     (now ``CREATOR``) and the demoted outgoing owner (now ``CO_CREATOR``), so
+       *     the client can update both role displays without a reload.
        */
       200: {
         headers: {
@@ -9435,8 +9455,8 @@ export interface operations {
       /**
        * @description Wrapper list of co-member add candidates for the target UTub.
        *
-       *         A wrapper (never a bare list) because ``APIResponse`` spreads the data dict
-       *         at the top level via ``**data_dict``.
+       *     A wrapper (never a bare list) because ``APIResponse`` spreads the data dict
+       *     at the top level via ``**data_dict``.
        */
       200: {
         headers: {
@@ -9495,10 +9515,10 @@ export interface operations {
       /**
        * @description Response payload returned by `POST /api/metrics`.
        *
-       *         `accepted` is the number of events that the route handed off to
-       *         `record_event(...)`. Because the writer is log-and-drop, individual events
-       *         may have been silently dropped at the Redis layer; the field is informative
-       *         but not authoritative.
+       *     `accepted` is the number of events that the route handed off to
+       *     `record_event(...)`. Because the writer is log-and-drop, individual events
+       *     may have been silently dropped at the Redis layer; the field is informative
+       *     but not authoritative.
        */
       200: {
         headers: {
@@ -9611,6 +9631,7 @@ export interface operations {
           | "email_verified"
           | "invite_link_created"
           | "invite_link_revoked"
+          | "invite_link_preview_viewed"
           | "invite_link_viewed"
           | "login_failure"
           | "login_success"
@@ -9867,6 +9888,7 @@ export interface operations {
           | "email_verified"
           | "invite_link_created"
           | "invite_link_revoked"
+          | "invite_link_preview_viewed"
           | "invite_link_viewed"
           | "login_failure"
           | "login_success"
@@ -10016,10 +10038,10 @@ export interface operations {
       /**
        * @description Envelope returned by `GET /api/metrics/query/grouped-timeseries`.
        *
-       *         Unlike the single-series `timeseries` endpoint, the grouped variant does
-       *         NOT zero-fill empty `(bucket, dim-tuple)` combinations. Cross-product
-       *         expansion is expensive; the frontend renderer treats absent combos as
-       *         "no segment for that bucket".
+       *     Unlike the single-series `timeseries` endpoint, the grouped variant does
+       *     NOT zero-fill empty `(bucket, dim-tuple)` combinations. Cross-product
+       *     expansion is expensive; the frontend renderer treats absent combos as
+       *     "no segment for that bucket".
        */
       200: {
         headers: {
@@ -10080,14 +10102,14 @@ export interface operations {
       /**
        * @description Envelope returned by `GET /api/metrics/query/flow`.
        *
-       *         A `steps` wrapper (not a bare list) is required because
-       *         `APIResponse.to_response()` spreads the payload via `**data_dict`, which
-       *         needs a `BaseModel`-derived schema; the wire payload is `{"steps": [...]}`.
+       *     A `steps` wrapper (not a bare list) is required because
+       *     `APIResponse.to_response()` spreads the payload via `**data_dict`, which
+       *     needs a `BaseModel`-derived schema; the wire payload is `{"steps": [...]}`.
        *
-       *         Serves both the built-in funnels and stored `custom_<id>` flows. A
-       *         well-formed custom id with no saved flow answers 404; a saved flow that no
-       *         longer validates (or raises a count-time `ValueError`) answers 422 with
-       *         `FlowInvalidResponseSchema` instead of this envelope.
+       *     Serves both the built-in funnels and stored `custom_<id>` flows. A
+       *     well-formed custom id with no saved flow answers 404; a saved flow that no
+       *     longer validates (or raises a count-time `ValueError`) answers 422 with
+       *     `FlowInvalidResponseSchema` instead of this envelope.
        */
       200: {
         headers: {
@@ -10155,9 +10177,9 @@ export interface operations {
       /**
        * @description Batched envelope returned by `GET /api/metrics/query/gauges/timeseries`.
        *
-       *         Carries every gauge's windowed series in one response (mirrors
-       *         `GroupedTimeseriesResponseSchema`'s envelope shape). A gauge with no rows in
-       *         the window is absent from `gauges` rather than zero-filled.
+       *     Carries every gauge's windowed series in one response (mirrors
+       *     `GroupedTimeseriesResponseSchema`'s envelope shape). A gauge with no rows in
+       *     the window is absent from `gauges` rather than zero-filled.
        */
       200: {
         headers: {
@@ -10375,7 +10397,7 @@ export interface operations {
     responses: {
       /**
        * @description Documents an HTML page render (not a JSON body) returned for an
-       *         error/reject state.
+       *     error/reject state.
        */
       200: {
         headers: {
@@ -10609,7 +10631,7 @@ export interface operations {
     responses: {
       /**
        * @description Documents an HTML page render (not a JSON body) returned for an
-       *         error/reject state.
+       *     error/reject state.
        */
       200: {
         headers: {
@@ -10674,7 +10696,7 @@ export interface operations {
     responses: {
       /**
        * @description Documents an HTML page render (not a JSON body) returned for an
-       *         error/reject state.
+       *     error/reject state.
        */
       200: {
         headers: {
@@ -11523,11 +11545,11 @@ export interface operations {
       /**
        * @description Response for the authenticated change-username endpoint.
        *
-       *         One shape for every 200 response — the success branch and the no-op branch
-       *         both populate all three fields, differing only in ``status``/``message``
-       *         (DD-12: the banner text is server-sourced off ``message``). Carries the
-       *         echoed ``username`` on top of the ``StatusMessageResponseSchema`` shape so
-       *         the client can refresh the on-page displays without a reload (DD-15).
+       *     One shape for every 200 response — the success branch and the no-op branch
+       *     both populate all three fields, differing only in ``status``/``message``
+       *     (DD-12: the banner text is server-sourced off ``message``). Carries the
+       *     echoed ``username`` on top of the ``StatusMessageResponseSchema`` shape so
+       *     the client can refresh the on-page displays without a reload (DD-15).
        */
       200: {
         headers: {
@@ -11583,14 +11605,14 @@ export interface operations {
     responses: {
       /**
        * @description Response for the authenticated update-preferences endpoint
-       *         (``PUT /users/<id>/preferences``).
+       *     (``PUT /users/<id>/preferences``).
        *
-       *         One shape for every 200 response — the success branch and the no-op branch
-       *         both echo all five persisted preference values (each an enum ``.value``
-       *         string), differing only in ``status``/``message`` (the banner text is
-       *         server-sourced off ``message``, mirroring ``ChangeUsernameResponseSchema``).
-       *         Echoing the stored values lets the client refresh its in-memory state
-       *         without a reload.
+       *     One shape for every 200 response — the success branch and the no-op branch
+       *     both echo all five persisted preference values (each an enum ``.value``
+       *     string), differing only in ``status``/``message`` (the banner text is
+       *     server-sourced off ``message``, mirroring ``ChangeUsernameResponseSchema``).
+       *     Echoing the stored values lets the client refresh its in-memory state
+       *     without a reload.
        */
       200: {
         headers: {
@@ -11636,8 +11658,8 @@ export interface operations {
       /**
        * @description Response for ``PATCH /users/preferences/utubs``.
        *
-       *         Always echoes all three resolved UTub-list preferences (never the request
-       *         values); ``status`` is ``No change`` when nothing differed (no row created).
+       *     Always echoes all three resolved UTub-list preferences (never the request
+       *     values); ``status`` is ``No change`` when nothing differed (no row created).
        */
       200: {
         headers: {
@@ -11674,8 +11696,8 @@ export interface operations {
       /**
        * @description Response for ``PATCH /users/preferences/members``.
        *
-       *         Echoes the resolved member sort (never the request value); ``status`` is
-       *         ``No change`` when nothing differed (no row created).
+       *     Echoes the resolved member sort (never the request value); ``status`` is
+       *     ``No change`` when nothing differed (no row created).
        */
       200: {
         headers: {
@@ -11712,8 +11734,8 @@ export interface operations {
       /**
        * @description Response for ``PATCH /users/preferences/tags``.
        *
-       *         Always echoes all six resolved tag display defaults (never the request
-       *         values); ``status`` is ``No change`` when nothing differed (no row created).
+       *     Always echoes all six resolved tag display defaults (never the request
+       *     values); ``status`` is ``No change`` when nothing differed (no row created).
        */
       200: {
         headers: {
@@ -11752,9 +11774,9 @@ export interface operations {
       /**
        * @description Response for the authenticated change-password endpoint.
        *
-       *         No data to return beyond status/message, so it reuses the
-       *         ``StatusMessageResponseSchema`` shape (matching the
-       *         ``RegisterResponseSchema``/``ResetPasswordResponseSchema`` convention).
+       *     No data to return beyond status/message, so it reuses the
+       *     ``StatusMessageResponseSchema`` shape (matching the
+       *     ``RegisterResponseSchema``/``ResetPasswordResponseSchema`` convention).
        */
       200: {
         headers: {
@@ -11810,13 +11832,13 @@ export interface operations {
     responses: {
       /**
        * @description Response for the authenticated change-email START endpoint
-       *         (``PUT /users/<id>/email``).
+       *     (``PUT /users/<id>/email``).
        *
-       *         Carries ``status``/``message`` (DD-12 banner text is server-sourced off
-       *         ``message``) plus the just-staged ``pending_email`` (DD-6) so the client can
-       *         patch the account-info card in place without a reload. ``pending_email`` is
-       *         optional/``None``-defaulted because the no-op guard (guard 5) also builds
-       *         this schema and nothing is staged in that branch.
+       *     Carries ``status``/``message`` (DD-12 banner text is server-sourced off
+       *     ``message``) plus the just-staged ``pending_email`` (DD-6) so the client can
+       *     patch the account-info card in place without a reload. ``pending_email`` is
+       *     optional/``None``-defaulted because the no-op guard (guard 5) also builds
+       *     this schema and nothing is staged in that branch.
        */
       200: {
         headers: {
@@ -11872,15 +11894,15 @@ export interface operations {
     responses: {
       /**
        * @description Response for the self-service account-removal / session-revocation
-       *         endpoints (``DELETE /users/<id>`` and
-       *         ``POST /users/<id>/logout-everywhere``).
+       *     endpoints (``DELETE /users/<id>`` and
+       *     ``POST /users/<id>/logout-everywhere``).
        *
-       *         Carries ``status``/``message`` (banner text is server-sourced off
-       *         ``message``) plus a ``redirect_url`` (mirroring ``LoginRedirectResponseSchema``)
-       *         so the client navigates to splash after the acting session is logged out.
-       *         Shared by the delete and logout-everywhere flows (and the OAuth-proof
-       *         round-trip initiator, which returns the provider-redirect URL in the same
-       *         field).
+       *     Carries ``status``/``message`` (banner text is server-sourced off
+       *     ``message``) plus a ``redirect_url`` (mirroring ``LoginRedirectResponseSchema``)
+       *     so the client navigates to splash after the acting session is logged out.
+       *     Shared by the delete and logout-everywhere flows (and the OAuth-proof
+       *     round-trip initiator, which returns the provider-redirect URL in the same
+       *     field).
        */
       200: {
         headers: {
@@ -11932,15 +11954,15 @@ export interface operations {
     responses: {
       /**
        * @description Response for the self-service account-removal / session-revocation
-       *         endpoints (``DELETE /users/<id>`` and
-       *         ``POST /users/<id>/logout-everywhere``).
+       *     endpoints (``DELETE /users/<id>`` and
+       *     ``POST /users/<id>/logout-everywhere``).
        *
-       *         Carries ``status``/``message`` (banner text is server-sourced off
-       *         ``message``) plus a ``redirect_url`` (mirroring ``LoginRedirectResponseSchema``)
-       *         so the client navigates to splash after the acting session is logged out.
-       *         Shared by the delete and logout-everywhere flows (and the OAuth-proof
-       *         round-trip initiator, which returns the provider-redirect URL in the same
-       *         field).
+       *     Carries ``status``/``message`` (banner text is server-sourced off
+       *     ``message``) plus a ``redirect_url`` (mirroring ``LoginRedirectResponseSchema``)
+       *     so the client navigates to splash after the acting session is logged out.
+       *     Shared by the delete and logout-everywhere flows (and the OAuth-proof
+       *     round-trip initiator, which returns the provider-redirect URL in the same
+       *     field).
        */
       200: {
         headers: {
@@ -11975,9 +11997,9 @@ export interface operations {
       /**
        * @description Response envelope for ``GET /users/<id>/data-export``.
        *
-       *         Nests the full export under a single ``export`` key (on top of the standard
-       *         ``status``/``message`` envelope fields) so the client can blob ``response.export``
-       *         cleanly for the downloaded file without the envelope metadata leaking into it.
+       *     Nests the full export under a single ``export`` key (on top of the standard
+       *     ``status``/``message`` envelope fields) so the client can blob ``response.export``
+       *     cleanly for the downloaded file without the envelope metadata leaking into it.
        */
       200: {
         headers: {

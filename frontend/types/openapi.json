@@ -2041,7 +2041,7 @@
         },
         "responses": {
           "201": {
-            "description": "One funnel in the admin flow builder: a built-in or a saved custom flow.\n\n    Returned by the list, create and update endpoints in the same shape, so the\n    builder renders every funnel from one type.",
+            "description": "One funnel in the admin flow builder: a built-in or a saved custom flow.\n\nReturned by the list, create and update endpoints in the same shape, so the\nbuilder renders every funnel from one type.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2201,7 +2201,7 @@
         },
         "responses": {
           "200": {
-            "description": "Envelope returned by `GET /api/metrics/query/flow`.\n\n    A `steps` wrapper (not a bare list) is required because\n    `APIResponse.to_response()` spreads the payload via `**data_dict`, which\n    needs a `BaseModel`-derived schema; the wire payload is `{\"steps\": [...]}`.\n\n    Serves both the built-in funnels and stored `custom_<id>` flows. A\n    well-formed custom id with no saved flow answers 404; a saved flow that no\n    longer validates (or raises a count-time `ValueError`) answers 422 with\n    `FlowInvalidResponseSchema` instead of this envelope.",
+            "description": "Envelope returned by `GET /api/metrics/query/flow`.\n\nA `steps` wrapper (not a bare list) is required because\n`APIResponse.to_response()` spreads the payload via `**data_dict`, which\nneeds a `BaseModel`-derived schema; the wire payload is `{\"steps\": [...]}`.\n\nServes both the built-in funnels and stored `custom_<id>` flows. A\nwell-formed custom id with no saved flow answers 404; a saved flow that no\nlonger validates (or raises a count-time `ValueError`) answers 422 with\n`FlowInvalidResponseSchema` instead of this envelope.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2288,7 +2288,7 @@
         },
         "responses": {
           "200": {
-            "description": "One funnel in the admin flow builder: a built-in or a saved custom flow.\n\n    Returned by the list, create and update endpoints in the same shape, so the\n    builder renders every funnel from one type.",
+            "description": "One funnel in the admin flow builder: a built-in or a saved custom flow.\n\nReturned by the list, create and update endpoints in the same shape, so the\nbuilder renders every funnel from one type.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2930,7 +2930,7 @@
             "bearerAuth": []
           }
         ],
-        "description": "Get the UTub's current invite link and its status, or null when there is none (owner and co-owner only)",
+        "description": "Get the UTub's current invite link and its status, or null when there is none (owner and co-owner only). Includes the stored and effective preview values; a new link starts with preview off.",
         "parameters": [
           {
             "name": "utub_id",
@@ -2997,7 +2997,7 @@
             "bearerAuth": []
           }
         ],
-        "description": "Create the UTub's invite link with an expiry and an optional use limit (owner and co-owner only). A dead unrevoked link is revoked first.",
+        "description": "Create the UTub's invite link with an expiry and an optional use limit (owner and co-owner only). A dead unrevoked link is revoked first. The new link starts with preview off.",
         "parameters": [
           {
             "name": "utub_id",
@@ -3103,7 +3103,7 @@
             "bearerAuth": []
           }
         ],
-        "description": "Change the expiry and/or use limit of the UTub's live invite link (owner and co-owner only). An absent field is unchanged; a null max_uses means unlimited.",
+        "description": "Change the expiry, use limit and/or logged-out preview (preview_enabled, preview_window_days of 1, 3 or 7) of the UTub's live invite link (owner and co-owner only). An absent field is unchanged; a null max_uses means unlimited; a null preview field is rejected.",
         "parameters": [
           {
             "name": "utub_id",
@@ -3268,7 +3268,7 @@
             "bearerAuth": []
           }
         ],
-        "description": "Revoke the UTub's invite link and create a new one with the given settings (owner and co-owner only)",
+        "description": "Revoke the UTub's invite link and create a new one with the given settings (owner and co-owner only). The new link starts with preview off.",
         "parameters": [
           {
             "name": "utub_id",
@@ -4716,7 +4716,7 @@
         },
         "responses": {
           "200": {
-            "description": "Response for the transfer-ownership endpoint (web + /api/v1 twin).\n\n    Reuses the role-carrying ``UtubMemberSchema`` for both the promoted member\n    (now ``CREATOR``) and the demoted outgoing owner (now ``CO_CREATOR``), so\n    the client can update both role displays without a reload.",
+            "description": "Response for the transfer-ownership endpoint (web + /api/v1 twin).\n\nReuses the role-carrying ``UtubMemberSchema`` for both the promoted member\n(now ``CREATOR``) and the demoted outgoing owner (now ``CO_CREATOR``), so\nthe client can update both role displays without a reload.",
             "content": {
               "application/json": {
                 "schema": {
@@ -4802,7 +4802,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Wrapper list of co-member add candidates for the target UTub.\n\n    A wrapper (never a bare list) because ``APIResponse`` spreads the data dict\n    at the top level via ``**data_dict``.",
+            "description": "Wrapper list of co-member add candidates for the target UTub.\n\nA wrapper (never a bare list) because ``APIResponse`` spreads the data dict\nat the top level via ``**data_dict``.",
             "content": {
               "application/json": {
                 "schema": {
@@ -5381,7 +5381,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Documents an HTML page render (not a JSON body) returned for an\n    error/reject state.",
+            "description": "Documents an HTML page render (not a JSON body) returned for an\nerror/reject state.",
             "content": {
               "application/json": {
                 "schema": {
@@ -5391,7 +5391,7 @@
             }
           },
           "302": {
-            "description": "Documents an HTML page render (not a JSON body) returned for an\n    error/reject state.",
+            "description": "Documents an HTML page render (not a JSON body) returned for an\nerror/reject state.",
             "content": {
               "application/json": {
                 "schema": {
@@ -5445,7 +5445,7 @@
         ],
         "responses": {
           "302": {
-            "description": "Documents an HTML page render (not a JSON body) returned for an\n    error/reject state.",
+            "description": "Documents an HTML page render (not a JSON body) returned for an\nerror/reject state.",
             "content": {
               "application/json": {
                 "schema": {
@@ -5496,7 +5496,7 @@
             "sessionAuth": []
           }
         ],
-        "description": "Get the UTub's current invite link and its status, or null when there is none (owner and co-owner only)",
+        "description": "Get the UTub's current invite link and its status, or null when there is none (owner and co-owner only). Includes the stored and effective preview values; a new link starts with preview off.",
         "parameters": [
           {
             "name": "utub_id",
@@ -5554,7 +5554,7 @@
             "csrfToken": []
           }
         ],
-        "description": "Create the UTub's invite link with an expiry and an optional use limit (owner and co-owner only). A dead unrevoked link is revoked first.",
+        "description": "Create the UTub's invite link with an expiry and an optional use limit (owner and co-owner only). A dead unrevoked link is revoked first. The new link starts with preview off.",
         "parameters": [
           {
             "name": "utub_id",
@@ -5651,7 +5651,7 @@
             "csrfToken": []
           }
         ],
-        "description": "Change the expiry and/or use limit of the UTub's live invite link (owner and co-owner only). An absent field is unchanged; a null max_uses means unlimited.",
+        "description": "Change the expiry, use limit and/or logged-out preview (preview_enabled, preview_window_days of 1, 3 or 7) of the UTub's live invite link (owner and co-owner only). An absent field is unchanged; a null max_uses means unlimited; a null preview field is rejected.",
         "parameters": [
           {
             "name": "utub_id",
@@ -5798,7 +5798,7 @@
             "csrfToken": []
           }
         ],
-        "description": "Revoke the UTub's invite link and create a new one with the given settings (owner and co-owner only)",
+        "description": "Revoke the UTub's invite link and create a new one with the given settings (owner and co-owner only). The new link starts with preview off.",
         "parameters": [
           {
             "name": "utub_id",
@@ -6081,7 +6081,7 @@
         },
         "responses": {
           "200": {
-            "description": "Response for the transfer-ownership endpoint (web + /api/v1 twin).\n\n    Reuses the role-carrying ``UtubMemberSchema`` for both the promoted member\n    (now ``CREATOR``) and the demoted outgoing owner (now ``CO_CREATOR``), so\n    the client can update both role displays without a reload.",
+            "description": "Response for the transfer-ownership endpoint (web + /api/v1 twin).\n\nReuses the role-carrying ``UtubMemberSchema`` for both the promoted member\n(now ``CREATOR``) and the demoted outgoing owner (now ``CO_CREATOR``), so\nthe client can update both role displays without a reload.",
             "content": {
               "application/json": {
                 "schema": {
@@ -6253,7 +6253,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Wrapper list of co-member add candidates for the target UTub.\n\n    A wrapper (never a bare list) because ``APIResponse`` spreads the data dict\n    at the top level via ``**data_dict``.",
+            "description": "Wrapper list of co-member add candidates for the target UTub.\n\nA wrapper (never a bare list) because ``APIResponse`` spreads the data dict\nat the top level via ``**data_dict``.",
             "content": {
               "application/json": {
                 "schema": {
@@ -6335,7 +6335,7 @@
         },
         "responses": {
           "200": {
-            "description": "Response payload returned by `POST /api/metrics`.\n\n    `accepted` is the number of events that the route handed off to\n    `record_event(...)`. Because the writer is log-and-drop, individual events\n    may have been silently dropped at the Redis layer; the field is informative\n    but not authoritative.",
+            "description": "Response payload returned by `POST /api/metrics`.\n\n`accepted` is the number of events that the route handed off to\n`record_event(...)`. Because the writer is log-and-drop, individual events\nmay have been silently dropped at the Redis layer; the field is informative\nbut not authoritative.",
             "content": {
               "application/json": {
                 "schema": {
@@ -6544,6 +6544,7 @@
                 "email_verified",
                 "invite_link_created",
                 "invite_link_revoked",
+                "invite_link_preview_viewed",
                 "invite_link_viewed",
                 "login_failure",
                 "login_success",
@@ -6916,6 +6917,7 @@
                 "email_verified",
                 "invite_link_created",
                 "invite_link_revoked",
+                "invite_link_preview_viewed",
                 "invite_link_viewed",
                 "login_failure",
                 "login_success",
@@ -7113,7 +7115,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Envelope returned by `GET /api/metrics/query/grouped-timeseries`.\n\n    Unlike the single-series `timeseries` endpoint, the grouped variant does\n    NOT zero-fill empty `(bucket, dim-tuple)` combinations. Cross-product\n    expansion is expensive; the frontend renderer treats absent combos as\n    \"no segment for that bucket\".",
+            "description": "Envelope returned by `GET /api/metrics/query/grouped-timeseries`.\n\nUnlike the single-series `timeseries` endpoint, the grouped variant does\nNOT zero-fill empty `(bucket, dim-tuple)` combinations. Cross-product\nexpansion is expensive; the frontend renderer treats absent combos as\n\"no segment for that bucket\".",
             "content": {
               "application/json": {
                 "schema": {
@@ -7216,7 +7218,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Envelope returned by `GET /api/metrics/query/flow`.\n\n    A `steps` wrapper (not a bare list) is required because\n    `APIResponse.to_response()` spreads the payload via `**data_dict`, which\n    needs a `BaseModel`-derived schema; the wire payload is `{\"steps\": [...]}`.\n\n    Serves both the built-in funnels and stored `custom_<id>` flows. A\n    well-formed custom id with no saved flow answers 404; a saved flow that no\n    longer validates (or raises a count-time `ValueError`) answers 422 with\n    `FlowInvalidResponseSchema` instead of this envelope.",
+            "description": "Envelope returned by `GET /api/metrics/query/flow`.\n\nA `steps` wrapper (not a bare list) is required because\n`APIResponse.to_response()` spreads the payload via `**data_dict`, which\nneeds a `BaseModel`-derived schema; the wire payload is `{\"steps\": [...]}`.\n\nServes both the built-in funnels and stored `custom_<id>` flows. A\nwell-formed custom id with no saved flow answers 404; a saved flow that no\nlonger validates (or raises a count-time `ValueError`) answers 422 with\n`FlowInvalidResponseSchema` instead of this envelope.",
             "content": {
               "application/json": {
                 "schema": {
@@ -7319,7 +7321,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Batched envelope returned by `GET /api/metrics/query/gauges/timeseries`.\n\n    Carries every gauge's windowed series in one response (mirrors\n    `GroupedTimeseriesResponseSchema`'s envelope shape). A gauge with no rows in\n    the window is absent from `gauges` rather than zero-filled.",
+            "description": "Batched envelope returned by `GET /api/metrics/query/gauges/timeseries`.\n\nCarries every gauge's windowed series in one response (mirrors\n`GroupedTimeseriesResponseSchema`'s envelope shape). A gauge with no rows in\nthe window is absent from `gauges` rather than zero-filled.",
             "content": {
               "application/json": {
                 "schema": {
@@ -7742,7 +7744,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Documents an HTML page render (not a JSON body) returned for an\n    error/reject state.",
+            "description": "Documents an HTML page render (not a JSON body) returned for an\nerror/reject state.",
             "content": {
               "application/json": {
                 "schema": {
@@ -8067,7 +8069,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Documents an HTML page render (not a JSON body) returned for an\n    error/reject state.",
+            "description": "Documents an HTML page render (not a JSON body) returned for an\nerror/reject state.",
             "content": {
               "application/json": {
                 "schema": {
@@ -8153,7 +8155,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Documents an HTML page render (not a JSON body) returned for an\n    error/reject state.",
+            "description": "Documents an HTML page render (not a JSON body) returned for an\nerror/reject state.",
             "content": {
               "application/json": {
                 "schema": {
@@ -9453,7 +9455,7 @@
         },
         "responses": {
           "200": {
-            "description": "Response for the authenticated change-username endpoint.\n\n    One shape for every 200 response \u2014 the success branch and the no-op branch\n    both populate all three fields, differing only in ``status``/``message``\n    (DD-12: the banner text is server-sourced off ``message``). Carries the\n    echoed ``username`` on top of the ``StatusMessageResponseSchema`` shape so\n    the client can refresh the on-page displays without a reload (DD-15).",
+            "description": "Response for the authenticated change-username endpoint.\n\nOne shape for every 200 response \u2014 the success branch and the no-op branch\nboth populate all three fields, differing only in ``status``/``message``\n(DD-12: the banner text is server-sourced off ``message``). Carries the\nechoed ``username`` on top of the ``StatusMessageResponseSchema`` shape so\nthe client can refresh the on-page displays without a reload (DD-15).",
             "content": {
               "application/json": {
                 "schema": {
@@ -9532,7 +9534,7 @@
         },
         "responses": {
           "200": {
-            "description": "Response for the authenticated update-preferences endpoint\n    (``PUT /users/<id>/preferences``).\n\n    One shape for every 200 response \u2014 the success branch and the no-op branch\n    both echo all five persisted preference values (each an enum ``.value``\n    string), differing only in ``status``/``message`` (the banner text is\n    server-sourced off ``message``, mirroring ``ChangeUsernameResponseSchema``).\n    Echoing the stored values lets the client refresh its in-memory state\n    without a reload.",
+            "description": "Response for the authenticated update-preferences endpoint\n(``PUT /users/<id>/preferences``).\n\nOne shape for every 200 response \u2014 the success branch and the no-op branch\nboth echo all five persisted preference values (each an enum ``.value``\nstring), differing only in ``status``/``message`` (the banner text is\nserver-sourced off ``message``, mirroring ``ChangeUsernameResponseSchema``).\nEchoing the stored values lets the client refresh its in-memory state\nwithout a reload.",
             "content": {
               "application/json": {
                 "schema": {
@@ -9591,7 +9593,7 @@
         },
         "responses": {
           "200": {
-            "description": "Response for ``PATCH /users/preferences/utubs``.\n\n    Always echoes all three resolved UTub-list preferences (never the request\n    values); ``status`` is ``No change`` when nothing differed (no row created).",
+            "description": "Response for ``PATCH /users/preferences/utubs``.\n\nAlways echoes all three resolved UTub-list preferences (never the request\nvalues); ``status`` is ``No change`` when nothing differed (no row created).",
             "content": {
               "application/json": {
                 "schema": {
@@ -9640,7 +9642,7 @@
         },
         "responses": {
           "200": {
-            "description": "Response for ``PATCH /users/preferences/members``.\n\n    Echoes the resolved member sort (never the request value); ``status`` is\n    ``No change`` when nothing differed (no row created).",
+            "description": "Response for ``PATCH /users/preferences/members``.\n\nEchoes the resolved member sort (never the request value); ``status`` is\n``No change`` when nothing differed (no row created).",
             "content": {
               "application/json": {
                 "schema": {
@@ -9689,7 +9691,7 @@
         },
         "responses": {
           "200": {
-            "description": "Response for ``PATCH /users/preferences/tags``.\n\n    Always echoes all six resolved tag display defaults (never the request\n    values); ``status`` is ``No change`` when nothing differed (no row created).",
+            "description": "Response for ``PATCH /users/preferences/tags``.\n\nAlways echoes all six resolved tag display defaults (never the request\nvalues); ``status`` is ``No change`` when nothing differed (no row created).",
             "content": {
               "application/json": {
                 "schema": {
@@ -9748,7 +9750,7 @@
         },
         "responses": {
           "200": {
-            "description": "Response for the authenticated change-password endpoint.\n\n    No data to return beyond status/message, so it reuses the\n    ``StatusMessageResponseSchema`` shape (matching the\n    ``RegisterResponseSchema``/``ResetPasswordResponseSchema`` convention).",
+            "description": "Response for the authenticated change-password endpoint.\n\nNo data to return beyond status/message, so it reuses the\n``StatusMessageResponseSchema`` shape (matching the\n``RegisterResponseSchema``/``ResetPasswordResponseSchema`` convention).",
             "content": {
               "application/json": {
                 "schema": {
@@ -9827,7 +9829,7 @@
         },
         "responses": {
           "200": {
-            "description": "Response for the authenticated change-email START endpoint\n    (``PUT /users/<id>/email``).\n\n    Carries ``status``/``message`` (DD-12 banner text is server-sourced off\n    ``message``) plus the just-staged ``pending_email`` (DD-6) so the client can\n    patch the account-info card in place without a reload. ``pending_email`` is\n    optional/``None``-defaulted because the no-op guard (guard 5) also builds\n    this schema and nothing is staged in that branch.",
+            "description": "Response for the authenticated change-email START endpoint\n(``PUT /users/<id>/email``).\n\nCarries ``status``/``message`` (DD-12 banner text is server-sourced off\n``message``) plus the just-staged ``pending_email`` (DD-6) so the client can\npatch the account-info card in place without a reload. ``pending_email`` is\noptional/``None``-defaulted because the no-op guard (guard 5) also builds\nthis schema and nothing is staged in that branch.",
             "content": {
               "application/json": {
                 "schema": {
@@ -9906,7 +9908,7 @@
         },
         "responses": {
           "200": {
-            "description": "Response for the self-service account-removal / session-revocation\n    endpoints (``DELETE /users/<id>`` and\n    ``POST /users/<id>/logout-everywhere``).\n\n    Carries ``status``/``message`` (banner text is server-sourced off\n    ``message``) plus a ``redirect_url`` (mirroring ``LoginRedirectResponseSchema``)\n    so the client navigates to splash after the acting session is logged out.\n    Shared by the delete and logout-everywhere flows (and the OAuth-proof\n    round-trip initiator, which returns the provider-redirect URL in the same\n    field).",
+            "description": "Response for the self-service account-removal / session-revocation\nendpoints (``DELETE /users/<id>`` and\n``POST /users/<id>/logout-everywhere``).\n\nCarries ``status``/``message`` (banner text is server-sourced off\n``message``) plus a ``redirect_url`` (mirroring ``LoginRedirectResponseSchema``)\nso the client navigates to splash after the acting session is logged out.\nShared by the delete and logout-everywhere flows (and the OAuth-proof\nround-trip initiator, which returns the provider-redirect URL in the same\nfield).",
             "content": {
               "application/json": {
                 "schema": {
@@ -9976,7 +9978,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Response for the self-service account-removal / session-revocation\n    endpoints (``DELETE /users/<id>`` and\n    ``POST /users/<id>/logout-everywhere``).\n\n    Carries ``status``/``message`` (banner text is server-sourced off\n    ``message``) plus a ``redirect_url`` (mirroring ``LoginRedirectResponseSchema``)\n    so the client navigates to splash after the acting session is logged out.\n    Shared by the delete and logout-everywhere flows (and the OAuth-proof\n    round-trip initiator, which returns the provider-redirect URL in the same\n    field).",
+            "description": "Response for the self-service account-removal / session-revocation\nendpoints (``DELETE /users/<id>`` and\n``POST /users/<id>/logout-everywhere``).\n\nCarries ``status``/``message`` (banner text is server-sourced off\n``message``) plus a ``redirect_url`` (mirroring ``LoginRedirectResponseSchema``)\nso the client navigates to splash after the acting session is logged out.\nShared by the delete and logout-everywhere flows (and the OAuth-proof\nround-trip initiator, which returns the provider-redirect URL in the same\nfield).",
             "content": {
               "application/json": {
                 "schema": {
@@ -10025,7 +10027,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Response envelope for ``GET /users/<id>/data-export``.\n\n    Nests the full export under a single ``export`` key (on top of the standard\n    ``status``/``message`` envelope fields) so the client can blob ``response.export``\n    cleanly for the downloaded file without the envelope metadata leaking into it.",
+            "description": "Response envelope for ``GET /users/<id>/data-export``.\n\nNests the full export under a single ``export`` key (on top of the standard\n``status``/``message`` envelope fields) so the client can blob ``response.export``\ncleanly for the downloaded file without the envelope metadata leaking into it.",
             "content": {
               "application/json": {
                 "schema": {
@@ -12443,6 +12445,42 @@
               }
             ],
             "description": "Username of the link's creator; null when that account was erased"
+          },
+          "previewEnabled": {
+            "description": "Stored manager choice: show logged-out visitors a read-only preview",
+            "type": "boolean"
+          },
+          "previewWindowDays": {
+            "description": "Stored preview window in days: 1, 3 or 7",
+            "type": "integer"
+          },
+          "previewEndsAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Stored UTC ISO-8601 window end; null while the preview is off"
+          },
+          "previewEffectiveEnabled": {
+            "description": "True when visitors can see the preview right now",
+            "type": "boolean"
+          },
+          "previewEffectiveEndsAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "UTC ISO-8601 end of the preview, capped at the link's expiry; null while the preview is off"
           }
         },
         "required": [
@@ -12452,7 +12490,12 @@
           "maxUses",
           "useCount",
           "createdAt",
-          "creatorUsername"
+          "creatorUsername",
+          "previewEnabled",
+          "previewWindowDays",
+          "previewEndsAt",
+          "previewEffectiveEnabled",
+          "previewEffectiveEndsAt"
         ],
         "type": "object"
       },
@@ -12563,6 +12606,31 @@
             ],
             "default": null,
             "description": "How many people may join with the link: 1, 5, 10 or 25; null means unlimited"
+          },
+          "preview_enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Show logged-out visitors a read-only preview; absent is unchanged"
+          },
+          "preview_window_days": {
+            "anyOf": [
+              {
+                "enum": [1, 3, 7],
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Days the preview stays available: 1, 3 or 7"
           }
         },
         "type": "object"

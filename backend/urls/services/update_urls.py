@@ -34,6 +34,9 @@ from backend.tags.services.create_url_tag import (
     get_tag_applied_counts,
     record_tag_applied_events,
 )
+from backend.tags.services.tag_permissions import (
+    url_restore_preserved_tags_refusal_response,
+)
 from backend.urls.constants import URLErrorCodes, URLState
 from backend.urls.permissions import can_act_as_url_adder
 from backend.urls.services.create_urls import (
@@ -298,6 +301,19 @@ def _revive_trashed_url_on_edit(
         is_manager=is_current_utub_manager(),
         member_ids=member_ids,
     )
+
+    # Keeping the trashed row's preserved tags is a tag write: follow the tagging policy.
+    restore_policy_refusal: FlaskResponse | None = (
+        url_restore_preserved_tags_refusal_response(
+            current_utub,
+            is_manager=is_current_utub_manager(),
+            has_preserved_tags=can_keep_tags
+            and bool(locked_trashed.associated_tag_ids),
+        )
+    )
+    if restore_policy_refusal is not None:
+        db.session.rollback()
+        return restore_policy_refusal
 
     # Read everything that depends on the pre-write state before any write.
     lost_tag_count: int = (

@@ -1,13 +1,20 @@
+from datetime import timedelta
+
 from flask_sqlalchemy import SQLAlchemy
 
 from backend.cli.mock_constants import MOCK_INVITE_LINK_STATES, MOCK_UTUB_NAME_BASE
-from backend.invite_links.constants import INVITE_LINK_DEFAULT_TTL
+from backend.invite_links.constants import (
+    INVITE_LINK_DEFAULT_TTL,
+    INVITE_LINK_PREVIEW_DEFAULT_WINDOW_DAYS,
+)
 from backend.invite_links.token_generator import generate_invite_token
 from backend.models.utub_invite_acceptances import Utub_Invite_Acceptances
 from backend.models.utub_invite_links import Utub_Invite_Links
 from backend.models.utub_members import Utub_Members
 from backend.models.utubs import Utubs
 from backend.utils.datetime_utils import utc_now
+
+MOCK_PREVIEW_ON_LABEL = "live_limited"
 
 
 def generate_mock_invite_links(db: SQLAlchemy) -> None:
@@ -45,6 +52,13 @@ def generate_mock_invite_links(db: SQLAlchemy) -> None:
             max_uses=state.max_uses,
         )
         invite_link.use_count = state.use_count
+        if state.label == MOCK_PREVIEW_ON_LABEL:
+            # Dev access to state 3: preview on, window 3 days, end below the expiry.
+            invite_link.preview_enabled = True
+            invite_link.preview_window_days = INVITE_LINK_PREVIEW_DEFAULT_WINDOW_DAYS
+            invite_link.preview_ends_at = now + timedelta(
+                days=INVITE_LINK_PREVIEW_DEFAULT_WINDOW_DAYS
+            )
         if state.revoked:
             invite_link.revoked_at = now
         db.session.add(invite_link)

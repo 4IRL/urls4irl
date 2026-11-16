@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from flask import Flask
 
 from backend import db
@@ -8,11 +10,26 @@ from tests.utils_for_test import add_invite_link
 
 
 def mint_invite_link_in_db(
-    *, app: Flask, utub_id: int, created_by: int, revoked: bool = False
+    *,
+    app: Flask,
+    utub_id: int,
+    created_by: int,
+    revoked: bool = False,
+    preview_enabled: bool = False,
+    preview_window_days: int = 3,
+    preview_ends_at: datetime | None = None,
 ) -> str:
     """Insert an invite link (live by default, or revoked) for ``utub_id`` minted by
     ``created_by`` and return its token, so a test can open the public page directly."""
-    invite_id = add_invite_link(app, utub_id, created_by, revoked=revoked)
+    invite_id = add_invite_link(
+        app,
+        utub_id,
+        created_by,
+        revoked=revoked,
+        preview_enabled=preview_enabled,
+        preview_window_days=preview_window_days,
+        preview_ends_at=preview_ends_at,
+    )
     with app.app_context():
         invite: Utub_Invite_Links = Utub_Invite_Links.query.get(invite_id)
         return invite.token

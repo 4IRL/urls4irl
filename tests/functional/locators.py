@@ -993,6 +993,20 @@ class InvitePageLocators(GenericPageLocator):
     LINK_GO_TO_APP = f"{MAIN} a.splash-button[href='/']"
     ANY_ROOT_LINK = "a[href='/']"
 
+    # State 3: read-only preview
+    PREVIEW_SKIP_LINK = "a#invitePreviewSkip"
+    PREVIEW_BADGE = "#invitePreviewBadge"
+    PREVIEW_BADGE_TIME = "#invitePreviewBadge time"
+    PREVIEW_LIST = "#invitePreviewList"
+    PREVIEW_CARD = "#invitePreviewList .invite-preview-card"
+    PREVIEW_URL_ANCHOR = "a.invite-preview-url"
+    PREVIEW_URL_SPAN = "span.invite-preview-url"
+    PREVIEW_BAR = "#invitePreviewBar"
+    PREVIEW_BAR_TEXT = "#invitePreviewBar .invite-preview-bar-text"
+    PREVIEW_BAR_ACTIONS = "#invitePreviewBar .invite-preview-bar-actions"
+    PREVIEW_BAR_CREATE_ACCOUNT = "#invitePreviewCreateAccount"
+    PREVIEW_BAR_LOG_IN = "#invitePreviewLogIn"
+
 
 class ModalLocators:
     """A collector class for general modal locators"""

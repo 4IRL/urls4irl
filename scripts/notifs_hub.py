@@ -109,7 +109,7 @@ def _read_one(path: Path) -> str:
     """Read a single-line file, stripping one trailing newline ('' on any error)."""
     try:
         text = path.read_text(encoding="utf-8")
-    except (OSError, ValueError):
+    except OSError, ValueError:
         return ""
     return text[:-1] if text.endswith("\n") else text
 

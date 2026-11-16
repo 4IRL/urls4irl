@@ -357,20 +357,26 @@ test-playwright-lifecycle: _hub-capacity ## Build the derived Playwright image a
 # a stamp inside that venv, so a pin bump reaches it too; the stamp is touched only after a successful install.
 # psycopg2 is skipped: it builds from source (needs pg_config), and the pinned psycopg2-binary provides the same
 # `psycopg2` module the root conftest imports.
-HOST_STATIC_TESTS := tests/unit/test_makefile_profiles.py tests/unit/test_compose_hub.py tests/unit/test_compose_prod_key_mount.py tests/unit/test_compose_profiles.py tests/unit/test_audit_pins.py tests/unit/test_playwright_entrypoint.py tests/unit/test_worktree_script.py tests/unit/test_env_example.py tests/unit/test_notifs_key_write.py tests/unit/test_prod_deploy_key_dir.py tests/unit/test_health_token_wiring.py tests/unit/test_notifs_exchange_workflow.py tests/unit/test_notifs_resolve_release_sha.py
+HOST_STATIC_TESTS := tests/unit/test_makefile_profiles.py tests/unit/test_compose_hub.py tests/unit/test_compose_prod_key_mount.py tests/unit/test_compose_profiles.py tests/unit/test_audit_pins.py tests/unit/test_playwright_entrypoint.py tests/unit/test_worktree_script.py tests/unit/test_env_example.py tests/unit/test_notifs_key_write.py tests/unit/test_prod_deploy_key_dir.py tests/unit/test_health_token_wiring.py tests/unit/test_notifs_exchange_workflow.py tests/unit/test_notifs_resolve_release_sha.py tests/unit/test_python_version_pins.py tests/unit/test_host_venv_check.py
+# scripts/host_venv_check.sh deletes a primary venv/ whose Python minor differs from the mise pin (exit 3 = deleted,
+# the caller rebuilds it; any other nonzero = failed closed). Shared by _host-static-run and hooks.
+HOST_VENV_CHECK := scripts/host_venv_check.sh
+HOST_VENV_REBUILT_RC := 3
 HOST_STATIC_STAMP = $(PRIMARY_ROOT)/venv/.u4i-host-static.stamp
 HOST_STATIC_TEST_PINS = $(PRIMARY_ROOT)/requirements/requirements-test.txt
 HOST_STATIC_PROD_PINS = $(PRIMARY_ROOT)/requirements/requirements-prod.txt
 test-host-static: _require-mise _host-static-run ## Run the host-only static tests (Makefile/compose/entrypoint) in the primary clone's venv: make test-host-static [f=<paths>] [args=<extra-pytest-args>]
 
 # The host-static run itself, shared by test-host-static and test-affected (a host-static diff); carries its own mise guard.
-# PYTHONDONTWRITEBYTECODE=1: tests/ and backend/ are bind-mounted into `web`, which runs the same CPython 3.11 and would
+# PYTHONDONTWRITEBYTECODE=1: tests/ and backend/ are bind-mounted into `web`, which runs the same CPython minor and would
 # reuse host-written __pycache__ files whose code objects carry host paths (source lookups then hit FileNotFoundError).
 _host-static-run: _require-mise
 	@test -n "$(PRIMARY_ROOT)" || { echo "test-host-static: not inside a git checkout" >&2; exit 1; }
+	@rc=0; "$(CURDIR)/$(HOST_VENV_CHECK)" "$(PRIMARY_ROOT)" mise exec python -- python || rc=$$?; [ "$$rc" -eq 0 ] || [ "$$rc" -eq "$(HOST_VENV_REBUILT_RC)" ] || exit "$$rc"
 	@test -x "$(PRIMARY_ROOT)/venv/bin/python" || (cd "$(PRIMARY_ROOT)" && mise exec python -- python -m venv venv) || exit 1
 	@test -f "$(HOST_STATIC_TEST_PINS)" -a -f "$(HOST_STATIC_PROD_PINS)" || { echo "test-host-static: missing $(HOST_STATIC_TEST_PINS) or $(HOST_STATIC_PROD_PINS)" >&2; exit 1; }
 	@if [ ! -f "$(HOST_STATIC_STAMP)" ] || [ "$(HOST_STATIC_TEST_PINS)" -nt "$(HOST_STATIC_STAMP)" ] || [ "$(HOST_STATIC_PROD_PINS)" -nt "$(HOST_STATIC_STAMP)" ]; then grep -hvE '^(-r |psycopg2==)' "$(HOST_STATIC_TEST_PINS)" "$(HOST_STATIC_PROD_PINS)" | "$(PRIMARY_ROOT)/venv/bin/pip" install --quiet --disable-pip-version-check -r /dev/stdin && touch "$(HOST_STATIC_STAMP)"; fi
+	@hook_path=$$(git rev-parse --git-path hooks/pre-commit); if [ -f "$$hook_path" ] && [ ! -x "$(PRIMARY_ROOT)/venv/bin/pre-commit" ]; then "$(PRIMARY_ROOT)/venv/bin/python" -m pip install --quiet --disable-pip-version-check $$(grep -E '^pre-commit==' "$(PRIMARY_ROOT)/requirements/requirements-dev.txt") && (cd "$(PRIMARY_ROOT)" && venv/bin/pre-commit install) || exit 1; fi
 	PYTHONDONTWRITEBYTECODE=1 "$(PRIMARY_ROOT)/venv/bin/python" -m pytest $(or $(f),$(HOST_STATIC_TESTS)) -v $(args)
 
 # Diff-scoped selection for test-affected / test-agent, resolved at parse time (the prerequisites depend on it, and a
@@ -566,6 +572,8 @@ reset-test-dbs: ## Drop leaked per-run test databases and orphaned Redis leases 
 hooks: ## Install the shared pre-commit git hook (idempotent; venv + install always in the main checkout, safe to run from any worktree)
 	@common_dir=$$(git rev-parse --path-format=absolute --git-common-dir) || exit 1; \
 		main=$$(dirname "$$common_dir"); \
+		rc=0; "$(CURDIR)/$(HOST_VENV_CHECK)" "$$main" mise exec python -- python || rc=$$?; \
+		[ "$$rc" -eq 0 ] || [ "$$rc" -eq "$(HOST_VENV_REBUILT_RC)" ] || exit "$$rc"; \
 		test -x "$$main/venv/bin/pre-commit" || (cd "$$main" && mise exec python -- python -m venv venv) || exit 1; \
 		"$$main/venv/bin/pip" install --quiet --disable-pip-version-check \
 			$$(grep -E '^pre-commit==' "$$main/requirements/requirements-dev.txt") || exit 1; \

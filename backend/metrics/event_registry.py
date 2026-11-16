@@ -28,6 +28,7 @@ from dataclasses import dataclass, field
 
 from backend.invite_links.constants import (
     INVITE_LINK_METRIC_HAS_USE_LIMIT_VALUES,
+    INVITE_LINK_METRIC_PREVIEW_LIST_STATES,
     INVITE_LINK_METRIC_REVOKE_REASONS,
     INVITE_LINK_METRIC_VIEW_OUTCOME_VALUES,
     INVITE_LINK_METRIC_VIEWER_STATE_VALUES,
@@ -162,6 +163,11 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
         description="UTub invite link revoked (manually, replaced, a dead link cleared on create, or its creator removed, left or demoted)",
         category=EventCategory.DOMAIN,
         dimensions={"reason": INVITE_LINK_METRIC_REVOKE_REASONS},
+    ),
+    EventName.INVITE_LINK_PREVIEW_VIEWED: EventRegistryEntry(
+        description="Read-only invite preview (state 3) rendered to a logged-out visitor, by list state",
+        category=EventCategory.DOMAIN,
+        dimensions={"list_state": INVITE_LINK_METRIC_PREVIEW_LIST_STATES},
     ),
     EventName.INVITE_LINK_VIEWED: EventRegistryEntry(
         description="Public invite page opened (GET), by viewer state and whether the link itself is live",

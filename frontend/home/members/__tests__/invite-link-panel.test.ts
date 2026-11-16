@@ -56,6 +56,11 @@ function liveLink(overrides: Partial<InviteLink> = {}): InviteLink {
     useCount: 3,
     createdAt: "2099-01-01T00:00:00Z",
     creatorUsername: "alice",
+    previewEnabled: false,
+    previewWindowDays: 3,
+    previewEndsAt: null,
+    previewEffectiveEnabled: false,
+    previewEffectiveEndsAt: null,
     ...overrides,
   };
 }

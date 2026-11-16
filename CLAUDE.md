@@ -36,7 +36,7 @@ The keys Plans store, Bot identity, Bot push script, Token generator, GitHub pro
   | Build | `make vite-build` |
   | Lint / format | `make lint` · `make format-check` · `make typecheck` (fix: `make format`); onboard a clone/worktree with `make setup` (worktree-init `.env`/secrets links + toolchain + hook + capacity). The pre-commit hook runs these automatically **only if the hook is installed** (`make setup`, or `make hooks` alone; check with `make hooks-check`) |
   | Workflow image wiring check | `make test-workflow-image` |
-  | Seeded invite link path (dev only) | `make invite-token s=<live_unlimited\|live_limited\|expired\|used_up\|revoked>` (after `make addmock`) |
+  | Seeded invite link path (dev only) | `make invite-token s=<live_unlimited\|live_limited\|expired\|used_up\|revoked>` (after `make addmock`; `live_limited` opens state 3, the preview) |
   | Regenerate types | `make generate-types` |
   | Regenerate endpoint registry | `make generate-endpoints` (check: `make audit-endpoints`) |
   | Inspect UI failures | `make test-artifacts` (latest run's failure index + evidence paths; `run=<id>` for an older run) |
@@ -323,7 +323,7 @@ make typecheck      # tsc on frontend/tsconfig.json + tsconfig.test.json (no sta
 make format         # apply ruff format + prettier --write + shfmt -w
 ```
 
-`.mise.toml` is the single pin location (python 3.11.14, node, pnpm, ruff, shellcheck, shfmt, actionlint); prettier is pinned in `frontend/package.json`; ruff config lives in `pyproject.toml`. Don't run `mise trust`: the config must stay pin-only, and `make mise-config-check` enforces that. `.git-blame-ignore-revs` hides the format-only pass from blame (GitHub honors it automatically).
+`.mise.toml` is the single pin location (python 3.14.10, node, pnpm, ruff, shellcheck, shfmt, actionlint); prettier is pinned in `frontend/package.json`; ruff config lives in `pyproject.toml`. Don't run `mise trust`: the config must stay pin-only, and `make mise-config-check` enforces that. `.git-blame-ignore-revs` hides the format-only pass from blame (GitHub honors it automatically).
 
 **Note:** Never run `pre-commit`, `ruff`, `eslint`, `prettier`, `make lint`, or `make format` manually unless explicitly asked — pre-commit runs all of these automatically as a git hook on commit.
 

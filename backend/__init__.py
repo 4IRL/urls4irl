@@ -75,7 +75,7 @@ def _read_manifest(manifest_path: str) -> dict[str, ViteManifestEntry]:
     try:
         with open(manifest_path, "r") as manifest_file:
             return json.load(manifest_file)
-    except (FileNotFoundError, json.JSONDecodeError):
+    except FileNotFoundError, json.JSONDecodeError:
         return {}
 
 

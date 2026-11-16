@@ -310,6 +310,108 @@ def test_parity_update_below_joined_is_400(
 
 
 # ---------------------------------------------------------------------------
+# Parity: preview fields
+# ---------------------------------------------------------------------------
+
+PREVIEW_KEYS: list[str] = [
+    MODELS.PREVIEW_ENABLED,
+    MODELS.PREVIEW_WINDOW_DAYS,
+    MODELS.PREVIEW_ENDS_AT,
+    MODELS.PREVIEW_EFFECTIVE_ENABLED,
+    MODELS.PREVIEW_EFFECTIVE_ENDS_AT,
+]
+
+
+def _preview_columns(app: Flask) -> tuple[bool, int, bool]:
+    """Stored preview columns that must match across surfaces (the end is a time)."""
+    row = rows(app)[0]
+    return row.preview_enabled, row.preview_window_days, row.preview_ends_at is None
+
+
+def test_parity_update_preview_enable(every_user_in_every_utub, app: Flask, send: Send):
+    add_invite_link(
+        app, FIRST_UTUB_ID, CREATOR_ID, expires_at=utc_now() + timedelta(days=30)
+    )
+
+    response = send("update", body={"preview_enabled": True, "preview_window_days": 7})
+
+    assert response.status_code == 200
+    link = link_of(response)
+    assert link[MODELS.PREVIEW_ENABLED] is True
+    assert link[MODELS.PREVIEW_WINDOW_DAYS] == 7
+    assert link[MODELS.PREVIEW_EFFECTIVE_ENABLED] is True
+    assert _preview_columns(app) == (True, 7, False)
+
+
+def test_parity_update_preview_window_only_on_off_row(
+    every_user_in_every_utub, app: Flask, send: Send
+):
+    add_invite_link(app, FIRST_UTUB_ID, CREATOR_ID)
+
+    response = send("update", body={"preview_window_days": 7})
+
+    assert response.status_code == 200
+    link = link_of(response)
+    assert link[MODELS.PREVIEW_ENABLED] is False
+    assert link[MODELS.PREVIEW_ENDS_AT] is None
+    assert link[MODELS.PREVIEW_EFFECTIVE_ENABLED] is False
+    assert _preview_columns(app) == (False, 7, True)
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        {"preview_window_days": 2},
+        {"preview_window_days": None},
+        {"preview_enabled": None},
+        {"preview_enabled": "true"},
+    ],
+)
+def test_parity_update_invalid_preview_is_400(
+    every_user_in_every_utub, app: Flask, send: Send, body: dict[str, Any]
+):
+    add_invite_link(app, FIRST_UTUB_ID, CREATOR_ID)
+
+    response = send("update", body=body)
+
+    assert response.status_code == 400
+    assert error_code_of(response) == InviteLinkErrorCodes.INVALID_FORM_INPUT
+    assert _preview_columns(app) == (False, 3, True)
+
+
+@pytest.mark.parametrize("op", ["create", "replace"])
+def test_parity_create_and_replace_ignore_preview_keys(
+    every_user_in_every_utub, app: Flask, send: Send, op: str
+):
+    if op == "replace":
+        add_invite_link(app, FIRST_UTUB_ID, CREATOR_ID)
+
+    response = send(op, body={"preview_enabled": True, "preview_window_days": 7})
+
+    assert response.status_code == 201
+    link = link_of(response)
+    assert link[MODELS.PREVIEW_ENABLED] is False
+    assert link[MODELS.PREVIEW_WINDOW_DAYS] == 3
+    assert link[MODELS.PREVIEW_ENDS_AT] is None
+    new_row = unrevoked(app)[0]
+    assert (new_row.preview_enabled, new_row.preview_window_days) == (False, 3)
+
+
+def test_mobile_get_carries_the_five_preview_fields(
+    every_user_in_every_utub, app: Flask
+):
+    add_invite_link(app, FIRST_UTUB_ID, CREATOR_ID)
+
+    response = _mobile_send(app, "get")
+
+    assert response.status_code == 200
+    link = link_of(response)
+    assert all(key in link for key in PREVIEW_KEYS)
+    assert link[MODELS.PREVIEW_ENABLED] is False
+    assert link[MODELS.PREVIEW_WINDOW_DAYS] == 3
+
+
+# ---------------------------------------------------------------------------
 # Parity: replace and revoke
 # ---------------------------------------------------------------------------
 

@@ -115,7 +115,7 @@ def validate_user_is_member_of_utub_on_home_page_with_query_param(utub_id: str) 
 
         return True
 
-    except (ValueError, DataError):
+    except ValueError, DataError:
         # Handle invalid UTubID passed as query parameter
         warning_log(f"Invalid UTub.id={utub_id} for User={current_user.id}")
         abort(404)
