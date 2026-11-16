@@ -78,6 +78,16 @@ def fill_url_to_tag_limit(
     return tag_ids
 
 
+def count_utub_urls_in_utub(*, app: Flask, utub_id: int) -> int:
+    with app.app_context():
+        return Utub_Urls.query.filter(Utub_Urls.utub_id == utub_id).count()
+
+
+def utub_tag_exists(*, app: Flask, utub_tag_id: int) -> bool:
+    with app.app_context():
+        return Utub_Tags.query.get(utub_tag_id) is not None
+
+
 def count_tags_on_url(*, app: Flask, utub_url_id: int) -> int:
     with app.app_context():
         return Utub_Url_Tags.query.filter(

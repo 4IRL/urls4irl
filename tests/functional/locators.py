@@ -169,6 +169,17 @@ class HomePageLocators(GenericPageLocator):
     MEMBER_ROW_ACTION_ANNOUNCEMENT = "#MemberRowActionAnnouncement"
     # Shared (manager-only) short-link policy switch in the "New URLs" section.
     URLS_SETTINGS_ALLOW_SHORT_LINKS_SWITCH = "#urlsSettingsAllowShortLinksSwitch"
+    # Shared "Tag permissions" switches (and Delete's hint) on the Tags gear.
+    TAGS_PERMISSIONS_MEMBERS_CAN_TAG_SWITCH = "#tagsPermissionsMembersCanTagSwitch"
+    TAGS_PERMISSIONS_MEMBERS_CAN_DELETE_SWITCH = (
+        "#tagsPermissionsMembersCanDeleteSwitch"
+    )
+    TAGS_PERMISSIONS_MEMBERS_CAN_DELETE_HINT = "#tagsPermissionsMembersCanDeleteHint"
+    # Blocked-control surfaces from lib/disabled-reason.ts (any permission gate).
+    DISABLED_REASON_TOOLTIP = ".disabledReasonTooltip"
+    DISABLED_REASON_TOOLTIP_VISIBLE = ".disabledReasonTooltipVisible"
+    DISABLED_REASON_LOCK = ".disabledReasonLock"
+    TAG_SHEET_BODY = "#tagSheetBody"
     # "Your view of this UTub" (per-member) controls on the URLs gear.
     URLS_PERSONAL_SORT_SELECT = "#urlsSettingsSortSelect"
     URLS_PERSONAL_VIEW_SELECT = "#urlsSettingsViewSelect"
