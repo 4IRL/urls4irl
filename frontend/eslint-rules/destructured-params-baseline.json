@@ -87,7 +87,6 @@
   "home/urls/tags/combobox.ts:stageActiveOrQuery",
   "home/urls/tags/combobox.ts:stageTagString",
   "home/urls/tags/create.ts:createURLTag",
-  "home/urls/tags/create.ts:createURLTagFail",
   "home/urls/tags/create.ts:createURLTagFailErrors",
   "home/urls/tags/create.ts:createURLTagSetup",
   "home/urls/tags/create.ts:createURLTagSuccess",

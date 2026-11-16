@@ -9,8 +9,15 @@ import { debug } from "../../../lib/debug.js";
 import { AppEvents, on } from "../../../lib/event-bus.js";
 import { clearOpenForm, setOpenForm } from "../../../lib/modal-tracking.js";
 import { HOME_FORM } from "../../../types/metrics-dim-values.js";
-import { getState, setState } from "../../../store/app-store.js";
+import { getState, setState, subscribe } from "../../../store/app-store.js";
+import { canTag } from "../../utubs/policy.js";
+import { refreshBulkActionButtons } from "./bulk-bar.js";
 import { mergeAppliedTagsIntoStore } from "../tags/combobox-state.js";
+import {
+  getForbiddenErrorCode,
+  handleTaggingRefusal,
+  URL_TAG_POLICY_ERROR_CODES,
+} from "../../tags/policy-banner.js";
 import {
   BULK_RESET_KEY,
   ComboboxMode,
@@ -51,12 +58,18 @@ const PICKER_OPEN_CLASS = "bulkTagPickerOpen";
 // Stable in-mode focus-return anchor (the header Exit control) — never the
 // ephemeral #bulkActionButtons button, which rebuilds on every selection change.
 const FOCUS_RETURN_SELECTOR = "#bulkSelectExit";
+const BULK_ADD_TAGS_BUTTON_SELECTOR = '[data-bulk-action-id="bulk-add-tags"]';
 const SUBMIT_BTN_SELECTOR = ".urlTagComboboxSubmitBtn";
 const CANCEL_BTN_SELECTOR = ".urlTagComboboxCancelBtn";
 const MESSAGE_SELECTOR = ".urlTagComboboxMsg";
 const LISTBOX_SELECTOR = ".urlTagListbox";
 const INPUT_SELECTOR = ".urlTagComboboxInput";
 const SUBMIT_LOADING_CLASS = "bulkTagSubmitLoading";
+const BULK_TAG_POLICY_KEYS = [
+  "settings",
+  "isCurrentUserOwner",
+  "isCoCreator",
+] as const;
 
 // Trusted static bulk-add-tags icon (Bootstrap `bi-tag`). Injected as raw HTML
 // via the registry's `.prepend(iconHtml)`, so this MUST stay a hard-coded literal
@@ -118,6 +131,8 @@ const bulkAddTagsAction: BulkAction = {
   iconHtml: BULK_ADD_TAGS_ICON_HTML,
   isAvailable: (context: BulkActionContext) =>
     context.selectedURLCardIDs.length > 0,
+  blockedReason: () =>
+    canTag(getState()) ? null : APP_CONFIG.strings.TAG_URLS_NOT_ALLOWED,
   onActivate: openBulkTagPicker,
 };
 
@@ -151,6 +166,26 @@ export function initBulkTag(): void {
       closeAndResetPicker({ returnFocus: false });
     }
   });
+
+  // Tagging turned off under an open picker: close it (nothing is sent), repaint
+  // the bar so "Add tags" shows as blocked, and return focus there when it was in
+  // the picker. A silent flip: the blocked control carries the reason.
+  let previouslyCanTag = canTag(getState());
+  subscribe((changedKeys) => {
+    if (!BULK_TAG_POLICY_KEYS.some((key) => changedKeys.includes(key))) return;
+    const nowCanTag = canTag(getState());
+    const flippedOff = previouslyCanTag && !nowCanTag;
+    previouslyCanTag = nowCanTag;
+    if (!flippedOff || !isBulkTagPickerOpen()) return;
+    const focusWasInside =
+      currentWrap?.[0]?.contains(document.activeElement) ?? false;
+    log("bulk tag picker closed: tagging turned off");
+    closeAndResetPicker({ returnFocus: false });
+    refreshBulkActionButtons();
+    if (focusWasInside) {
+      ($(BULK_ADD_TAGS_BUTTON_SELECTOR)[0] as HTMLElement | undefined)?.focus();
+    }
+  });
 }
 
 // --- Open / close lifecycle ---------------------------------------------------
@@ -164,6 +199,8 @@ function openBulkTagPicker(context: BulkActionContext): void {
   // Re-entrant / cross-picker guard: no-op while this picker OR the copy picker
   // is already open (only one bulk sub-picker at a time — DD-13).
   if (isAnyBulkPickerOpen()) return;
+  // A blocked control never opens the picker.
+  if (!canTag(getState())) return;
 
   const utubID = getState().activeUTubID;
   if (utubID === null) return;
@@ -354,7 +391,7 @@ function submitBulkTags(stagedStrings: string[]): void {
   });
 
   request.fail(function (xhr: JQuery.jqXHR) {
-    handleBulkSubmitFail(xhr);
+    handleBulkSubmitFail({ xhr, utubID });
   });
 
   request.always(function () {
@@ -431,8 +468,34 @@ function handleBulkSubmitSuccess({
   closeAndResetPicker();
 }
 
-function handleBulkSubmitFail(xhr: JQuery.jqXHR): void {
+function handleBulkSubmitFail({
+  xhr,
+  utubID,
+}: {
+  xhr: JQuery.jqXHR;
+  utubID: number;
+}): void {
   if (is429Handled(xhr)) return;
+
+  if (
+    getForbiddenErrorCode(xhr) ===
+    URL_TAG_POLICY_ERROR_CODES.TAGGING_NOT_ALLOWED
+  ) {
+    // A manager turned tagging off while this tab still showed it on: close the
+    // picker without a redirect (the whole request was refused, nothing applied),
+    // then explain once and hand focus to the bulk bar's Add tags button.
+    closeAndResetPicker({ returnFocus: false });
+    const addTagsButton = $(BULK_ADD_TAGS_BUTTON_SELECTOR)[0] as
+      | HTMLElement
+      | undefined;
+    handleTaggingRefusal({
+      message: APP_CONFIG.strings.TAG_URLS_NOT_ALLOWED,
+      utubID,
+      focusTarget: addTagsButton,
+      control: addTagsButton,
+    });
+    return;
+  }
 
   if (!("responseJSON" in xhr)) {
     if (
