@@ -11,6 +11,7 @@ import { canManageInviteLink } from "../utubs/policy.js";
 import { updateUTubOnFindingStaleData } from "../utubs/stale-data.js";
 import { withMemberControlFocusFallback } from "./focus-fallback.js";
 import { hideAndResetMemberCombobox } from "./member-combobox.js";
+import { buildSwitchButton } from "../panel-settings/row-controls.js";
 import { announceMemberRowAction } from "./notice.js";
 import { closeMemberNameFilter } from "./search.js";
 import {
@@ -90,7 +91,7 @@ let _confirm: {
 } | null = null;
 // The settings save in flight: which select and the value being saved (the
 // select shows it until the response replaces it). Null outside a save.
-type SaveField = "expires" | "uses";
+type SaveField = "expires" | "uses" | "preview";
 let _pending: { field: SaveField; value: string } | null = null;
 let _copyRevertTimer: ReturnType<typeof setTimeout> | null = null;
 const COPIED_LABEL_MS = 1500;
@@ -470,6 +471,93 @@ function makeFloorHint({ link }: { link: InviteLink }): HTMLElement | null {
   });
 }
 
+const PREVIEW_SWITCH_ID = "inviteLinkPreviewSwitch";
+const PREVIEW_LABEL_ID = "inviteLinkPreviewLabel";
+const PREVIEW_DESC_ID = "inviteLinkPreviewDesc";
+const PREVIEW_WARNING_ID = "inviteLinkPreviewWarning";
+const PREVIEW_BLOCK_SELECTOR = `${BODY_SELECTOR} .invitePanelPreview`;
+
+// The switch's aria-describedby, one value for every writer: the inline error
+// first (only while it describes the switch), then the Desc, then the warning
+// (only while it exists).
+function previewDescribedBy({
+  withError,
+  hasWarning,
+}: {
+  withError: boolean;
+  hasWarning: boolean;
+}): string {
+  return [
+    ...(withError ? [INLINE_ERROR_ID] : []),
+    PREVIEW_DESC_ID,
+    ...(hasWarning ? [PREVIEW_WARNING_ID] : []),
+  ].join(" ");
+}
+
+// Rewrites the live switch's aria-describedby from the DOM as it is now.
+function syncPreviewDescribedBy({ withError }: { withError: boolean }): void {
+  document.getElementById(PREVIEW_SWITCH_ID)?.setAttribute(
+    "aria-describedby",
+    previewDescribedBy({
+      withError,
+      hasWarning: document.getElementById(PREVIEW_WARNING_ID) !== null,
+    }),
+  );
+}
+
+function previewWarningFor({ link }: { link: InviteLink }): HTMLElement | null {
+  if (!link.previewEffectiveEnabled || link.previewEffectiveEndsAt === null) {
+    return null;
+  }
+  return makeElement({
+    tag: "p",
+    id: PREVIEW_WARNING_ID,
+    className: "invitePanelPreviewWarning",
+    text: fillTemplate({
+      template: APP_CONFIG.strings.INVITE_LINK_PANEL_PREVIEW_WARNING,
+      values: { date: formatShortDate(link.previewEffectiveEndsAt) },
+    }),
+  });
+}
+
+function makePreviewBlock({ link }: { link: InviteLink }): HTMLElement {
+  const { strings } = APP_CONFIG;
+  const block = makeElement({ tag: "div", className: "invitePanelPreview" });
+  const row = makeElement({ tag: "div", className: "invitePanelPreviewRow" });
+  const text = makeElement({ tag: "div", className: "invitePanelPreviewText" });
+  text.append(
+    makeElement({
+      tag: "span",
+      id: PREVIEW_LABEL_ID,
+      className: "invitePanelPreviewName",
+      text: strings.INVITE_LINK_PANEL_PREVIEW_LABEL,
+    }),
+    makeElement({
+      tag: "span",
+      id: PREVIEW_DESC_ID,
+      className: "invitePanelPreviewDesc",
+      text: strings.INVITE_LINK_PANEL_PREVIEW_DESC,
+    }),
+  );
+  const switchButton = buildSwitchButton({
+    id: PREVIEW_SWITCH_ID,
+    labelledBy: PREVIEW_LABEL_ID,
+  });
+  switchButton.setAttribute(
+    "aria-checked",
+    String(link.previewEffectiveEnabled),
+  );
+  row.append(text, switchButton);
+  block.append(row);
+  const warning = previewWarningFor({ link });
+  if (warning !== null) block.append(warning);
+  switchButton.setAttribute(
+    "aria-describedby",
+    previewDescribedBy({ withError: false, hasWarning: warning !== null }),
+  );
+  return block;
+}
+
 function renderLive({ link }: { link: InviteLink }): void {
   const { strings } = APP_CONFIG;
   const row = makeElement({ tag: "div", className: "invitePanelLinkRow" });
@@ -512,6 +600,7 @@ function renderLive({ link }: { link: InviteLink }): void {
   ];
   const floorHint = makeFloorHint({ link });
   if (floorHint !== null) nodes.push(floorHint);
+  nodes.push(makePreviewBlock({ link }));
   const footer = makeElement({ tag: "div", className: "invitePanelFooter" });
   footer.append(
     makeButton({
@@ -848,16 +937,21 @@ function clearInFlight(): void {
   _lifecycleInFlight = false;
   _pending = null;
   document.getElementById(SAVING_ID)?.remove();
-  $(`${BODY_SELECTOR} select[aria-busy]`).removeAttr("aria-busy");
+  $(
+    `${BODY_SELECTOR} select[aria-busy], ${BODY_SELECTOR} [role=switch][aria-busy]`,
+  ).removeAttr("aria-busy");
   setControlsLocked({ locked: false });
 }
 
-// Removes the inline error and the invalid state it tied to a select.
+// Removes the inline error and the invalid state it tied to a select or the
+// preview switch (the switch keeps its Desc and warning ids).
 function clearInlineError(): void {
   document.getElementById(INLINE_ERROR_ID)?.remove();
   $(`${BODY_SELECTOR} select`)
     .removeAttr("aria-invalid")
     .removeAttr("aria-describedby");
+  document.getElementById(PREVIEW_SWITCH_ID)?.removeAttribute("aria-invalid");
+  syncPreviewDescribedBy({ withError: false });
 }
 
 function showInlineError({
@@ -876,7 +970,11 @@ function showInlineError({
   });
   $(BODY_SELECTOR)[0]?.append(error);
   if (describes !== null) {
-    describes.setAttribute("aria-describedby", INLINE_ERROR_ID);
+    if (describes.id === PREVIEW_SWITCH_ID) {
+      syncPreviewDescribedBy({ withError: true });
+    } else {
+      describes.setAttribute("aria-describedby", INLINE_ERROR_ID);
+    }
   }
   announceInviteLinkPanel({ message, politeness: "assertive" });
 }
@@ -1058,27 +1156,62 @@ function runLifecycle({ kind }: { kind: LifecycleKind }): void {
   );
 }
 
-function selectFor({ field }: { field: SaveField }): HTMLSelectElement | null {
+function selectFor({
+  field,
+}: {
+  field: "expires" | "uses";
+}): HTMLSelectElement | null {
   const element = document.getElementById(
     field === "expires" ? EXPIRES_SELECT_ID : USES_SELECT_ID,
   );
   return element instanceof HTMLSelectElement ? element : null;
 }
 
-// What the server last confirmed for a select. The Expires select always shows
+// The control that owns focus and shows the busy state for a field.
+function controlFor({ field }: { field: SaveField }): HTMLElement | null {
+  if (field === "preview") return document.getElementById(PREVIEW_SWITCH_ID);
+  return selectFor({ field });
+}
+
+// What the server last confirmed for a control. The Expires select always shows
 // its first option (the current expiry date), whose value is "".
 function committedValue({ field }: { field: SaveField }): string {
-  if (field === "expires" || _liveLink === null) return "";
+  if (_liveLink === null) return "";
+  if (field === "preview") return String(_liveLink.previewEffectiveEnabled);
+  if (field === "expires") return "";
   return _liveLink.maxUses === null ? "" : String(_liveLink.maxUses);
 }
 
-// Sets the selects back to their committed values. Programmatic: no `change`
-// event fires and focus does not move.
+// Sets the controls back to their committed values. Programmatic: no `change`
+// or click event fires and focus does not move.
 function restoreCommitted(): void {
   for (const field of ["expires", "uses"] as const) {
     const select = selectFor({ field });
     if (select !== null) select.value = committedValue({ field });
   }
+  document
+    .getElementById(PREVIEW_SWITCH_ID)
+    ?.setAttribute("aria-checked", committedValue({ field: "preview" }));
+}
+
+// Repaints the switch and the warning without replacing the switch, so focus
+// stays on it. The warning is always the last child of the preview block.
+function refreshPreviewInPlace({ link }: { link: InviteLink }): void {
+  const switchButton = document.getElementById(PREVIEW_SWITCH_ID);
+  if (switchButton === null) return;
+  const withError =
+    switchButton
+      .getAttribute("aria-describedby")
+      ?.split(" ")
+      .includes(INLINE_ERROR_ID) ?? false;
+  switchButton.setAttribute(
+    "aria-checked",
+    String(link.previewEffectiveEnabled),
+  );
+  document.getElementById(PREVIEW_WARNING_ID)?.remove();
+  const warning = previewWarningFor({ link });
+  if (warning !== null) $(PREVIEW_BLOCK_SELECTOR)[0]?.append(warning);
+  syncPreviewDescribedBy({ withError });
 }
 
 // Repaints the meta, the Expires first option and the Uses options/helper from
@@ -1086,6 +1219,7 @@ function restoreCommitted(): void {
 function refreshLiveInPlace({ link }: { link: InviteLink }): void {
   _liveLink = link;
   $(`${BODY_SELECTOR} .invitePanelMeta`).first().text(liveMetaText({ link }));
+  refreshPreviewInPlace({ link });
   const expires = selectFor({ field: "expires" });
   if (expires !== null) {
     fillSelectOptions({ select: expires, options: expiryOptionsFor({ link }) });
@@ -1125,6 +1259,14 @@ function savedMessageFor({
       template: strings.INVITE_LINK_PANEL_EXPIRES_SET,
       values: { date: formatShortDate(link.expiresAt) },
     });
+  }
+  if (field === "preview") {
+    return link.previewEffectiveEnabled && link.previewEffectiveEndsAt !== null
+      ? fillTemplate({
+          template: strings.INVITE_LINK_PANEL_PREVIEW_ON,
+          values: { date: formatShortDate(link.previewEffectiveEndsAt) },
+        })
+      : strings.INVITE_LINK_PANEL_PREVIEW_OFF;
   }
   return fillTemplate({
     template: strings.INVITE_LINK_PANEL_USES_SET,
@@ -1255,7 +1397,7 @@ function onSaveFailure({
     return;
   }
   restoreCommitted();
-  showInlineError({ describes: selectFor({ field }) });
+  showInlineError({ describes: controlFor({ field }) });
 }
 
 // Sends one settings save. The select stays enabled and focused; the lifecycle
@@ -1268,12 +1410,14 @@ function saveSetting({
   value: string;
 }): void {
   const utubID = _openedUTubID;
-  const select = selectFor({ field });
-  if (utubID === null || select === null) return;
+  const control = controlFor({ field });
+  if (utubID === null || control === null) return;
   let body: InviteLinkUpdateBody;
   if (field === "expires") {
     if (value === "") return;
     body = { expires_in_days: Number(value) };
+  } else if (field === "preview") {
+    body = { preview_enabled: value === "true" };
   } else {
     body = { max_uses: value === "" ? null : Number(value) };
   }
@@ -1281,8 +1425,13 @@ function saveSetting({
   _inFlight = true;
   _pending = { field, value };
   setControlsLocked({ locked: true });
-  select.setAttribute("aria-busy", "true");
-  select.after(
+  control.setAttribute("aria-busy", "true");
+  if (field === "preview") control.setAttribute("aria-checked", value);
+  // The switch's indicator goes after its row (never inside it), so the switch
+  // does not move under the pointer.
+  const anchor =
+    field === "preview" ? control.closest(".invitePanelPreviewRow") : control;
+  anchor?.after(
     makeElement({
       tag: "span",
       id: SAVING_ID,
@@ -1489,6 +1638,16 @@ function cancelConfirm(): void {
   document.getElementById(originId)?.focus({ preventScroll: true });
 }
 
+// A click flips the committed effective state. Nothing happens while any request
+// is in flight (the switch stays enabled and focused, so it just ignores clicks).
+function handlePreviewSwitchClick(): void {
+  if (_liveLink === null || _inFlight || _lifecycleInFlight) return;
+  saveSetting({
+    field: "preview",
+    value: String(!_liveLink.previewEffectiveEnabled),
+  });
+}
+
 function handlePanelClick(event: JQuery.ClickEvent): void {
   const target = (event.target as HTMLElement).closest("button");
   if (target === null) return;
@@ -1503,6 +1662,10 @@ function handlePanelClick(event: JQuery.ClickEvent): void {
   }
   if (target.id === "inviteLinkCopyBtn") {
     handleCopy();
+    return;
+  }
+  if (target.id === PREVIEW_SWITCH_ID) {
+    handlePreviewSwitchClick();
     return;
   }
   if (!target.matches(LOCKABLE_SELECTOR)) return;

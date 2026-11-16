@@ -18,6 +18,7 @@ from tests.utils_for_test import add_invite_link
 pytestmark = [pytest.mark.home_ui, pytest.mark.members_ui, pytest.mark.mobile_ui]
 
 _MIN_TOUCH_TARGET_PX = 44
+_SUBPIXEL_TOLERANCE_PX = 0.5
 
 
 def test_panel_fits_phone_width_with_touch_targets(
@@ -47,10 +48,13 @@ def test_panel_fits_phone_width_with_touch_targets(
         page.locator(HPL.INVITE_LINK_EXPIRES_SELECT),
         page.locator(HPL.INVITE_LINK_USES_SELECT),
         page.locator(HPL.INVITE_LINK_URL_INPUT),
+        page.locator("#inviteLinkPreviewSwitch"),
     ):
         box = locator.bounding_box()
         assert box is not None
-        assert box["height"] >= _MIN_TOUCH_TARGET_PX, box
+        # The bottom-anchored sheet lands controls on fractional y offsets, so a
+        # 44px min-height can measure 43.99997 after layout snapping.
+        assert box["height"] >= _MIN_TOUCH_TARGET_PX - _SUBPIXEL_TOLERANCE_PX, box
         assert box["width"] >= _MIN_TOUCH_TARGET_PX, box
 
     overflow = page.evaluate(

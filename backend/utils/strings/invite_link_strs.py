@@ -149,6 +149,32 @@ class INVITE_LINK_PANEL:
     USES_BELOW_JOINED = (
         "{count} people have already joined. Choose a limit of at least {count}."
     )
+    PREVIEW_WINDOW_OFF_HINT = "It applies when you turn the preview on."
+    PREVIEW_LABEL = "Preview for visitors without an account"
+    PREVIEW_DESC = (
+        "Shows this UTub's name, description, URLs, titles and tags, read-only."
+    )
+    PREVIEW_WINDOW_LABEL = "Preview length"
+    PREVIEW_WINDOW_DAYS_ONE = "1 day"
+    PREVIEW_WINDOW_DAYS = "{days} days"
+    PREVIEW_WINDOW_CAPPED_OPTION = "Until {date} (link expiry)"
+    PREVIEW_WINDOW_LIMIT_HINT = (
+        "Lengths longer than the time left on the link are unavailable."
+    )
+    PREVIEW_WINDOW_CAPPED_HINT = (
+        "The preview can't outlast the link. You chose {label}; "
+        "lengthening Expires brings that back."
+    )
+    PREVIEW_WARNING = (
+        "Anyone with this link can view this UTub's name, description, URLs, "
+        "titles and tags without an account until {date}. "
+        "Member names are never shown."
+    )
+    PREVIEW_ON = "Preview on until {date}."
+    PREVIEW_OFF = "Preview off."
+    PREVIEW_WINDOW_SET = "Preview length set to {label}. " + PREVIEW_WINDOW_OFF_HINT
+    PREVIEW_ENDS_SET = "Preview now ends {date}."
+    PREVIEW_CAPPED = "Preview now ends {date}, when the link expires."
 
 
 # Strings for invite link failure
