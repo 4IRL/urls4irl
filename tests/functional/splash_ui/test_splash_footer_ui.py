@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import pytest
-from playwright.sync_api import Page
+from playwright.sync_api import Page, expect
 
+from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.locators import SplashPageLocators as SPL
 from tests.functional.playwright_assert_utils import (
@@ -67,6 +68,28 @@ def test_privacy_policy(page: Page):
     THEN ensure the U4I Privacy Policy is displayed
     """
     visit_privacy_page(page=page)
+
+
+def test_privacy_policy_shows_invite_preview_sentence(page: Page):
+    """
+    GIVEN a fresh load of the U4I Splash page
+    WHEN user opens the Privacy Policy from the footer
+    THEN the invite link preview sentence is visible
+    """
+    visit_privacy_page(page=page)
+    expect(
+        page.get_by_text(UI_TEST_STRINGS.INVITE_LEGAL_PRIVACY_PREVIEW)
+    ).to_be_visible()
+
+
+def test_terms_shows_invite_preview_sentence(page: Page):
+    """
+    GIVEN a fresh load of the U4I Splash page
+    WHEN user opens the Terms from the footer
+    THEN the invite link preview sentence is visible
+    """
+    visit_terms_page(page=page)
+    expect(page.get_by_text(UI_TEST_STRINGS.INVITE_LEGAL_TERMS_PREVIEW)).to_be_visible()
 
 
 def test_privacy_policy_rate_limits(page: Page):

@@ -61,6 +61,22 @@ class INVITE_LINK_PAGE:
     PREVIEW_SKIP_LINK = "Skip to join options"
 
 
+# Legal copy about the invite link preview (rendered by Jinja into the Terms and the
+# Privacy Policy; Python tests assert it via ui_testing_strs). Not bridged to TypeScript.
+class INVITE_LINK_LEGAL:
+    TERMS_PREVIEW = (
+        "UTub owners and co-owners can turn on a time-limited preview that lets "
+        "anyone with the UTub's invite link view its name, description, URLs, titles "
+        "and tags without an account; member names are never shown."
+    )
+    PRIVACY_PREVIEW = (
+        "If a UTub's owner or co-owner turns on an invite link preview, anyone with "
+        "that link can view the UTub's name, description, URLs, titles and tags, "
+        "without an account, until the preview ends; member usernames and other "
+        "personal information are never included."
+    )
+
+
 # Copy the Members-deck invite link panel renders from TypeScript. Bridged to
 # APP_CONFIG.strings with an INVITE_LINK_PANEL_ key prefix (see STRINGS /
 # generate_strings_js()). "{name}" placeholders are filled client-side.

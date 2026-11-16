@@ -14,7 +14,7 @@ from backend.utils.strings.admin_portal_strs import (
     ADMIN_ACTION_STRINGS,
     ADMIN_PORTAL_STRINGS,
 )
-from backend.utils.strings.invite_link_strs import INVITE_LINK_PAGE
+from backend.utils.strings.invite_link_strs import INVITE_LINK_LEGAL, INVITE_LINK_PAGE
 from backend.utils.strings.metric_flow_strs import (
     FILTER_FORMAT_STR,
     WRONG_TYPE_LIST_STR,
@@ -886,3 +886,5 @@ class UI_TEST_STRINGS:
     INVITE_JOINING_LABEL = INVITE_LINK_PAGE.JOINING_LABEL
     INVITE_NOT_NOW_LABEL = INVITE_LINK_PAGE.NOT_NOW_LABEL
     INVITE_GO_TO_APP_LABEL = INVITE_LINK_PAGE.GO_TO_APP_LABEL
+    INVITE_LEGAL_TERMS_PREVIEW = INVITE_LINK_LEGAL.TERMS_PREVIEW
+    INVITE_LEGAL_PRIVACY_PREVIEW = INVITE_LINK_LEGAL.PRIVACY_PREVIEW
