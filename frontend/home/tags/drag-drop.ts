@@ -2,7 +2,9 @@ import { $ } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { AppEvents, on } from "../../lib/event-bus.js";
 import { getOpenForm } from "../../lib/modal-tracking.js";
-import { getState } from "../../store/app-store.js";
+import { getState, subscribe, type AppState } from "../../store/app-store.js";
+import { canTag } from "../utubs/policy.js";
+import { showPolicyBanner } from "./policy-banner.js";
 import { isMobile } from "../mobile.js";
 import { submitStagedTags } from "../urls/tags/combobox.js";
 import { isTagInURL } from "../urls/tags/tags.js";
@@ -114,6 +116,7 @@ export function getCardDropReason({
 }): DropReason {
   const state = getState();
   if (dropInFlight) return DropReason.BLOCKED;
+  if (!canTag(state)) return DropReason.BLOCKED;
   if (state.isCurrentUTubLocked !== false) return DropReason.BLOCKED;
   if (getActiveUTubID() === null) return DropReason.BLOCKED;
   if (state.multiSelectMode !== false) return DropReason.BLOCKED;
@@ -141,7 +144,8 @@ export function getCardDropReason({
  * left as is there.
  */
 export function syncTagDragState(): void {
-  const draggable = isTagDragEnabled() && !isEditAllTagsActive();
+  const draggable =
+    isTagDragEnabled() && !isEditAllTagsActive() && canTag(getState());
   $(TAG_CHIP_SELECTOR).each(function () {
     if (draggable) this.setAttribute("draggable", "true");
     else this.removeAttribute("draggable");
@@ -164,6 +168,7 @@ function handleDragStart(event: DragEvent): void {
 
   if (
     !isTagDragEnabled() ||
+    !canTag(getState()) ||
     isEditAllTagsActive() ||
     getState().multiSelectMode
   ) {
@@ -488,8 +493,60 @@ function handleDropOnCard(event: DragEvent): void {
 }
 
 function handleGateMayHaveChanged(): void {
-  if (!isTagDragEnabled()) clearDragState();
+  if (!isTagDragEnabled() || !canTag(getState())) clearDragState();
   syncTagDragState();
+}
+
+const BLOCKED_DRAG_THRESHOLD_PX = 5;
+const BANNER_SHOWING_CLASS = "URLDeckErrorIndicatorShow";
+const POLICY_STORE_KEYS: ReadonlyArray<keyof AppState> = [
+  "settings",
+  "activeUTubID",
+  "isCurrentUserOwner",
+  "isCoCreator",
+];
+
+// A non-draggable chip fires no dragstart, so a blocked attempt is detected from
+// pointer events: the press point, and whether this press already showed the reason.
+let blockedPress: { x: number; y: number; shown: boolean } | null = null;
+
+function isOnChip(event: Event): boolean {
+  const target = event.target as HTMLElement | null;
+  return !!target?.closest?.(TAG_CHIP_SELECTOR);
+}
+
+function handleBlockedPointerDown(event: PointerEvent): void {
+  blockedPress = null;
+  if (!isTagDragEnabled() || canTag(getState())) return;
+  // Fine pointers only: touch scrolling must never trigger the reason.
+  if (event.pointerType === "touch") return;
+  if (!isOnChip(event)) return;
+  blockedPress = { x: event.clientX, y: event.clientY, shown: false };
+}
+
+function handleBlockedPointerMove(event: PointerEvent): void {
+  if (blockedPress === null || blockedPress.shown) return;
+  // A release outside #TagDeck never reaches endBlockedPress: no button held
+  // means the press is over.
+  if (event.buttons === 0 && event.pointerType === "mouse") {
+    blockedPress = null;
+    return;
+  }
+  if (!isTagDragEnabled()) return;
+  const moved = Math.hypot(
+    event.clientX - blockedPress.x,
+    event.clientY - blockedPress.y,
+  );
+  if (moved <= BLOCKED_DRAG_THRESHOLD_PX) return;
+  blockedPress.shown = true;
+  // showPolicyBanner only skips a repeat of the same text, so guard here: a
+  // repeat press while the banner is up adds nothing.
+  if ($("#URLDeckErrorIndicator").hasClass(BANNER_SHOWING_CLASS)) return;
+  showPolicyBanner({ message: APP_CONFIG.strings.TAG_URLS_NOT_ALLOWED });
+}
+
+function endBlockedPress(): void {
+  blockedPress = null;
 }
 
 /**
@@ -500,6 +557,24 @@ function handleGateMayHaveChanged(): void {
 export function initTagDragDrop(): void {
   const tagDeck = document.getElementById("TagDeck");
   tagDeck?.addEventListener("dragstart", handleDragStart);
+  tagDeck?.addEventListener(
+    "pointerdown",
+    handleBlockedPointerDown as EventListener,
+  );
+  tagDeck?.addEventListener(
+    "pointermove",
+    handleBlockedPointerMove as EventListener,
+  );
+  tagDeck?.addEventListener("pointerup", endBlockedPress);
+  tagDeck?.addEventListener("pointercancel", endBlockedPress);
+  document.addEventListener("pointerup", endBlockedPress);
+  document.addEventListener("pointercancel", endBlockedPress);
+
+  // A policy flip re-syncs draggability and cancels an in-progress drag.
+  subscribe((changedKeys) => {
+    if (!POLICY_STORE_KEYS.some((key) => changedKeys.includes(key))) return;
+    handleGateMayHaveChanged();
+  });
 
   const urlList = document.querySelector(URL_LIST_SELECTOR);
   urlList?.addEventListener("dragenter", handleDragOverCard as EventListener);

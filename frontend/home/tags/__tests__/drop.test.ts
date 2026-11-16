@@ -134,6 +134,7 @@ describe("tag drag-and-drop drop target", () => {
     tracking = await import("../../../lib/modal-tracking.js");
     store.setState({
       activeUTubID: 1,
+      isCurrentUserOwner: true,
       isCurrentUTubLocked: false,
       multiSelectMode: false,
       tags: [

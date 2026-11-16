@@ -16,6 +16,14 @@ import {
 import { UI_EVENTS } from "../../types/metrics-events.js";
 import { getState, setState } from "../../store/app-store.js";
 import { getNumOfUTubs } from "../utubs/utils.js";
+import { learnPolicyOff } from "../utubs/policy.js";
+import {
+  canFocusTagDeckControl,
+  getForbiddenErrorCode,
+  runAsRefusal,
+  showPolicyBanner,
+  UTUB_TAG_POLICY_ERROR_CODES,
+} from "./policy-banner.js";
 import { refreshTagDeckTagCount } from "./deck.js";
 import { closeTagNameFilter, reapplyTagFilter } from "./search.js";
 import { reapplyTagSortForNonDefault } from "../urls/cards/filtering.js";
@@ -185,7 +193,7 @@ function createUTubTag(utubID: number): void {
   });
 
   request.fail(function (xhr: JQuery.jqXHR) {
-    createUTubTagFail(xhr);
+    createUTubTagFail({ xhr, utubID });
   });
 }
 
@@ -238,8 +246,38 @@ function restoreCreateUTubTagSubmitTooltip(): void {
   restoreTooltipIfStillTargeted($("#utubTagSubmitBtnCreate")[0]);
 }
 
-function createUTubTagFail(xhr: JQuery.jqXHR): void {
+// A manager turned tagging off while this tab still showed it on. Close the form
+// without a redirect, learn the new setting, then explain once without moving focus.
+function handleCreateTagRefusal(utubID: number): void {
+  const message = APP_CONFIG.strings.TAG_CREATE_NOT_ALLOWED;
+  const createButton = $("#utubTagBtnCreate")[0] as HTMLElement | undefined;
+  createUTubTagHideInput();
+  runAsRefusal({
+    message,
+    callback: () => {
+      learnPolicyOff({ utubID, key: "tags.members_can_tag" });
+    },
+  });
+  if (canFocusTagDeckControl()) createButton?.focus();
+  showPolicyBanner({ message, control: createButton });
+}
+
+function createUTubTagFail({
+  xhr,
+  utubID,
+}: {
+  xhr: JQuery.jqXHR;
+  utubID: number;
+}): void {
   if (is429Handled(xhr)) return;
+
+  if (
+    getForbiddenErrorCode(xhr) ===
+    UTUB_TAG_POLICY_ERROR_CODES.TAGGING_NOT_ALLOWED
+  ) {
+    handleCreateTagRefusal(utubID);
+    return;
+  }
 
   log("createUTubTag failed", { status: xhr.status });
 
