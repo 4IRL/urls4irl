@@ -11,7 +11,10 @@ from backend.metrics.latency import LatencyMetricName
 from backend.utils.all_routes import SYSTEM_ROUTES
 from backend.utils.strings.config_strs import CONFIG_ENVS
 
-_SKIP_ENDPOINTS: frozenset[str] = frozenset({"static", SYSTEM_ROUTES.HEALTH})
+# Probe traffic (health checks, watchdog) is noise, not product usage.
+_SKIP_ENDPOINTS: frozenset[str] = frozenset(
+    {"static", SYSTEM_ROUTES.HEALTH, SYSTEM_ROUTES.HEALTH_DEEP}
+)
 _METRICS_BLUEPRINT_NAME: str = "metrics"
 
 # Methods counted as "API hit"-emitting routes; mirrors the HTTP verbs the

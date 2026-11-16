@@ -173,6 +173,7 @@ class SEARCH_ROUTES:
 class SYSTEM_ROUTES:
     _SYSTEM = "system."
     HEALTH = _SYSTEM + "health"
+    HEALTH_DEEP = _SYSTEM + "health_deep"
 
 
 class UTUB_ROUTES:
@@ -475,6 +476,7 @@ NO_JS_ENDPOINTS: dict[str, NoJsReason] = {
     "api_v1.*": NoJsReason.MOBILE_API,
     # Container/uptime health check.
     "system.health": NoJsReason.INFRA_PROBE,
+    "system.health_deep": NoJsReason.INFRA_PROBE,
     # OAuth provider redirects back to these; the browser follows them.
     "splash.google_callback": NoJsReason.OAUTH_CALLBACK,
     "splash.github_callback": NoJsReason.OAUTH_CALLBACK,

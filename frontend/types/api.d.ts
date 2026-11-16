@@ -1463,6 +1463,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/health/deep": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** @description Deep health check of Postgres, the session Redis and the metrics Redis. Requires the X-Health-Token header; 401 reveals no component detail. Rejected attempts are rate limited per IP (429). */
+    get: operations["healthDeep"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/utubs/{utub_id}/urls": {
     parameters: {
       query?: never;
@@ -4019,6 +4036,25 @@ export interface components {
     HealthResponseSchema: {
       /** @description Service health status */
       status: string;
+    };
+    DeepHealthComponentsSchema: {
+      /** @description up, down or not configured */
+      postgres: string;
+      /** @description up, down or not configured */
+      session_redis: string;
+      /** @description up, down or not configured */
+      metrics_redis: string;
+    };
+    DeepHealthResponseSchema: {
+      /** @description Overall health status */
+      status: string;
+      /**
+       * @description Names the unhealthy components (503 only)
+       * @default null
+       */
+      message: string | null;
+      /** @description Per-component status */
+      components: components["schemas"]["DeepHealthComponentsSchema"];
     };
     CopyUrlsRequest: {
       /**
@@ -10833,6 +10869,53 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["StatusMessageResponseSchema"];
+        };
+      };
+    };
+  };
+  healthDeep: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Deep health */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DeepHealthResponseSchema"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["StatusMessageResponseSchema"];
+        };
+      };
+      /** @description Too many requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["StatusMessageResponseSchema"];
+        };
+      };
+      /** @description Service unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DeepHealthResponseSchema"];
         };
       };
     };

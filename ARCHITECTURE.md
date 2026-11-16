@@ -14,7 +14,7 @@ Flask app factory pattern in `backend/__init__.py` with `create_app()`. Config c
 - `tags` (2 blueprints: `utub_tags`, `utub_url_tags`) - tag CRUD
 - `users` - user profile, password change
 - `contact` - contact form
-- `system` - health check
+- `system` - health checks: `/health` (plain, `?db=true`) and token-protected `/health/deep` (Postgres, session Redis, metrics Redis). Both are session-free: the nonce hooks in `backend/__init__.py` skip `session`/`g.nonce` for them and send a fixed restrictive CSP, and `make_health_paths_session_free` swaps the session interface's class so `open_session` returns a null session for exactly these two paths (Flask-Session would otherwise read the store before routing), so a session-Redis outage reports a clean 503 (deep) or 200 (plain) even when the request carries a session cookie; every other path, including `/health/` and `/healthx`, uses the real session. Deep probes live in `backend/system/health_checks.py`; one `Budget` (`DEEP_CHECK_DEADLINE_SECONDS` = 7 s, a target rather than a hard bound since libpq `connect_timeout` applies per resolved address) is shared by the probes, Postgres is capped at 4 s of it, each Redis operation is capped at `min(2 s, remaining / operations)`, and Postgres uses a dedicated connection with a 2 s `connect_timeout` plus a `statement_timeout` split over its statements. Both are in the metrics `_SKIP_ENDPOINTS`
 - `assets` - static asset serving
 - `debug` - dev-only debug routes (excluded in test/prod)
 
@@ -430,6 +430,8 @@ The deploy workflows are **reusable workflows** (`on: workflow_call`), so a secr
 
 - **dev**: caller `dev-build-and-deploy.yml` (fires on PR-merge-to-`main`) fans out to **two** boxes — `deploy-dev` → `dev-deploy.yml` (`DEV_SSH_HOST`) and `deploy-dev-2` → `dev-deploy-2.yml` (`DEV_SSH_HOST_2`). Each callee heredocs `~/.env` from its passed-in `DEV_*` secrets; `docker/compose.dev.yaml` `web` loads it via `env_file: .env`. **Any dev secret must be wired in all three files** (both callees + both forwards in the caller), or the two boxes drift.
 - **prod**: caller `prod-build-and-deploy.yml` (fires on **release published**) → `deploy-prod` → `prod-deploy.yml` (`PROD_SSH_HOST`). The callee writes each `./secrets/<NAME>` from its passed-in secret, then `docker compose up` mounts them as `/run/secrets/*`; `docker/startup-flask.sh` `load_secrets()` exports those files as env vars for `config.py`. After each successful prod deploy, `notifs-exchange.yml` mints the notifs hub key and installs it on the host (not via `./secrets`); see [`docs/notifs-hub.md`](docs/notifs-hub.md).
+
+Optional prod secret `HEALTH_CHECK_TOKEN` (caller maps it from repo secret `PROD_HEALTH_CHECK_TOKEN`; declared `required: false` in `prod-deploy.yml`) gates `GET /health/deep` through the `X-Health-Token` header. Unset, empty or whitespace means the route answers 401 (fail closed), so a deploy never breaks before the secret exists. It is web-only: never add it to `scripts/build_container_env.py` `ALLOW_VARS`. nginx exposes only the exact `/health/deep` publicly (plain `/health` stays loopback-only); the token gate is in the app, and rejected attempts are rate limited per IP (valid-token calls are exempt).
 
 Note the caller may **remap** repo-secret names to workflow inputs (e.g. input `MAILJET_API_KEY` ← repo secret `MAILJET_API_KEY_INF`; input `SECRET_KEY` ← `PROD_SECRET_KEY`).
 
