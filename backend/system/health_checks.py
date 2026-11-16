@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import hmac
 import re
 import time
@@ -34,7 +35,7 @@ POSTGRES_CONNECT_TIMEOUT_SECONDS: int = 2
 POSTGRES_MIN_BUDGET_SECONDS: int = 3
 POSTGRES_DEFAULT_BUDGET_SECONDS: int = 6
 
-_MS_PER_SECOND: int = 1000
+MS_PER_SECOND: int = 1000
 # Greedy up to the last "@" before whitespace, so a password containing "/" or
 # an unencoded "@" is fully hidden.
 _URI_USERINFO_PATTERN = re.compile(r"(\w+://)\S*@")
@@ -96,10 +97,8 @@ def bounded_redis_client(
 def _close_redis(client: Redis | None) -> None:
     if client is None:
         return
-    try:
+    with contextlib.suppress(Exception):
         client.close()
-    except Exception:
-        pass
 
 
 def _probe_redis(
@@ -155,7 +154,7 @@ def probe_postgres(budget: Budget | None = None) -> str:
         return STATUS_DOWN
     statement_timeout_ms = int(
         (remaining - POSTGRES_CONNECT_TIMEOUT_SECONDS)
-        * _MS_PER_SECOND
+        * MS_PER_SECOND
         / POSTGRES_STATEMENT_COUNT
     )
     started_at = time.monotonic()
@@ -183,21 +182,15 @@ def probe_postgres(budget: Budget | None = None) -> str:
     except Exception as database_error:
         _log_failure("postgres", database_error, started_at)
         if connection is not None:
-            try:
+            with contextlib.suppress(Exception):
                 connection.rollback()
-            except Exception:
-                pass
     finally:
         if connection is not None:
-            try:
+            with contextlib.suppress(Exception):
                 connection.close()
-            except Exception:
-                pass
         if engine is not None:
-            try:
+            with contextlib.suppress(Exception):
                 engine.dispose()
-            except Exception:
-                pass
     if status == STATUS_UP:
         _log_result("postgres", status, started_at)
     return status
@@ -207,10 +200,10 @@ def is_health_token_valid(provided: str | None, expected: str | None) -> bool:
     authorized = False
     if expected is None or not expected.strip():
         return authorized
-    if not provided:
+    if not provided or not provided.strip():
         return authorized
     if hmac.compare_digest(
-        provided.encode("utf-8", "surrogatepass"),
+        provided.strip().encode("utf-8", "surrogatepass"),
         expected.strip().encode("utf-8", "surrogatepass"),
     ):
         authorized = True

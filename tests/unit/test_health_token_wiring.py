@@ -7,12 +7,14 @@ the repo secret exists), and never reach the workflow container (`ALLOW_VARS`).
 
 from __future__ import annotations
 
+import importlib
 from pathlib import Path
 from typing import Any
 
 import pytest
 import yaml
 
+import backend.config as backend_config
 from scripts.build_container_env import ALLOW_VARS
 
 REPO_ROOT: Path = Path(__file__).resolve().parents[2]
@@ -88,3 +90,22 @@ def test_health_token_not_in_workflow_allow_vars() -> None:
     THEN the web-only secret is absent.
     """
     assert SECRET_NAME not in ALLOW_VARS
+
+
+def test_config_reads_health_check_token_from_env(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    GIVEN HEALTH_CHECK_TOKEN is set, then unset, in the environment
+    WHEN backend.config is (re)loaded
+    THEN Config.HEALTH_CHECK_TOKEN is the env value, then None.
+    """
+    try:
+        monkeypatch.setenv(SECRET_NAME, "env-token")
+        assert importlib.reload(backend_config).Config.HEALTH_CHECK_TOKEN == "env-token"
+
+        monkeypatch.delenv(SECRET_NAME)
+        assert importlib.reload(backend_config).Config.HEALTH_CHECK_TOKEN is None
+    finally:
+        monkeypatch.undo()
+        importlib.reload(backend_config)

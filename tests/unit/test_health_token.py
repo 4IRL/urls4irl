@@ -1,6 +1,6 @@
 import pytest
 
-from backend.system.health_checks import is_health_token_valid
+from backend.system.health_checks import is_health_token_valid, mask_userinfo
 
 pytestmark = pytest.mark.unit
 
@@ -33,6 +33,24 @@ def test_unset_expected_secret_is_always_invalid(
 
 def test_trailing_newline_in_expected_still_matches() -> None:
     assert is_health_token_valid("s3cret-token", "s3cret-token\n") is True
+
+
+def test_surrounding_whitespace_in_provided_still_matches() -> None:
+    assert is_health_token_valid(" s3cret-token\n", "s3cret-token") is True
+
+
+@pytest.mark.parametrize(
+    ("message", "expected"),
+    [
+        ("connection refused", "connection refused"),
+        ("redis://host:6379/0 refused", "redis://host:6379/0 refused"),
+        ("bad redis://user:pass@host:6379/0", "bad redis://***@host:6379/0"),
+        ("bad redis://:pass@host:6379/0", "bad redis://***@host:6379/0"),
+        ("bad redis://user:pa/ss@word@host:6379/0", "bad redis://***@host:6379/0"),
+    ],
+)
+def test_mask_userinfo_hides_credentials(message: str, expected: str) -> None:
+    assert mask_userinfo(message) == expected
 
 
 def test_non_ascii_provided_does_not_raise() -> None:

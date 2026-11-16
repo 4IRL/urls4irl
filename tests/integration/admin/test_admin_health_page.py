@@ -21,6 +21,7 @@ from backend.admin.health_service import (
     _probe_system_resources,
     collect_health_snapshot,
 )
+from backend.config import ConfigTest
 from backend.metrics.events import EventCategory, EventName
 from backend.metrics.latency import LatencyMetricName
 from backend.models.anonymous_latency_samples import Anonymous_Latency_Samples
@@ -28,6 +29,7 @@ from backend.models.anonymous_metrics import Anonymous_Metrics
 from backend.models.audit_log import AuditLog
 from backend.models.event_registry import Event_Registry
 from backend.models.users import Users
+from backend.system.health_checks import MEMORY_URI
 from backend.utils.all_routes import ADMIN_ROUTES
 from backend.utils.strings.admin_portal_strs import (
     ADMIN_AUDIT_ACTIONS,
@@ -680,24 +682,33 @@ def test_collect_health_snapshot_session_redis_not_configured_under_cachelib(
     """
     GIVEN REDIS_URI is memory:// and SESSION_REDIS is '' (the cachelib state)
     WHEN collect_health_snapshot() is called
-    THEN the session Redis status is "not configured", not "down"; and patching
-         only SESSION_REDIS (REDIS_URI stays real) does not change the result.
+    THEN the session Redis status is "not configured", not "down".
     """
     _, _, _, app = login_admin_user_with_register
 
     with patch.dict(
         app.config,
-        {CONFIG_ENVS.REDIS_URI: "memory://", "SESSION_REDIS": ""},
+        {CONFIG_ENVS.REDIS_URI: MEMORY_URI, "SESSION_REDIS": ""},
     ):
         with app.app_context():
             snapshot = collect_health_snapshot()
     assert snapshot.session_redis_status == STATUS_NOT_CONFIGURED
 
-    redis_uri = app.config.get(CONFIG_ENVS.REDIS_URI)
-    if not redis_uri or redis_uri == "memory://":
-        pytest.skip(
-            "REDIS_URI is memory:// here; SESSION_REDIS-only half needs a real Redis"
-        )
+
+@pytest.mark.skipif(
+    not ConfigTest.REDIS_URI or ConfigTest.REDIS_URI == MEMORY_URI,
+    reason="SESSION_REDIS-only case needs a real REDIS_URI",
+)
+def test_collect_health_snapshot_session_redis_ignores_session_redis_override(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN a real REDIS_URI and only SESSION_REDIS patched to ''
+    WHEN collect_health_snapshot() is called
+    THEN the session Redis status stays "up".
+    """
+    _, _, _, app = login_admin_user_with_register
+
     with patch.dict(app.config, {"SESSION_REDIS": ""}):
         with app.app_context():
             snapshot = collect_health_snapshot()

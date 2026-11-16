@@ -136,10 +136,6 @@ def _probe_database() -> tuple[str, int | None, int | None]:
         return STATUS_DOWN, None, None
 
 
-def _probe_session_redis() -> str:
-    return probe_session_redis()
-
-
 def _epoch_bytes_to_datetime(epoch_bytes: bytes | None) -> datetime | None:
     if epoch_bytes is None:
         return None
@@ -377,7 +373,7 @@ def collect_health_snapshot() -> HealthSnapshot:
     database_status, database_connection_count, database_max_connections = (
         _probe_database()
     )
-    session_redis_status = _probe_session_redis()
+    session_redis_status = probe_session_redis()
     (
         metrics_redis_status,
         flush_last_success_at,

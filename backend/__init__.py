@@ -54,12 +54,12 @@ from backend.cli.openapi import register_openapi_cli
 from backend.cli.short_urls import register_short_urls_cli
 from backend.cli.utils import register_utils_cli
 from backend.models.users import User_Role, Users
+from backend.utils.all_routes import SYSTEM_ROUTES
 from backend.utils.oauth_config import (
     should_register_github_oauth,
     should_register_google_oauth,
 )
 from backend.utils.session_utils import restamp_current_session
-from backend.utils.all_routes import SYSTEM_ROUTES
 from backend.utils.strings.config_strs import CONFIG_ENVS
 # isort: on
 
@@ -432,12 +432,16 @@ def make_health_paths_session_free(app: Flask) -> None:
     """
     base_interface = type(app.session_interface)
 
+    # Built on the first request: routes are not registered yet when this runs.
+    session_free_paths: set[str] = set()
+
     class SessionFreeHealthInterface(base_interface):  # type: ignore[valid-type, misc]
         def open_session(self, app: Flask, request: Request) -> SessionMixin | None:
-            session_free_paths = {
-                app.url_map.bind("").build(endpoint)
-                for endpoint in _SESSION_FREE_ENDPOINTS
-            }
+            if not session_free_paths:
+                session_free_paths.update(
+                    app.url_map.bind("").build(endpoint)
+                    for endpoint in _SESSION_FREE_ENDPOINTS
+                )
             if request.path in session_free_paths:
                 return self.make_null_session(app)
             return super().open_session(app, request)
@@ -452,7 +456,9 @@ def _set_static_security_headers(response: Response) -> None:
     response.headers.setdefault(
         CONFIG_ENVS.REFERRER_POLICY, CONFIG_ENVS.DEFAULT_REFERRER_POLICY_VALUE
     )
-    response.headers[CONFIG_ENVS.CROSS_ORIGIN_RESOURCE_POLICY] = "same-origin"
+    response.headers[CONFIG_ENVS.CROSS_ORIGIN_RESOURCE_POLICY] = (
+        CONFIG_ENVS.SAME_ORIGIN_VALUE
+    )
 
 
 def add_security_headers(app: Flask):
@@ -477,7 +483,7 @@ def add_security_headers(app: Flask):
         if _is_session_free_request():
             response.headers[CONFIG_ENVS.CONTENT_SECURITY_POLICY] = _HEALTH_CSP
             # An intermediary caching a probe result would mask an outage.
-            response.headers["Cache-Control"] = "no-store"
+            response.headers[CONFIG_ENVS.CACHE_CONTROL] = CONFIG_ENVS.NO_STORE_VALUE
             _set_static_security_headers(response)
             return response
 

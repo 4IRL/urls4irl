@@ -10,6 +10,7 @@ from backend.db import get_missing_tables
 from backend.schemas.base import StatusMessageResponseSchema
 from backend.schemas.system import DeepHealthResponseSchema, HealthResponseSchema
 from backend.system.health_checks import (
+    MS_PER_SECOND,
     STATUS_UP,
     Budget,
     is_health_token_valid,
@@ -92,7 +93,7 @@ def health_deep() -> FlaskResponse:
         key for key in HEALTH_STRS.COMPONENT_ORDER if components[key] != STATUS_UP
     ]
     summary = ", ".join(f"{key}={value}" for key, value in components.items())
-    duration_ms = int((time.monotonic() - started_at) * 1000)
+    duration_ms = int((time.monotonic() - started_at) * MS_PER_SECOND)
     info_log(f"Deep health check: {summary} in {duration_ms}ms")
 
     if unhealthy:
