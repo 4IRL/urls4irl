@@ -927,6 +927,9 @@
     justify-content: space-between;
     align-items: center;
     gap: 12px;
+    /* Takes back the switch's -4px side margin so its hit area stays inside the
+       row instead of widening the modal body's scroll area. */
+    padding-right: 4px;
 }
 
 .invitePanelPreviewText {
@@ -956,7 +959,7 @@
     padding: 11px 14px;
     border-radius: var(--radius-sm);
     background-color: var(--memberOutsiderAmberTint);
-    border: 1px solid var(--utubLockedIconColor);
+    border: 1px solid var(--memberOutsiderAmber);
     border-left-width: 5px;
     color: var(--textPrimary);
     font-size: 0.875rem;
@@ -968,7 +971,8 @@
     flex-shrink: 0;
     font-size: 1.15rem;
     line-height: 1;
-    color: var(--utubLockedIconColor);
+    /* Same amber as the locked icon in dark; darkened in light for contrast. */
+    color: var(--memberOutsiderAmber);
 }
 
 #inviteLinkModal .urlsSettingsSwitch[aria-busy="true"] {
