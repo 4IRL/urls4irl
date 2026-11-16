@@ -51,6 +51,12 @@ export interface BulkAction {
    * ignored when `isEnabled` is absent or returns true.
    */
   disabledReason?: string;
+  /**
+   * Optional permission gate. A non-null return renders the button blocked: visible,
+   * `aria-disabled`, never activating, and explaining why through the shared
+   * blocked-control helper (tooltip, lock and tap note). Null means not blocked.
+   */
+  blockedReason?(context: BulkActionContext): string | null;
   onActivate(context: BulkActionContext): void;
 }
 

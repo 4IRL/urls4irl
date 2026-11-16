@@ -8,6 +8,11 @@ import { emit } from "../../../lib/metrics-client.js";
 import { setOpenForm } from "../../../lib/modal-tracking.js";
 import { UI_EVENTS } from "../../../types/metrics-events.js";
 import { reapplyTagFilter } from "../../tags/search.js";
+import {
+  getForbiddenErrorCode,
+  handleTaggingRefusal,
+  URL_TAG_POLICY_ERROR_CODES,
+} from "../../tags/policy-banner.js";
 import { createTagBadgeInURL } from "./tags.js";
 import {
   disableTagRemovalInURLCard,
@@ -219,7 +224,7 @@ export async function createURLTag(
     });
 
     request.fail(function (xhr: JQuery.jqXHR) {
-      createURLTagFail(xhr, urlCard);
+      createURLTagFail({ xhr, urlCard, utubID });
     });
 
     request.always(function () {
@@ -306,8 +311,35 @@ export function createURLTagSuccess(
 /**
  * Displays appropriate prompts and options to user following a failed addition of a new Tag
  */
-function createURLTagFail(xhr: JQuery.jqXHR, urlCard: JQuery): void {
+function createURLTagFail({
+  xhr,
+  urlCard,
+  utubID,
+}: {
+  xhr: JQuery.jqXHR;
+  urlCard: JQuery;
+  utubID: number;
+}): void {
   if (is429Handled(xhr)) return;
+
+  if (
+    getForbiddenErrorCode(xhr) ===
+    URL_TAG_POLICY_ERROR_CODES.TAGGING_NOT_ALLOWED
+  ) {
+    // A manager turned tagging off while this tab still showed it on: close the
+    // form without a redirect, then explain once.
+    hideAndResetCreateURLTagForm(urlCard);
+    const addTagButton = urlCard.find(".urlTagBtnCreate")[0] as
+      | HTMLElement
+      | undefined;
+    handleTaggingRefusal({
+      message: APP_CONFIG.strings.TAG_URLS_NOT_ALLOWED,
+      utubID,
+      focusTarget: addTagButton,
+      control: addTagButton,
+    });
+    return;
+  }
 
   if (!("responseJSON" in xhr)) {
     if (

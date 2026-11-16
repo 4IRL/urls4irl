@@ -7,6 +7,7 @@ import {
 } from "../combobox.js";
 import { ajaxCall } from "../../../../lib/ajax.js";
 import { APP_CONFIG } from "../../../../lib/config.js";
+import { getState } from "../../../../store/app-store.js";
 
 vi.mock("../../../../lib/ajax.js", () => ({
   ajaxCall: vi.fn(),
@@ -66,7 +67,11 @@ vi.mock("../tags.js", () => ({
 const storeTags: { id: number; tagString: string; tagApplied: number }[] = [];
 
 vi.mock("../../../../store/app-store.js", () => ({
-  getState: vi.fn(() => ({ urls: [], tags: storeTags })),
+  getState: vi.fn(() => ({
+    isCurrentUserOwner: true,
+    urls: [],
+    tags: storeTags,
+  })),
   setState: vi.fn(),
 }));
 
@@ -331,6 +336,42 @@ describe("combobox — at-cap", () => {
       String(APP_CONFIG.constants.TAGS_MAX_ON_URLS),
     );
     expect(urlCard.find(".urlTagComboboxMsg").text()).toBe(expectedMsg);
+  });
+});
+
+describe("showTagCombobox — tagging permission gate", () => {
+  it("opens nothing for a plain member who may not tag", () => {
+    document.body.innerHTML = URL_CARD_HTML;
+    const urlCard = $(".urlRow");
+    const block = createTagComboboxBlock({
+      mode: ComboboxMode.URL,
+      urlCard,
+      utubID: 1,
+      utubUrlID: 1,
+    });
+    urlCard.find(".tagsAndTagCreateWrap").append(block);
+    const blockedState = {
+      isCurrentUserOwner: false,
+      isCoCreator: false,
+      settings: null,
+      urls: [],
+      tags: storeTags,
+    } as unknown as ReturnType<typeof getState>;
+    vi.mocked(getState).mockReturnValue(blockedState);
+    try {
+      showTagCombobox({
+        urlCard,
+        urlTagBtnCreate: urlCard.find(".urlTagBtnCreate"),
+      });
+    } finally {
+      vi.mocked(getState).mockReturnValue({
+        isCurrentUserOwner: true,
+        urls: [],
+        tags: storeTags,
+      } as unknown as ReturnType<typeof getState>);
+    }
+    expect(urlCard.find(".urlTagComboboxWrap").hasClass("hidden")).toBe(true);
+    expect(urlCard.find(".urlTagBtnCreate").hasClass("cancel")).toBe(false);
   });
 });
 
