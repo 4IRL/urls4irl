@@ -606,4 +606,465 @@ describe("invite link preview switch", () => {
       },
     );
   });
+
+  describe("preview length select", () => {
+    const WINDOW_ID = "inviteLinkPreviewWindowSelect";
+    const HINT_ID = "inviteLinkPreviewWindowHint";
+    const TEN_DAYS = "2099-01-11T00:00:00Z";
+    const TWO_DAYS = "2099-01-03T00:00:00Z";
+    // 1.5 days left: caps a stored 3-day length.
+    const SHORT = "2099-01-02T12:00:00Z";
+    const OFF_HINT = strings.INVITE_LINK_PANEL_PREVIEW_WINDOW_OFF_HINT;
+    const LIMIT_HINT = strings.INVITE_LINK_PANEL_PREVIEW_WINDOW_LIMIT_HINT;
+
+    function label(iso: string): string {
+      const date = new Date(iso);
+      const sameYear = date.getFullYear() === new Date().getFullYear();
+      return date.toLocaleDateString(undefined, {
+        month: "short",
+        day: "numeric",
+        ...(sameYear ? {} : { year: "numeric" }),
+      });
+    }
+
+    function options(): HTMLOptionElement[] {
+      return Array.from(selectEl(WINDOW_ID).options);
+    }
+
+    function hint(): HTMLElement | null {
+      return document.getElementById(HINT_ID);
+    }
+
+    function cappedHint(): string {
+      return strings.INVITE_LINK_PANEL_PREVIEW_WINDOW_CAPPED_HINT.replace(
+        "{label}",
+        "3 days",
+      );
+    }
+
+    async function pick(id: string, value: string) {
+      const select = selectEl(id);
+      select.value = value;
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+      await settle();
+    }
+
+    function cappedOn(): InviteLink {
+      return onLink({
+        expiresAt: SHORT,
+        previewEndsAt: "2099-01-04T00:00:00Z",
+        previewEffectiveEndsAt: SHORT,
+      });
+    }
+
+    it("(a) disables lengths longer than the time left and shows the limit hint", async () => {
+      await openWith(onLink({ expiresAt: TWO_DAYS }));
+
+      expect(
+        options().map((option) => [option.value, option.disabled]),
+      ).toEqual([
+        ["1", false],
+        ["3", true],
+        ["7", true],
+      ]);
+      expect(selectEl(WINDOW_ID).value).toBe("3");
+      expect(hint()?.textContent).toBe(LIMIT_HINT);
+      expect(previewBlock().children[1]?.contains(selectEl(WINDOW_ID))).toBe(
+        true,
+      );
+    });
+
+    it("(a) disables nothing with 10 days left and shows no hint while on", async () => {
+      await openWith(onLink({ expiresAt: TEN_DAYS }));
+
+      expect(options().every((option) => !option.disabled)).toBe(true);
+      expect(hint()).toBeNull();
+      expect(selectEl(WINDOW_ID).hasAttribute("aria-describedby")).toBe(false);
+    });
+
+    it("(b) renders the capped option while off, with the off cue in one element", async () => {
+      await openWith(liveLink({ expiresAt: SHORT }));
+
+      const first = options()[0] as HTMLOptionElement;
+      expect(first.value).toBe("");
+      expect(first.selected).toBe(true);
+      expect(first.disabled).toBe(true);
+      expect(first.textContent).toBe(`Until ${label(SHORT)} (link expiry)`);
+      expect(hint()?.textContent).toBe(`${cappedHint()} ${OFF_HINT}`);
+      expect(document.querySelectorAll(`#${HINT_ID}`)).toHaveLength(1);
+    });
+
+    it("(b) renders the capped option while on with the capped date in the warning", async () => {
+      await openWith(cappedOn());
+
+      const first = options()[0] as HTMLOptionElement;
+      expect(first.selected).toBe(true);
+      expect(first.disabled).toBe(true);
+      expect(first.textContent).toBe(`Until ${label(SHORT)} (link expiry)`);
+      expect(hint()?.textContent).toBe(cappedHint());
+      expect(
+        document.getElementById("inviteLinkPreviewWarning")?.textContent,
+      ).toContain(label(SHORT));
+    });
+
+    it("(c) shortening Expires while on caps and announces both in one write", async () => {
+      await openWith(onLink({ expiresAt: TEN_DAYS }));
+      vi.mocked(updateInviteLink).mockResolvedValue(cappedOn());
+
+      await pick("inviteLinkExpiresSelect", "1");
+
+      expect(options()[0]?.selected).toBe(true);
+      expect(hint()?.textContent).toBe(cappedHint());
+      expect(announcement()).toBe(
+        `Link now expires ${label(SHORT)}. Preview now ends ${label(SHORT)}, when the link expires.`,
+      );
+    });
+
+    it("(c) lengthening Expires restores the stored length and announces the new end", async () => {
+      await openWith(cappedOn());
+      const restored = onLink({
+        expiresAt: TEN_DAYS,
+        previewEndsAt: "2099-01-04T00:00:00Z",
+        previewEffectiveEndsAt: "2099-01-04T00:00:00Z",
+      });
+      vi.mocked(updateInviteLink).mockResolvedValue(restored);
+
+      await pick("inviteLinkExpiresSelect", "30");
+
+      expect(selectEl(WINDOW_ID).value).toBe("3");
+      expect(options().some((option) => option.value === "")).toBe(false);
+      expect(hint()).toBeNull();
+      expect(announcement()).toBe(
+        `Link now expires ${label(TEN_DAYS)}. Preview now ends ${label("2099-01-04T00:00:00Z")}.`,
+      );
+    });
+
+    it("(d) appends nothing for an Expires save while off or a uses save", async () => {
+      await openWith(liveLink());
+      vi.mocked(updateInviteLink).mockResolvedValueOnce(
+        liveLink({ expiresAt: TEN_DAYS }),
+      );
+      await pick("inviteLinkExpiresSelect", "30");
+      expect(announcement()).toBe(`Link now expires ${label(TEN_DAYS)}.`);
+
+      vi.mocked(updateInviteLink).mockResolvedValueOnce(
+        liveLink({ expiresAt: TEN_DAYS, maxUses: 25 }),
+      );
+      await pick("inviteLinkUsesSelect", "25");
+      expect(announcement()).toBe("Use limit set to 25 uses.");
+    });
+
+    it("(d) a uses save with an unchanged effective-on preview announces only USES_SET", async () => {
+      await openWith(onLink());
+      vi.mocked(updateInviteLink).mockResolvedValue(onLink({ maxUses: 25 }));
+
+      await pick("inviteLinkUsesSelect", "25");
+
+      expect(announcement()).toBe("Use limit set to 25 uses.");
+    });
+
+    it.each([
+      [
+        "Expires",
+        "inviteLinkExpiresSelect",
+        "30",
+        { expiresAt: TEN_DAYS },
+        `Link now expires ${label(TEN_DAYS)}.`,
+      ],
+      [
+        "Uses",
+        "inviteLinkUsesSelect",
+        "25",
+        { maxUses: 25 },
+        "Use limit set to 25 uses.",
+      ],
+    ])(
+      "(d2) a %s save that finds the window lapsed appends PREVIEW_OFF once",
+      async (_name, selectId, value, change, base) => {
+        await openWith(onLink());
+        vi.mocked(updateInviteLink).mockResolvedValue({
+          ...lapsedLink(),
+          ...change,
+        });
+
+        await pick(selectId, value);
+
+        expect(announcement()).toBe(`${base} Preview off.`);
+        expect(switchEl().getAttribute("aria-checked")).toBe("false");
+        expect($("#inviteLinkPreviewWarning").length).toBe(0);
+      },
+    );
+
+    it("(e) a window save with an effective-on response announces the new end", async () => {
+      await openWith(onLink());
+      vi.mocked(updateInviteLink).mockResolvedValue(
+        onLink({
+          previewWindowDays: 1,
+          previewEndsAt: "2099-01-02T00:00:00Z",
+          previewEffectiveEndsAt: "2099-01-02T00:00:00Z",
+        }),
+      );
+
+      await pick(WINDOW_ID, "1");
+
+      expect(announcement()).toBe(
+        `Preview now ends ${label("2099-01-02T00:00:00Z")}.`,
+      );
+    });
+
+    it("(e) a window save with an effective-off response announces the length only", async () => {
+      await openWith(liveLink({ expiresAt: TEN_DAYS }));
+      vi.mocked(updateInviteLink).mockResolvedValue(
+        liveLink({ expiresAt: TEN_DAYS, previewWindowDays: 7 }),
+      );
+
+      await pick(WINDOW_ID, "7");
+
+      expect(announcement()).toBe(`Preview length set to 7 days. ${OFF_HINT}`);
+    });
+
+    it("(e) a window save from a lapsed-mid-session switch converges to off", async () => {
+      await openWith(onLink({ expiresAt: TEN_DAYS }));
+      vi.mocked(updateInviteLink).mockResolvedValue({
+        ...lapsedLink(),
+        expiresAt: TEN_DAYS,
+        previewWindowDays: 7,
+      });
+
+      await pick(WINDOW_ID, "7");
+
+      expect(announcement()).toBe(`Preview length set to 7 days. ${OFF_HINT}`);
+      expect(switchEl().getAttribute("aria-checked")).toBe("false");
+      expect(selectEl(WINDOW_ID).value).toBe("7");
+      expect(hint()?.textContent).toBe(OFF_HINT);
+    });
+
+    it("(f) sends one PATCH, keeps focus and the busy state, and reverts a change mid-save", async () => {
+      await openWith(onLink({ expiresAt: TEN_DAYS }));
+      const pending = deferred<InviteLink>();
+      vi.mocked(updateInviteLink).mockReturnValue(pending.promise);
+      const select = selectEl(WINDOW_ID);
+      select.focus();
+
+      await pick(WINDOW_ID, "7");
+
+      expect(updateInviteLink).toHaveBeenCalledTimes(1);
+      expect(updateInviteLink).toHaveBeenCalledWith({
+        utubID: 1,
+        body: { preview_window_days: 7 },
+      });
+      expect(select.getAttribute("aria-busy")).toBe("true");
+      expect(select.disabled).toBe(false);
+      expect(document.activeElement).toBe(select);
+
+      await pick(WINDOW_ID, "1");
+      expect(updateInviteLink).toHaveBeenCalledTimes(1);
+      expect(select.value).toBe("7");
+
+      await pick("inviteLinkUsesSelect", "25");
+      expect(updateInviteLink).toHaveBeenCalledTimes(1);
+      expect(selectEl("inviteLinkUsesSelect").value).toBe("10");
+
+      pending.resolve(onLink({ expiresAt: TEN_DAYS, previewWindowDays: 7 }));
+      await settle();
+      expect(select.hasAttribute("aria-busy")).toBe(false);
+    });
+
+    it("(f) a failure restores the previous value and the error describes the select", async () => {
+      await openWith(liveLink({ expiresAt: TEN_DAYS }));
+      vi.mocked(updateInviteLink).mockRejectedValue(failure(500, null));
+      changeSpy.mockClear();
+
+      await pick(WINDOW_ID, "7");
+
+      const select = selectEl(WINDOW_ID);
+      expect(select.value).toBe("3");
+      expect($("#inviteLinkInlineError").length).toBe(1);
+      expect(select.getAttribute("aria-describedby")).toBe(
+        `inviteLinkInlineError ${HINT_ID}`,
+      );
+      // Only the user's own change event; the restore fires none.
+      expect(changeSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([
+      ["off, hint exists", liveLink({ expiresAt: TEN_DAYS }), HINT_ID],
+      ["on, no hint", onLink({ expiresAt: TEN_DAYS }), null],
+    ])(
+      "(g) an error cleared on another control leaves only an existing hint id (%s)",
+      async (_name, start, expected) => {
+        await openWith(start);
+        vi.mocked(updateInviteLink).mockRejectedValueOnce(failure(500, null));
+        await pick(WINDOW_ID, "7");
+        expect(selectEl(WINDOW_ID).getAttribute("aria-describedby")).toBe(
+          expected === null
+            ? "inviteLinkInlineError"
+            : `inviteLinkInlineError ${expected}`,
+        );
+
+        vi.mocked(updateInviteLink).mockResolvedValueOnce({
+          ...start,
+          maxUses: 25,
+        });
+        await pick("inviteLinkUsesSelect", "25");
+        expect(selectEl(WINDOW_ID).getAttribute("aria-describedby")).toBe(
+          expected,
+        );
+      },
+    );
+
+    it("(h) ignores the capped first option", async () => {
+      await openWith(liveLink({ expiresAt: SHORT }));
+
+      await pick(WINDOW_ID, "");
+
+      expect(updateInviteLink).not.toHaveBeenCalled();
+    });
+
+    it("(i) the empty state renders no preview select and its selects never save", async () => {
+      await openWith(null);
+
+      expect(document.getElementById(WINDOW_ID)).toBeNull();
+      await pick("inviteLinkExpiresSelect", "30");
+      await pick("inviteLinkUsesSelect", "25");
+      expect(updateInviteLink).not.toHaveBeenCalled();
+    });
+
+    it("(j) the off cue stands alone and the select references it", async () => {
+      await openWith(liveLink({ expiresAt: TEN_DAYS }));
+      expect(hint()?.textContent).toBe(OFF_HINT);
+      expect(selectEl(WINDOW_ID).getAttribute("aria-describedby")).toBe(
+        HINT_ID,
+      );
+    });
+
+    it("(j) the off cue follows the limit hint in one element", async () => {
+      await openWith(liveLink());
+      expect(hint()?.textContent).toBe(`${LIMIT_HINT} ${OFF_HINT}`);
+    });
+
+    it("(j) turning the switch on removes the off cue, and the hint stays unchanged while in flight", async () => {
+      await openWith(liveLink({ expiresAt: TEN_DAYS }));
+      const pending = deferred<InviteLink>();
+      vi.mocked(updateInviteLink).mockReturnValue(pending.promise);
+
+      await clickSwitch();
+      expect(hint()?.textContent).toBe(OFF_HINT);
+
+      pending.resolve(onLink({ expiresAt: TEN_DAYS }));
+      await settle();
+      expect(hint()).toBeNull();
+      expect(selectEl(WINDOW_ID).hasAttribute("aria-describedby")).toBe(false);
+    });
+
+    it("(j) turning the switch off restores the off cue", async () => {
+      await openWith(onLink({ expiresAt: TEN_DAYS }));
+      vi.mocked(updateInviteLink).mockResolvedValue(
+        liveLink({ expiresAt: TEN_DAYS }),
+      );
+
+      await clickSwitch();
+
+      expect(hint()?.textContent).toBe(OFF_HINT);
+    });
+
+    it("(j) a switch-on response keeps the limit hint when an option is disabled", async () => {
+      await openWith(liveLink());
+      vi.mocked(updateInviteLink).mockResolvedValue(onLink());
+
+      await clickSwitch();
+
+      expect(hint()?.textContent).toBe(LIMIT_HINT);
+    });
+
+    it("(k) keeps a stored option selected even when it is disabled while on", async () => {
+      await openWith(onLink({ previewWindowDays: 7 }));
+
+      const selected = options().find((option) => option.selected);
+      expect(selected?.value).toBe("7");
+      expect(selected?.disabled).toBe(true);
+      expect(options().some((option) => option.value === "")).toBe(false);
+      expect(
+        document.getElementById("inviteLinkPreviewWarning")?.textContent,
+      ).toContain(endsLabel());
+    });
+
+    it("(k) elapsed window: shorter than the stored length but before expiry, the warning keeps the server date", async () => {
+      // Turned on 5 days ago for 7 days: 2 days remain, expiry is later.
+      vi.setSystemTime(Date.parse("2099-01-06T00:00:00Z"));
+      const end = "2099-01-08T00:00:00Z";
+      await openWith(
+        onLink({
+          previewWindowDays: 7,
+          expiresAt: "2099-01-20T00:00:00Z",
+          previewEndsAt: end,
+          previewEffectiveEndsAt: end,
+        }),
+      );
+
+      const selected = options().find((option) => option.selected);
+      expect(selected?.value).toBe("7");
+      expect(options().some((option) => option.value === "")).toBe(false);
+      expect(
+        document.getElementById("inviteLinkPreviewWarning")?.textContent,
+      ).toContain(label(end));
+    });
+
+    it("(k) the server's effective fields beat a client clock that says capped", async () => {
+      // The clock is past expiry minus the stored length, but the server says
+      // the effective end equals the stored end: not capped.
+      vi.setSystemTime(Date.parse("2099-01-04T00:00:00Z"));
+      await openWith(
+        onLink({
+          previewWindowDays: 7,
+          expiresAt: "2099-01-05T00:00:00Z",
+          previewEndsAt: "2099-01-05T00:00:00Z",
+          previewEffectiveEndsAt: "2099-01-05T00:00:00Z",
+        }),
+      );
+
+      expect(options().some((option) => option.value === "")).toBe(false);
+      expect(hint()?.textContent).not.toContain("can't outlast");
+    });
+
+    it("(c) shortening Expires updates the warning date to the capped end", async () => {
+      await openWith(onLink({ expiresAt: TEN_DAYS }));
+      vi.mocked(updateInviteLink).mockResolvedValue(cappedOn());
+
+      await pick("inviteLinkExpiresSelect", "1");
+
+      expect(
+        document.getElementById("inviteLinkPreviewWarning")?.textContent,
+      ).toContain(label(SHORT));
+    });
+
+    it("(d) a switch save announces PREVIEW_ON with nothing appended", async () => {
+      await openWith(liveLink({ expiresAt: TEN_DAYS }));
+      vi.mocked(updateInviteLink).mockResolvedValue(
+        onLink({ expiresAt: TEN_DAYS }),
+      );
+
+      await clickSwitch();
+
+      expect(announcement()).toBe(`Preview on until ${endsLabel()}.`);
+    });
+
+    it("(f) a length change during a lifecycle request reverts without a PATCH", async () => {
+      await openWith(onLink({ expiresAt: TEN_DAYS }));
+      vi.mocked(revokeInviteLink).mockReturnValue(
+        deferred<true>().promise as never,
+      );
+      $("#inviteLinkRevokeBtn").trigger("click");
+      await settle();
+      $("#inviteLinkConfirmActionBtn").trigger("click");
+      await settle();
+      changeSpy.mockClear();
+
+      await pick(WINDOW_ID, "7");
+
+      expect(updateInviteLink).not.toHaveBeenCalled();
+      expect(selectEl(WINDOW_ID).value).toBe("3");
+      expect(changeSpy).toHaveBeenCalledTimes(1);
+    });
+  });
 });

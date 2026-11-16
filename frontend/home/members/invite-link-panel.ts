@@ -91,7 +91,7 @@ let _confirm: {
 } | null = null;
 // The settings save in flight: which select and the value being saved (the
 // select shows it until the response replaces it). Null outside a save.
-type SaveField = "expires" | "uses" | "preview";
+type SaveField = "expires" | "uses" | "preview" | "window";
 let _pending: { field: SaveField; value: string } | null = null;
 let _copyRevertTimer: ReturnType<typeof setTimeout> | null = null;
 const COPIED_LABEL_MS = 1500;
@@ -475,6 +475,10 @@ const PREVIEW_SWITCH_ID = "inviteLinkPreviewSwitch";
 const PREVIEW_LABEL_ID = "inviteLinkPreviewLabel";
 const PREVIEW_DESC_ID = "inviteLinkPreviewDesc";
 const PREVIEW_WARNING_ID = "inviteLinkPreviewWarning";
+const PREVIEW_WINDOW_SELECT_ID = "inviteLinkPreviewWindowSelect";
+const PREVIEW_WINDOW_HINT_ID = "inviteLinkPreviewWindowHint";
+const PREVIEW_WINDOW_DAY_CHOICES = [1, 3, 7] as const;
+const DAY_MS = 86_400_000;
 const PREVIEW_BLOCK_SELECTOR = `${BODY_SELECTOR} .invitePanelPreview`;
 
 // The switch's aria-describedby, one value for every writer: the inline error
@@ -520,8 +524,153 @@ function previewWarningFor({ link }: { link: InviteLink }): HTMLElement | null {
   });
 }
 
+function previewWindowDaysLabel({ days }: { days: number }): string {
+  const { strings } = APP_CONFIG;
+  return days === 1
+    ? strings.INVITE_LINK_PANEL_PREVIEW_WINDOW_DAYS_ONE
+    : fillTemplate({
+        template: strings.INVITE_LINK_PANEL_PREVIEW_WINDOW_DAYS,
+        values: { days: String(days) },
+      });
+}
+
+// Whether the expiry cuts the stored preview length short. While the preview is
+// effectively on the server decides (its effective end took the expiry);
+// otherwise the client derives it from the remaining time.
+function isPreviewCapped({
+  link,
+  now,
+}: {
+  link: InviteLink;
+  now: number;
+}): boolean {
+  if (link.previewEffectiveEnabled && link.previewEffectiveEndsAt !== null) {
+    return (
+      link.previewEndsAt !== null &&
+      Date.parse(link.previewEffectiveEndsAt) < Date.parse(link.previewEndsAt)
+    );
+  }
+  return now + link.previewWindowDays * DAY_MS > Date.parse(link.expiresAt);
+}
+
+// A length longer than the time left on the link is disabled up front.
+function isPreviewWindowDayDisabled({
+  link,
+  days,
+  now,
+}: {
+  link: InviteLink;
+  days: number;
+  now: number;
+}): boolean {
+  return days * DAY_MS > Date.parse(link.expiresAt) - now;
+}
+
+function previewWindowOptionsFor({
+  link,
+  now,
+}: {
+  link: InviteLink;
+  now: number;
+}): SelectOption[] {
+  const capped = isPreviewCapped({ link, now });
+  const options: SelectOption[] = [];
+  if (capped) {
+    const effectiveEnd =
+      link.previewEffectiveEnabled && link.previewEffectiveEndsAt !== null
+        ? link.previewEffectiveEndsAt
+        : link.expiresAt;
+    options.push({
+      value: "",
+      text: fillTemplate({
+        template:
+          APP_CONFIG.strings.INVITE_LINK_PANEL_PREVIEW_WINDOW_CAPPED_OPTION,
+        values: { date: formatShortDate(effectiveEnd) },
+      }),
+      selected: true,
+      disabled: true,
+    });
+  }
+  for (const days of PREVIEW_WINDOW_DAY_CHOICES) {
+    options.push({
+      value: String(days),
+      text: previewWindowDaysLabel({ days }),
+      selected: !capped && days === link.previewWindowDays,
+      disabled: isPreviewWindowDayDisabled({ link, days, now }),
+    });
+  }
+  return options;
+}
+
+// The helper under the length select: the capped or limit hint, then the
+// off-state cue (one element, one id). Null when nothing applies.
+function previewWindowHintText({
+  link,
+  now,
+}: {
+  link: InviteLink;
+  now: number;
+}): string | null {
+  const { strings } = APP_CONFIG;
+  let base: string | null = null;
+  if (isPreviewCapped({ link, now })) {
+    base = fillTemplate({
+      template: strings.INVITE_LINK_PANEL_PREVIEW_WINDOW_CAPPED_HINT,
+      values: {
+        label: previewWindowDaysLabel({ days: link.previewWindowDays }),
+      },
+    });
+  } else if (
+    PREVIEW_WINDOW_DAY_CHOICES.some((days) =>
+      isPreviewWindowDayDisabled({ link, days, now }),
+    )
+  ) {
+    base = strings.INVITE_LINK_PANEL_PREVIEW_WINDOW_LIMIT_HINT;
+  }
+  const parts = [
+    ...(base === null ? [] : [base]),
+    ...(link.previewEffectiveEnabled
+      ? []
+      : [strings.INVITE_LINK_PANEL_PREVIEW_WINDOW_OFF_HINT]),
+  ];
+  return parts.length === 0 ? null : parts.join(" ");
+}
+
+function makePreviewWindowHint({
+  link,
+  now,
+}: {
+  link: InviteLink;
+  now: number;
+}): HTMLElement | null {
+  const text = previewWindowHintText({ link, now });
+  if (text === null) return null;
+  return makeElement({
+    tag: "p",
+    id: PREVIEW_WINDOW_HINT_ID,
+    className: "invitePanelHint",
+    text,
+  });
+}
+
+// The length select's aria-describedby, one value for every writer: the inline
+// error (only while it describes the select), then the hint (only while it exists).
+function syncWindowDescribedBy({ withError }: { withError: boolean }): void {
+  const select = document.getElementById(PREVIEW_WINDOW_SELECT_ID);
+  if (select === null) return;
+  const ids = [
+    ...(withError ? [INLINE_ERROR_ID] : []),
+    ...(document.getElementById(PREVIEW_WINDOW_HINT_ID) !== null
+      ? [PREVIEW_WINDOW_HINT_ID]
+      : []),
+  ];
+  if (ids.length === 0) select.removeAttribute("aria-describedby");
+  else select.setAttribute("aria-describedby", ids.join(" "));
+}
+
 function makePreviewBlock({ link }: { link: InviteLink }): HTMLElement {
   const { strings } = APP_CONFIG;
+  const now = Date.now();
   const block = makeElement({ tag: "div", className: "invitePanelPreview" });
   const row = makeElement({ tag: "div", className: "invitePanelPreviewRow" });
   const text = makeElement({ tag: "div", className: "invitePanelPreviewText" });
@@ -548,13 +697,27 @@ function makePreviewBlock({ link }: { link: InviteLink }): HTMLElement {
     String(link.previewEffectiveEnabled),
   );
   row.append(text, switchButton);
-  block.append(row);
+  block.append(
+    row,
+    makeSelectField({
+      id: PREVIEW_WINDOW_SELECT_ID,
+      label: strings.INVITE_LINK_PANEL_PREVIEW_WINDOW_LABEL,
+      options: previewWindowOptionsFor({ link, now }),
+    }),
+  );
+  const windowHint = makePreviewWindowHint({ link, now });
+  if (windowHint !== null) block.append(windowHint);
   const warning = previewWarningFor({ link });
   if (warning !== null) block.append(warning);
   switchButton.setAttribute(
     "aria-describedby",
     previewDescribedBy({ withError: false, hasWarning: warning !== null }),
   );
+  if (windowHint !== null) {
+    block
+      .querySelector(`#${PREVIEW_WINDOW_SELECT_ID}`)
+      ?.setAttribute("aria-describedby", PREVIEW_WINDOW_HINT_ID);
+  }
   return block;
 }
 
@@ -947,11 +1110,13 @@ function clearInFlight(): void {
 // preview switch (the switch keeps its Desc and warning ids).
 function clearInlineError(): void {
   document.getElementById(INLINE_ERROR_ID)?.remove();
+  $(`${BODY_SELECTOR} select`).removeAttr("aria-invalid");
   $(`${BODY_SELECTOR} select`)
-    .removeAttr("aria-invalid")
+    .not(`#${PREVIEW_WINDOW_SELECT_ID}`)
     .removeAttr("aria-describedby");
   document.getElementById(PREVIEW_SWITCH_ID)?.removeAttribute("aria-invalid");
   syncPreviewDescribedBy({ withError: false });
+  syncWindowDescribedBy({ withError: false });
 }
 
 function showInlineError({
@@ -972,6 +1137,8 @@ function showInlineError({
   if (describes !== null) {
     if (describes.id === PREVIEW_SWITCH_ID) {
       syncPreviewDescribedBy({ withError: true });
+    } else if (describes.id === PREVIEW_WINDOW_SELECT_ID) {
+      syncWindowDescribedBy({ withError: true });
     } else {
       describes.setAttribute("aria-describedby", INLINE_ERROR_ID);
     }
@@ -1159,10 +1326,14 @@ function runLifecycle({ kind }: { kind: LifecycleKind }): void {
 function selectFor({
   field,
 }: {
-  field: "expires" | "uses";
+  field: "expires" | "uses" | "window";
 }): HTMLSelectElement | null {
   const element = document.getElementById(
-    field === "expires" ? EXPIRES_SELECT_ID : USES_SELECT_ID,
+    field === "expires"
+      ? EXPIRES_SELECT_ID
+      : field === "window"
+        ? PREVIEW_WINDOW_SELECT_ID
+        : USES_SELECT_ID,
   );
   return element instanceof HTMLSelectElement ? element : null;
 }
@@ -1179,13 +1350,20 @@ function committedValue({ field }: { field: SaveField }): string {
   if (_liveLink === null) return "";
   if (field === "preview") return String(_liveLink.previewEffectiveEnabled);
   if (field === "expires") return "";
+  if (field === "window") {
+    // Read from the rendered options (a snapshot), never from the clock now.
+    const rendered = selectFor({ field: "window" });
+    const hasCappedOption =
+      rendered !== null && rendered.querySelector('option[value=""]') !== null;
+    return hasCappedOption ? "" : String(_liveLink.previewWindowDays);
+  }
   return _liveLink.maxUses === null ? "" : String(_liveLink.maxUses);
 }
 
 // Sets the controls back to their committed values. Programmatic: no `change`
 // or click event fires and focus does not move.
 function restoreCommitted(): void {
-  for (const field of ["expires", "uses"] as const) {
+  for (const field of ["expires", "uses", "window"] as const) {
     const select = selectFor({ field });
     if (select !== null) select.value = committedValue({ field });
   }
@@ -1212,6 +1390,27 @@ function refreshPreviewInPlace({ link }: { link: InviteLink }): void {
   const warning = previewWarningFor({ link });
   if (warning !== null) $(PREVIEW_BLOCK_SELECTOR)[0]?.append(warning);
   syncPreviewDescribedBy({ withError });
+  refreshPreviewWindowInPlace({ link });
+}
+
+// Refills the length options and rebuilds the hint without replacing the select.
+function refreshPreviewWindowInPlace({ link }: { link: InviteLink }): void {
+  const select = selectFor({ field: "window" });
+  if (select === null) return;
+  const withError =
+    select
+      .getAttribute("aria-describedby")
+      ?.split(" ")
+      .includes(INLINE_ERROR_ID) ?? false;
+  const now = Date.now();
+  fillSelectOptions({
+    select,
+    options: previewWindowOptionsFor({ link, now }),
+  });
+  document.getElementById(PREVIEW_WINDOW_HINT_ID)?.remove();
+  const hint = makePreviewWindowHint({ link, now });
+  if (hint !== null) select.parentElement?.after(hint);
+  syncWindowDescribedBy({ withError });
 }
 
 // Repaints the meta, the Expires first option and the Uses options/helper from
@@ -1246,19 +1445,79 @@ function usesBelowJoinedMessage({ count }: { count: number }): string {
   });
 }
 
+// What a preview that was effectively on says after an Expires or Uses save:
+// off (it lapsed), newly capped, or its end moved. Null when nothing changed.
+function previewChangeSuffix({
+  field,
+  before,
+  link,
+}: {
+  field: "expires" | "uses";
+  before: InviteLink | null;
+  link: InviteLink;
+}): string | null {
+  const { strings } = APP_CONFIG;
+  if (before === null || !before.previewEffectiveEnabled) return null;
+  if (!link.previewEffectiveEnabled || link.previewEffectiveEndsAt === null) {
+    return strings.INVITE_LINK_PANEL_PREVIEW_OFF;
+  }
+  if (field !== "expires") return null;
+  const values = { date: formatShortDate(link.previewEffectiveEndsAt) };
+  const now = Date.now();
+  if (
+    isPreviewCapped({ link, now }) &&
+    !isPreviewCapped({ link: before, now })
+  ) {
+    return fillTemplate({
+      template: strings.INVITE_LINK_PANEL_PREVIEW_CAPPED,
+      values,
+    });
+  }
+  const endMoved =
+    before.previewEffectiveEndsAt === null ||
+    Date.parse(before.previewEffectiveEndsAt) !==
+      Date.parse(link.previewEffectiveEndsAt);
+  return endMoved
+    ? fillTemplate({
+        template: strings.INVITE_LINK_PANEL_PREVIEW_ENDS_SET,
+        values,
+      })
+    : null;
+}
+
 function savedMessageFor({
   field,
   link,
+  before,
 }: {
   field: SaveField;
   link: InviteLink;
+  before: InviteLink | null;
 }): string {
   const { strings } = APP_CONFIG;
+  if (field === "window") {
+    return link.previewEffectiveEnabled && link.previewEffectiveEndsAt !== null
+      ? fillTemplate({
+          template: strings.INVITE_LINK_PANEL_PREVIEW_ENDS_SET,
+          values: { date: formatShortDate(link.previewEffectiveEndsAt) },
+        })
+      : fillTemplate({
+          template: strings.INVITE_LINK_PANEL_PREVIEW_WINDOW_SET,
+          values: {
+            label: previewWindowDaysLabel({ days: link.previewWindowDays }),
+          },
+        });
+  }
   if (field === "expires") {
-    return fillTemplate({
-      template: strings.INVITE_LINK_PANEL_EXPIRES_SET,
-      values: { date: formatShortDate(link.expiresAt) },
-    });
+    return [
+      fillTemplate({
+        template: strings.INVITE_LINK_PANEL_EXPIRES_SET,
+        values: { date: formatShortDate(link.expiresAt) },
+      }),
+      previewChangeSuffix({ field, before, link }),
+    ]
+      .filter((part) => part !== null)
+      .join(" ");
   }
   if (field === "preview") {
     return link.previewEffectiveEnabled && link.previewEffectiveEndsAt !== null
@@ -1268,15 +1527,20 @@ function savedMessageFor({
         })
       : strings.INVITE_LINK_PANEL_PREVIEW_OFF;
   }
-  return fillTemplate({
-    template: strings.INVITE_LINK_PANEL_USES_SET,
-    values: {
-      label:
-        link.maxUses === null
-          ? strings.INVITE_LINK_PANEL_USES_UNLIMITED
-          : usesLabel({ count: link.maxUses }),
-    },
-  });
+  return [
+    fillTemplate({
+      template: strings.INVITE_LINK_PANEL_USES_SET,
+      values: {
+        label:
+          link.maxUses === null
+            ? strings.INVITE_LINK_PANEL_USES_UNLIMITED
+            : usesLabel({ count: link.maxUses }),
+      },
+    }),
+    previewChangeSuffix({ field: "uses", before, link }),
+  ]
+    .filter((part) => part !== null)
+    .join(" ");
 }
 
 function onSaveSuccess({
@@ -1301,9 +1565,12 @@ function onSaveSuccess({
     announceLanding({ link, resyncMessage: null, state });
     return;
   }
+  const before = _liveLink;
   refreshLiveInPlace({ link });
   restoreCommitted();
-  announceInviteLinkPanel({ message: savedMessageFor({ field, link }) });
+  announceInviteLinkPanel({
+    message: savedMessageFor({ field, link, before }),
+  });
 }
 
 // Code 6: restore the committed value, name the minimum, then re-GET once to
@@ -1418,6 +1685,12 @@ function saveSetting({
     body = { expires_in_days: Number(value) };
   } else if (field === "preview") {
     body = { preview_enabled: value === "true" };
+  } else if (field === "window") {
+    const days = PREVIEW_WINDOW_DAY_CHOICES.find(
+      (choice) => String(choice) === value,
+    );
+    if (days === undefined) return; // The capped first option ("") never saves.
+    body = { preview_window_days: days };
   } else {
     body = { max_uses: value === "" ? null : Number(value) };
   }
@@ -1459,7 +1732,9 @@ function handleSelectChange(event: JQuery.ChangeEvent): void {
       ? "expires"
       : select.id === USES_SELECT_ID
         ? "uses"
-        : null;
+        : select.id === PREVIEW_WINDOW_SELECT_ID
+          ? "window"
+          : null;
   if (field === null) return;
   if (_lifecycleInFlight) {
     select.value = committedValue({ field });
