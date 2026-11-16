@@ -146,12 +146,16 @@ def test_postgres_connect_args_carry_apportioned_timeouts(app: Flask) -> None:
     assert isinstance(connect_args["connect_timeout"], int)
     assert connect_args["connect_timeout"] == 2
     statement_timeout_ms = int(connect_args["options"].split("statement_timeout=")[1])
-    # The budget has ticked a little before the probe reads it.
-    assert statement_timeout_ms <= int((7 - 2) * 1000 / POSTGRES_STATEMENT_COUNT)
-    assert statement_timeout_ms > 1000
+    # Postgres is capped at POSTGRES_MAX_BUDGET_SECONDS of the 7 s budget.
+    capped_ms = int(
+        (health_checks.POSTGRES_MAX_BUDGET_SECONDS - 2)
+        * 1000
+        / POSTGRES_STATEMENT_COUNT
+    )
+    assert statement_timeout_ms == capped_ms
 
 
-def test_postgres_full_budget_statement_timeout_exact(app: Flask) -> None:
+def test_postgres_full_budget_is_capped_at_four_seconds(app: Flask) -> None:
     budget = MagicMock(spec=Budget)
     budget.remaining.return_value = 7.0
     with app.app_context():
@@ -160,7 +164,7 @@ def test_postgres_full_budget_statement_timeout_exact(app: Flask) -> None:
         ) as engine_spy:
             probe_postgres(budget)
     options = engine_spy.call_args.kwargs["connect_args"]["options"]
-    assert options == "-c statement_timeout=1250"
+    assert options == "-c statement_timeout=500"
 
 
 @pytest.mark.parametrize("remaining", [0, 1.9, 2.5, -1])

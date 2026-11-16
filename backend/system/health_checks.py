@@ -23,7 +23,8 @@ MEMORY_URI: str = "memory://"
 
 # Per-operation cap for any single bounded step of a probe.
 PROBE_TIMEOUT_SECONDS: int = 2
-# Overall deadline for one deep health call (under the watchdog's 10 s timeout).
+# Target deadline for one deep health call (under the watchdog's 10 s timeout). A
+# target, not a hard bound: libpq's connect_timeout applies per resolved address.
 DEEP_CHECK_DEADLINE_SECONDS: int = 7
 
 # Known bounded operation counts used to apportion a probe's budget.
@@ -34,6 +35,11 @@ METRICS_REDIS_OPERATION_COUNT: int = 4
 POSTGRES_CONNECT_TIMEOUT_SECONDS: int = 2
 POSTGRES_MIN_BUDGET_SECONDS: int = 3
 POSTGRES_DEFAULT_BUDGET_SECONDS: int = 6
+# Postgres never takes more than this share of the deadline, so the Redis probes
+# always get a real attempt after a hung database.
+POSTGRES_MAX_BUDGET_SECONDS: int = 4
+# Per-IP limit on rejected /health/deep attempts; valid-token calls are exempt.
+HEALTH_DEEP_FAILED_ATTEMPT_RATE_LIMIT: str = "10/minute"
 
 MS_PER_SECOND: int = 1000
 # Greedy up to the last "@" before whitespace, so a password containing "/" or
@@ -149,6 +155,7 @@ def probe_postgres(budget: Budget | None = None) -> str:
     """``up`` when ``SELECT 1`` works and no model table is missing, checked on
     one dedicated short-lived connection (never the shared session or pool)."""
     remaining = _remaining_seconds(budget, default=POSTGRES_DEFAULT_BUDGET_SECONDS)
+    remaining = min(remaining, POSTGRES_MAX_BUDGET_SECONDS)
     if remaining < POSTGRES_MIN_BUDGET_SECONDS:
         warning_log("health probe postgres: down, not enough time budget left")
         return STATUS_DOWN

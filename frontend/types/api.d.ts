@@ -1470,7 +1470,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** @description Deep health check of Postgres, the session Redis and the metrics Redis. Requires the X-Health-Token header; 401 reveals no component detail. */
+    /** @description Deep health check of Postgres, the session Redis and the metrics Redis. Requires the X-Health-Token header; 401 reveals no component detail. Rejected attempts are rate limited per IP (429). */
     get: operations["healthDeep"];
     put?: never;
     post?: never;
@@ -10871,6 +10871,15 @@ export interface operations {
       };
       /** @description Unauthorized */
       401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["StatusMessageResponseSchema"];
+        };
+      };
+      /** @description Too many requests */
+      429: {
         headers: {
           [name: string]: unknown;
         };

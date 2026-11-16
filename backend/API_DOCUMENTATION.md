@@ -2253,7 +2253,7 @@ Rate limiting is exempt on this endpoint. No authentication required.
 <details>
  <summary><code>GET</code> <code><b>/health/deep</b></code> <code>(deep health check endpoint)</code></summary>
 
-Checks Postgres, the session Redis and the metrics Redis. Rate limiting is exempt. Requires the `X-Health-Token` header to equal the server secret `HEALTH_CHECK_TOKEN`; no cookie or CSRF token. A missing, empty or wrong header, or an unset/blank secret, gets a `401` that never reveals components, and no probe runs. Each component is one of `up`, `down`, `not configured` (`not configured` counts as unhealthy). The whole call is bounded by a 7 second deadline.
+Checks Postgres, the session Redis and the metrics Redis. Valid-token calls are exempt from rate limiting; rejected attempts are limited per IP (`429` past 10 per minute). Requires the `X-Health-Token` header to equal the server secret `HEALTH_CHECK_TOKEN`; no cookie or CSRF token. A missing, empty or wrong header, or an unset/blank secret, gets a `401` that never reveals components, and no probe runs. Each component is one of `up`, `down`, `not configured` (`not configured` counts as unhealthy). The call targets a 7 second deadline (Postgres is capped at 4 s of it); this is a target, not a hard bound, since libpq's connect timeout applies per resolved address.
 
 ##### Headers
 

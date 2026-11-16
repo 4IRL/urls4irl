@@ -10,6 +10,7 @@ from backend.db import get_missing_tables
 from backend.schemas.base import StatusMessageResponseSchema
 from backend.schemas.system import DeepHealthResponseSchema, HealthResponseSchema
 from backend.system.health_checks import (
+    HEALTH_DEEP_FAILED_ATTEMPT_RATE_LIMIT,
     MS_PER_SECOND,
     STATUS_UP,
     Budget,
@@ -60,19 +61,37 @@ def _unauthorized_response(expected: str | None, provided: str | None) -> FlaskR
     return APIResponse(status_code=401, message=HEALTH_STRS.UNAUTHORIZED).to_response()
 
 
+def _has_valid_health_token() -> bool:
+    return is_health_token_valid(
+        request.headers.get(CONFIG_ENVS.X_HEALTH_TOKEN),
+        current_app.config.get(CONFIG_ENVS.HEALTH_CHECK_TOKEN),
+    )
+
+
+def _is_rejected_attempt(response: FlaskResponse) -> bool:
+    return response.status_code == 401
+
+
+# Valid-token calls are exempt; only rejected (401) attempts count per IP.
 @system.route("/health/deep", methods=["GET"])
-@limiter.exempt
+@limiter.limit(
+    HEALTH_DEEP_FAILED_ATTEMPT_RATE_LIMIT,
+    exempt_when=_has_valid_health_token,
+    deduct_when=_is_rejected_attempt,
+)
 @api_route(
     response_schema=DeepHealthResponseSchema,
     ajax_required=False,
     tags=[OPEN_API.SYSTEM],
     description=(
         "Deep health check of Postgres, the session Redis and the metrics Redis. "
-        "Requires the X-Health-Token header; 401 reveals no component detail."
+        "Requires the X-Health-Token header; 401 reveals no component detail. "
+        "Rejected attempts are rate limited per IP (429)."
     ),
     status_codes={
         200: DeepHealthResponseSchema,
         401: StatusMessageResponseSchema,
+        429: StatusMessageResponseSchema,
         503: DeepHealthResponseSchema,
     },
 )

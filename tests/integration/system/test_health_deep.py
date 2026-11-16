@@ -10,6 +10,7 @@ from flask import Flask, session
 from flask_session.redis import RedisSessionInterface
 from redis import Redis
 
+from backend import limiter
 from backend.schemas.system import DeepHealthResponseSchema
 from backend.system import health_checks
 from backend.system.health_checks import (
@@ -488,3 +489,65 @@ def test_deadline_bounds_total_time_and_shares_budget(app: Flask):
     assert len(seen_budgets) == 3
     assert all(budget is seen_budgets[0] for budget in seen_budgets)
     assert elapsed < 4
+
+
+def test_postgres_probe_budget_is_capped(app: Flask):
+    """
+    GIVEN a fresh Budget far larger than the Postgres cap
+    WHEN probe_postgres runs
+    THEN the statement timeout is derived from the capped budget, not the full one
+    """
+    captured: dict[str, object] = {}
+
+    def fake_create_engine(url, **kwargs):
+        captured.update(kwargs["connect_args"])
+        raise RuntimeError("stop before connecting")
+
+    budget = Budget.start(total_seconds=60)
+    with (
+        app.app_context(),
+        mock.patch.object(health_checks, "create_engine", fake_create_engine),
+    ):
+        assert health_checks.probe_postgres(budget) == STATUS_DOWN
+
+    cap = health_checks.POSTGRES_MAX_BUDGET_SECONDS
+    expected_ms = int(
+        (cap - health_checks.POSTGRES_CONNECT_TIMEOUT_SECONDS)
+        * health_checks.MS_PER_SECOND
+        / health_checks.POSTGRES_STATEMENT_COUNT
+    )
+    assert captured["options"] == f"-c statement_timeout={expected_ms}"
+
+
+def test_failed_attempts_are_rate_limited_but_valid_token_is_exempt(app: Flask):
+    """
+    GIVEN the limiter armed and the secret set
+    WHEN more than the allowed number of rejected attempts arrive from one IP
+    THEN further rejected attempts get 429 while a valid-token call still succeeds
+    """
+    original_first_request = app._got_first_request
+    app._got_first_request = False
+    app.config["RATELIMIT_ENABLED"] = True
+    limiter.enabled = True
+    limiter.init_app(app)
+    app._got_first_request = original_first_request
+    try:
+        postgres, session_redis, metrics_redis = _patch_probes()
+        with mock.patch.dict(app.config, {CONFIG_ENVS.HEALTH_CHECK_TOKEN: TOKEN}):
+            with app.test_client() as deep_client:
+                for _ in range(10):
+                    rejected = deep_client.get(HEALTH_DEEP_URL)
+                    assert rejected.status_code == 401
+                limited = deep_client.get(HEALTH_DEEP_URL)
+                assert limited.status_code == 429
+                assert limited.is_json
+                with postgres, session_redis, metrics_redis:
+                    valid = deep_client.get(HEALTH_DEEP_URL, headers=AUTH_HEADERS)
+                assert valid.status_code == 200
+    finally:
+        if limiter._storage is not None:
+            limiter._storage.reset()
+        limiter._storage = None
+        limiter._limiter = None
+        limiter.enabled = False
+        limiter.initialized = False

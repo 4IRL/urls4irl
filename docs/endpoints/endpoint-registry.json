@@ -3158,7 +3158,7 @@
     {
       "blueprint": "system",
       "decorators": [
-        "limiter.exempt",
+        "limiter.limit(HEALTH_DEEP_FAILED_ATTEMPT_RATE_LIMIT, exempt_when=_has_valid_health_token, deduct_when=_is_rejected_attempt)",
         "api_route"
       ],
       "endpoint": "system.health_deep",
@@ -3180,6 +3180,7 @@
         "status_codes": {
           "200": "backend.schemas.system.DeepHealthResponseSchema",
           "401": "backend.schemas.base.StatusMessageResponseSchema",
+          "429": "backend.schemas.base.StatusMessageResponseSchema",
           "503": "backend.schemas.system.DeepHealthResponseSchema"
         }
       },

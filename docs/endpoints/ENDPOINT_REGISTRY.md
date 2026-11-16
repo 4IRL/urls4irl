@@ -1126,9 +1126,9 @@ Mechanical map of every app route: handler, decorators, service, schema, templat
 ### `GET /health/deep` — `system.health_deep`
 
 - **Handler:** `backend/system/routes.py:health_deep`
-- **Decorators:** `limiter.exempt`, `api_route`
+- **Decorators:** `limiter.limit(HEALTH_DEEP_FAILED_ATTEMPT_RATE_LIMIT, exempt_when=_has_valid_health_token, deduct_when=_is_rejected_attempt)`, `api_route`
 - **Service:** —
-- **Schema:** response: `backend.schemas.system.DeepHealthResponseSchema`; status: 200 `backend.schemas.system.DeepHealthResponseSchema`, 401 `backend.schemas.base.StatusMessageResponseSchema`, 503 `backend.schemas.system.DeepHealthResponseSchema`
+- **Schema:** response: `backend.schemas.system.DeepHealthResponseSchema`; status: 200 `backend.schemas.system.DeepHealthResponseSchema`, 401 `backend.schemas.base.StatusMessageResponseSchema`, 429 `backend.schemas.base.StatusMessageResponseSchema`, 503 `backend.schemas.system.DeepHealthResponseSchema`
 - **Template:** —
 - **JS:** no-js: infra-probe
 
