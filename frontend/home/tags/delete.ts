@@ -9,7 +9,15 @@ import { emit as recordUIEvent } from "../../lib/metrics-client.js";
 import { disposeTooltipsWithin, hideTooltip } from "../../lib/tooltips.js";
 import { UI_EVENTS } from "../../types/metrics-events.js";
 import { getState, setState } from "../../store/app-store.js";
+import { learnPolicyOff } from "../utubs/policy.js";
 import { refreshTagDeckTagCount } from "./deck.js";
+import {
+  canFocusTagDeckControl,
+  getForbiddenErrorCode,
+  runAsRefusal,
+  showPolicyBanner,
+  UTUB_TAG_POLICY_ERROR_CODES,
+} from "./policy-banner.js";
 import { applyAlternatingTagBackground } from "./search.js";
 import { TAG_SCOPE } from "../../types/metrics-dim-values.js";
 
@@ -102,7 +110,7 @@ function deleteUTubTag(utubID: number, utubTagID: number): void {
   });
 
   request.fail(function (xhr: JQuery.jqXHR) {
-    deleteUTubTagFail(xhr);
+    deleteUTubTagFail({ xhr, utubID });
   });
 }
 
@@ -174,9 +182,54 @@ function deleteUTubTagSuccess(response: DeleteUtubTagResponse): void {
   });
 }
 
-function deleteUTubTagFail(xhr: JQuery.jqXHR): void {
+// A manager turned tag deletion (or tagging) off while this tab still showed it on.
+// Close the confirm modal without a reload, learn the new setting, then explain
+// once without moving focus. The tag row is hidden once the pencil menu closes, so
+// focus lands on the pencil.
+function handleDeleteTagRefusal({
+  utubID,
+  errorCode,
+}: {
+  utubID: number;
+  errorCode: number;
+}): void {
+  const message = APP_CONFIG.strings.TAG_DELETE_NOT_ALLOWED;
+  const pencil = $("#utubTagBtnUpdateAllOpen")[0] as HTMLElement | undefined;
+  deleteUTubTagHideModal();
+  runAsRefusal({
+    message,
+    callback: () => {
+      learnPolicyOff({
+        utubID,
+        key:
+          errorCode === UTUB_TAG_POLICY_ERROR_CODES.TAGGING_NOT_ALLOWED
+            ? "tags.members_can_tag"
+            : "tags.members_can_delete_tags",
+      });
+    },
+  });
+  if (canFocusTagDeckControl()) pencil?.focus();
+  showPolicyBanner({ message, control: pencil });
+}
+
+function deleteUTubTagFail({
+  xhr,
+  utubID,
+}: {
+  xhr: JQuery.jqXHR;
+  utubID: number;
+}): void {
   $("#modalSubmit").prop("disabled", false);
   if (is429Handled(xhr)) return;
+
+  const errorCode = getForbiddenErrorCode(xhr);
+  if (
+    errorCode === UTUB_TAG_POLICY_ERROR_CODES.TAGGING_NOT_ALLOWED ||
+    errorCode === UTUB_TAG_POLICY_ERROR_CODES.TAG_DELETE_NOT_ALLOWED
+  ) {
+    handleDeleteTagRefusal({ utubID, errorCode });
+    return;
+  }
 
   log(
     "deleteUTubTag failed — likely already deleted by another user, showing reload banner",
