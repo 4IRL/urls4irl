@@ -160,10 +160,15 @@ export function replaceInviteLink({
   });
 }
 
-/** Exactly one setting per save; `max_uses: null` is Unlimited. */
+/**
+ * Exactly one setting per save; `max_uses: null` is Unlimited, and the preview
+ * variants turn the preview on/off or choose its length in days.
+ */
 export type InviteLinkUpdateBody =
   | { expires_in_days: number }
-  | { max_uses: number | null };
+  | { max_uses: number | null }
+  | { preview_enabled: boolean }
+  | { preview_window_days: 1 | 3 | 7 };
 
 /** PATCHes one setting of the live link; the response is the saved link. */
 export function updateInviteLink({

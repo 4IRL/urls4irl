@@ -578,6 +578,29 @@ const appConfig = {
       "1 person has already joined. Choose a limit of at least 1.",
     INVITE_LINK_PANEL_USES_BELOW_JOINED:
       "{count} people have already joined. Choose a limit of at least {count}.",
+    INVITE_LINK_PANEL_PREVIEW_LABEL: "Preview for visitors without an account",
+    INVITE_LINK_PANEL_PREVIEW_DESC:
+      "Shows this UTub's name, description, URLs, titles and tags, read-only.",
+    INVITE_LINK_PANEL_PREVIEW_WINDOW_LABEL: "Preview length",
+    INVITE_LINK_PANEL_PREVIEW_WINDOW_DAYS_ONE: "1 day",
+    INVITE_LINK_PANEL_PREVIEW_WINDOW_DAYS: "{days} days",
+    INVITE_LINK_PANEL_PREVIEW_WINDOW_CAPPED_OPTION:
+      "Until {date} (link expiry)",
+    INVITE_LINK_PANEL_PREVIEW_WINDOW_LIMIT_HINT:
+      "Lengths longer than the time left on the link are unavailable.",
+    INVITE_LINK_PANEL_PREVIEW_WINDOW_CAPPED_HINT:
+      "The preview can't outlast the link. You chose {label}; lengthening Expires brings that back.",
+    INVITE_LINK_PANEL_PREVIEW_WARNING:
+      "Anyone with this link can view this UTub's name, description, URLs, titles and tags without an account until {date}. Member names are never shown.",
+    INVITE_LINK_PANEL_PREVIEW_ON: "Preview on until {date}.",
+    INVITE_LINK_PANEL_PREVIEW_OFF: "Preview off.",
+    INVITE_LINK_PANEL_PREVIEW_WINDOW_OFF_HINT:
+      "It applies when you turn the preview on.",
+    INVITE_LINK_PANEL_PREVIEW_WINDOW_SET:
+      "Preview length set to {label}. It applies when you turn the preview on.",
+    INVITE_LINK_PANEL_PREVIEW_ENDS_SET: "Preview now ends {date}.",
+    INVITE_LINK_PANEL_PREVIEW_CAPPED:
+      "Preview now ends {date}, when the link expires.",
     TRASH_LOCKED: "That UTub is locked, so this item can't be changed.",
     TRASH_ORIGIN_UNAVAILABLE:
       "That UTub is no longer available. Choose a UTub to restore this URL into.",

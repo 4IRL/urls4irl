@@ -85,6 +85,7 @@ from backend.utils.constants import provide_config_for_constants
 from backend.utils.datetime_utils import utc_now
 from backend.utils.strings.api_auth_strs import API_AUTH
 from backend.utils.strings.email_validation_strs import EMAILS
+from backend.utils.strings.invite_link_strs import INVITE_LINK_LEGAL
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.oauth_strs import LINK_INVALID_PASSWORD_MESSAGE
 from backend.utils.strings.openapi_strs import OPEN_API
@@ -190,12 +191,20 @@ def provide_constants():
 
 @users.route("/privacy-policy")
 def privacy_policy():
-    return render_template("pages/privacy_policy.html", is_privacy_or_terms=True)
+    return render_template(
+        "pages/privacy_policy.html",
+        is_privacy_or_terms=True,
+        invite_legal=INVITE_LINK_LEGAL,
+    )
 
 
 @users.route("/terms")
 def terms_and_conditions():
-    return render_template("pages/terms_and_conditions.html", is_privacy_or_terms=True)
+    return render_template(
+        "pages/terms_and_conditions.html",
+        is_privacy_or_terms=True,
+        invite_legal=INVITE_LINK_LEGAL,
+    )
 
 
 @users.route("/settings", methods=["GET"])

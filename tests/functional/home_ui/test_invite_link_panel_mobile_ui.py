@@ -3,10 +3,13 @@ overflow, 44px touch targets and unclipped header buttons."""
 
 from __future__ import annotations
 
+from datetime import timedelta
+
 import pytest
 from flask import Flask
 from playwright.sync_api import Page, expect
 
+from backend.utils.datetime_utils import utc_now
 from tests.functional.db_utils import get_utub_this_user_created
 from tests.functional.home_ui.test_member_permissions_mobile_ui import (
     open_members_deck_as,
@@ -18,6 +21,7 @@ from tests.utils_for_test import add_invite_link
 pytestmark = [pytest.mark.home_ui, pytest.mark.members_ui, pytest.mark.mobile_ui]
 
 _MIN_TOUCH_TARGET_PX = 44
+_SUBPIXEL_TOLERANCE_PX = 0.5
 
 
 def test_panel_fits_phone_width_with_touch_targets(
@@ -47,16 +51,90 @@ def test_panel_fits_phone_width_with_touch_targets(
         page.locator(HPL.INVITE_LINK_EXPIRES_SELECT),
         page.locator(HPL.INVITE_LINK_USES_SELECT),
         page.locator(HPL.INVITE_LINK_URL_INPUT),
+        page.locator(HPL.INVITE_LINK_PREVIEW_SWITCH),
     ):
         box = locator.bounding_box()
         assert box is not None
-        assert box["height"] >= _MIN_TOUCH_TARGET_PX, box
+        # The bottom-anchored sheet lands controls on fractional y offsets, so a
+        # 44px min-height can measure 43.99997 after layout snapping.
+        assert box["height"] >= _MIN_TOUCH_TARGET_PX - _SUBPIXEL_TOLERANCE_PX, box
         assert box["width"] >= _MIN_TOUCH_TARGET_PX, box
 
     overflow = page.evaluate(
         "() => document.documentElement.scrollWidth - window.innerWidth"
     )
     assert overflow <= 0, overflow
+
+
+def test_preview_block_fits_phone_sheet_with_touch_targets(
+    page_mobile_portrait: Page, create_test_utubmembers, provide_app: Flask
+):
+    """
+    GIVEN the owner on the phone Members deck with a live link, preview on
+    WHEN they open the invite link panel
+    THEN the switch and length select are at least 44px tall, nothing scrolls
+        horizontally and the warning sits inside the sheet's scroll area
+    """
+    page = page_mobile_portrait
+    app = provide_app
+    utub_id = get_utub_this_user_created(app, OWNER_ID).id
+    add_invite_link(
+        app,
+        utub_id,
+        OWNER_ID,
+        expires_at=utc_now() + timedelta(days=30),
+        preview_enabled=True,
+        preview_ends_at=utc_now() + timedelta(days=3),
+    )
+    open_members_deck_as(app=app, page=page, user_id=OWNER_ID)
+    page.locator(HPL.BUTTON_MEMBER_INVITE_LINK).tap()
+    expect(page.locator(HPL.INVITE_LINK_MODAL)).to_be_visible()
+    expect(page.locator(f"{HPL.INVITE_LINK_MODAL} :focus")).to_have_count(1)
+
+    warning = page.locator(HPL.INVITE_LINK_PREVIEW_WARNING)
+    expect(warning).to_be_visible()
+    for locator in (
+        page.locator(HPL.INVITE_LINK_PREVIEW_SWITCH),
+        page.locator(HPL.INVITE_LINK_PREVIEW_WINDOW_SELECT),
+    ):
+        box = locator.bounding_box()
+        assert box is not None
+        assert box["height"] >= _MIN_TOUCH_TARGET_PX - _SUBPIXEL_TOLERANCE_PX, box
+        assert box["width"] >= _MIN_TOUCH_TARGET_PX, box
+
+    overflow = page.evaluate(
+        "() => document.documentElement.scrollWidth - window.innerWidth"
+    )
+    assert overflow <= 0, overflow
+    body_overflow = page.evaluate(
+        """(selector) => {
+            const body = document.querySelector(selector);
+            const right = body.getBoundingClientRect().right;
+            const wide = [...body.querySelectorAll('*')]
+                .filter((el) => el.getBoundingClientRect().right > right + 0.5)
+                .map((el) => el.id || el.className || el.tagName);
+            return { extra: body.scrollWidth - body.clientWidth, wide };
+        }""",
+        HPL.INVITE_LINK_MODAL_BODY,
+    )
+    assert body_overflow["extra"] <= 0, body_overflow
+    # The warning is the block's last child: scrolling it into view must bring it
+    # fully inside the sheet's horizontal extent.
+    warning.scroll_into_view_if_needed()
+    warning_box = warning.bounding_box()
+    content = page.locator(f"{HPL.INVITE_LINK_MODAL} .modal-content").bounding_box()
+    assert warning_box is not None and content is not None
+    assert warning_box["x"] >= content["x"] - 1, (warning_box, content)
+    assert (
+        warning_box["x"] + warning_box["width"] <= content["x"] + content["width"] + 1
+    ), (warning_box, content)
+    body_box = page.locator(HPL.INVITE_LINK_MODAL_BODY).bounding_box()
+    assert body_box is not None
+    assert warning_box["y"] >= body_box["y"] - 1, (warning_box, body_box)
+    assert (
+        warning_box["y"] + warning_box["height"]
+        <= body_box["y"] + body_box["height"] + 1
+    ), (warning_box, body_box)
 
 
 def test_modal_is_a_full_width_bottom_sheet_that_closes_on_escape(
