@@ -8394,6 +8394,56 @@
         }
       }
     },
+    "/health/deep": {
+      "get": {
+        "operationId": "healthDeep",
+        "tags": ["system"],
+        "security": [],
+        "description": "Deep health check of Postgres, the session Redis and the metrics Redis. Requires the X-Health-Token header; 401 reveals no component detail. Rejected attempts are rate limited per IP (429).",
+        "responses": {
+          "200": {
+            "description": "Deep health",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeepHealthResponseSchema"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusMessageResponseSchema"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusMessageResponseSchema"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeepHealthResponseSchema"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/utubs/{utub_id}/urls": {
       "post": {
         "operationId": "createUrl",
@@ -15488,6 +15538,50 @@
           }
         },
         "required": ["status"],
+        "type": "object"
+      },
+      "DeepHealthComponentsSchema": {
+        "properties": {
+          "postgres": {
+            "description": "up, down or not configured",
+            "type": "string"
+          },
+          "session_redis": {
+            "description": "up, down or not configured",
+            "type": "string"
+          },
+          "metrics_redis": {
+            "description": "up, down or not configured",
+            "type": "string"
+          }
+        },
+        "required": ["postgres", "session_redis", "metrics_redis"],
+        "type": "object"
+      },
+      "DeepHealthResponseSchema": {
+        "properties": {
+          "status": {
+            "description": "Overall health status",
+            "type": "string"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Names the unhealthy components (503 only)"
+          },
+          "components": {
+            "$ref": "#/components/schemas/DeepHealthComponentsSchema",
+            "description": "Per-component status"
+          }
+        },
+        "required": ["status", "components"],
         "type": "object"
       },
       "CopyUrlsRequest": {

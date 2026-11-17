@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from flask import current_app
+from flask import current_app, g
 from flask_login import current_user
 from sqlalchemy import func
 
@@ -33,9 +33,10 @@ from backend.schemas.tags import (
     UtubTagSchema,
 )
 from backend.tags.constants import BulkTagSkipReason, URLTagErrorCodes
+from backend.tags.services.tag_permissions import url_tag_add_refusal_response
 from backend.utils.constants import TAG_CONSTANTS
 from backend.utils.strings.tag_strs import TAGS_FAILURE, TAGS_SUCCESS
-from backend.utubs.guards import reject_if_utub_locked
+from backend.utubs.guards import UtubAccess, lock_and_reauthorize
 
 
 @dataclass
@@ -50,6 +51,36 @@ class TagApplyResult:
 
     over_limit: bool
     to_apply: list[Utub_Tags]
+
+
+def _lock_and_gate_url_tagging(utub: Utubs) -> FlaskResponse | None:
+    """Lock the UTub, then refuse a plain member while tagging is off.
+
+    Locked ordering: a gone/trashed UTub or revoked member is 404 and a locked UTub
+    is 403 UTUB_IS_LOCKED before the policy is read from the locked row. Any refusal
+    rolls back (releasing the row lock) so nothing is written.
+
+    Args:
+        utub (Utubs): The UTub the URL tags are being added to.
+
+    Returns:
+        A 403 response to return from the service, or None when the caller may tag.
+    """
+    utub_locked_error: FlaskResponse | None = lock_and_reauthorize(
+        utub,
+        required_access=UtubAccess.MEMBER,
+        error_code=URLTagErrorCodes.UTUB_IS_LOCKED,
+    )
+    if utub_locked_error is not None:
+        db.session.rollback()
+        return utub_locked_error
+    policy_refusal: FlaskResponse | None = url_tag_add_refusal_response(
+        utub, is_manager=g.is_manager
+    )
+    if policy_refusal is not None:
+        db.session.rollback()
+        return policy_refusal
+    return None
 
 
 def add_tag_to_url_if_valid(
@@ -71,11 +102,9 @@ def add_tag_to_url_if_valid(
             400 (at tag limit)
             400 (tag already on URL)
     """
-    utub_locked_error: FlaskResponse | None = reject_if_utub_locked(
-        utub, error_code=URLTagErrorCodes.UTUB_IS_LOCKED
-    )
-    if utub_locked_error is not None:
-        return utub_locked_error
+    refusal: FlaskResponse | None = _lock_and_gate_url_tagging(utub)
+    if refusal is not None:
+        return refusal
     tag_to_add = tag_string.strip()
 
     if _url_is_at_url_tag_limit(utub, utub_url):
@@ -224,11 +253,9 @@ def add_batch_tags_to_existing_url(
             200 (success — including the all-already-applied no-op case)
             400 (applying the batch would exceed the per-URL tag limit)
     """
-    utub_locked_error: FlaskResponse | None = reject_if_utub_locked(
-        utub, error_code=URLTagErrorCodes.UTUB_IS_LOCKED
-    )
-    if utub_locked_error is not None:
-        return utub_locked_error
+    refusal: FlaskResponse | None = _lock_and_gate_url_tagging(utub)
+    if refusal is not None:
+        return refusal
     # The explicit rollback guarantees that a mid-batch exception discards both
     # the flushed vocabulary rows and any association writes, rather than relying
     # on the request-teardown rollback (which the test harness's SAVEPOINT does
@@ -333,11 +360,9 @@ def add_tags_to_urls_in_utub(
             400 (one or more ids are not valid URLs in this UTub)
             403 (UTub is locked)
     """
-    utub_locked_error: FlaskResponse | None = reject_if_utub_locked(
-        utub, error_code=URLTagErrorCodes.UTUB_IS_LOCKED
-    )
-    if utub_locked_error is not None:
-        return utub_locked_error
+    refusal: FlaskResponse | None = _lock_and_gate_url_tagging(utub)
+    if refusal is not None:
+        return refusal
 
     # Defensively de-dup ids (order-preserving), mirroring the request schema's
     # own dedup, so a direct/in-code caller cannot reprocess the same URL twice

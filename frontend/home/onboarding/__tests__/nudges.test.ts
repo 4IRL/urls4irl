@@ -1088,6 +1088,78 @@ describe("onboarding nudges — registry, eligibility, sequencing & init wiring"
     expect(contentArg[".tooltip-inner"]).toContain("Tag your links");
   });
 
+  it("(addTag eligibility) a plain member sees the tip only while members_can_tag is on", async () => {
+    const { initOnboardingNudges, _resetOnboardingNudgesForTests } =
+      await import("../nudges.js");
+    const { resolveUtubSettings } = await import("../../../types/settings.js");
+    const { bootstrap } = await import("../../../lib/globals.js");
+    const anchor = document.querySelector("#utubTagBtnCreate") as HTMLElement;
+    const tip = bootstrap.Tooltip.getOrCreateInstance(anchor);
+    const plainMemberState = {
+      utubs: [A_UTUB],
+      activeUTubID: 1,
+      urls: [A_URL],
+      tags: [],
+      members: [M_SELF, M_OTHER],
+      isCurrentUserOwner: false,
+      isCoCreator: false,
+    };
+
+    nudgeStorage.markTipSeen("createUtub");
+    nudgeStorage.markTipSeen("addUrl");
+    setState({
+      ...plainMemberState,
+      settings: resolveUtubSettings({
+        tags: { members_can_tag: false },
+      } as never),
+    });
+    initOnboardingNudges();
+    expect(tip.show).not.toHaveBeenCalled();
+
+    _resetOnboardingNudgesForTests();
+    nudgeStorage.markTipSeen("createUtub");
+    nudgeStorage.markTipSeen("addUrl");
+    setState({
+      settings: resolveUtubSettings({
+        tags: { members_can_tag: true },
+      } as never),
+    });
+    initOnboardingNudges();
+    expect(tip.show).toHaveBeenCalledTimes(1);
+  });
+
+  it("(addTag revoke) dismissAddTagTipIfActive hides the live tip without marking it seen, and no-ops for another tip", async () => {
+    const {
+      initOnboardingNudges,
+      dismissAddTagTipIfActive,
+      dismissAddMemberTipIfActive,
+    } = await import("../nudges.js");
+    const { bootstrap } = await import("../../../lib/globals.js");
+    const anchor = document.querySelector("#utubTagBtnCreate") as HTMLElement;
+    const tip = bootstrap.Tooltip.getOrCreateInstance(anchor);
+
+    nudgeStorage.markTipSeen("createUtub");
+    nudgeStorage.markTipSeen("addUrl");
+    setState({
+      utubs: [A_UTUB],
+      activeUTubID: 1,
+      urls: [A_URL],
+      tags: [],
+      members: [M_SELF, M_OTHER],
+      isCurrentUserOwner: true,
+    });
+    initOnboardingNudges();
+    expect(tip.show).toHaveBeenCalledTimes(1);
+
+    // The live tip is addTag, so the member dismisser leaves it alone.
+    dismissAddMemberTipIfActive();
+    expect(tip.hide).not.toHaveBeenCalled();
+
+    dismissAddTagTipIfActive();
+    expect(tip.hide).toHaveBeenCalled();
+    expect(nudgeStorage.hasSeenTip("addTag")).toBe(false);
+  });
+
   it("(addMember eligibility) shows only for a lone owner/co-creator, not a plain member or with a second member", async () => {
     const { initOnboardingNudges, _resetOnboardingNudgesForTests } =
       await import("../nudges.js");

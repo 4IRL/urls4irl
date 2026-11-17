@@ -109,6 +109,7 @@ describe("tag drag-and-drop source", () => {
     };
     await setMobile(false);
     await setMultiSelect(false);
+    store.setState({ isCurrentUserOwner: true });
 
     drag = await import("../drag-drop.js");
   });

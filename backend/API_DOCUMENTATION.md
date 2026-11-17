@@ -2250,4 +2250,61 @@ Rate limiting is exempt on this endpoint. No authentication required.
 
 </details>
 
+<details>
+ <summary><code>GET</code> <code><b>/health/deep</b></code> <code>(deep health check endpoint)</code></summary>
+
+Checks Postgres, the session Redis and the metrics Redis. Valid-token calls are exempt from rate limiting; rejected attempts are limited per IP (`429` past 10 per minute). Requires the `X-Health-Token` header to equal the server secret `HEALTH_CHECK_TOKEN`; no cookie or CSRF token. A missing, empty or wrong header, or an unset/blank secret, gets a `401` that never reveals components, and no probe runs. Each component is one of `up`, `down`, `not configured` (`not configured` counts as unhealthy). The call targets a 7 second deadline (Postgres is capped at 4 s of it); this is a target, not a hard bound, since libpq's connect timeout applies per resolved address.
+
+##### Headers
+
+> | name | required | details |
+> |------|----------|---------|
+> | `X-Health-Token` | yes | Must match `HEALTH_CHECK_TOKEN` |
+
+##### Responses
+
+> | http code     | content-type                      | response  | details |
+> |---------------|-----------------------------------|-----------|---------------------------------------------------------|
+> | `200`         | `application/json`                | `See below.` | All three components are `up`. |
+> | `401`         | `application/json`                | `See below.` | Header missing, empty or wrong, or secret unset. No `components` key. |
+> | `503`         | `application/json`                | `See below.` | At least one component is not `up`. |
+
+###### 200 HTTP Code Response Body
+
+> ```json
+> {
+>     "status": "Success",
+>     "components": {"postgres": "up", "session_redis": "up", "metrics_redis": "up"}
+> }
+> ```
+
+###### 401 HTTP Code Response Body
+
+> ```json
+> {
+>     "status": "Failure",
+>     "message": "Unauthorized"
+> }
+> ```
+
+###### 503 HTTP Code Response Body
+
+> ```json
+> {
+>     "status": "Failure",
+>     "message": "Unhealthy components: session_redis",
+>     "components": {"postgres": "up", "session_redis": "down", "metrics_redis": "up"}
+> }
+> ```
+
+##### Example cURL
+
+> ```bash
+> curl -X GET \
+>  -H "X-Health-Token: <token>" \
+>  https://urls.4irl.app/health/deep
+> ```
+
+</details>
+
 ------------------------------------------------------------------------------------------

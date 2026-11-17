@@ -6,7 +6,11 @@ from werkzeug.exceptions import NotFound
 from backend.app_logger import warning_log
 from backend.invite_links.page_response import build_join_error_view, render_invite_page
 from backend.schemas.errors import build_message_error_response
-from backend.utils.all_routes import BUILDER_JSON_429_ENDPOINTS, INVITE_LINK_ROUTES
+from backend.utils.all_routes import (
+    BUILDER_JSON_429_ENDPOINTS,
+    INVITE_LINK_ROUTES,
+    SYSTEM_ROUTES,
+)
 from backend.utils.constants import build_frontend_config
 from backend.utils.strings.api_auth_strs import API_V1_URL_PREFIX
 from backend.utils.strings.html_identifiers import IDENTIFIERS
@@ -111,10 +115,16 @@ def handle_429_response_default_ratelimit(_):
     # which every splash/home/utub form's `.fail()` handler and the
     # `*_rate_limits` UI tests rely on. A `None` endpoint (no route matched)
     # fails closed to HTML.
-    if _is_api_v1_request() or (
-        request.endpoint in BUILDER_JSON_429_ENDPOINTS
-        and request.headers.get(URL_VALIDATION.X_REQUESTED_WITH)
-        == URL_VALIDATION.XMLHTTPREQUEST
+    # /health/deep is session-free (no session, so no HTML page can render) and
+    # its caller is a watchdog, so it gets JSON too.
+    if (
+        _is_api_v1_request()
+        or request.endpoint == SYSTEM_ROUTES.HEALTH_DEEP
+        or (
+            request.endpoint in BUILDER_JSON_429_ENDPOINTS
+            and request.headers.get(URL_VALIDATION.X_REQUESTED_WITH)
+            == URL_VALIDATION.XMLHTTPREQUEST
+        )
     ):
         return build_message_error_response(
             message=STD_JSON_RESPONSE.TOO_MANY_REQUESTS, status_code=429

@@ -8,6 +8,15 @@ import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
 import { emit } from "../../../lib/metrics-client.js";
 import { clearOpenForm, setOpenForm } from "../../../lib/modal-tracking.js";
 import { UI_EVENTS } from "../../../types/metrics-events.js";
+import {
+  getForbiddenErrorCode,
+  getRefusalOwnedMessage,
+  handleTaggingRefusal,
+  showPolicyBanner,
+  URL_POLICY_ERROR_CODES,
+} from "../../tags/policy-banner.js";
+import { getState, subscribe } from "../../../store/app-store.js";
+import { canTag } from "../../utubs/policy.js";
 import { isEmptyString } from "./utils.js";
 import { isAcceptableURL } from "../validation.js";
 import {
@@ -267,6 +276,8 @@ function mountCreateURLParamTrim(): void {
 function mountCreateURLTagCombobox(utubID: number): void {
   const createURLInputForm = $("#createURLWrap");
   createURLInputForm.find(".urlTagComboboxWrap").remove();
+  // A member who may not tag gets no picker, so the create request sends no tags.
+  if (!canTag(getState())) return;
   const comboboxWrap = createTagComboboxBlock({
     mode: ComboboxMode.CREATE,
     urlCard: null,
@@ -464,6 +475,23 @@ function createURLFail({
 }): void {
   if (is429Handled(xhr)) return;
 
+  if (
+    getForbiddenErrorCode(xhr) === URL_POLICY_ERROR_CODES.TAGGING_NOT_ALLOWED
+  ) {
+    // A manager turned tagging off while this tab still showed the tag picker. The
+    // server refused the whole create, so nothing was saved. Drop the staged tags
+    // and the picker so a resubmit cannot hit the same 403, keep the form and the
+    // typed title and URL, and explain once. The banner has no `control`: the Add
+    // URL input is not a blocked control.
+    resetCreateURLTagCombobox();
+    handleTaggingRefusal({
+      message: APP_CONFIG.strings.TAG_URLS_NOT_ALLOWED,
+      utubID,
+      focusTarget: $("#urlStringCreate")[0] as HTMLElement | undefined,
+    });
+    return;
+  }
+
   if (!("responseJSON" in xhr)) {
     if (
       xhr.status === 403 &&
@@ -600,4 +628,60 @@ export function resetCreateURLFailErrors(): void {
   $("#createURLWrap .urlTagComboboxWrap .urlTagComboboxMsg")
     .text("")
     .removeClass("warn");
+}
+
+const CREATE_TAG_POLICY_KEYS = [
+  "settings",
+  "activeUTubID",
+  "isCurrentUserOwner",
+  "isCoCreator",
+] as const;
+
+// Removes the tag picker from an open Add URL form once tagging is turned off,
+// dropping any staged tags. Returns how many staged tags were dropped.
+function dropCreateURLTagPicker(): number {
+  const comboboxWrap = $("#createURLWrap").find(".urlTagComboboxWrap");
+  if (comboboxWrap.length === 0) return 0;
+  const getStaged = comboboxWrap.data(STAGED_GET_KEY) as
+    | (() => string[])
+    | undefined;
+  const droppedCount = getStaged ? getStaged().length : 0;
+  const focusWasInside = comboboxWrap[0].contains(document.activeElement);
+  resetCreateURLTagCombobox();
+  if (focusWasInside) $("#urlStringCreate")[0]?.focus();
+  return droppedCount;
+}
+
+/**
+ * Keeps an open Add URL form honest when tagging turns off under it: the picker is
+ * removed and staged tags are dropped, and when tags were dropped the user is told
+ * once (`TAG_URLS_NOT_ALLOWED` in the URL deck banner, no focus taken). When a
+ * refusal handler already shows that same text the observer stays silent; when a
+ * handler owns a different message the observer's banner is deferred so it is the
+ * text left visible; with no handler it shows immediately.
+ */
+export function initCreateURLTagPolicyObserver(): () => void {
+  let previouslyCanTag = canTag(getState());
+  return subscribe((changedKeys) => {
+    if (!CREATE_TAG_POLICY_KEYS.some((key) => changedKeys.includes(key))) {
+      return;
+    }
+    const nowCanTag = canTag(getState());
+    const flippedOff = previouslyCanTag && !nowCanTag;
+    previouslyCanTag = nowCanTag;
+    if (!flippedOff) return;
+
+    const droppedCount = dropCreateURLTagPicker();
+    if (droppedCount === 0) return;
+
+    const message = APP_CONFIG.strings.TAG_URLS_NOT_ALLOWED;
+    const ownedMessage = getRefusalOwnedMessage();
+    if (ownedMessage === message) return;
+    if (ownedMessage === null) {
+      showPolicyBanner({ message });
+      return;
+    }
+    // The handler's own banner runs after its learn step; land after it.
+    queueMicrotask(() => showPolicyBanner({ message }));
+  });
 }

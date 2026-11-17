@@ -6,7 +6,9 @@ import {
   updateURLAfterFindingStaleData,
 } from "../cards/cards.js";
 import { triggerURLSwipeNudgeIfEligible } from "../cards/swipe.js";
+import { isUtubLockedHandled } from "../../utub-locked.js";
 import {
+  showURLDeckBannerError,
   updateURLDeck,
   setURLDeckOnUTubSelected,
   setURLDeckWhenNoUTubSelected,
@@ -820,5 +822,91 @@ describe("URL deck teardown disposes per-card tooltip instances", () => {
       firstRow,
     );
     expect(document.querySelectorAll(".urlRow").length).toBe(0);
+  });
+});
+
+describe("showURLDeckBannerError", () => {
+  const SHOW_CLASS = "URLDeckErrorIndicatorShow";
+
+  function banner(): HTMLElement {
+    return document.getElementById("URLDeckErrorIndicator") as HTMLElement;
+  }
+
+  beforeEach(() => {
+    document.body.innerHTML = `
+      <button id="elsewhere"></button>
+      <h5 id="URLDeckErrorIndicator" role="alert" tabindex="-1"></h5>
+    `;
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    // Let any pending hide timer drain so the module-level timer id resets.
+    vi.runAllTimers();
+    vi.useRealTimers();
+    document.body.innerHTML = "";
+  });
+
+  it("focuses the banner by default and shows the text", () => {
+    showURLDeckBannerError("Default call");
+
+    expect(document.activeElement).toBe(banner());
+    expect(banner().textContent).toBe("Default call");
+    expect(banner().classList.contains(SHOW_CLASS)).toBe(true);
+  });
+
+  it("leaves focus untouched with takeFocus false", () => {
+    const elsewhere = document.getElementById("elsewhere") as HTMLElement;
+    elsewhere.focus();
+
+    showURLDeckBannerError("Quiet call", { takeFocus: false });
+
+    expect(document.activeElement).toBe(elsewhere);
+    expect(banner().textContent).toBe("Quiet call");
+    expect(banner().classList.contains(SHOW_CLASS)).toBe(true);
+  });
+
+  it("keeps the class for a full 3.5s from the second call", () => {
+    showURLDeckBannerError("First");
+    vi.advanceTimersByTime(3000);
+    showURLDeckBannerError("Second");
+
+    // The first call's timer would have fired at 3.5s total, i.e. 500ms from here.
+    vi.advanceTimersByTime(3499);
+    expect(banner().classList.contains(SHOW_CLASS)).toBe(true);
+
+    vi.advanceTimersByTime(1);
+    expect(banner().classList.contains(SHOW_CLASS)).toBe(false);
+  });
+
+  it("clears then re-sets the text so a repeat is announced", () => {
+    showURLDeckBannerError("Same text");
+    const observer = new MutationObserver(() => undefined);
+    observer.observe(banner(), { childList: true });
+
+    showURLDeckBannerError("Same text");
+    const records = observer.takeRecords();
+    observer.disconnect();
+
+    expect(banner().textContent).toBe("Same text");
+    expect(records.some((record) => record.removedNodes.length > 0)).toBe(true);
+    expect(records.some((record) => record.addedNodes.length > 0)).toBe(true);
+  });
+
+  it("still focuses the banner for an existing caller (utub-locked)", () => {
+    const xhr = {
+      status: 403,
+      responseJSON: { message: "This UTub is locked and cannot be modified." },
+    } as unknown as JQuery.jqXHR;
+    // Bootstrap's modal plugin is absent in unit tests; the handler dismisses any modal.
+    (window.jQuery.fn as unknown as Record<string, unknown>).modal = vi.fn();
+
+    expect(isUtubLockedHandled(xhr)).toBe(true);
+
+    expect(document.activeElement).toBe(banner());
+    expect(banner().textContent).toBe(
+      "This UTub is locked and cannot be modified.",
+    );
+    expect(banner().getAttribute("role")).toBe("alert");
   });
 });
