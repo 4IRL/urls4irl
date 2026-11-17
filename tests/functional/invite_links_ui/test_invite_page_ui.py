@@ -1,4 +1,6 @@
 import re
+from collections.abc import Iterator
+from contextlib import contextmanager
 from typing import NamedTuple
 from urllib.parse import quote, unquote, urlencode, urlsplit
 
@@ -462,6 +464,45 @@ def _assert_visitor_is_not_member(*, app: Flask, utub_id: int) -> None:
         )
 
 
+@contextmanager
+def _visitor_opening_invite(
+    *, browser: Browser, page: Page, invite_url: str
+) -> Iterator[Page]:
+    """A fresh logged-out browser context, already on ``invite_url``."""
+    visitor_context = browser.new_context()
+    try:
+        visitor_context.set_default_timeout(10_000)
+        visitor_context.set_default_navigation_timeout(30_000)
+        add_playwright_cookie_banner_cookie(
+            context=visitor_context, base_url=current_base_url(page=page)
+        )
+        visitor = visitor_context.new_page()
+        visitor.goto(invite_url)
+        yield visitor
+    finally:
+        visitor_context.close()
+
+
+def _assert_no_membership_or_use(
+    *, app: Flask, utub_id: int, user_id: int, token: str
+) -> None:
+    """Before the Join click: no membership row and no use counted."""
+    with app.app_context():
+        assert (
+            Utub_Members.query.filter_by(utub_id=utub_id, user_id=user_id).count() == 0
+        )
+        assert _use_count(token=token) == 0
+
+
+def _join_and_assert_member(
+    *, app: Flask, visitor: Page, utub_id: int, user_id: int, token: str
+) -> None:
+    visitor.locator(IPL.BUTTON_JOIN).click()
+    _assert_joined_as_member(
+        app=app, page=visitor, utub_id=utub_id, user_id=user_id, token=token
+    )
+
+
 def test_log_in_link_opens_login_modal_with_oauth_next(
     page: Page,
     create_test_users,
@@ -567,13 +608,9 @@ def test_panel_link_login_handoff_ends_in_utub_with_one_join_click(
     base_url = current_base_url(page=page)
     assert invite_url == f"{base_url}/invite/{token}"
 
-    visitor_context = build_page_browser.new_context()
-    try:
-        visitor_context.set_default_timeout(10_000)
-        visitor_context.set_default_navigation_timeout(30_000)
-        add_playwright_cookie_banner_cookie(context=visitor_context, base_url=base_url)
-        visitor = visitor_context.new_page()
-        visitor.goto(invite_url)
+    with _visitor_opening_invite(
+        browser=build_page_browser, page=page, invite_url=invite_url
+    ) as visitor:
         expect(visitor.locator(IPL.LINK_LOG_IN)).to_be_visible()
         visitor.locator(IPL.LINK_LOG_IN).click()
         wait_for_modal_ready(page=visitor, modal_selector=SPL.LOGIN_MODAL)
@@ -586,21 +623,17 @@ def test_panel_link_login_handoff_ends_in_utub_with_one_join_click(
 
         visitor.wait_for_url(invite_url)
         expect(visitor.locator(IPL.BUTTON_JOIN)).to_have_text(UTS.INVITE_JOIN_LABEL)
-        _assert_visitor_is_not_member(app=provide_app, utub_id=utub_id)
-        with provide_app.app_context():
-            assert _use_count(token=token) == 0
+        _assert_no_membership_or_use(
+            app=provide_app, utub_id=utub_id, user_id=VISITOR_ID, token=token
+        )
 
-        visitor.locator(IPL.BUTTON_JOIN).click()
-
-        _assert_joined_as_member(
+        _join_and_assert_member(
             app=provide_app,
-            page=visitor,
+            visitor=visitor,
             utub_id=utub_id,
             user_id=VISITOR_ID,
             token=token,
         )
-    finally:
-        visitor_context.close()
 
 
 def test_non_invite_next_opens_no_modal_and_leaves_oauth_hrefs(
@@ -821,15 +854,9 @@ def test_panel_link_signup_handoff_ends_in_utub_with_one_join_click(
         app=provide_app, page=page, clipboard_mock=clipboard_mock, turn_preview_on=False
     )
 
-    visitor_context = build_page_browser.new_context()
-    try:
-        visitor_context.set_default_timeout(10_000)
-        visitor_context.set_default_navigation_timeout(30_000)
-        add_playwright_cookie_banner_cookie(
-            context=visitor_context, base_url=current_base_url(page=page)
-        )
-        visitor = visitor_context.new_page()
-        visitor.goto(invite_url)
+    with _visitor_opening_invite(
+        browser=build_page_browser, page=page, invite_url=invite_url
+    ) as visitor:
         expect(visitor.locator(IPL.LINK_CREATE_ACCOUNT)).to_be_visible()
         visitor.locator(IPL.LINK_CREATE_ACCOUNT).click()
         wait_for_modal_ready(page=visitor, modal_selector=SPL.REGISTER_MODAL)
@@ -843,24 +870,17 @@ def test_panel_link_signup_handoff_ends_in_utub_with_one_join_click(
 
         visitor.wait_for_url(invite_url)
         expect(visitor.locator(IPL.BUTTON_JOIN)).to_have_text(UTS.INVITE_JOIN_LABEL)
-        with provide_app.app_context():
-            assert (
-                Utub_Members.query.filter_by(utub_id=utub_id, user_id=user_id).count()
-                == 0
-            )
-            assert _use_count(token=token) == 0
+        _assert_no_membership_or_use(
+            app=provide_app, utub_id=utub_id, user_id=user_id, token=token
+        )
 
-        visitor.locator(IPL.BUTTON_JOIN).click()
-
-        _assert_joined_as_member(
+        _join_and_assert_member(
             app=provide_app,
-            page=visitor,
+            visitor=visitor,
             utub_id=utub_id,
             user_id=user_id,
             token=token,
         )
-    finally:
-        visitor_context.close()
 
 
 def test_preview_login_handoff_ends_with_one_join_click(
@@ -882,15 +902,9 @@ def test_preview_login_handoff_ends_with_one_join_click(
         app=provide_app, page=page, clipboard_mock=clipboard_mock, turn_preview_on=True
     )
 
-    visitor_context = build_page_browser.new_context()
-    try:
-        visitor_context.set_default_timeout(10_000)
-        visitor_context.set_default_navigation_timeout(30_000)
-        add_playwright_cookie_banner_cookie(
-            context=visitor_context, base_url=current_base_url(page=page)
-        )
-        visitor = visitor_context.new_page()
-        visitor.goto(invite_url)
+    with _visitor_opening_invite(
+        browser=build_page_browser, page=page, invite_url=invite_url
+    ) as visitor:
         expect(visitor.locator(IPL.PREVIEW_BAR)).to_be_visible()
         visitor.locator(IPL.PREVIEW_BAR_LOG_IN).click()
         wait_for_modal_ready(page=visitor, modal_selector=SPL.LOGIN_MODAL)
@@ -905,21 +919,17 @@ def test_preview_login_handoff_ends_with_one_join_click(
         expect(visitor.locator(IPL.BUTTON_JOIN)).to_have_text(UTS.INVITE_JOIN_LABEL)
         expect(visitor.locator(IPL.PREVIEW_BAR)).to_have_count(0)
         expect(visitor.locator(IPL.PREVIEW_LIST)).to_have_count(0)
-        _assert_visitor_is_not_member(app=provide_app, utub_id=utub_id)
-        with provide_app.app_context():
-            assert _use_count(token=token) == 0
+        _assert_no_membership_or_use(
+            app=provide_app, utub_id=utub_id, user_id=VISITOR_ID, token=token
+        )
 
-        visitor.locator(IPL.BUTTON_JOIN).click()
-
-        _assert_joined_as_member(
+        _join_and_assert_member(
             app=provide_app,
-            page=visitor,
+            visitor=visitor,
             utub_id=utub_id,
             user_id=VISITOR_ID,
             token=token,
         )
-    finally:
-        visitor_context.close()
 
 
 def test_preview_signup_handoff_ends_with_one_join_click(
@@ -941,15 +951,9 @@ def test_preview_signup_handoff_ends_with_one_join_click(
         app=provide_app, page=page, clipboard_mock=clipboard_mock, turn_preview_on=True
     )
 
-    visitor_context = build_page_browser.new_context()
-    try:
-        visitor_context.set_default_timeout(10_000)
-        visitor_context.set_default_navigation_timeout(30_000)
-        add_playwright_cookie_banner_cookie(
-            context=visitor_context, base_url=current_base_url(page=page)
-        )
-        visitor = visitor_context.new_page()
-        visitor.goto(invite_url)
+    with _visitor_opening_invite(
+        browser=build_page_browser, page=page, invite_url=invite_url
+    ) as visitor:
         expect(visitor.locator(IPL.PREVIEW_BAR)).to_be_visible()
         visitor.locator(IPL.PREVIEW_BAR_CREATE_ACCOUNT).click()
         wait_for_modal_ready(page=visitor, modal_selector=SPL.REGISTER_MODAL)
@@ -965,24 +969,17 @@ def test_preview_signup_handoff_ends_with_one_join_click(
         expect(visitor.locator(IPL.BUTTON_JOIN)).to_have_text(UTS.INVITE_JOIN_LABEL)
         expect(visitor.locator(IPL.PREVIEW_BAR)).to_have_count(0)
         expect(visitor.locator(IPL.PREVIEW_LIST)).to_have_count(0)
-        with provide_app.app_context():
-            assert (
-                Utub_Members.query.filter_by(utub_id=utub_id, user_id=user_id).count()
-                == 0
-            )
-            assert _use_count(token=token) == 0
+        _assert_no_membership_or_use(
+            app=provide_app, utub_id=utub_id, user_id=user_id, token=token
+        )
 
-        visitor.locator(IPL.BUTTON_JOIN).click()
-
-        _assert_joined_as_member(
+        _join_and_assert_member(
             app=provide_app,
-            page=visitor,
+            visitor=visitor,
             utub_id=utub_id,
             user_id=user_id,
             token=token,
         )
-    finally:
-        visitor_context.close()
 
 
 def test_signup_from_plain_splash_lands_on_home(
