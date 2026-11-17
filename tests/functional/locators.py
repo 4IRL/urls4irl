@@ -179,6 +179,7 @@ class HomePageLocators(GenericPageLocator):
     DISABLED_REASON_TOOLTIP = ".disabledReasonTooltip"
     DISABLED_REASON_TOOLTIP_VISIBLE = ".disabledReasonTooltipVisible"
     DISABLED_REASON_LOCK = ".disabledReasonLock"
+    DISABLED_REASON_NOTE = ".disabledReasonNote"
     TAG_SHEET_BODY = "#tagSheetBody"
     # "Your view of this UTub" (per-member) controls on the URLs gear.
     URLS_PERSONAL_SORT_SELECT = "#urlsSettingsSortSelect"
