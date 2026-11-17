@@ -46,6 +46,11 @@ import {
 import { showURLDeckBannerError } from "../deck.js";
 import { clearURLOutcomeBanner } from "../outcome-banner.js";
 import { isUtubLockedHandled } from "../../utub-locked.js";
+import {
+  getForbiddenErrorCode,
+  handleTaggingRefusal,
+  URL_TAG_POLICY_ERROR_CODES,
+} from "../../tags/policy-banner.js";
 import { isMobile } from "../../mobile.js";
 import {
   enableTabbableChildElements,
@@ -58,6 +63,8 @@ import {
 } from "../cards/short-link-state.js";
 import { renderAppliedTagsForUrl } from "../tags/tag-render.js";
 import { getState, setState } from "../../../store/app-store.js";
+import { canTag } from "../../utubs/policy.js";
+import { applyURLTagControlReasons } from "./policy-controls.js";
 
 const SUBMIT_FIELD_NAMES = ["tagStrings"] as const;
 
@@ -884,6 +891,12 @@ export function showTagCombobox({
   urlCard: JQuery;
   urlTagBtnCreate: JQuery;
 }): void {
+  // A blocked control never opens the picker (this also covers the re-bound click
+  // handlers below and any programmatic caller).
+  if (!canTag(getState())) {
+    applyURLTagControlReasons(urlCard[0] ?? null);
+    return;
+  }
   emit({ event: UI_EVENTS.UI_TAG_CREATE_OPEN, scope: TAG_SCOPE.URL });
   setOpenForm(HOME_FORM.TAG_CREATE);
 
@@ -1002,6 +1015,9 @@ export function hideAndResetTagCombobox(urlCard: JQuery): void {
     tooltip.enable();
     urlCard.removeData(TOOLTIP_STORE_KEY);
   }
+  // Tagging may have been turned off while the picker was open (the controls skip
+  // an open picker's Cancel button), so restore the blocked state now.
+  applyURLTagControlReasons(urlCard[0] ?? null);
 
   const selectedAttr = urlCard.attr("urlSelected");
   if (
@@ -1089,7 +1105,7 @@ export function submitStagedTags({
 
       request.fail(function (xhr: JQuery.jqXHR) {
         try {
-          submitStagedTagsFail({ xhr, urlCard, applySource });
+          submitStagedTagsFail({ xhr, urlCard, applySource, utubID });
         } finally {
           clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
           settle("failed");
@@ -1194,10 +1210,12 @@ export function submitStagedTagsFail({
   xhr,
   urlCard,
   applySource = "combobox",
+  utubID,
 }: {
   xhr: JQuery.jqXHR;
   urlCard: JQuery;
   applySource?: ApplySource;
+  utubID?: number;
 }): void {
   // `submitStagedTags` disabled click-to-hide after the pre-flight GET; a
   // failure must hand it back on a selected card with no combobox open (DOM
@@ -1219,6 +1237,27 @@ export function submitStagedTagsFail({
 
   if (is429Handled(xhr)) return;
   if (isUtubLockedHandled(xhr)) return;
+
+  if (
+    getForbiddenErrorCode(xhr) ===
+    URL_TAG_POLICY_ERROR_CODES.TAGGING_NOT_ALLOWED
+  ) {
+    // A manager turned tagging off while this tab still showed it on: close any
+    // open picker without a redirect, then explain once. A drop leaves focus on
+    // its source (the target card's tag button may be hidden); the combobox hands
+    // focus back to the card's Add tag button.
+    const addTagButton = urlCard.find(".urlTagBtnCreate")[0] as
+      | HTMLElement
+      | undefined;
+    if (!isDrag) hideAndResetTagCombobox(urlCard);
+    handleTaggingRefusal({
+      message: APP_CONFIG.strings.TAG_URLS_NOT_ALLOWED,
+      utubID: utubID ?? getState().activeUTubID,
+      focusTarget: isDrag ? undefined : addTagButton,
+      control: addTagButton,
+    });
+    return;
+  }
 
   if (!("responseJSON" in xhr)) {
     if (

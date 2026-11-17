@@ -39,6 +39,7 @@ import { initTagDragDrop } from "./home/tags/drag-drop.js";
 import { initTagMatchMode } from "./home/tags/tags.js";
 import { initTagDisplaySubscriptions } from "./home/tags/display-subscriptions.js";
 import { registerTagsPersonalSettingsSection } from "./home/tags/personal-settings-section.js";
+import { registerTagsPermissionsSettingsSection } from "./home/tags/permissions-settings-section.js";
 import {
   applyDefaultDensity,
   applyDefaultViewMode,
@@ -58,6 +59,10 @@ import { initUrlDeckPolicyAttrs } from "./home/urls/deck-view-attrs.js";
 import { initMemberDeckPolicyAttrs } from "./home/members/policy-attrs.js";
 import { initInviteLinkPanel } from "./home/members/invite-link-panel.js";
 import { initMemberOverflowMenu } from "./home/members/overflow-menu.js";
+import { initTagPolicyAttrs } from "./home/tags/policy-attrs.js";
+import { initTagDeckPolicyControls } from "./home/tags/policy-controls.js";
+import { initURLTagPolicyControls } from "./home/urls/tags/policy-controls.js";
+import { initCreateURLTagPolicyObserver } from "./home/urls/cards/create.js";
 import { loadInitialTrashCount, renderTrashCount } from "./home/trash/count.js";
 import { initTrashTabs } from "./home/trash/tabs.js";
 import { initTrashPanel } from "./home/trash/panel.js";
@@ -92,6 +97,7 @@ $(document).ready(() => {
   registerUtubPinsSection();
   registerMembersListSettingsSection();
   registerMembersPermissionsSettingsSection();
+  registerTagsPermissionsSettingsSection();
   registerTagsPersonalSettingsSection();
   initLeftPanelToggle();
   setCreateUTubEventListeners();
@@ -104,6 +110,10 @@ $(document).ready(() => {
   initMemberDeckPolicyAttrs();
   initInviteLinkPanel();
   initMemberOverflowMenu();
+  initTagPolicyAttrs();
+  initTagDeckPolicyControls();
+  initURLTagPolicyControls();
+  initCreateURLTagPolicyObserver();
   initTagDragDrop();
   initTagMatchMode();
   initTagDisplaySubscriptions();

@@ -29,7 +29,7 @@ import { getState } from "../../store/app-store.js";
 import { isCrossUtubSearchActive } from "../search/cross-utub-search.js";
 import { isPanelSettingsOpen } from "../panel-settings/state.js";
 import { isUTubSearchActive } from "../utubs/search.js";
-import { canAddMembers } from "../utubs/policy.js";
+import { canAddMembers, canTag } from "../utubs/policy.js";
 import {
   _resetOnboardingStorageForTests,
   clearAllSeenTips,
@@ -110,6 +110,14 @@ let _onboardingInitialized = false;
  */
 export function dismissAddMemberTipIfActive(): void {
   if (_activeTipId === "addMember") dismissActiveTip({ markSeen: false });
+}
+
+/**
+ * Tears down the add-tag tip when it is the active one, without marking it
+ * seen. Called when a policy change takes tagging away from the viewer.
+ */
+export function dismissAddTagTipIfActive(): void {
+  if (_activeTipId === "addTag") dismissActiveTip({ markSeen: false });
 }
 
 /**
@@ -383,12 +391,13 @@ const NUDGE_REGISTRY: readonly NudgeConfig[] = [
   },
   {
     // Organize: once a UTub holds URLs but no tags, nudge to add the first tag.
-    // Not owner-gated — any member can add tags.
+    // Not owner-gated, but a plain member needs the Tagging permission.
     tipId: "addTag",
     anchorSelector: "#utubTagBtnCreate",
     titleKey: "ONBOARDING_ADD_TAG_TIP_TITLE",
     bodyKey: "ONBOARDING_ADD_TAG_TIP_BODY",
     isEligible: (): boolean =>
+      canTag() &&
       getState().activeUTubID !== null &&
       getState().urls.length > 0 &&
       getState().tags.length === 0 &&

@@ -17,6 +17,7 @@ import {
   showTrimSavedBanner,
 } from "../../outcome-banner.js";
 import { checkForStaleDataOn409 } from "../conflict-handler.js";
+import { handleTaggingRefusal } from "../../../tags/policy-banner.js";
 import {
   createURL,
   createURLHideInput,
@@ -115,6 +116,7 @@ vi.mock("../../../utubs/row-counts.js", () => ({
 
 vi.mock("../../../../store/app-store.js", () => ({
   getState: vi.fn(() => ({
+    isCurrentUserOwner: true,
     urls: [],
     preferences: {
       theme: "system",
@@ -134,6 +136,11 @@ vi.mock("../../tags/combobox.js", () => ({
   ),
   STAGED_GET_KEY: "urlTagComboboxGetStaged",
   STAGED_RESET_KEY: "urlTagComboboxResetStaged",
+}));
+
+vi.mock("../../../tags/policy-banner.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../../tags/policy-banner.js")>()),
+  handleTaggingRefusal: vi.fn(),
 }));
 
 vi.mock("../../tags/tag-render.js", () => ({
@@ -293,6 +300,81 @@ describe("createURL - client-side validation", () => {
 
       expect($("#urlBtnMultiSelect").hasClass("hidden")).toBe(true);
       expect($("#urlBtnMultiSelect").hasClass("visible")).toBe(false);
+    });
+  });
+
+  describe("createURL - tagging refusal (errorCode 18)", () => {
+    function submitWithStatus({
+      status,
+      errorCode,
+    }: {
+      status: number;
+      errorCode: number;
+    }): ReturnType<typeof vi.fn> {
+      const resetStaged = vi.fn();
+      $("#createURLWrap").html('<div class="urlTagComboboxWrap"></div>');
+      $("#createURLWrap .urlTagComboboxWrap").data(
+        "urlTagComboboxResetStaged",
+        resetStaged,
+      );
+      urlStringInput.val("https://example.com");
+      urlTitleInput.val("Keep me");
+      const xhr = {
+        status,
+        responseJSON: { errorCode, message: "refused" },
+      } as unknown as JQuery.jqXHR;
+      vi.mocked(ajaxCall).mockReturnValue(
+        createMockJqXHRChainable({
+          fail: (callback: unknown) =>
+            (callback as (xhrArg: JQuery.jqXHR) => void)(xhr),
+        }),
+      );
+
+      createURL({
+        createURLTitleInput: urlTitleInput,
+        createURLInput: urlStringInput,
+        utubID: 42,
+      });
+      return resetStaged;
+    }
+
+    it("clears staged tags and the picker, keeps the form, and explains once without a control", () => {
+      const locationAssignSpy = vi
+        .spyOn(window.location, "assign")
+        .mockImplementation(() => {});
+      try {
+        const resetStaged = submitWithStatus({ status: 403, errorCode: 18 });
+
+        expect(resetStaged).toHaveBeenCalledTimes(1);
+        expect($("#createURLWrap .urlTagComboboxWrap").length).toBe(0);
+        expect(urlStringInput.val()).toBe("https://example.com");
+        expect(urlTitleInput.val()).toBe("Keep me");
+        expect(handleTaggingRefusal).toHaveBeenCalledTimes(1);
+        const call = vi.mocked(handleTaggingRefusal).mock.calls[0][0];
+        expect(call.message).toBe(APP_CONFIG.strings.TAG_URLS_NOT_ALLOWED);
+        expect(call.utubID).toBe(42);
+        expect(call.focusTarget).toBe(urlStringInput[0]);
+        expect(call.control).toBeUndefined();
+        expect(locationAssignSpy).not.toHaveBeenCalled();
+      } finally {
+        locationAssignSpy.mockRestore();
+      }
+    });
+
+    it("keeps today's redirect for a 403 with another code", () => {
+      const locationAssignSpy = vi
+        .spyOn(window.location, "assign")
+        .mockImplementation(() => {});
+      try {
+        submitWithStatus({ status: 403, errorCode: 99 });
+
+        expect(handleTaggingRefusal).not.toHaveBeenCalled();
+        expect(locationAssignSpy).toHaveBeenCalledWith(
+          APP_CONFIG.routes.errorPage,
+        );
+      } finally {
+        locationAssignSpy.mockRestore();
+      }
     });
   });
 
@@ -501,6 +583,7 @@ describe("createURL - client-side validation", () => {
         <span id="fieldSavedAnnouncement"></span>
       `;
       vi.mocked(getState).mockReturnValue({
+        isCurrentUserOwner: true,
         urls: [{ utubUrlID: 10 }, { utubUrlID: 11 }, { utubUrlID: 42 }],
         preferences: {
           theme: "system",
@@ -607,6 +690,7 @@ describe("createURL - client-side validation", () => {
         <span id="fieldSavedAnnouncement"></span>
       `;
       vi.mocked(getState).mockReturnValue({
+        isCurrentUserOwner: true,
         urls: [{ utubUrlID: 10 }, { utubUrlID: 11 }, { utubUrlID: 42 }],
         preferences: {
           theme: "system",

@@ -4,7 +4,8 @@ import { debug } from "../../../lib/debug.js";
 import { makeDebouncer } from "../../../lib/debounce.js";
 import { isMobile } from "../../mobile.js";
 import { AppEvents, on } from "../../../lib/event-bus.js";
-import { getState } from "../../../store/app-store.js";
+import { setDisabledReason } from "../../../lib/disabled-reason.js";
+import { getState, subscribe } from "../../../store/app-store.js";
 import { VISIBLE_URL_SELECTOR } from "../utils.js";
 import {
   type BulkActionContext,
@@ -43,6 +44,11 @@ const DECK_SELECTOR = "#URLDeck";
 // re-inserts it above 992px. On mobile it moves to the deck bottom instead.
 const HEADER_ANCHOR_SELECTOR = "#bulkSelectContext";
 const HIDDEN_CLASS = "hidden";
+const BAR_POLICY_KEYS = [
+  "settings",
+  "isCurrentUserOwner",
+  "isCoCreator",
+] as const;
 // Matches RESIZE_DEBOUNCE_MS in home/utubs/header-fit.ts — the established window
 // for home-view resize listeners.
 const RESIZE_DEBOUNCE_MS = 150;
@@ -119,6 +125,15 @@ function buildContext(): BulkActionContext {
  */
 function renderBulkActionButtons(context: BulkActionContext): void {
   const container = $(ACTION_BUTTONS_SELECTOR);
+  // Rebuilding drops the buttons, so release blocked-control listeners first and
+  // keep keyboard focus on the same action afterwards.
+  const focusedActionID = container
+    .find("[data-bulk-action-id]")
+    .filter((_index, element) => element === document.activeElement)
+    .attr("data-bulk-action-id");
+  container.find("[data-bulk-action-id]").each((_index, element) => {
+    setDisabledReason({ element, reason: null });
+  });
   container.empty();
   for (const action of getAvailableBulkActions(context)) {
     const button = $("<button></button>")
@@ -145,11 +160,31 @@ function renderBulkActionButtons(context: BulkActionContext): void {
     button.on("click", () => {
       const clickContext = buildContext();
       if (action.isEnabled && !action.isEnabled(clickContext)) return;
+      if (action.blockedReason?.(clickContext)) return;
       action.onActivate(clickContext);
     });
     container.append(button);
+    // After the append: the helper places its note and tooltip beside the button.
+    const blockedReason = action.blockedReason?.(context) ?? null;
+    if (blockedReason !== null) {
+      setDisabledReason({ element: button[0], reason: blockedReason });
+    }
+    if (action.id === focusedActionID) button[0].focus();
   }
 }
+
+/** Re-renders the action buttons unless a bulk picker has locked the bar. */
+export function refreshBulkActionButtons(): void {
+  if (isAnyBulkPickerOpen()) {
+    repaintPending = true;
+    return;
+  }
+  repaintPending = false;
+  renderBulkActionButtons(buildContext());
+}
+
+// Set when a repaint was skipped because a picker held the bar; flushed on close.
+let repaintPending = false;
 
 /**
  * Re-derive the three desktop range-strip buttons' aria-disabled from the CURRENT
@@ -339,6 +374,14 @@ export function initBulkBar(): void {
   if (_barSubscriptionsRegistered) return;
   _barSubscriptionsRegistered = true;
 
+  // A permission change (a refresh, or a refusal teaching the client) can block or
+  // unblock an action, so repaint the buttons. Skipped while a picker is open; the
+  // picker's own owner closes it and repaints.
+  subscribe((changedKeys) => {
+    if (!BAR_POLICY_KEYS.some((key) => changedKeys.includes(key))) return;
+    refreshBulkActionButtons();
+  });
+
   // A viewport resize (rotation, breakpoint crossing, on-screen keyboard) can
   // move the bar across the 992px breakpoint, so re-slot it — debounced to the
   // shared home-view resize window. relocateBulkBarForViewport is idempotent
@@ -388,6 +431,7 @@ export function initBulkBar(): void {
       // re-derive from current selection/visibility so a button that should
       // stay disabled (e.g. Clear at 0 selected) does.
       syncRangeButtonStates();
+      if (repaintPending) refreshBulkActionButtons();
     }
   });
 }

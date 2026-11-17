@@ -150,6 +150,18 @@ def test_get_health_has_empty_security_no_csrf(runner, tmp_path):
     assert health_op["security"] == []
 
 
+def test_get_health_deep_has_empty_security_no_error_codes(runner, tmp_path):
+    """
+    GIVEN a generated OpenAPI spec
+    WHEN we inspect GET /health/deep
+    THEN security is [] (token header only, no session auth or CSRF) and there are no x-error-codes
+    """
+    spec = _generate_spec(runner, tmp_path)
+    health_deep_op = spec["paths"]["/health/deep"]["get"]
+    assert health_deep_op["security"] == []
+    assert "x-error-codes" not in health_deep_op
+
+
 def test_delete_utub_has_integer_path_param(runner, tmp_path):
     """
     GIVEN a generated OpenAPI spec

@@ -4,10 +4,15 @@ import re
 from flask import Flask
 from playwright.sync_api import JSHandle, Locator, Page, Request, Route, expect
 
+from tests.functional.db_utils import get_utub_this_user_created, set_utub_settings
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.playwright_assert_utils import (
     assert_not_visible_css_selector,
     assert_visible_css_selector,
+)
+from tests.functional.playwright_login_utils import (
+    login_user_and_select_utub_by_utubid,
+    login_user_and_select_utub_by_utubid_mobile,
 )
 from tests.functional.playwright_utils import (
     clear_then_send_keys,
@@ -811,3 +816,81 @@ def expect_no_drag_marks_left(*, page: Page) -> None:
     expect(page.locator("[data-drop-hint]")).to_have_count(0)
     expect(page.locator(".tagDropGhost")).to_have_count(0)
     expect(page.locator(".tagDropExisting")).to_have_count(0)
+
+
+# --- Tag permissions (per-UTub, manager-set) ----------------------------------
+
+TAG_PERMISSIONS_OWNER_ID = 1
+TAG_PERMISSIONS_MEMBER_ID = 2
+
+
+def set_tags_permissions(
+    *,
+    app: Flask,
+    utub_id: int,
+    members_can_tag: bool = True,
+    members_can_delete_tags: bool = True,
+) -> None:
+    """Write both tag-permission switches straight into the UTub's settings (a
+    manager flipping them from another tab), like members_ui `seed_policy`."""
+    set_utub_settings(
+        app,
+        utub_id,
+        {
+            "tags": {
+                "members_can_tag": members_can_tag,
+                "members_can_delete_tags": members_can_delete_tags,
+            }
+        },
+    )
+
+
+def expect_can_tag(*, page: Page, allowed: bool) -> None:
+    """The URL deck mirrors the viewer's effective tag permission (auto-retries)."""
+    expect(page.locator(HPL.URL_DECK)).to_have_attribute(
+        "data-can-tag", "true" if allowed else "false"
+    )
+
+
+def expect_can_delete_tags(*, page: Page, allowed: bool) -> None:
+    expect(page.locator(HPL.TAG_DECK)).to_have_attribute(
+        "data-can-delete-tags", "true" if allowed else "false"
+    )
+
+
+def login_member_into_owner_utub(
+    *,
+    app: Flask,
+    page: Page,
+    mobile: bool = False,
+    can_tag: bool = True,
+    can_delete_tags: bool = True,
+) -> int:
+    """Log the plain member in on the owner's UTub (the mock data makes every user
+    a plain member of every UTub) and return the UTub id. Waits on the member's
+    initial ``data-can-tag`` / ``data-can-delete-tags`` (the values the test seeded
+    before login, defaulting to allowed) so a later settings write cannot land
+    before the page learned that initial state."""
+    utub_id = get_utub_this_user_created(app, TAG_PERMISSIONS_OWNER_ID).id
+    if mobile:
+        login_user_and_select_utub_by_utubid_mobile(
+            app=app, page=page, user_id=TAG_PERMISSIONS_MEMBER_ID, utub_id=utub_id
+        )
+    else:
+        login_user_and_select_utub_by_utubid(
+            app=app, page=page, user_id=TAG_PERMISSIONS_MEMBER_ID, utub_id=utub_id
+        )
+    expect_can_tag(page=page, allowed=can_tag)
+    expect_can_delete_tags(page=page, allowed=can_delete_tags)
+    return utub_id
+
+
+def select_url_row(*, page: Page, utub_url_id: int) -> Locator:
+    """Select a URL card (desktop click) and return the selected row."""
+    row = page.locator(get_url_card_selector(utub_url_id=utub_url_id))
+    row.click()
+    selected = page.locator(
+        f"{get_url_card_selector(utub_url_id=utub_url_id)}[urlselected='true']"
+    )
+    expect(selected).to_be_visible()
+    return selected

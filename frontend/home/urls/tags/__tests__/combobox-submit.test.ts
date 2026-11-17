@@ -11,6 +11,7 @@ import { deleteURLOnStale } from "../../cards/get.js";
 import { showURLDeckBannerError } from "../../deck.js";
 import { clearURLOutcomeBanner } from "../../outcome-banner.js";
 import { isUtubLockedHandled } from "../../../utub-locked.js";
+import { handleTaggingRefusal } from "../../../tags/policy-banner.js";
 
 const { mockMetricsClient } = await vi.hoisted(
   async () =>
@@ -49,6 +50,11 @@ vi.mock("../../cards/get.js", () => ({
 }));
 
 vi.mock("../../deck.js", () => ({ showURLDeckBannerError: vi.fn() }));
+
+vi.mock("../../../tags/policy-banner.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../../tags/policy-banner.js")>()),
+  handleTaggingRefusal: vi.fn(),
+}));
 
 vi.mock("../../outcome-banner.js", () => ({
   clearURLOutcomeBanner: vi.fn(),
@@ -208,6 +214,65 @@ describe("submitStagedTagsFail — sad paths", () => {
     });
 
     expect(urlCard.find(".urlTagComboboxMsg").text()).toBe("");
+  });
+});
+
+describe("submitStagedTagsFail — tagging refusal (errorCode 4)", () => {
+  const refusal = {
+    status: 403,
+    responseJSON: { errorCode: 4 },
+  } as unknown as JQuery.jqXHR;
+
+  it("closes the picker, learns via the shared handler and focuses Add tag", () => {
+    const urlCard = $(".urlRow");
+
+    submitStagedTagsFail({ xhr: refusal, urlCard, utubID: 9 });
+
+    expect(urlCard.find(".urlTagComboboxWrap").hasClass("hidden")).toBe(true);
+    const addTagButton = urlCard.find(".urlTagBtnCreate")[0];
+    expect(handleTaggingRefusal).toHaveBeenCalledTimes(1);
+    expect(handleTaggingRefusal).toHaveBeenCalledWith({
+      message: "Only the owner and co-owners can tag URLs in this UTub.",
+      utubID: 9,
+      focusTarget: addTagButton,
+      control: addTagButton,
+    });
+  });
+
+  it("falls back to the active UTub when no utubID is passed", () => {
+    submitStagedTagsFail({ xhr: refusal, urlCard: $(".urlRow") });
+
+    expect(vi.mocked(handleTaggingRefusal).mock.calls[0][0].utubID).toBe(1);
+  });
+
+  it("leaves focus unchanged and the picker alone for a drag", () => {
+    document.body.innerHTML = '<div id="listURLs">' + URL_CARD_HTML + "</div>";
+    const urlCard = $(".urlRow");
+    urlCard.find(".urlTagComboboxWrap").removeClass("hidden");
+
+    submitStagedTagsFail({
+      xhr: refusal,
+      urlCard,
+      applySource: "drag",
+      utubID: 9,
+    });
+
+    expect(urlCard.find(".urlTagComboboxWrap").hasClass("hidden")).toBe(false);
+    expect(handleTaggingRefusal).toHaveBeenCalledWith(
+      expect.objectContaining({ utubID: 9, focusTarget: undefined }),
+    );
+  });
+
+  it("does not take the refusal path for another 403 code", () => {
+    submitStagedTagsFail({
+      xhr: {
+        status: 403,
+        responseJSON: { errorCode: 99 },
+      } as unknown as JQuery.jqXHR,
+      urlCard: $(".urlRow"),
+    });
+
+    expect(handleTaggingRefusal).not.toHaveBeenCalled();
   });
 });
 

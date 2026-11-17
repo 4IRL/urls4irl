@@ -27,6 +27,9 @@ from backend.schemas.trash import (
 )
 from backend.schemas.urls import UtubUrlSchema
 from backend.tags.services.create_url_tag import get_tag_applied_counts
+from backend.tags.services.tag_permissions import (
+    url_restore_preserved_tags_refusal_response,
+)
 from backend.urls.constants import (
     BulkRestoreSkipReason,
     URLErrorCodes,
@@ -343,6 +346,18 @@ def restore_trashed_url(
             status_code=400,
         )
 
+    # An in-place restore re-attaches the preserved tags: that is a tag write, so it
+    # follows the tagging policy. Settings were read fresh when the row was locked.
+    policy_refusal: FlaskResponse | None = url_restore_preserved_tags_refusal_response(
+        origin_utub,
+        is_manager=membership.member_role
+        in (Member_Role.CREATOR, Member_Role.CO_CREATOR),
+        has_preserved_tags=bool(utub_url.associated_tag_ids),
+    )
+    if policy_refusal is not None:
+        db.session.rollback()
+        return policy_refusal
+
     try:
         # Read BEFORE the snapshot is cleared.
         lost_tag_count = count_lost_trashed_tags(utub_url)
@@ -585,6 +600,18 @@ def restore_trashed_urls_in_place(
         )
 
     restored_rows: list[Utub_Urls] = [row[0] for row in locked_rows]
+
+    # Same tag-write gate as the single restore: refuse the whole request when any
+    # row would re-attach preserved tags and the caller may not tag.
+    policy_refusal: FlaskResponse | None = url_restore_preserved_tags_refusal_response(
+        origin_utub,
+        is_manager=viewer_is_manager,
+        has_preserved_tags=any(row.associated_tag_ids for row in restored_rows),
+    )
+    if policy_refusal is not None:
+        db.session.rollback()
+        return policy_refusal
+
     lost_tag_count: int = 0
     lost_tag_names: set[str] = set()
     try:

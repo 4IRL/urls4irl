@@ -16,6 +16,12 @@ import { buildTagFilterInDeck } from "../../../tags/tags.js";
 import { isTagInUTubTagDeck, readTagCount } from "../../../tags/utils.js";
 import { updateVisibleURLsForTagCount } from "../../cards/filtering.js";
 import { createMockJqXHR } from "../../../../__tests__/helpers/mock-jquery.js";
+import { handleTaggingRefusal } from "../../../tags/policy-banner.js";
+
+vi.mock("../../../tags/policy-banner.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../../tags/policy-banner.js")>()),
+  handleTaggingRefusal: vi.fn(),
+}));
 
 // --- Combobox mock: bulk-tag.ts drives the real BULK combobox in production, but
 // this suite isolates bulk-tag's own lifecycle. Fake createTagComboboxBlock builds
@@ -145,7 +151,14 @@ vi.mock("../../../tags/display-settings.js", () => ({
   })),
 }));
 
+// Tag permission is covered in bulk-tag-policy.test.ts with the real store; this
+// suite exercises the picker lifecycle for a viewer who may tag.
+vi.mock("../../../utubs/policy.js", () => ({
+  canTag: vi.fn(() => true),
+}));
+
 vi.mock("../../../../store/app-store.js", () => ({
+  subscribe: vi.fn(() => vi.fn()),
   getState: vi.fn(() => storeState),
   setState: vi.fn((partial: Partial<typeof storeState>) => {
     Object.assign(storeState, partial);
@@ -786,6 +799,43 @@ describe("submitBulkTags — failure handling", () => {
     expect(wrap.find(".urlTagComboboxMsg").text()).toBe(
       APP_CONFIG.strings.URL_BULK_TAGS_STALE_SELECTION,
     );
+  });
+
+  it("closes the picker without a redirect and hands focus to Add tags on a tagging refusal", () => {
+    const locationAssignSpy = vi
+      .spyOn(window.location, "assign")
+      .mockImplementation(() => {});
+    try {
+      seedUrlRows([10]);
+      storeState.urls = [
+        { utubUrlID: 10, utubUrlTagIDs: [], urlTitle: "Alpha" },
+      ];
+      $("body").append(
+        '<button data-bulk-action-id="bulk-add-tags" id="bulkAddTagsStub"></button>',
+      );
+      const addTagsButton = document.getElementById(
+        "bulkAddTagsStub",
+      ) as HTMLElement;
+      openPickerFor([10]);
+
+      const deferred = createMockJqXHR();
+      vi.mocked(ajaxCall).mockReturnValue(deferred);
+      comboboxState.lastOnSubmit!(["python"]);
+      deferred.reject({ status: 403, responseJSON: { errorCode: 4 } });
+
+      expect(isBulkTagPickerOpen()).toBe(false);
+      expect(handleTaggingRefusal).toHaveBeenCalledTimes(1);
+      expect(handleTaggingRefusal).toHaveBeenCalledWith({
+        message: APP_CONFIG.strings.TAG_URLS_NOT_ALLOWED,
+        utubID: expect.any(Number),
+        focusTarget: addTagsButton,
+        control: addTagsButton,
+      });
+      expect(locationAssignSpy).not.toHaveBeenCalled();
+    } finally {
+      locationAssignSpy.mockRestore();
+      $("#bulkAddTagsStub").remove();
+    }
   });
 
   it("redirects to the error page on a JSON 403/404 (DD-7)", () => {

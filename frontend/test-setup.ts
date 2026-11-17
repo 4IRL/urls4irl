@@ -318,6 +318,28 @@ const appConfig = {
     TAGS_MATCH_COUNT: "{n} matches",
     TAGS_MATCH_COUNT_ONE: "1 match",
     TAGS_EMPTY_HINT: "No tags yet — type to create one",
+    TAG_CREATE_NOT_ALLOWED:
+      "Only the owner and co-owners can create tags in this UTub.",
+    TAG_URLS_NOT_ALLOWED:
+      "Only the owner and co-owners can tag URLs in this UTub.",
+    TAG_REMOVE_NOT_ALLOWED:
+      "Only the owner and co-owners can remove tags in this UTub.",
+    TAG_DELETE_NOT_ALLOWED:
+      "Only the owner and co-owners can delete tags in this UTub.",
+    TAGS_SETTINGS_SECTION_TITLE: "Tag permissions",
+    TAGS_SETTINGS_MEMBERS_CAN_TAG_LABEL: "Members can tag",
+    TAGS_SETTINGS_MEMBERS_CAN_TAG_DESC:
+      "Create tags and add or remove them on URLs. Off: members can only filter.",
+    TAGS_SETTINGS_MEMBERS_CAN_DELETE_LABEL: "Members can delete tags",
+    TAGS_SETTINGS_MEMBERS_CAN_DELETE_DESC:
+      "Deleting a tag removes it from every URL.",
+    TAGS_SETTINGS_DELETE_REQUIRES_TAG: 'Turn on "Members can tag" first.',
+    TAGS_SETTINGS_MEMBERS_CAN_TAG_ON: "Members can now tag.",
+    TAGS_SETTINGS_MEMBERS_CAN_TAG_OFF: "Members can no longer tag.",
+    TAGS_SETTINGS_MEMBERS_CAN_DELETE_ON: "Members can now delete tags.",
+    TAGS_SETTINGS_MEMBERS_CAN_DELETE_OFF: "Members can no longer delete tags.",
+    TAGS_SETTINGS_TAG_OFF_DELETE_FORCED:
+      "Members can no longer tag. Deleting tags is unavailable too.",
     TAG_DROP_HINT_ADD: 'Add "{tag}" to this URL',
     TAG_DROP_HINT_HAS: 'Already has "{tag}"',
     TAG_DROP_ADDED: 'Added tag "{tag}" to {title}.',

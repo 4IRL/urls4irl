@@ -34,6 +34,27 @@
     transition: width 0.1s ease-in, opacity 0.1s ease-in, color 0.1s ease-in, padding 0.1s ease-in;
 }
 
+/* A blocked remove button stays visible (not hover-only) so its reason is
+   reachable. Edit-mode hiding still wins through .hidden. */
+.urlTagBtnDelete.disabledReasonControl {
+    width: auto;
+    padding: 0 2px;
+    min-width: 0;
+    min-height: 0;
+}
+
+@media (any-pointer: coarse) {
+    /* On touch the lock takes the place of the "x". */
+    .urlTagBtnDelete.disabledReasonControl > svg {
+        display: none;
+    }
+
+    .urlTagBtnDelete.disabledReasonControl > .disabledReasonLock {
+        position: static;
+        font-size: 0.8rem;
+    }
+}
+
 .red-icon-disabled {
     opacity: 0.15;
     pointer-events: none;
