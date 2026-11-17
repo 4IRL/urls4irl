@@ -51,7 +51,7 @@ def test_panel_fits_phone_width_with_touch_targets(
         page.locator(HPL.INVITE_LINK_EXPIRES_SELECT),
         page.locator(HPL.INVITE_LINK_USES_SELECT),
         page.locator(HPL.INVITE_LINK_URL_INPUT),
-        page.locator("#inviteLinkPreviewSwitch"),
+        page.locator(HPL.INVITE_LINK_PREVIEW_SWITCH),
     ):
         box = locator.bounding_box()
         assert box is not None

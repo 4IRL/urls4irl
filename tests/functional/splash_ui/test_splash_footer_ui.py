@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 from playwright.sync_api import Page, expect
 
-from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS
+from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.locators import SplashPageLocators as SPL
 from tests.functional.playwright_assert_utils import (
@@ -77,9 +77,7 @@ def test_privacy_policy_shows_invite_preview_sentence(page: Page):
     THEN the invite link preview sentence is visible
     """
     visit_privacy_page(page=page)
-    expect(
-        page.get_by_text(UI_TEST_STRINGS.INVITE_LEGAL_PRIVACY_PREVIEW)
-    ).to_be_visible()
+    expect(page.get_by_text(UTS.INVITE_LEGAL_PRIVACY_PREVIEW)).to_be_visible()
 
 
 def test_terms_shows_invite_preview_sentence(page: Page):
@@ -89,7 +87,7 @@ def test_terms_shows_invite_preview_sentence(page: Page):
     THEN the invite link preview sentence is visible
     """
     visit_terms_page(page=page)
-    expect(page.get_by_text(UI_TEST_STRINGS.INVITE_LEGAL_TERMS_PREVIEW)).to_be_visible()
+    expect(page.get_by_text(UTS.INVITE_LEGAL_TERMS_PREVIEW)).to_be_visible()
 
 
 def test_privacy_policy_rate_limits(page: Page):

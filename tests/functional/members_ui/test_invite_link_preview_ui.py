@@ -29,8 +29,6 @@ from tests.functional.playwright_utils import (
 from tests.utils_for_test import add_invite_link
 
 pytestmark = [pytest.mark.members_ui, pytest.mark.home_ui]
-
-ANNOUNCEMENT = "#MemberRowActionAnnouncement"
 MIN_CONTRAST = 4.5
 STORED_DAYS = 3
 DATE_TOLERANCE = timedelta(minutes=2)
@@ -118,7 +116,7 @@ def _seed_and_open(
 
 def _settled_on(*, page: Page) -> None:
     switch = page.locator(HPL.INVITE_LINK_PREVIEW_SWITCH)
-    announcement = page.locator(ANNOUNCEMENT)
+    announcement = page.locator(HPL.MEMBER_ROW_ACTION_ANNOUNCEMENT)
     expect(switch).to_have_attribute("aria-checked", "true")
     # The announcement lands only after the save response, so it settles the save.
     expect(announcement).to_contain_text(PREVIEW_ON_PREFIX)
@@ -131,7 +129,9 @@ def _settled_on(*, page: Page) -> None:
 
 def _settled_off(*, page: Page) -> None:
     switch = page.locator(HPL.INVITE_LINK_PREVIEW_SWITCH)
-    expect(page.locator(ANNOUNCEMENT)).to_have_text(UTS.INVITE_PANEL_PREVIEW_OFF)
+    expect(page.locator(HPL.MEMBER_ROW_ACTION_ANNOUNCEMENT)).to_have_text(
+        UTS.INVITE_PANEL_PREVIEW_OFF
+    )
     expect(switch).to_have_attribute("aria-checked", "false")
     expect(page.locator(HPL.INVITE_LINK_PREVIEW_WARNING)).to_have_count(0)
     expect(switch).not_to_have_attribute("aria-busy", "true")
@@ -172,7 +172,9 @@ def test_switch_on_and_off_by_click_persists(
 
     switch.click()
     _settled_off(page=page)
-    expect(page.locator(ANNOUNCEMENT)).to_have_text(UTS.INVITE_PANEL_PREVIEW_OFF)
+    expect(page.locator(HPL.MEMBER_ROW_ACTION_ANNOUNCEMENT)).to_have_text(
+        UTS.INVITE_PANEL_PREVIEW_OFF
+    )
     expect(switch).to_be_focused()
     _assert_off_persisted(app=app, utub_id=utub_id)
 
@@ -272,7 +274,7 @@ def test_window_change_persists_and_keeps_focus(
 
     select.select_option(value="7")
 
-    expect(page.locator(ANNOUNCEMENT)).to_contain_text(
+    expect(page.locator(HPL.MEMBER_ROW_ACTION_ANNOUNCEMENT)).to_contain_text(
         UTS.INVITE_PANEL_PREVIEW_WINDOW_SET.split(".")[0].format(
             label=UTS.INVITE_PANEL_PREVIEW_WINDOW_DAYS.format(days=7)
         )

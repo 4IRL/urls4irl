@@ -9,9 +9,9 @@ import { AppEvents, emit as emitAppEvent } from "../../lib/event-bus.js";
 import { getState, subscribe, type AppState } from "../../store/app-store.js";
 import { canManageInviteLink } from "../utubs/policy.js";
 import { updateUTubOnFindingStaleData } from "../utubs/stale-data.js";
+import { buildSwitchButton } from "../panel-settings/row-controls.js";
 import { withMemberControlFocusFallback } from "./focus-fallback.js";
 import { hideAndResetMemberCombobox } from "./member-combobox.js";
-import { buildSwitchButton } from "../panel-settings/row-controls.js";
 import { announceMemberRowAction } from "./notice.js";
 import { closeMemberNameFilter } from "./search.js";
 import {
@@ -1372,16 +1372,21 @@ function restoreCommitted(): void {
     ?.setAttribute("aria-checked", committedValue({ field: "preview" }));
 }
 
+function describedByIncludesError({ element }: { element: Element }): boolean {
+  return (
+    element
+      .getAttribute("aria-describedby")
+      ?.split(" ")
+      .includes(INLINE_ERROR_ID) ?? false
+  );
+}
+
 // Repaints the switch and the warning without replacing the switch, so focus
 // stays on it. The warning is always the last child of the preview block.
 function refreshPreviewInPlace({ link }: { link: InviteLink }): void {
   const switchButton = document.getElementById(PREVIEW_SWITCH_ID);
   if (switchButton === null) return;
-  const withError =
-    switchButton
-      .getAttribute("aria-describedby")
-      ?.split(" ")
-      .includes(INLINE_ERROR_ID) ?? false;
+  const withError = describedByIncludesError({ element: switchButton });
   switchButton.setAttribute(
     "aria-checked",
     String(link.previewEffectiveEnabled),
@@ -1397,11 +1402,7 @@ function refreshPreviewInPlace({ link }: { link: InviteLink }): void {
 function refreshPreviewWindowInPlace({ link }: { link: InviteLink }): void {
   const select = selectFor({ field: "window" });
   if (select === null) return;
-  const withError =
-    select
-      .getAttribute("aria-describedby")
-      ?.split(" ")
-      .includes(INLINE_ERROR_ID) ?? false;
+  const withError = describedByIncludesError({ element: select });
   const now = Date.now();
   fillSelectOptions({
     select,
