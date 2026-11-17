@@ -55,6 +55,8 @@ on:
         required: false
       PROD_GITHUB_OAUTH_CLIENT_SECRET:
         required: false
+      HEALTH_CHECK_TOKEN:
+        required: false
 
 jobs:
     ProdDeploy:
@@ -148,6 +150,7 @@ jobs:
               echo "${{ secrets.CF_R2_ACCESS_KEY }}" > ./secrets/ACCESS_KEY;
               echo "${{ secrets.CF_R2_SECRET_KEY }}" > ./secrets/SECRET_ACCESS_KEY;
               echo "${{ secrets.CF_R2_ENDPOINT }}" > ./secrets/R2_ENDPOINT;
+              echo "${{ secrets.HEALTH_CHECK_TOKEN }}" > ./secrets/HEALTH_CHECK_TOKEN;
               echo "$(openssl rand 64 | base64 --wrap=0 | tr -d '+')" > ./secrets/SECRET_KEY;
               docker compose -f compose.yaml up --build -d;
               rm -rf ./secrets/;

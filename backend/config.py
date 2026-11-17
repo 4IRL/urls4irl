@@ -149,6 +149,9 @@ class Config:
     FLASK_RUN_HOST = environ.get("FLASK_RUN_HOST", default=None)
     FLASK_DEBUG = environ.get("FLASK_DEBUG")
     SECRET_KEY = environ.get(ENV.SECRET_KEY)
+    # Optional shared secret for GET /health/deep; unset means the endpoint
+    # rejects every request (fail closed). Never raises at startup.
+    HEALTH_CHECK_TOKEN = environ.get(ENV.HEALTH_CHECK_TOKEN, default=None)
     SESSION_PERMANENT = True
     PERMANENT_SESSION_LIFETIME = CONFIG_CONSTANTS.SESSION_LIFETIME
     if REDIS_URI == "memory://" or REDIS_URI is None:
