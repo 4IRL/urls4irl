@@ -769,18 +769,18 @@ describe("invite link preview switch", () => {
         "inviteLinkExpiresSelect",
         "30",
         { expiresAt: TEN_DAYS },
-        `Link now expires ${label(TEN_DAYS)}.`,
+        (): string => `Link now expires ${label(TEN_DAYS)}.`,
       ],
       [
         "Uses",
         "inviteLinkUsesSelect",
         "25",
         { maxUses: 25 },
-        "Use limit set to 25 uses.",
+        (): string => "Use limit set to 25 uses.",
       ],
     ])(
       "(d2) a %s save that finds the window lapsed appends PREVIEW_OFF once",
-      async (_name, selectId, value, change, base) => {
+      async (_name, selectId, value, change, baseMessage) => {
         await openWith(onLink());
         vi.mocked(updateInviteLink).mockResolvedValue({
           ...lapsedLink(),
@@ -789,7 +789,7 @@ describe("invite link preview switch", () => {
 
         await pick(selectId, value);
 
-        expect(announcement()).toBe(`${base} Preview off.`);
+        expect(announcement()).toBe(`${baseMessage()} Preview off.`);
         expect(switchEl().getAttribute("aria-checked")).toBe("false");
         expect($("#inviteLinkPreviewWarning").length).toBe(0);
       },
