@@ -1043,15 +1043,27 @@ def login_user_to_home_page(*, app: Flask, page: Page, user_id: int) -> None:
     page.goto(f"{base_url}/home")
 
 
+def wait_for_navbar_closed(*, page: Page) -> None:
+    """Wait until the navbar dropdown is fully collapsed (neither `show` nor
+    `collapsing`). `collapsing` is absent both before a hide starts and after
+    it ends, so waiting for its absence alone can pass while the dropdown is
+    still `show` (or before an app-triggered hide begins), and a following
+    toggler click would then close it instead of opening it."""
+    expect(page.locator(GenericPageLocator.NAVBAR_DROPDOWN)).not_to_have_class(
+        re.compile(r"(^|\s)(show|collapsing)(\s|$)")
+    )
+
+
 def click_on_navbar(*, page: Page) -> None:
     """Open the collapsed Bootstrap navbar dropdown, settling any in-progress
     collapse transition before and after the toggler click. Bootstrap ignores
     a toggle click while `collapsing` is active, so clicking mid-transition
     silently no-ops and the dropdown never opens. Waiting only for `collapsing`
     to be absent is not enough: that also holds before the transition starts,
-    so the final wait is for the `show` class."""
+    so the pre-click wait is for a fully closed navbar and the final wait is
+    for the `show` class."""
     navbar_dropdown = page.locator(GenericPageLocator.NAVBAR_DROPDOWN)
-    expect(navbar_dropdown).not_to_have_class(re.compile(r"collapsing"))
+    wait_for_navbar_closed(page=page)
     page.locator(GenericPageLocator.NAVBAR_TOGGLER).click()
     expect(navbar_dropdown).to_have_class(re.compile(r"(^|\s)show(\s|$)"))
     expect(navbar_dropdown).not_to_have_class(re.compile(r"collapsing"))
@@ -1062,9 +1074,7 @@ def go_to_deck_via_navbar(*, page: Page, navbar_selector: str) -> None:
     given deck entry, then wait for the dropdown's collapse to finish."""
     click_on_navbar(page=page)
     wait_then_click_element(page=page, css_selector=navbar_selector)
-    wait_for_class_to_be_removed(
-        page=page, css_selector=HPL.NAVBAR_DROPDOWN, class_name="collapsing"
-    )
+    wait_for_navbar_closed(page=page)
 
 
 def close_navbar(*, page: Page) -> None:

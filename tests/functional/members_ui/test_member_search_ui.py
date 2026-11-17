@@ -34,8 +34,8 @@ from tests.functional.playwright_login_utils import (
 from tests.functional.playwright_utils import (
     Decks,
     click_on_navbar,
-    wait_for_class_to_be_removed,
     wait_for_modal_ready,
+    wait_for_navbar_closed,
     wait_then_click_element,
     wait_then_get_element,
     wait_until_hidden,
@@ -159,11 +159,7 @@ def test_member_filter_togglable_on_mobile(
     wait_then_click_element(
         page=page_mobile_portrait, css_selector=HPL.NAVBAR_MEMBER_DECK
     )
-    wait_for_class_to_be_removed(
-        page=page_mobile_portrait,
-        css_selector=HPL.NAVBAR_DROPDOWN,
-        class_name="collapsing",
-    )
+    wait_for_navbar_closed(page=page_mobile_portrait)
     assert_panel_visibility_mobile(
         page=page_mobile_portrait, visible_deck=Decks.MEMBERS
     )
@@ -235,11 +231,7 @@ def test_owner_sees_member_remove_button_on_touch_viewport(
     wait_then_click_element(
         page=page_mobile_portrait, css_selector=HPL.NAVBAR_MEMBER_DECK
     )
-    wait_for_class_to_be_removed(
-        page=page_mobile_portrait,
-        css_selector=HPL.NAVBAR_DROPDOWN,
-        class_name="collapsing",
-    )
+    wait_for_navbar_closed(page=page_mobile_portrait)
     assert_panel_visibility_mobile(
         page=page_mobile_portrait, visible_deck=Decks.MEMBERS
     )
