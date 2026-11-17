@@ -21,7 +21,7 @@ from tests.functional.playwright_utils import (
     Decks,
     click_on_navbar,
     get_all_url_ids_in_selected_utub,
-    wait_for_class_to_be_removed,
+    wait_for_navbar_closed,
     wait_then_click_element,
 )
 from tests.functional.tags_ui.playwright_utils import (
@@ -386,9 +386,7 @@ def test_mobile_switching_panel_exits_mode(
     # Switch to the Members panel via the mobile navbar.
     click_on_navbar(page=page)
     wait_then_click_element(page=page, css_selector=HPL.NAVBAR_MEMBER_DECK)
-    wait_for_class_to_be_removed(
-        page=page, css_selector=HPL.NAVBAR_DROPDOWN, class_name="collapsing"
-    )
+    wait_for_navbar_closed(page=page)
     assert_panel_visibility_mobile(page=page, visible_deck=Decks.MEMBERS)
 
     expect(page.locator(HPL.BULK_ACTION_BAR)).to_be_hidden()
