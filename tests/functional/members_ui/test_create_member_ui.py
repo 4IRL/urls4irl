@@ -48,7 +48,7 @@ from tests.functional.playwright_utils import (
     click_on_navbar,
     invalidate_csrf_token_on_page,
     select_utub_by_name,
-    wait_for_class_to_be_removed,
+    wait_for_navbar_closed,
     wait_then_click_element,
     wait_until_hidden,
     wait_until_in_focus,
@@ -547,11 +547,7 @@ def test_add_member_combobox_opens_on_mobile(
     wait_then_click_element(
         page=page_mobile_portrait, css_selector=HPL.NAVBAR_MEMBER_DECK
     )
-    wait_for_class_to_be_removed(
-        page=page_mobile_portrait,
-        css_selector=HPL.NAVBAR_DROPDOWN,
-        class_name="collapsing",
-    )
+    wait_for_navbar_closed(page=page_mobile_portrait)
     assert_panel_visibility_mobile(
         page=page_mobile_portrait, visible_deck=Decks.MEMBERS
     )

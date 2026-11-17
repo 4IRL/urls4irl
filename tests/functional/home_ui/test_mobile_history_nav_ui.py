@@ -22,6 +22,7 @@ from tests.functional.playwright_utils import (
     Decks,
     click_on_navbar,
     wait_for_class_to_be_removed,
+    wait_for_navbar_closed,
     wait_for_selector_to_be_removed,
     wait_then_click_element,
     wait_until_visible_css_selector,
@@ -41,9 +42,7 @@ def _nav_to_panel(*, page: Page, navbar_option: str, visible_deck: Decks) -> Non
     collapse transition, then confirm the target panel is the visible one."""
     click_on_navbar(page=page)
     wait_then_click_element(page=page, css_selector=navbar_option)
-    wait_for_class_to_be_removed(
-        page=page, css_selector=HPL.NAVBAR_DROPDOWN, class_name="collapsing"
-    )
+    wait_for_navbar_closed(page=page)
     assert_panel_visibility_mobile(page=page, visible_deck=visible_deck)
 
 
@@ -125,9 +124,7 @@ def test_tag_sheet_two_level_back_mobile(
     wait_for_class_to_be_removed(
         page=page, css_selector=HPL.NAVBAR_DROPDOWN, class_name="show"
     )
-    wait_for_class_to_be_removed(
-        page=page, css_selector=HPL.NAVBAR_DROPDOWN, class_name="collapsing"
-    )
+    wait_for_navbar_closed(page=page)
     wait_until_tag_sheet_open(page=page)
     assert_visible_css_selector(page=page, css_selector=HPL.URL_DECK)
 
@@ -180,9 +177,7 @@ def test_reload_persists_panel_and_keeps_tag_sheet_closed_mobile(
     wait_for_class_to_be_removed(
         page=page, css_selector=HPL.NAVBAR_DROPDOWN, class_name="show"
     )
-    wait_for_class_to_be_removed(
-        page=page, css_selector=HPL.NAVBAR_DROPDOWN, class_name="collapsing"
-    )
+    wait_for_navbar_closed(page=page)
     wait_until_tag_sheet_open(page=page)
 
     # Reloading with the sheet open must NOT auto-reopen it: it lands on the
