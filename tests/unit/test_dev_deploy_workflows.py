@@ -64,11 +64,6 @@ def _probe_loop(run: str) -> str:
     return "\n".join(line.strip() for line in lines[start + 1 : end]) + "\n"
 
 
-@pytest.mark.parametrize("name", FILE_NAMES)
-def test_files_exist(name: str) -> None:
-    assert (WORKFLOWS / name).is_file()
-
-
 def test_callees_do_not_drift() -> None:
     first, second = (_load(name) for name in FILE_NAMES)
     assert first["jobs"][JOB_KEY] == second["jobs"][JOB_KEY]
@@ -89,7 +84,13 @@ def test_build_step_creates_dirs_idempotently(name: str) -> None:
 
 @pytest.mark.parametrize("name", FILE_NAMES)
 def test_ssh_config_has_connect_timeout(name: str) -> None:
-    assert "ConnectTimeout 30" in _step(name, "Prepare SSH Config file")["run"]
+    lines = [
+        line.strip()
+        for line in _step(name, "Prepare SSH Config file")["run"].splitlines()
+    ]
+    start = lines.index("IdentitiesOnly yes")
+    end = lines.index("ServerAliveInterval 15")
+    assert start < lines.index("ConnectTimeout 30") < end
 
 
 @pytest.mark.parametrize("name", FILE_NAMES)
@@ -102,11 +103,15 @@ def test_health_step_is_fail_closed(name: str) -> None:
     assert "'bash -s'" in run
     for needle in ("curl", "--max-time", HEALTH_URL):
         assert needle in run
-    assert f"{ATTEMPTS}" in run
+    assert f"seq 1 {ATTEMPTS}" in run
+    assert "REMOTE" in run.splitlines()  # unstripped: terminator at column 0
     assert '"200"' in run or "= 200" in run or "200 ]" in run
     assert f"health check failed after {ATTEMPTS} attempts" in run
     assert "exit 1" in run
     assert "set -e" not in run
+
+
+_sleep_calls: dict[Path, int] = {}  # tmp_path -> number of stub `sleep` invocations
 
 
 def _run_probe(
@@ -130,7 +135,9 @@ def _run_probe(
         'exit "${entry##*:}"\n'
     )
     sleep = bin_dir / "sleep"
-    sleep.write_text("#!/bin/bash\nexit 0\n")
+    sleeps = tmp_path / "sleeps"
+    sleeps.write_text("")
+    sleep.write_text(f'#!/bin/bash\necho "$@" >> {sleeps}\nexit 0\n')
     for stub in (curl, sleep):
         stub.chmod(stub.stat().st_mode | stat.S_IEXEC)
     script = _probe_loop(_step(name, "Verify Web Health")["run"])
@@ -142,6 +149,7 @@ def _run_probe(
         timeout=30,
         check=False,
     )
+    _sleep_calls[tmp_path] = len(sleeps.read_text().splitlines())
     return result, int(counter.read_text())
 
 
@@ -164,6 +172,9 @@ def test_probe_always_503_fails_after_all_attempts(tmp_path: Path, name: str) ->
     result, calls = _run_probe(tmp_path, name, ["503:0"])
     assert result.returncode == 1, result.stdout + result.stderr
     assert calls == ATTEMPTS
+    assert (
+        _sleep_calls[tmp_path] == ATTEMPTS
+    )  # sleeps after every failed attempt, the last included
     assert f"health check failed after {ATTEMPTS} attempts" in result.stdout
 
 
