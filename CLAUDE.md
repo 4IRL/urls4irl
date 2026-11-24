@@ -233,7 +233,8 @@ After any backend change that alters the OpenAPI surface, run `make generate-typ
 - New or modified Pydantic request/response schema referenced by a route
 - New or modified `api_route(query_schema=..., header_schema=..., path_schema=...)`
 - New or removed route, or a decorator change that affects OpenAPI metadata
-- Changes to metrics dimensions, events, or resources (regenerates `metrics-dimensions.d.ts`, `metrics-dim-values.ts`, `metrics-events.ts`, `metrics-resources.ts`)
+- Changes to metrics dimensions, events, or resources (regenerates `metrics-dimensions.d.ts`, `metrics-dim-values.ts`, `metrics-events.ts`, `metrics-resources.ts`; CI now freshness-checks these four too)
+- Adding, removing or renumbering a member of any `*ErrorCodes` enum (regenerates `error-codes.ts`; a new enum must also join `ERROR_CODE_ENUMS`)
 - A route, decorator, service, schema, template, or `all_routes.py` JS-linkage change also needs `make generate-endpoints` — stage the regenerated `docs/endpoints/` in the same commit (CI's `Endpoint Registry Audit` fails otherwise; see "Endpoint Registry")
 
 Before committing a backend change in any of those categories, run `make generate-types` and check `git status` for changes under `frontend/types/`. Stage them in the same commit as the backend change.

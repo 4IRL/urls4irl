@@ -46,7 +46,7 @@ Common tasks (see central Makefile-First Command Policy for the general rule):
 | `make vite-build` | Vite build verification |
 | `make addmock` | Seed dev DB with all mock data |
 | `make invite-token s=<label>` | Print the `/invite/<token>` path of a seeded sample invite link (local dev only; labels: live_unlimited, live_limited, expired, used_up, revoked; `live_limited` has the logged-out preview on, so it opens state 3, and needs a fresh `addmock all` on an existing DB) |
-| `make generate-types` | Regenerate TypeScript API types from OpenAPI spec + per-event dim shapes (metrics-dimensions.d.ts, metrics-dim-values.ts, metrics-events.ts) |
+| `make generate-types` | Regenerate TypeScript API types from OpenAPI spec + per-event dim shapes (error-codes.ts, metrics-dimensions.d.ts, metrics-dim-values.ts, metrics-events.ts) |
 | `make generate-endpoints` | Regenerate `docs/endpoints/endpoint-registry.json` + `ENDPOINT_REGISTRY.md` from the live url_map (needs `web` up) |
 | `make audit-endpoints` | Audit the committed endpoint registry against the live app: drift, `@api_route` JS linkage, stale `NO_JS_ENDPOINTS`/`INDIRECT_JS_ENDPOINTS` entries, markdown freshness (exits 1 on any finding; needs `web` up) |
 | `make endpoint-info e=<route>` | Show what touches a route (`e=` endpoint, rule, or `'METHOD /rule'`), read from the committed JSON (host-native, no stack needed) |
