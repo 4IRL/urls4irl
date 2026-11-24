@@ -1,6 +1,7 @@
 import { ajaxCall } from "../../../lib/ajax.js";
 import { APP_CONFIG } from "../../../lib/config.js";
 import { resetStore } from "../../../store/app-store.js";
+import { UTubErrorCodes } from "../../../types/error-codes.js";
 import {
   createMockJqXHR,
   createMockXhr,
@@ -95,14 +96,24 @@ describe("patchUtubPin", () => {
 
   it("maps a 409 with the pin-limit code to cap", async () => {
     const { request, result } = start();
-    request.reject(jsonXhr({ status: 409, body: { errorCode: 6 } }));
+    request.reject(
+      jsonXhr({
+        status: 409,
+        body: { errorCode: UTubErrorCodes.PIN_LIMIT_REACHED },
+      }),
+    );
 
     await expect(result).resolves.toEqual({ outcome: "cap" });
   });
 
   it("classes a 409 with any other code as an error", async () => {
     const { request, result } = start();
-    request.reject(jsonXhr({ status: 409, body: { errorCode: 2 } }));
+    request.reject(
+      jsonXhr({
+        status: 409,
+        body: { errorCode: UTubErrorCodes.INVALID_FORM_INPUT },
+      }),
+    );
 
     await expect(result).resolves.toEqual({ outcome: "error" });
   });

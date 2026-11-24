@@ -17,6 +17,10 @@ import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
 import { debug } from "../../../lib/debug.js";
 import { fillTemplate } from "../../../lib/string-template.js";
 import { emit } from "../../../lib/metrics-client.js";
+import {
+  ShortLinkErrorCodes,
+  URLErrorCodes,
+} from "../../../types/error-codes.js";
 import { UI_EVENTS } from "../../../types/metrics-events.js";
 import { SHORT_LINK_COPY_RESULT } from "../../../types/metrics-dim-values.js";
 import { hideConfirmModal, showConfirmModal } from "../../confirm-modal.js";
@@ -59,10 +63,6 @@ const URL_ROW_SELECTOR = ".urlRow";
 const SUBMIT_BTN_SELECTOR = "#modalSubmit";
 const CONFIRM_MODAL_SELECTOR = "#confirmModal";
 const FOCUS_NAMESPACE = "hidden.bs.modal.shortLinkRevokeFocus";
-// Mirrors `ShortLinkErrorCodes.SHORT_LINK_NOT_FOUND` (backend/short_links/constants.py).
-const SHORT_LINK_NOT_FOUND_ERROR_CODE = 1;
-// Mirrors `URLErrorCodes.SHORT_LINKS_DISABLED` (backend/urls/constants.py).
-const SHORT_LINKS_DISABLED_ERROR_CODE = 17;
 
 function selectedCardElement(): HTMLElement | null {
   return ($(SELECTED_CARD_SELECTOR)[0] as HTMLElement | undefined) ?? null;
@@ -282,7 +282,7 @@ async function writeTextToClipboard(text: string): Promise<boolean> {
 function isShortLinksDisabledResponse(xhr: JQuery.jqXHR): boolean {
   const body = xhr.responseJSON as ShortLinkErrorBody | undefined;
   return (
-    xhr.status === 403 && body?.errorCode === SHORT_LINKS_DISABLED_ERROR_CODE
+    xhr.status === 403 && body?.errorCode === URLErrorCodes.SHORT_LINKS_DISABLED
   );
 }
 
@@ -679,7 +679,7 @@ function classifyRevokeFailure(xhr: JQuery.jqXHR): RevokeFailure {
   const body = xhr.responseJSON as ShortLinkErrorBody | undefined;
   // Already revoked or expired elsewhere: the goal state is reached. Any other
   // 404 is the route guard: the URL or UTub is trashed, or the caller left.
-  return body?.errorCode === SHORT_LINK_NOT_FOUND_ERROR_CODE
+  return body?.errorCode === ShortLinkErrorCodes.SHORT_LINK_NOT_FOUND
     ? "alreadyRevoked"
     : "guard404";
 }

@@ -3,6 +3,7 @@ import type { MemberModifiedResponse } from "../../types/member.js";
 import { $ } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { debug } from "../../lib/debug.js";
+import { UTubMembersErrorCodes } from "../../types/error-codes.js";
 import { hideTooltip } from "../../lib/tooltips.js";
 import { ajaxCall, is429Handled } from "../../lib/ajax.js";
 import { emit as emitAppEvent, AppEvents } from "../../lib/event-bus.js";
@@ -34,9 +35,6 @@ import { setUIWhenNoUTubSelected } from "../init.js";
 // "remove": the viewer removes another member (owner, or co-owner while allowed).
 // "leave": the viewer removes themselves.
 export type RemoveIntent = "remove" | "leave";
-
-// Mirrors UTubMembersErrorCodes.CO_OWNER_REMOVE_NOT_ALLOWED (backend/members/constants.py).
-export const CO_OWNER_REMOVE_NOT_ALLOWED_ERROR_CODE = 8;
 
 let _memberActionConfirmed: boolean = false;
 let _removeMemberIntent: RemoveIntent = "leave";
@@ -269,7 +267,7 @@ function removeRefusalFor(xhr: JQuery.jqXHR): {
 } | null {
   if (xhr.status !== 403) return null;
   const body = xhr.responseJSON as RemoveRefusalBody;
-  if (body?.errorCode === CO_OWNER_REMOVE_NOT_ALLOWED_ERROR_CODE) {
+  if (body?.errorCode === UTubMembersErrorCodes.CO_OWNER_REMOVE_NOT_ALLOWED) {
     return {
       message: APP_CONFIG.strings.CO_OWNER_REMOVE_NOT_ALLOWED,
       learnOff: true,

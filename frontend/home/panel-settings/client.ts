@@ -25,6 +25,7 @@ import { $ } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { ajaxCall, is429Handled } from "../../lib/ajax.js";
 import { debug } from "../../lib/debug.js";
+import { UTubErrorCodes } from "../../types/error-codes.js";
 import { getState, setState } from "../../store/app-store.js";
 import { removeUTubLocally } from "../utubs/remove-local.js";
 import {
@@ -495,9 +496,6 @@ export function patchTagDisplayPreferences({
 
 type UpdateUTubPinResponse = SuccessResponse<"updateUtubPin">;
 
-/** `UTubErrorCodes.PIN_LIMIT_REACHED` (409), mirrored from `backend/utubs/constants.py`. */
-const PIN_LIMIT_REACHED_ERROR_CODE = 6;
-
 /**
  * A pin write outcome. `ok` carries the server's live state; `cap` is a 409
  * with the pin-limit code; `gone` is a JSON 404 (the UTub is no longer the
@@ -561,7 +559,8 @@ export function patchUtubPin({
         const errorCode = (xhr.responseJSON as { errorCode?: number })
           .errorCode;
         resolve({
-          outcome: errorCode === PIN_LIMIT_REACHED_ERROR_CODE ? "cap" : "error",
+          outcome:
+            errorCode === UTubErrorCodes.PIN_LIMIT_REACHED ? "cap" : "error",
         });
         return;
       }
