@@ -8,6 +8,7 @@ from playwright.sync_api import Locator, Page, Response, Route, expect
 
 from backend import db
 from backend.cli.mock_constants import USERNAME_BASE
+from backend.members.constants import UTubMembersErrorCodes
 from backend.models.users import Users
 from backend.models.utub_invite_links import Utub_Invite_Links
 from backend.models.utub_members import Member_Role, Utub_Members
@@ -553,7 +554,12 @@ def force_role_change_400_response(*, page: Page, message: str) -> None:
         route.fulfill(
             status=400,
             content_type="application/json",
-            body=json.dumps({"message": message, "errorCode": 4}),
+            body=json.dumps(
+                {
+                    "message": message,
+                    "errorCode": UTubMembersErrorCodes.CANNOT_MODIFY_OWNER,
+                }
+            ),
         )
 
     # `times=1` retires the route after the first match, so a later retry hits the
@@ -680,7 +686,12 @@ def force_transfer_400_response(*, page: Page, message: str) -> None:
         route.fulfill(
             status=400,
             content_type="application/json",
-            body=json.dumps({"message": message, "errorCode": 6}),
+            body=json.dumps(
+                {
+                    "message": message,
+                    "errorCode": UTubMembersErrorCodes.TARGET_ALREADY_OWNER,
+                }
+            ),
         )
 
     page.route(_TRANSFER_OWNER_PATCH_URL_RE, _handler, times=1)

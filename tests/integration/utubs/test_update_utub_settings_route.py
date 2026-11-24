@@ -636,7 +636,6 @@ def test_manager_on_locked_utub_gets_utub_is_locked(
     assert response.status_code == 403
     assert response.json[STD_JSON.MESSAGE] == UTUB_FAILURE.UTUB_IS_LOCKED
     assert response.json[STD_JSON.ERROR_CODE] == UTubErrorCodes.UTUB_IS_LOCKED
-    assert response.json[STD_JSON.ERROR_CODE] == 3
     assert _stored_settings(app) is None
 
 

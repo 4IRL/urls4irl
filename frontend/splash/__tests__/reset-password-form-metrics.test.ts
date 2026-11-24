@@ -1,3 +1,4 @@
+import { ResetPasswordErrorCodes } from "../../types/error-codes.js";
 import { UI_EVENTS } from "../../types/metrics-events.js";
 import { createMockJqXHR } from "../../__tests__/helpers/mock-jquery.js";
 import { initResetPasswordForm } from "../reset-password-form.js";
@@ -90,7 +91,10 @@ describe("reset-password-form metrics — UI_VALIDATION_ERROR", () => {
 
     const fakeXhr = {
       status: 400,
-      responseJSON: { errorCode: 1, message: "Invalid" },
+      responseJSON: {
+        errorCode: ResetPasswordErrorCodes.INVALID_FORM_INPUT,
+        message: "Invalid",
+      },
       getResponseHeader: vi.fn(),
     };
     mockDeferred.reject(fakeXhr, "error", "Bad Request");

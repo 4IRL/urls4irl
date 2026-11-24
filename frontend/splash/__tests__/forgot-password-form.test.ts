@@ -1,3 +1,4 @@
+import { ForgotPasswordErrorCodes } from "../../types/error-codes.js";
 import { UI_EVENTS } from "../../types/metrics-events.js";
 import { createMockJqXHR } from "../../__tests__/helpers/mock-jquery.js";
 import { showNewPageOnAJAXHTMLResponse } from "../../lib/page-utils.js";
@@ -132,7 +133,10 @@ describe("forgot-password-form metrics — UI_FORGOT_PASSWORD_SUBMIT", () => {
 
     const fakeXhr = {
       status: 400,
-      responseJSON: { errorCode: 1, message: "Invalid" },
+      responseJSON: {
+        errorCode: ForgotPasswordErrorCodes.INVALID_FORM_INPUT,
+        message: "Invalid",
+      },
       getResponseHeader: vi.fn(),
     };
     mockDeferred.reject(fakeXhr, "error", "Bad Request");

@@ -1,3 +1,4 @@
+import { ChangePasswordErrorCodes } from "../../types/error-codes.js";
 import {
   createMockJqXHRChainable,
   createMockXhr,
@@ -153,7 +154,7 @@ describe("change-password", () => {
       responseJSON: {
         status: "Failure",
         message: CURRENT_INCORRECT_MESSAGE,
-        errorCode: 2,
+        errorCode: ChangePasswordErrorCodes.INVALID_PASSWORD,
         errors: { currentPassword: [CURRENT_INCORRECT_MESSAGE] },
       },
     });
@@ -177,7 +178,7 @@ describe("change-password", () => {
       responseJSON: {
         status: "Failure",
         message: "Invalid input, please try again.",
-        errorCode: 1,
+        errorCode: ChangePasswordErrorCodes.INVALID_FORM_INPUT,
         errors: { confirmNewPassword: [MISMATCH_MESSAGE] },
       },
     });
@@ -218,7 +219,7 @@ describe("change-password", () => {
       responseJSON: {
         status: "Failure",
         message: LOCKOUT_MESSAGE,
-        errorCode: 4,
+        errorCode: ChangePasswordErrorCodes.TOO_MANY_ATTEMPTS,
       },
     });
     vi.mocked(ajaxCall).mockReturnValue(mockFail(failedXhr));

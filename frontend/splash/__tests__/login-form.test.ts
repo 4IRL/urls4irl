@@ -1,3 +1,4 @@
+import { LoginErrorCodes } from "../../types/error-codes.js";
 import { UI_EVENTS } from "../../types/metrics-events.js";
 import { createMockJqXHR } from "../../__tests__/helpers/mock-jquery.js";
 import { showNewPageOnAJAXHTMLResponse } from "../../lib/page-utils.js";
@@ -139,7 +140,10 @@ describe("login-form metrics — UI_LOGIN_SUBMIT", () => {
 
     const fakeXhr = {
       status: 400,
-      responseJSON: { errorCode: 2, message: "Invalid" },
+      responseJSON: {
+        errorCode: LoginErrorCodes.INVALID_FORM_INPUT,
+        message: "Invalid",
+      },
       getResponseHeader: vi.fn(),
     };
     mockDeferred.reject(fakeXhr, "error", "Bad Request");
@@ -219,7 +223,7 @@ describe("login-form double-submit guard", () => {
       {
         status: 401,
         responseJSON: {
-          errorCode: 1,
+          errorCode: LoginErrorCodes.ACCOUNT_NOT_EMAIL_VALIDATED,
           message: "Email not validated",
           resendToken: "signed.token",
         },
@@ -249,7 +253,10 @@ describe("login-form double-submit guard", () => {
     mockDeferred.reject(
       {
         status: 401,
-        responseJSON: { errorCode: 1, message: "Email not validated" },
+        responseJSON: {
+          errorCode: LoginErrorCodes.ACCOUNT_NOT_EMAIL_VALIDATED,
+          message: "Email not validated",
+        },
         getResponseHeader: vi.fn(),
       },
       "error",
@@ -277,7 +284,7 @@ describe("login-form double-submit guard", () => {
       {
         status: 400,
         responseJSON: {
-          errorCode: 2,
+          errorCode: LoginErrorCodes.INVALID_FORM_INPUT,
           message: "Invalid username or password.",
         },
         getResponseHeader: vi.fn(),
@@ -310,7 +317,7 @@ describe("login-form double-submit guard", () => {
     expect($modal.find("#submit").attr("disabled")).toBe("disabled");
 
     const errorJson = {
-      errorCode: 2,
+      errorCode: LoginErrorCodes.INVALID_FORM_INPUT,
       message: "Please correct the errors below.",
       errors: {
         username: ["This field is required."],
@@ -350,7 +357,7 @@ describe("login-form double-submit guard", () => {
       {
         status: 403,
         responseJSON: {
-          errorCode: 3,
+          errorCode: LoginErrorCodes.ACCOUNT_SUSPENDED,
           message: "This account has been suspended.",
         },
         getResponseHeader: vi.fn(),

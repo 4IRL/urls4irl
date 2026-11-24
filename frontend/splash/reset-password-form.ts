@@ -11,6 +11,7 @@ import {
 } from "./init.js";
 import { VALIDATION_FORM } from "../types/metrics-dim-values.js";
 import { debug } from "../lib/debug.js";
+import { ResetPasswordErrorCodes } from "../types/error-codes.js";
 
 const log = debug("splash:password");
 
@@ -144,7 +145,7 @@ function handleResetPasswordFailure(
       errorCode: errorJson.errorCode,
     });
     switch (errorJson.errorCode) {
-      case 1:
+      case ResetPasswordErrorCodes.INVALID_FORM_INPUT:
         emit({
           event: UI_EVENTS.UI_VALIDATION_ERROR,
           form: VALIDATION_FORM.RESET_PASSWORD,

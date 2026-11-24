@@ -1,3 +1,4 @@
+import { MetricsErrorCodes } from "../../types/error-codes.js";
 import type { Mock } from "vitest";
 
 import { resetDeviceTypeCache } from "../../__tests__/helpers/device-type-test-utils.js";
@@ -666,7 +667,9 @@ describe("metrics-client", () => {
       (fetch as unknown as Mock).mockResolvedValueOnce({
         ok: false,
         status: 400,
-        json: vi.fn().mockResolvedValue({ errorCode: 1 }),
+        json: vi.fn().mockResolvedValue({
+          errorCode: MetricsErrorCodes.INVALID_FORM_INPUT,
+        }),
       } as unknown as Response);
       emit({ event: UI_EVENTS.UI_UTUB_CREATE_OPEN });
       void flush();

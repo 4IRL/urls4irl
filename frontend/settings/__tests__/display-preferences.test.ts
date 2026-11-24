@@ -1,3 +1,4 @@
+import { PreferencesErrorCodes } from "../../types/error-codes.js";
 import {
   createMockJqXHRChainable,
   createMockXhr,
@@ -188,7 +189,7 @@ describe("display-preferences", () => {
       responseJSON: {
         status: "Failure",
         message: "Invalid input.",
-        errorCode: 1,
+        errorCode: PreferencesErrorCodes.INVALID_FORM_INPUT,
         errors: { theme: ["Invalid theme."] },
       },
     });

@@ -12,6 +12,7 @@ import {
 } from "./init.js";
 import { VALIDATION_FORM } from "../types/metrics-dim-values.js";
 import { debug } from "../lib/debug.js";
+import { ForgotPasswordErrorCodes } from "../types/error-codes.js";
 
 const log = debug("splash:password");
 
@@ -126,7 +127,7 @@ function handleForgotPasswordFailure(
       form: VALIDATION_FORM.FORGOT_PASSWORD,
     });
     switch (errorJson.errorCode) {
-      case 1: {
+      case ForgotPasswordErrorCodes.INVALID_FORM_INPUT: {
         handleImproperFormErrors($modal, errorJson);
         $modal.find("#submit").removeAttr("disabled");
         break;
