@@ -5,6 +5,7 @@ import { handleTaggingRefusal } from "../../../tags/policy-banner.js";
 import { isUtubLockedHandled } from "../../../utub-locked.js";
 import { createURLTag } from "../create.js";
 import { deleteURLTag } from "../delete.js";
+import { URLTagErrorCodes } from "../../../../types/error-codes.js";
 
 const { mockMetricsClient } = await vi.hoisted(
   async () =>
@@ -142,7 +143,7 @@ function failWith(responseJSON: Record<string, unknown>): void {
   );
 }
 
-describe("urls/tags refusals — tagging not allowed (errorCode 4)", () => {
+describe("urls/tags refusals — tagging not allowed (TAGGING_NOT_ALLOWED)", () => {
   let assignSpy: ReturnType<typeof vi.fn>;
   const originalLocation = window.location;
 
@@ -167,7 +168,7 @@ describe("urls/tags refusals — tagging not allowed (errorCode 4)", () => {
 
   describe("createURLTagFail", () => {
     it("closes the form, then refuses via the shared handler with Add tag focus", async () => {
-      failWith({ errorCode: 4 });
+      failWith({ errorCode: URLTagErrorCodes.TAGGING_NOT_ALLOWED });
       const urlCard = $(".urlRow");
 
       await createURLTag($(".urlTagCreate"), urlCard, UTUB_ID);
@@ -196,7 +197,7 @@ describe("urls/tags refusals — tagging not allowed (errorCode 4)", () => {
 
   describe("deleteURLTagFail", () => {
     it("refuses with the remove message, keeps the badge and moves no focus", async () => {
-      failWith({ errorCode: 4 });
+      failWith({ errorCode: URLTagErrorCodes.TAGGING_NOT_ALLOWED });
       const urlCard = $(".urlRow");
 
       await deleteURLTag(7, urlCard.find(".tagBadge"), urlCard, UTUB_ID);
@@ -212,7 +213,7 @@ describe("urls/tags refusals — tagging not allowed (errorCode 4)", () => {
 
     it("lets the locked-UTub handler win and skips the refusal", async () => {
       vi.mocked(isUtubLockedHandled).mockReturnValue(true);
-      failWith({ errorCode: 8 });
+      failWith({ errorCode: URLTagErrorCodes.UTUB_IS_LOCKED });
 
       await deleteURLTag(7, $(".tagBadge"), $(".urlRow"), UTUB_ID);
 

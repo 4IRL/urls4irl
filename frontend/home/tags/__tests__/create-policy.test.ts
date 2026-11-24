@@ -3,6 +3,7 @@ import { ajaxCall } from "../../../lib/ajax.js";
 import { learnPolicyOff } from "../../utubs/policy.js";
 import { isMobile } from "../../mobile.js";
 import { getRefusalOwnedMessage } from "../policy-banner.js";
+import { UTubTagErrorCodes } from "../../../types/error-codes.js";
 import { isTagSheetOpen } from "../sheet.js";
 import { setupOpenCreateUTubTagEventListeners } from "../create.js";
 
@@ -105,7 +106,7 @@ function submitCreate(): void {
   $("#utubTagSubmitBtnCreate").trigger("click");
 }
 
-describe("createUTubTagFail — tag policy refusal (errorCode 4)", () => {
+describe("createUTubTagFail — tag policy refusal (TAGGING_NOT_ALLOWED)", () => {
   let assignSpy: ReturnType<typeof vi.fn>;
   const originalLocation = window.location;
 
@@ -130,7 +131,10 @@ describe("createUTubTagFail — tag policy refusal (errorCode 4)", () => {
   });
 
   it("closes the form, learns the key, focuses create and shows the reason once", () => {
-    failWith(403, { errorCode: 4, message: CREATE_MESSAGE });
+    failWith(403, {
+      errorCode: UTubTagErrorCodes.TAGGING_NOT_ALLOWED,
+      message: CREATE_MESSAGE,
+    });
     const order: string[] = [];
     vi.mocked(learnPolicyOff).mockImplementation(() => {
       order.push(
@@ -155,7 +159,7 @@ describe("createUTubTagFail — tag policy refusal (errorCode 4)", () => {
   });
 
   it("owns the refusal message during the learn step (store notification)", () => {
-    failWith(403, { errorCode: 4 });
+    failWith(403, { errorCode: UTubTagErrorCodes.TAGGING_NOT_ALLOWED });
     let seenMessage: string | null = null;
     vi.mocked(learnPolicyOff).mockImplementation(() => {
       seenMessage = getRefusalOwnedMessage();
@@ -170,7 +174,7 @@ describe("createUTubTagFail — tag policy refusal (errorCode 4)", () => {
 
   it("uses the create button's note, not the deck banner, with the sheet open", () => {
     vi.mocked(isTagSheetOpen).mockReturnValue(true);
-    failWith(403, { errorCode: 4 });
+    failWith(403, { errorCode: UTubTagErrorCodes.TAGGING_NOT_ALLOWED });
 
     submitCreate();
 
@@ -181,7 +185,7 @@ describe("createUTubTagFail — tag policy refusal (errorCode 4)", () => {
   it("skips programmatic focus on mobile when the sheet closed mid-request", () => {
     vi.mocked(isMobile).mockReturnValue(true);
     vi.mocked(isTagSheetOpen).mockReturnValue(false);
-    failWith(403, { errorCode: 4 });
+    failWith(403, { errorCode: UTubTagErrorCodes.TAGGING_NOT_ALLOWED });
     const createButton = document.getElementById(
       "utubTagBtnCreate",
     ) as HTMLElement;

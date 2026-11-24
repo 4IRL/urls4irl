@@ -7,6 +7,7 @@ import { getState, setState } from "../../../../store/app-store.js";
 import { refreshTrashCount } from "../../../trash/count.js";
 import { showURLDeletedToast } from "../delete-undo.js";
 import { deleteURL, isURLDeleteInFlight } from "../delete.js";
+import { URLErrorCodes } from "../../../../types/error-codes.js";
 
 vi.mock("../../../trash/count.js", () => ({ refreshTrashCount: vi.fn() }));
 
@@ -365,10 +366,9 @@ describe("deleteURL — in-flight guard", () => {
 
 describe("deleteURL — failures", () => {
   const LOCKED_MESSAGE = "This UTub is locked and cannot be modified.";
-  // URL operations return URLErrorCodes.UTUB_IS_LOCKED (8), NOT the 3 the
+  // URL operations return URLErrorCodes.UTUB_IS_LOCKED, NOT the code the
   // UTub/tag/member enums use — the guard must key on the message, not the
   // code, or URL deletes on a locked UTub redirect to the error page.
-  const URL_UTUB_IS_LOCKED = 8;
 
   beforeEach(() => {
     document.body.innerHTML = DELETE_URL_HTML;
@@ -403,7 +403,10 @@ describe("deleteURL — failures", () => {
     ) => void;
     failCallback({
       status: 403,
-      responseJSON: { errorCode: URL_UTUB_IS_LOCKED, message: LOCKED_MESSAGE },
+      responseJSON: {
+        errorCode: URLErrorCodes.UTUB_IS_LOCKED,
+        message: LOCKED_MESSAGE,
+      },
     } as unknown as JQuery.jqXHR);
 
     expect(await outcome).toBe(false);

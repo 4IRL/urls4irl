@@ -16,8 +16,8 @@ import {
   getForbiddenErrorCode,
   runAsRefusal,
   showPolicyBanner,
-  UTUB_TAG_POLICY_ERROR_CODES,
 } from "./policy-banner.js";
+import { UTubTagErrorCodes } from "../../types/error-codes.js";
 import { applyAlternatingTagBackground } from "./search.js";
 import { TAG_SCOPE } from "../../types/metrics-dim-values.js";
 
@@ -202,7 +202,7 @@ function handleDeleteTagRefusal({
       learnPolicyOff({
         utubID,
         key:
-          errorCode === UTUB_TAG_POLICY_ERROR_CODES.TAGGING_NOT_ALLOWED
+          errorCode === UTubTagErrorCodes.TAGGING_NOT_ALLOWED
             ? "tags.members_can_tag"
             : "tags.members_can_delete_tags",
       });
@@ -224,8 +224,8 @@ function deleteUTubTagFail({
 
   const errorCode = getForbiddenErrorCode(xhr);
   if (
-    errorCode === UTUB_TAG_POLICY_ERROR_CODES.TAGGING_NOT_ALLOWED ||
-    errorCode === UTUB_TAG_POLICY_ERROR_CODES.TAG_DELETE_NOT_ALLOWED
+    errorCode === UTubTagErrorCodes.TAGGING_NOT_ALLOWED ||
+    errorCode === UTubTagErrorCodes.TAG_DELETE_NOT_ALLOWED
   ) {
     handleDeleteTagRefusal({ utubID, errorCode });
     return;

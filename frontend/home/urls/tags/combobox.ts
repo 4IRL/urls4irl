@@ -49,8 +49,8 @@ import { isUtubLockedHandled } from "../../utub-locked.js";
 import {
   getForbiddenErrorCode,
   handleTaggingRefusal,
-  URL_TAG_POLICY_ERROR_CODES,
 } from "../../tags/policy-banner.js";
+import { URLTagErrorCodes } from "../../../types/error-codes.js";
 import { isMobile } from "../../mobile.js";
 import {
   enableTabbableChildElements,
@@ -1238,10 +1238,7 @@ export function submitStagedTagsFail({
   if (is429Handled(xhr)) return;
   if (isUtubLockedHandled(xhr)) return;
 
-  if (
-    getForbiddenErrorCode(xhr) ===
-    URL_TAG_POLICY_ERROR_CODES.TAGGING_NOT_ALLOWED
-  ) {
+  if (getForbiddenErrorCode(xhr) === URLTagErrorCodes.TAGGING_NOT_ALLOWED) {
     // A manager turned tagging off while this tab still showed it on: close any
     // open picker without a redirect, then explain once. A drop leaves focus on
     // its source (the target card's tag button may be hidden); the combobox hands

@@ -9,6 +9,7 @@ import {
   showPolicyBanner,
 } from "../policy-banner.js";
 import { learnPolicyOff } from "../../utubs/policy.js";
+import { UTubTagErrorCodes } from "../../../types/error-codes.js";
 
 vi.mock("../../utubs/policy.js", () => ({
   learnPolicyOff: vi.fn(() => true),
@@ -134,15 +135,17 @@ describe("getForbiddenErrorCode", () => {
   it("reads the numeric errorCode of a 403 only", () => {
     const forbidden = {
       status: 403,
-      responseJSON: { errorCode: 4 },
+      responseJSON: { errorCode: UTubTagErrorCodes.TAGGING_NOT_ALLOWED },
     } as unknown as JQuery.jqXHR;
     const badRequest = {
       status: 400,
-      responseJSON: { errorCode: 4 },
+      responseJSON: { errorCode: UTubTagErrorCodes.TAGGING_NOT_ALLOWED },
     } as unknown as JQuery.jqXHR;
     const noBody = { status: 403 } as unknown as JQuery.jqXHR;
 
-    expect(getForbiddenErrorCode(forbidden)).toBe(4);
+    expect(getForbiddenErrorCode(forbidden)).toBe(
+      UTubTagErrorCodes.TAGGING_NOT_ALLOWED,
+    );
     expect(getForbiddenErrorCode(badRequest)).toBeNull();
     expect(getForbiddenErrorCode(noBody)).toBeNull();
   });

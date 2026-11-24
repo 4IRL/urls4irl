@@ -11,8 +11,8 @@ import { reapplyTagFilter } from "../../tags/search.js";
 import {
   getForbiddenErrorCode,
   handleTaggingRefusal,
-  URL_TAG_POLICY_ERROR_CODES,
 } from "../../tags/policy-banner.js";
+import { URLTagErrorCodes } from "../../../types/error-codes.js";
 import { createTagBadgeInURL } from "./tags.js";
 import {
   disableTagRemovalInURLCard,
@@ -322,10 +322,7 @@ function createURLTagFail({
 }): void {
   if (is429Handled(xhr)) return;
 
-  if (
-    getForbiddenErrorCode(xhr) ===
-    URL_TAG_POLICY_ERROR_CODES.TAGGING_NOT_ALLOWED
-  ) {
+  if (getForbiddenErrorCode(xhr) === URLTagErrorCodes.TAGGING_NOT_ALLOWED) {
     // A manager turned tagging off while this tab still showed it on: close the
     // form without a redirect, then explain once.
     hideAndResetCreateURLTagForm(urlCard);

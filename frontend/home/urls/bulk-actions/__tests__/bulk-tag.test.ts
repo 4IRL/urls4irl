@@ -17,6 +17,7 @@ import { isTagInUTubTagDeck, readTagCount } from "../../../tags/utils.js";
 import { updateVisibleURLsForTagCount } from "../../cards/filtering.js";
 import { createMockJqXHR } from "../../../../__tests__/helpers/mock-jquery.js";
 import { handleTaggingRefusal } from "../../../tags/policy-banner.js";
+import { URLTagErrorCodes } from "../../../../types/error-codes.js";
 
 vi.mock("../../../tags/policy-banner.js", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../../tags/policy-banner.js")>()),
@@ -821,7 +822,10 @@ describe("submitBulkTags — failure handling", () => {
       const deferred = createMockJqXHR();
       vi.mocked(ajaxCall).mockReturnValue(deferred);
       comboboxState.lastOnSubmit!(["python"]);
-      deferred.reject({ status: 403, responseJSON: { errorCode: 4 } });
+      deferred.reject({
+        status: 403,
+        responseJSON: { errorCode: URLTagErrorCodes.TAGGING_NOT_ALLOWED },
+      });
 
       expect(isBulkTagPickerOpen()).toBe(false);
       expect(handleTaggingRefusal).toHaveBeenCalledTimes(1);
