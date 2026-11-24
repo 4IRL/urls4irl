@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { AdminActionErrorCodes } from "../../types/error-codes.js";
 import type { Schema } from "../../types/api-helpers.d.ts";
 
 import { APP_CONFIG } from "../../lib/config.js";
@@ -761,7 +762,10 @@ describe("lifecycle", () => {
     vi.mocked(callbacks.onFlowMissing).mockImplementation(() =>
       builder.close(),
     );
-    saves[0].reject({ status: 404, responseJSON: { errorCode: 5 } });
+    saves[0].reject({
+      status: 404,
+      responseJSON: { errorCode: AdminActionErrorCodes.TARGET_NOT_FOUND },
+    });
     expect(callbacks.onFlowMissing).toHaveBeenCalledTimes(1);
     advance({ ms: 10_000 });
     expect(calls()).toHaveLength(1);

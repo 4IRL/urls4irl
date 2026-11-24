@@ -7,6 +7,7 @@
  * (add, remove, move, stream or endpoint change) rebuild markup.
  */
 import type { Schema } from "../types/api-helpers.d.ts";
+import { AdminActionErrorCodes } from "../types/error-codes.js";
 
 import { is429Handled } from "../lib/ajax.js";
 import { APP_CONFIG } from "../lib/config.js";
@@ -119,8 +120,6 @@ import {
 } from "./metrics-query-client.js";
 import {
   BAD_REQUEST_STATUS,
-  ERR_FLOW_LIMIT,
-  ERR_TARGET_NOT_FOUND,
   NOT_FOUND_STATUS,
   RATE_LIMITED_STATUS,
 } from "./metrics-flow-codes.js";
@@ -1028,15 +1027,19 @@ export function createFlowBuilder({
       request.status === NOT_FOUND_STATUS &&
       mode === "edit" &&
       draft.flowId !== null &&
-      body.errorCode === ERR_TARGET_NOT_FOUND
+      body.errorCode === AdminActionErrorCodes.TARGET_NOT_FOUND
     ) {
       callbacks.onFlowMissing({ id: draft.flowId });
     } else if (
       request.status === BAD_REQUEST_STATUS &&
-      (Object.keys(errors).length > 0 || body.errorCode === ERR_FLOW_LIMIT)
+      (Object.keys(errors).length > 0 ||
+        body.errorCode === AdminActionErrorCodes.METRIC_FLOW_LIMIT_REACHED)
     ) {
       draft = applyServerErrors({ draft, errors, submitted });
-      if (body.errorCode === ERR_FLOW_LIMIT && !(ROOT_ERROR_PATH in errors)) {
+      if (
+        body.errorCode === AdminActionErrorCodes.METRIC_FLOW_LIMIT_REACHED &&
+        !(ROOT_ERROR_PATH in errors)
+      ) {
         draft = setFormErrors({
           draft,
           messages: [
@@ -3381,7 +3384,7 @@ export function createFlowBuilder({
       message = strings().METRICS_FLOW_RATE_LIMITED;
     } else if (
       request.status === NOT_FOUND_STATUS &&
-      errorBody.errorCode === ERR_TARGET_NOT_FOUND
+      errorBody.errorCode === AdminActionErrorCodes.TARGET_NOT_FOUND
     ) {
       message = fillTemplate({
         template: strings().METRICS_FLOW_ALREADY_DELETED,

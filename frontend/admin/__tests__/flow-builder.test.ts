@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { AdminActionErrorCodes } from "../../types/error-codes.js";
 import type { Schema } from "../../types/api-helpers.d.ts";
 
 import { createMockJqXHR } from "../../__tests__/helpers/mock-jquery.js";
@@ -1279,7 +1280,11 @@ describe("delete", () => {
   it("a 404 with the missing-target code shows the already-deleted line and asks for a refresh", () => {
     openEdit();
     const xhr = startDelete();
-    failSave({ xhr, status: 404, body: { errorCode: 5 } });
+    failSave({
+      xhr,
+      status: 404,
+      body: { errorCode: AdminActionErrorCodes.TARGET_NOT_FOUND },
+    });
     expect(formErrorText()).toContain("My flow");
     expect(formErrorText()).toContain("already deleted");
     expect(callbacks.onListStale).toHaveBeenCalledTimes(1);
@@ -1662,7 +1667,7 @@ describe("save failures", () => {
       xhr,
       status: 400,
       body: {
-        errorCode: 11,
+        errorCode: AdminActionErrorCodes.METRIC_FLOW_LIMIT_REACHED,
         message: "Ignored.",
         errors: { __root__: ["Flow limit reached."] },
       },
@@ -1672,7 +1677,11 @@ describe("save failures", () => {
 
   it("falls back to the save-failed text for errorCode 11 without a message", () => {
     const xhr = startSave();
-    failSave({ xhr, status: 400, body: { errorCode: 11 } });
+    failSave({
+      xhr,
+      status: 400,
+      body: { errorCode: AdminActionErrorCodes.METRIC_FLOW_LIMIT_REACHED },
+    });
     expect(formErrorText()).toContain("Couldn't save this flow");
   });
 
@@ -1684,7 +1693,11 @@ describe("save failures", () => {
 
   it("shows the generic error for a create-mode 404 with errorCode 5", () => {
     const xhr = startSave();
-    failSave({ xhr, status: 404, body: { errorCode: 5 } });
+    failSave({
+      xhr,
+      status: 404,
+      body: { errorCode: AdminActionErrorCodes.TARGET_NOT_FOUND },
+    });
     expect(callbacks.onFlowMissing).not.toHaveBeenCalled();
     expect(formErrorText()).toContain("Couldn't save this flow");
   });
@@ -1748,7 +1761,11 @@ describe("save failures", () => {
   it("calls onFlowMissing for an update 404 with errorCode 5", () => {
     openAndLoad({ mode: "edit", entry: hiddenEntry() });
     submit();
-    failSave({ xhr: saves[0], status: 404, body: { errorCode: 5 } });
+    failSave({
+      xhr: saves[0],
+      status: 404,
+      body: { errorCode: AdminActionErrorCodes.TARGET_NOT_FOUND },
+    });
     expect(callbacks.onFlowMissing).toHaveBeenCalledWith({ id: "custom_1" });
     expect(formErrorText()).toBe("");
     expect(summary().hidden).toBe(true);
@@ -1758,7 +1775,11 @@ describe("save failures", () => {
   it("shows the generic error for a 404 without errorCode 5", () => {
     openAndLoad({ mode: "edit", entry: hiddenEntry() });
     submit();
-    failSave({ xhr: saves[0], status: 404, body: { errorCode: 3 } });
+    failSave({
+      xhr: saves[0],
+      status: 404,
+      body: { errorCode: AdminActionErrorCodes.SELF_ACTION_FORBIDDEN },
+    });
     expect(callbacks.onFlowMissing).not.toHaveBeenCalled();
     expect(formErrorText()).toContain("Couldn't save this flow");
     expect(nameInput().value).toBe("My flow");
@@ -1805,7 +1826,10 @@ describe("save failures", () => {
     failSave({
       xhr,
       status: 400,
-      body: { errorCode: 11, message: "You have 20 flows." },
+      body: {
+        errorCode: AdminActionErrorCodes.METRIC_FLOW_LIMIT_REACHED,
+        message: "You have 20 flows.",
+      },
     });
     expect(formErrorText()).toBe("You have 20 flows.");
     expect(summary().hidden).toBe(true);

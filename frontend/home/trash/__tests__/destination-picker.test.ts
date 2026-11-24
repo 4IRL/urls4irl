@@ -1,3 +1,4 @@
+import { URLErrorCodes } from "../../../types/error-codes.js";
 import type { TrashList, TrashedUrlItem } from "../../../types/trash.js";
 import type { UtubSummaryItem } from "../../../types/utub.js";
 
@@ -348,7 +349,9 @@ describe("trash destination picker", () => {
         settled({
           fail: createMockXhr({
             status: 409,
-            responseJSON: { errorCode: 14 },
+            responseJSON: {
+              errorCode: URLErrorCodes.URL_ALREADY_IN_DESTINATION,
+            },
           }),
         }),
       );
@@ -368,25 +371,25 @@ describe("trash destination picker", () => {
       expect(document.activeElement).toBe(options()[0]);
     });
 
-    it.each([12, 13])(
-      "400 with error code %i reloads the list",
-      async (code) => {
-        vi.mocked(ajaxCall).mockReturnValue(
-          settled({
-            fail: createMockXhr({
-              status: 400,
-              responseJSON: { errorCode: code },
-            }),
+    it.each([
+      URLErrorCodes.DESTINATION_REQUIRED,
+      URLErrorCodes.INVALID_DESTINATION,
+    ])("400 with error code %i reloads the list", async (code) => {
+      vi.mocked(ajaxCall).mockReturnValue(
+        settled({
+          fail: createMockXhr({
+            status: 400,
+            responseJSON: { errorCode: code },
           }),
-        );
-        openPickerOn(21);
+        }),
+      );
+      openPickerOn(21);
 
-        options().eq(0).trigger("click");
-        await Promise.resolve();
+      options().eq(0).trigger("click");
+      await Promise.resolve();
 
-        expect(loadTrashList).toHaveBeenCalledTimes(1);
-        expect(isDestinationPickerOpen()).toBe(false);
-      },
-    );
+      expect(loadTrashList).toHaveBeenCalledTimes(1);
+      expect(isDestinationPickerOpen()).toBe(false);
+    });
   });
 });

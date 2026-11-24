@@ -8,6 +8,7 @@
  */
 
 import type { SuccessResponse } from "../../types/api-helpers.d.ts";
+import { URLErrorCodes } from "../../types/error-codes.js";
 import type { TrashedUrlItem, TrashedUtubItem } from "../../types/trash.js";
 
 import { $ } from "../../lib/globals.js";
@@ -43,12 +44,7 @@ import {
   openDestinationPicker,
   refocusDestinationPicker,
 } from "./destination-picker.js";
-import {
-  URL_ALREADY_IN_DESTINATION,
-  URL_DESTINATION_REQUIRED,
-  URL_INVALID_DESTINATION,
-  isNotInTrash,
-} from "./error-codes.js";
+import { isNotInTrash } from "./error-codes.js";
 import type { TrashDomain } from "./error-codes.js";
 import { loadTrashList } from "./list.js";
 import { isTrashOpen } from "./panel.js";
@@ -257,7 +253,7 @@ function isDestinationRequiredFailure({ xhr }: { xhr: JQuery.jqXHR }): boolean {
   if (xhr.status !== 400) return false;
   const errorCode = (xhr.responseJSON as { errorCode?: number } | undefined)
     ?.errorCode;
-  return errorCode === URL_DESTINATION_REQUIRED;
+  return errorCode === URLErrorCodes.DESTINATION_REQUIRED;
 }
 
 /**
@@ -268,7 +264,7 @@ function handleDestinationFailure({ xhr }: { xhr: JQuery.jqXHR }): boolean {
   if (xhr.status === 409) {
     const errorCode = (xhr.responseJSON as { errorCode?: number } | undefined)
       ?.errorCode;
-    if (errorCode !== URL_ALREADY_IN_DESTINATION) return false;
+    if (errorCode !== URLErrorCodes.URL_ALREADY_IN_DESTINATION) return false;
     showTrashBanner({
       variant: "partial",
       message: APP_CONFIG.strings.TRASH_ALREADY_IN_DESTINATION,
@@ -280,8 +276,8 @@ function handleDestinationFailure({ xhr }: { xhr: JQuery.jqXHR }): boolean {
     const errorCode = (xhr.responseJSON as { errorCode?: number } | undefined)
       ?.errorCode;
     if (
-      errorCode !== URL_DESTINATION_REQUIRED &&
-      errorCode !== URL_INVALID_DESTINATION
+      errorCode !== URLErrorCodes.DESTINATION_REQUIRED &&
+      errorCode !== URLErrorCodes.INVALID_DESTINATION
     ) {
       return false;
     }

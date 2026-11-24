@@ -9,6 +9,7 @@ from flask import Flask
 from playwright.sync_api import Page, Route, expect
 
 from backend import db
+from backend.admin.constants import AdminActionErrorCodes
 from backend.config import ConfigTestUI
 from backend.metrics.flow_limits import FLOW_LIMITS
 from backend.models.metric_flows import Metric_Flows
@@ -56,7 +57,6 @@ FLOW_UPDATE_URL_RE: re.Pattern[str] = re.compile(
     r".*/admin/metrics/flows/custom_[1-9][0-9]*$"
 )
 FLOW_QUERY_PATH: str = "/api/metrics/query/flow"
-ERR_TARGET_NOT_FOUND: int = 5
 
 
 # ---------------------------------------------------------------------------
@@ -508,7 +508,7 @@ def test_update_404_returns_to_grid_with_notice_and_refreshed_list(
                 {
                     "status": "Failure",
                     "message": "Not found",
-                    "errorCode": ERR_TARGET_NOT_FOUND,
+                    "errorCode": AdminActionErrorCodes.TARGET_NOT_FOUND,
                 }
             ),
         )
