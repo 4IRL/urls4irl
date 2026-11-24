@@ -915,6 +915,76 @@
     font-size: 0.875rem;
 }
 
+/* Preview switch block, below the Uses field. */
+.invitePanelPreview {
+    margin-top: 4px;
+    padding-top: 10px;
+    border-top: 1px solid var(--borderColor);
+}
+
+.invitePanelPreviewRow {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    /* Takes back the switch's -4px side margin so its hit area stays inside the
+       row instead of widening the modal body's scroll area. */
+    padding-right: 4px;
+}
+
+.invitePanelPreviewText {
+    min-width: 0;
+}
+
+.invitePanelPreviewName {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--textPrimary);
+}
+
+.invitePanelPreviewDesc {
+    display: block;
+    margin-top: 2px;
+    font-size: 0.78rem;
+    color: var(--cardURLTextColor);
+}
+
+/* Mirrors #TrashRetentionNotice: tint, left rule and a glyph, so the warning
+   never relies on colour alone. */
+.invitePanelPreviewWarning {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 10px 0 8px;
+    padding: 11px 14px;
+    border-radius: var(--radius-sm);
+    background-color: var(--memberOutsiderAmberTint);
+    border: 1px solid var(--memberOutsiderAmber);
+    border-left-width: 5px;
+    color: var(--textPrimary);
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.invitePanelPreviewWarning::before {
+    content: "\26A0" / "";
+    flex-shrink: 0;
+    font-size: 1.15rem;
+    line-height: 1;
+    /* Same amber as the locked icon in dark; darkened in light for contrast. */
+    color: var(--memberOutsiderAmber);
+}
+
+#inviteLinkModal .urlsSettingsSwitch[aria-busy="true"] {
+    opacity: 0.55;
+}
+
+/* Reserves the saving line under the row so the content below does not move. */
+.invitePanelPreview > .invitePanelSaving {
+    display: block;
+    margin: -4px 0 8px;
+}
+
 .invitePanelFooter {
     display: flex;
     flex-wrap: wrap;
@@ -973,6 +1043,11 @@
     #inviteLinkModal .invitePanelBtn,
     #inviteLinkModal .invitePanelSelect,
     #inviteLinkModal .invitePanelLinkInput {
+        min-height: 2.75rem;
+    }
+
+    #inviteLinkModal .urlsSettingsSwitch {
+        align-items: center;
         min-height: 2.75rem;
     }
 

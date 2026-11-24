@@ -61,6 +61,22 @@ class INVITE_LINK_PAGE:
     PREVIEW_SKIP_LINK = "Skip to join options"
 
 
+# Legal copy about the invite link preview (rendered by Jinja into the Terms and the
+# Privacy Policy; Python tests assert it via ui_testing_strs). Not bridged to TypeScript.
+class INVITE_LINK_LEGAL:
+    TERMS_PREVIEW = (
+        "UTub owners and co-owners can turn on a time-limited preview that lets "
+        "anyone with the UTub's invite link view its name, description, URLs, titles "
+        "and tags without an account; member names are never shown."
+    )
+    PRIVACY_PREVIEW = (
+        "If a UTub's owner or co-owner turns on an invite link preview, anyone with "
+        "that link can view the UTub's name, description, URLs, titles and tags, "
+        "without an account, until the preview ends; member usernames and other "
+        "personal information are never included."
+    )
+
+
 # Copy the Members-deck invite link panel renders from TypeScript. Bridged to
 # APP_CONFIG.strings with an INVITE_LINK_PANEL_ key prefix (see STRINGS /
 # generate_strings_js()). "{name}" placeholders are filled client-side.
@@ -133,6 +149,32 @@ class INVITE_LINK_PANEL:
     USES_BELOW_JOINED = (
         "{count} people have already joined. Choose a limit of at least {count}."
     )
+    PREVIEW_WINDOW_OFF_HINT = "It applies when you turn the preview on."
+    PREVIEW_LABEL = "Preview for visitors without an account"
+    PREVIEW_DESC = (
+        "Shows this UTub's name, description, URLs, titles and tags, read-only."
+    )
+    PREVIEW_WINDOW_LABEL = "Preview length"
+    PREVIEW_WINDOW_DAYS_ONE = "1 day"
+    PREVIEW_WINDOW_DAYS = "{days} days"
+    PREVIEW_WINDOW_CAPPED_OPTION = "Until {date} (link expiry)"
+    PREVIEW_WINDOW_LIMIT_HINT = (
+        "Lengths longer than the time left on the link are unavailable."
+    )
+    PREVIEW_WINDOW_CAPPED_HINT = (
+        "The preview can't outlast the link. You chose {label}; "
+        "lengthening Expires brings that back."
+    )
+    PREVIEW_WARNING = (
+        "Anyone with this link can view this UTub's name, description, URLs, "
+        "titles and tags without an account until {date}. "
+        "Member names are never shown."
+    )
+    PREVIEW_ON = "Preview on until {date}."
+    PREVIEW_OFF = "Preview off."
+    PREVIEW_WINDOW_SET = "Preview length set to {label}. " + PREVIEW_WINDOW_OFF_HINT
+    PREVIEW_ENDS_SET = "Preview now ends {date}."
+    PREVIEW_CAPPED = "Preview now ends {date}, when the link expires."
 
 
 # Strings for invite link failure
