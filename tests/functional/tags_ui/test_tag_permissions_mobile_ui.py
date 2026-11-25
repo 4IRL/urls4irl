@@ -76,6 +76,15 @@ def _note_after(*, control: Locator) -> Locator:
     return control.locator("xpath=following-sibling::*[@role='status']").first
 
 
+def _dismiss_sheet_notes(*, page: Page) -> None:
+    """Outside tap: clears the open note first, so its collapse cannot shift the
+    next control between that click's pointerdown and pointerup."""
+    page.evaluate("document.dispatchEvent(new PointerEvent('pointerdown'))")
+    expect(
+        page.locator(f"{HPL.TAG_SHEET_BODY} {HPL.DISABLED_REASON_NOTE}:not(:empty)")
+    ).to_have_count(0)
+
+
 def _open_tag_sheet(*, page: Page) -> None:
     swipe_tag_sheet_open(page=page)
     wait_until_tag_sheet_open(page=page)
@@ -144,6 +153,7 @@ def test_blocked_controls_show_lock_glyphs_and_tap_notes(
         expect(control.locator(HPL.DISABLED_REASON_LOCK)).to_have_count(1)
         _expect_touch_sized(control=control)
         note = _note_after(control=control)
+        _dismiss_sheet_notes(page=page)
         control.click(force=True)
         expect(note).to_have_text(reason)
         expect(note).to_be_in_viewport()

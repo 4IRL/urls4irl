@@ -1,6 +1,6 @@
 import json
 import re
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Callable
 
 from flask import Flask
@@ -9,6 +9,7 @@ from playwright.sync_api import Locator, Page, Response, Route, expect
 from backend import db
 from backend.cli.mock_constants import USERNAME_BASE
 from backend.members.constants import UTubMembersErrorCodes
+from backend.models.user_preferences import Theme
 from backend.models.users import Users
 from backend.models.utub_invite_links import Utub_Invite_Links
 from backend.models.utub_members import Member_Role, Utub_Members
@@ -489,6 +490,34 @@ def get_invite_link_row(*, app: Flask, invite_link_id: int) -> tuple[int | None,
         invite: Utub_Invite_Links = Utub_Invite_Links.query.get(invite_link_id)
         remaining = invite.expires_at - utc_now()
         return invite.max_uses, round(remaining.total_seconds() / 86400)
+
+
+def get_invite_link_preview_row(
+    *, app: Flask, utub_id: int
+) -> tuple[bool, int, datetime | None]:
+    """Return the UTub's newest invite link's stored `(preview_enabled,
+    preview_window_days, preview_ends_at)`."""
+    with app.app_context():
+        invite: Utub_Invite_Links = (
+            Utub_Invite_Links.query.filter(Utub_Invite_Links.utub_id == utub_id)
+            .order_by(Utub_Invite_Links.id.desc())
+            .first()
+        )
+        return (
+            invite.preview_enabled,
+            invite.preview_window_days,
+            invite.preview_ends_at,
+        )
+
+
+def set_user_theme_to_system_in_db(*, app: Flask, user_id: int) -> None:
+    """Make the user follow the OS colour scheme (mock users are seeded with
+    mixed explicit themes, which pin `data-theme` regardless of the scheme)."""
+    with app.app_context():
+        user: Users = Users.query.get(user_id)
+        if user.preferences is not None:
+            user.preferences.theme = Theme.SYSTEM
+            db.session.commit()
 
 
 def revoke_invite_link_in_db(*, app: Flask, invite_link_id: int) -> None:

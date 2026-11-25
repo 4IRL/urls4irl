@@ -70,6 +70,7 @@ jobs:
                 User ${{ secrets.DEV_SSH_USERNAME }}
                 IdentityFile ~/.ssh/${{ secrets.DEV_SSH_PRIVATE_KEY_FILENAME }}
                 IdentitiesOnly yes
+                ConnectTimeout 30
                 ServerAliveInterval 15
                 ServerAliveCountMax 4
                 AddKeysToAgent yes
@@ -114,7 +115,7 @@ jobs:
             run: |
               # Script goes over stdin so ssh -v's "Sending command" line never contains the inlined secrets
               ssh -T -v -o StrictHostKeyChecking=no ${{ secrets.DEV_SSH_HOST }} 'bash -s' <<'REMOTE'
-              mkdir ./secrets/;
+              mkdir -p ./secrets/;
               chmod 700 ./secrets/;
               echo "${{ secrets.MAILJET_API_KEY }}" > ./secrets/MAILJET_API_KEY;
               echo "${{ secrets.MAILJET_SECRET_KEY }}" > ./secrets/MAILJET_SECRET_KEY;
@@ -175,3 +176,20 @@ jobs:
                 exit 1;
               fi;
               '
+
+          # Origin-only check: Flask answers 200 on the deploy host (not nginx, static files or the tunnel)
+          - name: Verify Web Health
+            run: |
+              ssh -T -v -o StrictHostKeyChecking=no ${{ secrets.DEV_SSH_HOST }} 'bash -s' <<'REMOTE'
+              for attempt in $(seq 1 12); do
+                code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 'http://127.0.0.1:8659/health?db=true')
+                rc=$?
+                echo "[$(date -u +%T)] health attempt=${attempt} code=${code} rc=${rc}"
+                if [ "${code}" = "200" ]; then
+                  exit 0
+                fi
+                sleep 5
+              done
+              echo "health check failed after 12 attempts"
+              exit 1
+              REMOTE

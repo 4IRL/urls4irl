@@ -179,6 +179,7 @@ class HomePageLocators(GenericPageLocator):
     DISABLED_REASON_TOOLTIP = ".disabledReasonTooltip"
     DISABLED_REASON_TOOLTIP_VISIBLE = ".disabledReasonTooltipVisible"
     DISABLED_REASON_LOCK = ".disabledReasonLock"
+    DISABLED_REASON_NOTE = ".disabledReasonNote"
     TAG_SHEET_BODY = "#tagSheetBody"
     # "Your view of this UTub" (per-member) controls on the URLs gear.
     URLS_PERSONAL_SORT_SELECT = "#urlsSettingsSortSelect"
@@ -701,6 +702,10 @@ class HomePageLocators(GenericPageLocator):
     INVITE_LINK_URL_INPUT = "#inviteLinkUrlInput"
     INVITE_LINK_EXPIRES_SELECT = "#inviteLinkExpiresSelect"
     INVITE_LINK_USES_SELECT = "#inviteLinkUsesSelect"
+    INVITE_LINK_PREVIEW_SWITCH = "#inviteLinkPreviewSwitch"
+    INVITE_LINK_PREVIEW_WINDOW_SELECT = "#inviteLinkPreviewWindowSelect"
+    INVITE_LINK_PREVIEW_WINDOW_HINT = "#inviteLinkPreviewWindowHint"
+    INVITE_LINK_PREVIEW_WARNING = "#inviteLinkPreviewWarning"
     INVITE_LINK_NEW_BTN = "#inviteLinkNewBtn"
     INVITE_LINK_REVOKE_BTN = "#inviteLinkRevokeBtn"
     INVITE_LINK_CONFIRM_GROUP = "#inviteLinkModal [role='group']"

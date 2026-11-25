@@ -95,6 +95,21 @@ describe("invite-link-client request shapes", () => {
     );
   });
 
+  it.each([
+    [{ preview_enabled: true }],
+    [{ preview_enabled: false }],
+    [{ preview_window_days: 7 as const }],
+  ])("updateInviteLink PATCHes the preview body %j", async (body) => {
+    stubDone(LINK);
+    await updateInviteLink({ utubID: 1, body });
+    expect(ajaxCall).toHaveBeenCalledWith(
+      "patch",
+      "/utubs/1/invite-link",
+      body,
+      INVITE_LINK_TIMEOUT_MS,
+    );
+  });
+
   it("revokeInviteLink DELETEs with no body and resolves true", async () => {
     stubDone({});
     await expect(revokeInviteLink({ utubID: 1 })).resolves.toBe(true);
