@@ -46,11 +46,12 @@ def test_every_member_of_every_enum_is_emitted():
     """
     source = generate_error_codes_ts()
     for enum_cls in ERROR_CODE_ENUMS:
-        assert f"export const {enum_cls.__name__} = {{" in source
         name = enum_cls.__name__
+        assert f"export const {name} = {{" in source
         block = _block(source, name)
+        type_name = name.removesuffix("s")
         assert (
-            f"export type {name[:-1]} = (typeof {name})[keyof typeof {name}];" in block
+            f"export type {type_name} = (typeof {name})[keyof typeof {name}];" in block
         )
         assert "} as const;" in block
         for member in enum_cls:

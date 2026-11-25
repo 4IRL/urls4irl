@@ -81,6 +81,11 @@ def _workflow_prettier_files() -> set[str]:
 
 
 def test_workflow_runs_the_makefile_generate_commands() -> None:
+    """
+    GIVEN the Makefile generate-types recipe and the staleness workflow
+    WHEN their flask generate commands are compared (minus the flows file)
+    THEN the workflow runs the same commands to the same output paths
+    """
     makefile_generates: dict[str, str] = _flask_generates(
         _recipe_lines(), prefix=CONTAINER_ROOT
     )
@@ -98,17 +103,32 @@ def test_workflow_runs_the_makefile_generate_commands() -> None:
 
 
 def test_workflow_prettier_list_matches_the_makefile() -> None:
+    """
+    GIVEN the prettier file lists in the Makefile and the workflow
+    WHEN they are compared (minus the flows file)
+    THEN they are identical
+    """
     expected: set[str] = _makefile_prettier_files() - {FLOWS_FILE}
     assert _workflow_prettier_files() == expected
 
 
 def test_workflow_leaves_the_flows_file_to_the_event_coverage_job() -> None:
+    """
+    GIVEN the staleness workflow
+    WHEN its generate commands are inspected
+    THEN it omits generate-flows while the Makefile still prettiers the flows file
+    """
     generates: dict[str, str] = _flask_generates(_workflow_run_lines(), prefix="")
     assert "metrics generate-flows" not in generates
     assert FLOWS_FILE in _makefile_prettier_files()
 
 
 def test_workflow_disables_metrics_recording() -> None:
+    """
+    GIVEN the staleness workflow
+    WHEN its env is read
+    THEN METRICS_ENABLED is set to false
+    """
     pattern: re.Pattern[str] = re.compile(
         r"^\s*METRICS_ENABLED:\s*['\"]?false['\"]?\s*$", re.MULTILINE
     )

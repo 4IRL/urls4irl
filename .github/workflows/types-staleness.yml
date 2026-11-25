@@ -25,7 +25,7 @@ jobs:
       # `mise exec` would otherwise install every missing .mise.toml tool (python, ruff, ...) on
       # first use, ignoring the setup-pnpm action's install_args. Off, a tool this job doesn't need is only warned about.
       MISE_EXEC_AUTO_INSTALL: "false"
-      METRICS_ENABLED: 'false'
+      METRICS_ENABLED: "false"
 
     steps:
       - name: Checkout code

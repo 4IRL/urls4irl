@@ -98,16 +98,31 @@ def _production_ts_files() -> list[Path]:
 
 
 def test_scanner_flags_error_code_switch_case():
+    """
+    GIVEN a switch on errorCode with a numeric case
+    WHEN the source is scanned
+    THEN the case line is flagged
+    """
     source = "switch (errorJson.errorCode) {\n  case 1: {\n    break;\n  }\n}\n"
     assert scan_source(source) == [2]
 
 
 def test_scanner_ignores_http_status_switch():
+    """
+    GIVEN a switch on an HTTP status with numeric cases
+    WHEN the source is scanned
+    THEN nothing is flagged
+    """
     source = "switch (xhr.status) {\n  case 400:\n  case 429: {\n  }\n}\n"
     assert scan_source(source) == []
 
 
 def test_scanner_skips_nested_non_error_code_switch():
+    """
+    GIVEN an errorCode switch containing a nested status switch with numeric cases
+    WHEN the source is scanned
+    THEN the nested numeric cases are not flagged
+    """
     source = (
         "switch (errorJson.errorCode) {\n"
         "  case Codes.A: {\n"
@@ -123,25 +138,45 @@ def test_scanner_skips_nested_non_error_code_switch():
 
 
 def test_scanner_flags_error_code_constant():
+    """
+    GIVEN ERROR_CODE / ERR_* constants assigned numeric literals
+    WHEN the source is scanned
+    THEN those lines are flagged
+    """
     assert scan_source("const FOO_ERROR_CODE = 4;\n") == [1]
     assert scan_source("const ERR_THING: number = 4;\nconst ERR_X = 5;\n") == [2]
 
 
 def test_scanner_flags_inline_compare():
+    """
+    GIVEN an errorCode compared to a numeric literal
+    WHEN the source is scanned
+    THEN the line is flagged
+    """
     assert scan_source("if (json.errorCode === 3) {}\n") == [1]
 
 
 def test_scanner_ignores_status_constants_and_comments():
+    """
+    GIVEN a status constant and a commented-out errorCode compare
+    WHEN the source is scanned
+    THEN nothing is flagged
+    """
     source = "const NOT_FOUND_STATUS = 404;\n// errorCode === 3\n"
     assert scan_source(source) == []
 
 
 def test_no_hand_mirrored_error_codes_in_production_frontend():
+    """
+    GIVEN the production frontend TypeScript files
+    WHEN each is scanned
+    THEN no hand-mirrored numeric error codes are found
+    """
     scanned = _production_ts_files()
     if FRONTEND_DIR / "splash" / "login-form.ts" not in scanned:
         pytest.skip("full frontend tree not mounted (only frontend/types)")
     hits = []
-    for path in _production_ts_files():
+    for path in scanned:
         for line in scan_source(path.read_text(encoding="utf-8")):
             hits.append(f"{path.relative_to(FRONTEND_DIR.parent)}:{line}")
     assert not hits, (

@@ -90,7 +90,8 @@ def generate_error_codes_ts() -> str:
             raise ValueError(
                 f"Error code enum name must end in 'ErrorCodes': {const_name}"
             )
-        type_name = const_name[:-1]
+        # The singular type name drops the plural "s" (e.g. FooErrorCodes -> FooErrorCode).
+        type_name = const_name.removesuffix("s")
         lines = [f"export const {const_name} = {{"]
         for member_name, member in enum_cls.__members__.items():
             lines.append(f"  {member_name}: {int(member.value)},")
