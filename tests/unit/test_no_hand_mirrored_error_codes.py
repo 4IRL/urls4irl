@@ -16,6 +16,8 @@ GENERATED_FILE = FRONTEND_DIR / "types" / "error-codes.ts"
 
 CONST_PATTERN = re.compile(r"(ERROR_CODE|ERR_[A-Z_]+)\s*[:=]\s*\d+")
 COMPARE_PATTERN = re.compile(r"errorCode\s*[!=]==?\s*\d+")
+REVERSED_COMPARE_PATTERN = re.compile(r"\d+\s*[!=]==?\s*[\w.?]*errorCode\b")
+CODE_FIELD_PATTERN = re.compile(r"\bcode\s*:\s*\d+")
 CASE_PATTERN = re.compile(r"\bcase\s+\d+\s*:")
 SWITCH_PATTERN = re.compile(r"\bswitch\s*\(")
 
@@ -78,7 +80,12 @@ def scan_source(source: str) -> list[int]:
     cleaned = _blank_comments(source)
     lines = {
         _line_of(cleaned, match.start())
-        for pattern in (CONST_PATTERN, COMPARE_PATTERN)
+        for pattern in (
+            CONST_PATTERN,
+            COMPARE_PATTERN,
+            REVERSED_COMPARE_PATTERN,
+            CODE_FIELD_PATTERN,
+        )
         for match in pattern.finditer(cleaned)
     }
     lines.update(_error_code_case_lines(cleaned))
@@ -154,6 +161,28 @@ def test_scanner_flags_inline_compare():
     THEN the line is flagged
     """
     assert scan_source("if (json.errorCode === 3) {}\n") == [1]
+
+
+def test_scanner_flags_reversed_compare():
+    """
+    GIVEN a numeric literal compared against errorCode (literal on the left)
+    WHEN the source is scanned
+    THEN the line is flagged
+    """
+    assert scan_source("if (3 === json.errorCode) {}\n") == [1]
+    assert scan_source("if (4 !== errorCode) {}\n") == [1]
+    assert scan_source("if (4 == errorJson?.errorCode) {}\n") == [1]
+
+
+def test_scanner_flags_code_object_field():
+    """
+    GIVEN an object literal with a numeric `code:` field
+    WHEN the source is scanned
+    THEN the line is flagged, but `code:` holding a non-literal is not
+    """
+    assert scan_source("const rule = { code: 4, action: x };\n") == [1]
+    assert scan_source("const rule = { code: Codes.A, action: x };\n") == []
+    assert scan_source("const n = { errorCode: Codes.A, status: 400 };\n") == []
 
 
 def test_scanner_ignores_status_constants_and_comments():
