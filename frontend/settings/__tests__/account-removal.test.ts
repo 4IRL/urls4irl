@@ -1,3 +1,4 @@
+import { DeleteAccountErrorCodes } from "../../types/error-codes.js";
 import {
   createMockJqXHRChainable,
   createMockXhr,
@@ -186,7 +187,7 @@ describe("account-removal", () => {
       responseJSON: {
         status: "Failure",
         message: INCORRECT_MESSAGE,
-        errorCode: 2,
+        errorCode: DeleteAccountErrorCodes.INVALID_PASSWORD,
         errors: { currentPassword: [INCORRECT_MESSAGE] },
       },
     });

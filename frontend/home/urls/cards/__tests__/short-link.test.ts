@@ -2,6 +2,10 @@ import { createMockJqXHR } from "../../../../__tests__/helpers/mock-jquery.js";
 import { APP_CONFIG } from "../../../../lib/config.js";
 import { ajaxCall, is429Handled } from "../../../../lib/ajax.js";
 import { emit } from "../../../../lib/metrics-client.js";
+import {
+  ShortLinkErrorCodes,
+  URLErrorCodes,
+} from "../../../../types/error-codes.js";
 import { UI_EVENTS } from "../../../../types/metrics-events.js";
 import { SHORT_LINK_COPY_RESULT } from "../../../../types/metrics-dim-values.js";
 import { isUtubLockedHandled } from "../../../utub-locked.js";
@@ -69,7 +73,7 @@ const URL_ID = 42;
 const SHORT_URL = "https://u4i.link/AbC123";
 const EXPIRES_AT = "2026-10-27T12:00:00";
 const REUSED_EXPIRES_AT = "2026-11-02T12:00:00";
-const SHORT_LINK_NOT_FOUND = 1;
+const SHORT_LINK_NOT_FOUND = ShortLinkErrorCodes.SHORT_LINK_NOT_FOUND;
 const PAST_AUTO_HIDE_MS = 1000;
 
 const PAGE_HTML = `
@@ -549,10 +553,14 @@ describe("short-link copy flow", () => {
     });
   });
 
-  describe("short links turned off (policy 403, errorCode 17)", () => {
+  describe("short links turned off (policy 403, SHORT_LINKS_DISABLED)", () => {
     const POLICY_MESSAGE = APP_CONFIG.strings.SHORT_LINK_SHORT_LINKS_DISABLED;
     const policyXhr = (): JQuery.jqXHR =>
-      xhrError({ status: 403, message: "ignored", errorCode: 17 });
+      xhrError({
+        status: 403,
+        message: "ignored",
+        errorCode: URLErrorCodes.SHORT_LINKS_DISABLED,
+      });
 
     beforeEach(() => {
       resetStore();
@@ -644,7 +652,13 @@ describe("short-link copy flow", () => {
     it("a 403 with another errorCode takes the generic path", async () => {
       const request = nextRequest();
       click();
-      request.reject(xhrError({ status: 403, message: "x", errorCode: 8 }));
+      request.reject(
+        xhrError({
+          status: 403,
+          message: "x",
+          errorCode: URLErrorCodes.UTUB_IS_LOCKED,
+        }),
+      );
       await flush();
 
       expect(showURLDeckBannerError).toHaveBeenCalledWith(

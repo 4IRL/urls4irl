@@ -47,6 +47,7 @@ vi.mock("../metrics-query-client.js", () => ({
 vi.mock("../render-summary.js", () => ({ renderSummary: vi.fn() }));
 vi.mock("../render-top-table.js", () => ({ renderTopTable: vi.fn() }));
 
+import { AdminActionErrorCodes } from "../../types/error-codes.js";
 import { FLOW_IDS, FLOW_METADATA } from "../../types/metrics-flows.js";
 import {
   _closeFlowBuilderForTests,
@@ -1421,7 +1422,7 @@ describe("metrics-dashboard flow builder: pause, Refresh and close tails", () =>
           failWith({
             deferred: saveDeferred,
             status: 404,
-            body: { errorCode: 5 },
+            body: { errorCode: AdminActionErrorCodes.TARGET_NOT_FOUND },
           });
         } else {
           resolveCatalog();
@@ -1554,7 +1555,11 @@ describe("metrics-dashboard flow builder: pause, Refresh and close tails", () =>
       openWithCustoms();
       const saveDeferred = saveEdit({ id: CUSTOM_ONE });
       const listCalls = fetchMetricFlowsSpy.mock.calls.length;
-      failWith({ deferred: saveDeferred, status: 404, body: { errorCode: 5 } });
+      failWith({
+        deferred: saveDeferred,
+        status: 404,
+        body: { errorCode: AdminActionErrorCodes.TARGET_NOT_FOUND },
+      });
       expect(mount().hidden).toBe(true);
       expect(card({ id: CUSTOM_ONE })).toBeUndefined();
       expect(byId("MetricsFlowsNotice").textContent).toBe(
@@ -1617,7 +1622,7 @@ describe("metrics-dashboard flow builder: pause, Refresh and close tails", () =>
       failWith({
         deferred: deleteDeferreds[deleteDeferreds.length - 1],
         status: 404,
-        body: { errorCode: 5 },
+        body: { errorCode: AdminActionErrorCodes.TARGET_NOT_FOUND },
       });
       expect(mount().hidden).toBe(false);
       expect(mount().textContent).toContain("was already deleted");

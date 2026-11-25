@@ -6,6 +6,7 @@ import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
 import { createMockJqXHR } from "../../../__tests__/helpers/mock-jquery.js";
 import { applyRowCountDelta } from "../../utubs/row-counts.js";
 import { learnMemberAddRefused } from "../add-refusal.js";
+import { UTubMembersErrorCodes } from "../../../types/error-codes.js";
 import { EMPTY_UTUB_SETTINGS } from "../../../types/settings.js";
 
 import type { MemberCandidate, MemberItem } from "../../../types/member.js";
@@ -401,8 +402,11 @@ describe("member-combobox-submit — mixed outcomes", () => {
   });
 });
 
-describe("member-combobox-submit — add not allowed (403 errorCode 7)", () => {
-  const notAllowed = { status: 403, responseJSON: { errorCode: 7 } };
+describe("member-combobox-submit — add not allowed (403 MEMBER_ADD_NOT_ALLOWED)", () => {
+  const notAllowed = {
+    status: 403,
+    responseJSON: { errorCode: UTubMembersErrorCodes.MEMBER_ADD_NOT_ALLOWED },
+  };
 
   it("marks the chip failed, never redirects, learns once and writes one combined announcement", async () => {
     seed({});

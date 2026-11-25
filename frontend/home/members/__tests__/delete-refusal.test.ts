@@ -7,10 +7,8 @@ import { APP_CONFIG } from "../../../lib/config.js";
 import { getState } from "../../../store/app-store.js";
 import { learnPolicyOff } from "../../utubs/policy.js";
 import { updateUTubOnFindingStaleData } from "../../utubs/stale-data.js";
-import {
-  CO_OWNER_REMOVE_NOT_ALLOWED_ERROR_CODE,
-  removeMemberShowModal,
-} from "../delete.js";
+import { UTubMembersErrorCodes } from "../../../types/error-codes.js";
+import { removeMemberShowModal } from "../delete.js";
 import { announceMemberRowAction } from "../notice.js";
 import { bindMemberRowModalFocusRestore } from "../row-menu.js";
 
@@ -146,9 +144,13 @@ describe("removeMemberFail — co-owner refusals", () => {
     expect(updateUTubOnFindingStaleData).toHaveBeenCalledWith({ utubID: 42 });
   }
 
-  it("errorCode 8 learns the setting off, shows the reason, announces once and refreshes without a redirect", () => {
-    expect(CO_OWNER_REMOVE_NOT_ALLOWED_ERROR_CODE).toBe(8);
-    failWith({ body: { errorCode: 8, message: "x" } });
+  it("CO_OWNER_REMOVE_NOT_ALLOWED learns the setting off, shows the reason, announces once and refreshes without a redirect", () => {
+    failWith({
+      body: {
+        errorCode: UTubMembersErrorCodes.CO_OWNER_REMOVE_NOT_ALLOWED,
+        message: "x",
+      },
+    });
 
     confirmCoOwnerRemove();
 
@@ -194,7 +196,10 @@ describe("removeMemberFail — co-owner refusals", () => {
   });
 
   it("a non-403 failure still redirects", () => {
-    failWith({ status: 500, body: { errorCode: 8 } });
+    failWith({
+      status: 500,
+      body: { errorCode: UTubMembersErrorCodes.CO_OWNER_REMOVE_NOT_ALLOWED },
+    });
 
     confirmCoOwnerRemove();
 
@@ -206,7 +211,9 @@ describe("removeMemberFail — co-owner refusals", () => {
       members: [],
       activeUTubID: 7,
     } as unknown as ReturnType<typeof getState>);
-    failWith({ body: { errorCode: 8 } });
+    failWith({
+      body: { errorCode: UTubMembersErrorCodes.CO_OWNER_REMOVE_NOT_ALLOWED },
+    });
 
     confirmCoOwnerRemove();
 
@@ -218,7 +225,9 @@ describe("removeMemberFail — co-owner refusals", () => {
   });
 
   it("focus lands on the member's row when its kebab is hidden by the learn", () => {
-    failWith({ body: { errorCode: 8 } });
+    failWith({
+      body: { errorCode: UTubMembersErrorCodes.CO_OWNER_REMOVE_NOT_ALLOWED },
+    });
     confirmCoOwnerRemove();
     // The learn hides the co-owner kebab (display:none in CSS): not focusable.
     ($("#k9").get(0) as HTMLElement).style.visibility = "hidden";

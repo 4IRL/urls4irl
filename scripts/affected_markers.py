@@ -301,6 +301,7 @@ HOST_STATIC_GLOBS: tuple[str, ...] = (
     "scripts/host_venv_check.sh",
     "tests/unit/test_host_venv_check.py",
     "tests/unit/test_python_version_pins.py",
+    "tests/unit/test_types_staleness_parity.py",
     ".github/workflows/*",
     ".github/actions/*",
     # Imported by test_audit_pins.py (a host-static test).

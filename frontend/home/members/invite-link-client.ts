@@ -11,9 +11,6 @@ export type InviteLink = Schema<"InviteLinkSchema">;
 
 type GetInviteLinkResponse = SuccessResponse<"getInviteLink">;
 
-/** `InviteLinkErrorCodes.UTUB_IS_LOCKED`, mirrored from the backend constants. */
-export const INVITE_LINK_LOCKED_ERROR_CODE = 3;
-
 /**
  * Why a GET failed. `denied` is a 403/404 (the viewer can no longer manage the
  * link; `errorCode` is the response's code when it carried one), `rate_limited`
@@ -29,13 +26,6 @@ function readErrorCode(xhr: JQuery.jqXHR): number | null {
   const body = xhr.responseJSON as { errorCode?: unknown } | undefined;
   return typeof body?.errorCode === "number" ? body.errorCode : null;
 }
-
-/** `InviteLinkErrorCodes` mirrored from the backend: link not found, live link exists. */
-export const INVITE_LINK_NOT_FOUND_ERROR_CODE = 1;
-export const INVITE_LINK_LIVE_EXISTS_ERROR_CODE = 4;
-/** Dead-link update (PATCH on a link that stopped working) and use limit below the joined count. */
-export const INVITE_LINK_DEAD_UPDATE_ERROR_CODE = 5;
-export const INVITE_LINK_USES_BELOW_JOINED_ERROR_CODE = 6;
 
 const MS_PER_DAY = 86_400_000;
 

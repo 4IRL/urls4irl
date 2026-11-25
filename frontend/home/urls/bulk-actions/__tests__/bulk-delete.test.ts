@@ -17,6 +17,7 @@ import { showURLDeckBannerError } from "../../deck.js";
 import { createMockJqXHR } from "../../../../__tests__/helpers/mock-jquery.js";
 import { refreshTrashCount } from "../../../trash/count.js";
 import { applyRowCountDelta } from "../../../utubs/row-counts.js";
+import { URLErrorCodes } from "../../../../types/error-codes.js";
 
 vi.mock("../../../trash/count.js", () => ({ refreshTrashCount: vi.fn() }));
 
@@ -108,7 +109,6 @@ vi.mock("../../../../store/app-store.js", () => ({
 const $ = window.jQuery;
 
 const LOCKED_MESSAGE = "This UTub is locked and cannot be modified.";
-const URL_UTUB_IS_LOCKED = 8;
 
 const BASE_HTML = `
   <div id="URLDeck">
@@ -607,7 +607,7 @@ describe("submit — failure paths", () => {
       deferred.reject({
         status: 403,
         responseJSON: {
-          errorCode: URL_UTUB_IS_LOCKED,
+          errorCode: URLErrorCodes.UTUB_IS_LOCKED,
           message: LOCKED_MESSAGE,
         },
       });

@@ -1,3 +1,4 @@
+import { ChangeEmailErrorCodes } from "../../types/error-codes.js";
 import {
   createMockJqXHRChainable,
   createMockXhr,
@@ -247,7 +248,7 @@ describe("change-email", () => {
       responseJSON: {
         status: "Failure",
         message: CURRENT_INCORRECT_MESSAGE,
-        errorCode: 3,
+        errorCode: ChangeEmailErrorCodes.INVALID_PASSWORD,
         errors: { currentPassword: [CURRENT_INCORRECT_MESSAGE] },
       },
     });
@@ -271,7 +272,7 @@ describe("change-email", () => {
       responseJSON: {
         status: "Failure",
         message: EMAIL_TAKEN_MESSAGE,
-        errorCode: 2,
+        errorCode: ChangeEmailErrorCodes.EMAIL_TAKEN,
         errors: { newEmail: [EMAIL_TAKEN_MESSAGE] },
       },
     });
@@ -295,7 +296,7 @@ describe("change-email", () => {
       responseJSON: {
         status: "Failure",
         message: "Invalid input, please try again.",
-        errorCode: 1,
+        errorCode: ChangeEmailErrorCodes.INVALID_FORM_INPUT,
         errors: { confirmEmail: [MISMATCH_MESSAGE] },
       },
     });
@@ -332,7 +333,7 @@ describe("change-email", () => {
       responseJSON: {
         status: "Failure",
         message: LOCKOUT_MESSAGE,
-        errorCode: 5,
+        errorCode: ChangeEmailErrorCodes.TOO_MANY_ATTEMPTS,
       },
     });
     vi.mocked(ajaxCall).mockReturnValue(mockFail(failedXhr));

@@ -7,6 +7,7 @@ import { UI_EVENTS } from "../../types/metrics-events.js";
 import { INVITE_LINK_COPY_RESULT } from "../../types/metrics-dim-values.js";
 import { AppEvents, emit as emitAppEvent } from "../../lib/event-bus.js";
 import { getState, subscribe, type AppState } from "../../store/app-store.js";
+import { InviteLinkErrorCodes } from "../../types/error-codes.js";
 import { canManageInviteLink } from "../utubs/policy.js";
 import { updateUTubOnFindingStaleData } from "../utubs/stale-data.js";
 import { buildSwitchButton } from "../panel-settings/row-controls.js";
@@ -17,11 +18,6 @@ import { closeMemberNameFilter } from "./search.js";
 import {
   createInviteLink,
   getInviteLink,
-  INVITE_LINK_DEAD_UPDATE_ERROR_CODE,
-  INVITE_LINK_LIVE_EXISTS_ERROR_CODE,
-  INVITE_LINK_LOCKED_ERROR_CODE,
-  INVITE_LINK_NOT_FOUND_ERROR_CODE,
-  INVITE_LINK_USES_BELOW_JOINED_ERROR_CODE,
   replaceExpiryDays,
   replaceInviteLink,
   revokeInviteLink,
@@ -964,7 +960,7 @@ function handleModalShown(): void {
 }
 
 function messageForDenied({ errorCode }: { errorCode: number | null }): string {
-  return errorCode === INVITE_LINK_LOCKED_ERROR_CODE
+  return errorCode === InviteLinkErrorCodes.UTUB_IS_LOCKED
     ? APP_CONFIG.strings.UTUB_IS_LOCKED
     : APP_CONFIG.strings.INVITE_LINK_PANEL_MANAGE_LOST;
 }
@@ -1202,11 +1198,11 @@ function resyncRuleFor({ kind }: { kind: LifecycleKind }): {
   const { strings } = APP_CONFIG;
   return kind === "create"
     ? {
-        code: INVITE_LINK_LIVE_EXISTS_ERROR_CODE,
+        code: InviteLinkErrorCodes.LIVE_LINK_EXISTS,
         message: strings.INVITE_LINK_PANEL_RESYNC_LIVE_EXISTS,
       }
     : {
-        code: INVITE_LINK_NOT_FOUND_ERROR_CODE,
+        code: InviteLinkErrorCodes.INVITE_LINK_NOT_FOUND,
         message: strings.INVITE_LINK_PANEL_RESYNC_REVOKED,
       };
 }
@@ -1644,19 +1640,19 @@ function onSaveFailure({
     restoreCommitted();
     return;
   }
-  if (failure.errorCode === INVITE_LINK_NOT_FOUND_ERROR_CODE) {
+  if (failure.errorCode === InviteLinkErrorCodes.INVITE_LINK_NOT_FOUND) {
     resyncInviteLinkPanel({
       message: APP_CONFIG.strings.INVITE_LINK_PANEL_RESYNC_REVOKED,
     });
     return;
   }
-  if (failure.errorCode === INVITE_LINK_DEAD_UPDATE_ERROR_CODE) {
+  if (failure.errorCode === InviteLinkErrorCodes.DEAD_LINK_UPDATE) {
     resyncInviteLinkPanel({
       message: APP_CONFIG.strings.INVITE_LINK_PANEL_RESYNC_DEAD_UPDATE,
     });
     return;
   }
-  if (failure.errorCode === INVITE_LINK_USES_BELOW_JOINED_ERROR_CODE) {
+  if (failure.errorCode === InviteLinkErrorCodes.USES_BELOW_JOINED) {
     restoreForUsesBelowJoined({ utubID, token });
     return;
   }

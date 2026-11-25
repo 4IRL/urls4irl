@@ -1,3 +1,4 @@
+import { RegisterErrorCodes } from "../../types/error-codes.js";
 import { UI_EVENTS } from "../../types/metrics-events.js";
 import { createMockJqXHR } from "../../__tests__/helpers/mock-jquery.js";
 import { showNewPageOnAJAXHTMLResponse } from "../../lib/page-utils.js";
@@ -136,7 +137,10 @@ describe("register-form metrics — UI_REGISTER_SUBMIT", () => {
 
     const fakeXhr = {
       status: 400,
-      responseJSON: { errorCode: 1, message: "Invalid" },
+      responseJSON: {
+        errorCode: RegisterErrorCodes.INVALID_FORM_INPUT,
+        message: "Invalid",
+      },
       getResponseHeader: vi.fn(),
     };
     mockDeferred.reject(fakeXhr, "error", "Bad Request");
@@ -186,7 +190,7 @@ describe("register-form double-submit guard", () => {
       {
         status: 400,
         responseJSON: {
-          errorCode: 1,
+          errorCode: RegisterErrorCodes.INVALID_FORM_INPUT,
           message: "Invalid",
           errors: { username: ["Invalid"] },
         },

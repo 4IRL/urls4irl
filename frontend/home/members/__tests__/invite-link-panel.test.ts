@@ -19,6 +19,7 @@ import {
   isInviteModalShown,
 } from "../../../__tests__/helpers/invite-modal.js";
 import { APP_CONFIG } from "../../../lib/config.js";
+import { InviteLinkErrorCodes } from "../../../types/error-codes.js";
 import { emit } from "../../../lib/metrics-client.js";
 import { UI_EVENTS } from "../../../types/metrics-events.js";
 import { getState, resetStore, setState } from "../../../store/app-store.js";
@@ -379,7 +380,7 @@ describe("invite link panel", () => {
     it("uses the locked message for a 403 carrying the locked code", async () => {
       vi.mocked(getInviteLink).mockRejectedValue({
         kind: "denied",
-        errorCode: 3,
+        errorCode: InviteLinkErrorCodes.UTUB_IS_LOCKED,
       } satisfies InviteLinkLoadFailure);
       trigger().trigger("click");
       await settle();

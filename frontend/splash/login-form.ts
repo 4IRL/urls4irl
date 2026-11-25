@@ -15,6 +15,7 @@ import { openConfirmEmailModal } from "./confirm-email-form.js";
 import { getForwardableNextQuery } from "./next-param.js";
 import { VALIDATION_FORM } from "../types/metrics-dim-values.js";
 import { debug } from "../lib/debug.js";
+import { LoginErrorCodes } from "../types/error-codes.js";
 
 const log = debug("splash:login");
 
@@ -147,7 +148,7 @@ function handleLoginFailure(
     });
     emit({ event: UI_EVENTS.UI_VALIDATION_ERROR, form: VALIDATION_FORM.LOGIN });
     switch (errorJson.errorCode) {
-      case 1: {
+      case LoginErrorCodes.ACCOUNT_NOT_EMAIL_VALIDATED: {
         // Correct password, email not yet confirmed: no session was created.
         // Hand the signed resend token to the Confirm modal; login stays usable.
         const notValidatedJson: LoginEmailNotValidatedError = xhr.responseJSON;
@@ -158,8 +159,8 @@ function handleLoginFailure(
         $modal.find("#submit").removeAttr("disabled").removeAttr("aria-busy");
         break;
       }
-      case 2: {
-        // errorCode 2 covers two shapes: a Pydantic schema-validation failure
+      case LoginErrorCodes.INVALID_FORM_INPUT: {
+        // INVALID_FORM_INPUT covers two shapes: a Pydantic schema-validation failure
         // (empty/malformed fields) carries a populated `errors` dict and has
         // zero enumeration risk — surface the field-level guidance. The opaque
         // credential-failure path carries no `errors` key — keep it generic so

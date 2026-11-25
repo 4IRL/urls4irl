@@ -16,8 +16,8 @@ import { mergeAppliedTagsIntoStore } from "../tags/combobox-state.js";
 import {
   getForbiddenErrorCode,
   handleTaggingRefusal,
-  URL_TAG_POLICY_ERROR_CODES,
 } from "../../tags/policy-banner.js";
+import { URLTagErrorCodes } from "../../../types/error-codes.js";
 import {
   BULK_RESET_KEY,
   ComboboxMode,
@@ -477,10 +477,7 @@ function handleBulkSubmitFail({
 }): void {
   if (is429Handled(xhr)) return;
 
-  if (
-    getForbiddenErrorCode(xhr) ===
-    URL_TAG_POLICY_ERROR_CODES.TAGGING_NOT_ALLOWED
-  ) {
+  if (getForbiddenErrorCode(xhr) === URLTagErrorCodes.TAGGING_NOT_ALLOWED) {
     // A manager turned tagging off while this tab still showed it on: close the
     // picker without a redirect (the whole request was refused, nothing applied),
     // then explain once and hand focus to the bulk bar's Add tags button.

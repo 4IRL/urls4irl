@@ -1,11 +1,9 @@
 import { APP_CONFIG } from "../../lib/config.js";
+import { UTubMembersErrorCodes } from "../../types/error-codes.js";
 import { getState } from "../../store/app-store.js";
 import { learnPolicyOff } from "../utubs/policy.js";
 import { updateUTubOnFindingStaleData } from "../utubs/stale-data.js";
 import { announceMemberRowAction, showMemberDeckNotice } from "./notice.js";
-
-// Mirrors UTubMembersErrorCodes.MEMBER_ADD_NOT_ALLOWED (backend/members/constants.py).
-export const MEMBER_ADD_NOT_ALLOWED_ERROR_CODE = 7;
 
 type RefusalBody = { errorCode?: number } | undefined;
 
@@ -13,7 +11,8 @@ type RefusalBody = { errorCode?: number } | undefined;
 export function isMemberAddNotAllowedResponse(xhr: JQuery.jqXHR): boolean {
   const body = xhr.responseJSON as RefusalBody;
   return (
-    xhr.status === 403 && body?.errorCode === MEMBER_ADD_NOT_ALLOWED_ERROR_CODE
+    xhr.status === 403 &&
+    body?.errorCode === UTubMembersErrorCodes.MEMBER_ADD_NOT_ALLOWED
   );
 }
 

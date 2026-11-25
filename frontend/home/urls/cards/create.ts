@@ -13,8 +13,8 @@ import {
   getRefusalOwnedMessage,
   handleTaggingRefusal,
   showPolicyBanner,
-  URL_POLICY_ERROR_CODES,
 } from "../../tags/policy-banner.js";
+import { URLErrorCodes } from "../../../types/error-codes.js";
 import { getState, subscribe } from "../../../store/app-store.js";
 import { canTag } from "../../utubs/policy.js";
 import { isEmptyString } from "./utils.js";
@@ -475,9 +475,7 @@ function createURLFail({
 }): void {
   if (is429Handled(xhr)) return;
 
-  if (
-    getForbiddenErrorCode(xhr) === URL_POLICY_ERROR_CODES.TAGGING_NOT_ALLOWED
-  ) {
+  if (getForbiddenErrorCode(xhr) === URLErrorCodes.TAGGING_NOT_ALLOWED) {
     // A manager turned tagging off while this tab still showed the tag picker. The
     // server refused the whole create, so nothing was saved. Drop the staged tags
     // and the picker so a resubmit cannot hit the same 403, keep the form and the

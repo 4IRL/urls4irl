@@ -8,6 +8,7 @@ vi.mock("../../../lib/ajax.js", () => ({
 }));
 
 import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
+import { InviteLinkErrorCodes } from "../../../types/error-codes.js";
 import {
   INVITE_LINK_TIMEOUT_MS,
   createInviteLink,
@@ -142,10 +143,15 @@ describe("invite-link-client getInviteLink failure mapping", () => {
   it.each([403, 404])(
     "maps %i to denied with the errorCode",
     async (status) => {
-      stubFail(makeXhr({ status, json: { errorCode: 3 } }));
+      stubFail(
+        makeXhr({
+          status,
+          json: { errorCode: InviteLinkErrorCodes.UTUB_IS_LOCKED },
+        }),
+      );
       await expect(getInviteLink({ utubID: 1 })).rejects.toEqual({
         kind: "denied",
-        errorCode: 3,
+        errorCode: InviteLinkErrorCodes.UTUB_IS_LOCKED,
       });
     },
   );
@@ -213,11 +219,16 @@ describe("invite-link-client mutation failure mapping", () => {
   });
 
   it("maps a JSON 403 to an error with status and errorCode", async () => {
-    stubFail(makeXhr({ status: 403, json: { errorCode: 3 } }));
+    stubFail(
+      makeXhr({
+        status: 403,
+        json: { errorCode: InviteLinkErrorCodes.UTUB_IS_LOCKED },
+      }),
+    );
     await expect(revokeInviteLink({ utubID: 1 })).rejects.toEqual({
       kind: "error",
       status: 403,
-      errorCode: 3,
+      errorCode: InviteLinkErrorCodes.UTUB_IS_LOCKED,
     });
   });
 

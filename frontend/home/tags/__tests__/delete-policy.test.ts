@@ -3,6 +3,7 @@ import { ajaxCall } from "../../../lib/ajax.js";
 import { learnPolicyOff } from "../../utubs/policy.js";
 import { isMobile } from "../../mobile.js";
 import { getRefusalOwnedMessage } from "../policy-banner.js";
+import { UTubTagErrorCodes } from "../../../types/error-codes.js";
 import { isTagSheetOpen } from "../sheet.js";
 import { deleteUTubTagShowModal } from "../delete.js";
 
@@ -79,7 +80,7 @@ function failWith(
   );
 }
 
-describe("deleteUTubTagFail — tag policy refusal (errorCode 4 or 5)", () => {
+describe("deleteUTubTagFail — tag policy refusal (TAGGING_NOT_ALLOWED or TAG_DELETE_NOT_ALLOWED)", () => {
   let modalSpy: ReturnType<typeof vi.fn>;
   let reloadSpy: ReturnType<typeof vi.fn>;
   const originalLocation = window.location;
@@ -115,8 +116,8 @@ describe("deleteUTubTagFail — tag policy refusal (errorCode 4 or 5)", () => {
   });
 
   it.each([
-    [4, "tags.members_can_tag"],
-    [5, "tags.members_can_delete_tags"],
+    [UTubTagErrorCodes.TAGGING_NOT_ALLOWED, "tags.members_can_tag"],
+    [UTubTagErrorCodes.TAG_DELETE_NOT_ALLOWED, "tags.members_can_delete_tags"],
   ])(
     "errorCode %i closes the modal, learns %s, focuses the pencil and shows the reason once",
     (errorCode, key) => {
@@ -147,7 +148,7 @@ describe("deleteUTubTagFail — tag policy refusal (errorCode 4 or 5)", () => {
   );
 
   it("owns the refusal message during the learn step (store notification)", () => {
-    failWith(403, { errorCode: 5 });
+    failWith(403, { errorCode: UTubTagErrorCodes.TAG_DELETE_NOT_ALLOWED });
     let seenMessage: string | null = null;
     vi.mocked(learnPolicyOff).mockImplementation(() => {
       seenMessage = getRefusalOwnedMessage();
@@ -162,7 +163,7 @@ describe("deleteUTubTagFail — tag policy refusal (errorCode 4 or 5)", () => {
 
   it("uses the pencil's note, not the deck banner, with the sheet open", () => {
     vi.mocked(isTagSheetOpen).mockReturnValue(true);
-    failWith(403, { errorCode: 5 });
+    failWith(403, { errorCode: UTubTagErrorCodes.TAG_DELETE_NOT_ALLOWED });
 
     confirmDelete();
 
@@ -176,7 +177,7 @@ describe("deleteUTubTagFail — tag policy refusal (errorCode 4 or 5)", () => {
     const elsewhere = document.createElement("button");
     document.body.appendChild(elsewhere);
     elsewhere.focus();
-    failWith(403, { errorCode: 5 });
+    failWith(403, { errorCode: UTubTagErrorCodes.TAG_DELETE_NOT_ALLOWED });
     const pencil = document.getElementById(
       "utubTagBtnUpdateAllOpen",
     ) as HTMLElement;

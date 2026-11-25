@@ -21,22 +21,6 @@ import { isTagSheetOpen } from "./sheet.js";
 const BANNER_SELECTOR = "#URLDeckErrorIndicator";
 const BANNER_SHOWING_CLASS = "URLDeckErrorIndicatorShow";
 
-// Mirrors UTubTagErrorCodes in backend/tags/constants.py.
-export const UTUB_TAG_POLICY_ERROR_CODES = {
-  TAGGING_NOT_ALLOWED: 4,
-  TAG_DELETE_NOT_ALLOWED: 5,
-} as const;
-
-// Mirrors URLTagErrorCodes in backend/tags/constants.py.
-export const URL_TAG_POLICY_ERROR_CODES = {
-  TAGGING_NOT_ALLOWED: 4,
-} as const;
-
-// Mirrors URLErrorCodes in backend/urls/constants.py.
-export const URL_POLICY_ERROR_CODES = {
-  TAGGING_NOT_ALLOWED: 18,
-} as const;
-
 /**
  * Whether a programmatic focus on a tag-deck control would land. The deck controls
  * are inert behind a closed mobile sheet, so focus would silently fall to <body>.

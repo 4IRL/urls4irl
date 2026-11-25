@@ -1,9 +1,9 @@
 import {
   isMemberAddNotAllowedResponse,
   learnMemberAddRefused,
-  MEMBER_ADD_NOT_ALLOWED_ERROR_CODE,
 } from "../add-refusal.js";
 import { APP_CONFIG } from "../../../lib/config.js";
+import { UTubMembersErrorCodes } from "../../../types/error-codes.js";
 import { getState, resetStore, setState } from "../../../store/app-store.js";
 import { resolveUtubSettings } from "../../../types/settings.js";
 import { updateUTubOnFindingStaleData } from "../../utubs/stale-data.js";
@@ -25,16 +25,22 @@ function xhrWith({
 }
 
 describe("isMemberAddNotAllowedResponse", () => {
-  it("matches only a 403 carrying errorCode 7", () => {
-    expect(MEMBER_ADD_NOT_ALLOWED_ERROR_CODE).toBe(7);
+  it("matches only a 403 carrying MEMBER_ADD_NOT_ALLOWED", () => {
+    const { MEMBER_ADD_NOT_ALLOWED, UTUB_IS_LOCKED } = UTubMembersErrorCodes;
     expect(
-      isMemberAddNotAllowedResponse(xhrWith({ status: 403, errorCode: 7 })),
+      isMemberAddNotAllowedResponse(
+        xhrWith({ status: 403, errorCode: MEMBER_ADD_NOT_ALLOWED }),
+      ),
     ).toBe(true);
     expect(
-      isMemberAddNotAllowedResponse(xhrWith({ status: 403, errorCode: 3 })),
+      isMemberAddNotAllowedResponse(
+        xhrWith({ status: 403, errorCode: UTUB_IS_LOCKED }),
+      ),
     ).toBe(false);
     expect(
-      isMemberAddNotAllowedResponse(xhrWith({ status: 400, errorCode: 7 })),
+      isMemberAddNotAllowedResponse(
+        xhrWith({ status: 400, errorCode: MEMBER_ADD_NOT_ALLOWED }),
+      ),
     ).toBe(false);
   });
 });

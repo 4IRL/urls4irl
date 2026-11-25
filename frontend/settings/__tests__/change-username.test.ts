@@ -1,3 +1,4 @@
+import { ChangeUsernameErrorCodes } from "../../types/error-codes.js";
 import {
   createMockJqXHRChainable,
   createMockXhr,
@@ -162,7 +163,7 @@ describe("change-username", () => {
       responseJSON: {
         status: "Failure",
         message: "Unable to change username.",
-        errorCode: 2,
+        errorCode: ChangeUsernameErrorCodes.USERNAME_TAKEN,
         errors: { username: [TAKEN_MESSAGE] },
       },
     });
@@ -184,7 +185,7 @@ describe("change-username", () => {
       responseJSON: {
         status: "Failure",
         message: RATE_LIMIT_MESSAGE,
-        errorCode: 3,
+        errorCode: ChangeUsernameErrorCodes.RATE_LIMITED,
         errors: null,
       },
     });

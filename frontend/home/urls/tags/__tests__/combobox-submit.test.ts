@@ -12,6 +12,7 @@ import { showURLDeckBannerError } from "../../deck.js";
 import { clearURLOutcomeBanner } from "../../outcome-banner.js";
 import { isUtubLockedHandled } from "../../../utub-locked.js";
 import { handleTaggingRefusal } from "../../../tags/policy-banner.js";
+import { URLTagErrorCodes } from "../../../../types/error-codes.js";
 
 const { mockMetricsClient } = await vi.hoisted(
   async () =>
@@ -217,10 +218,10 @@ describe("submitStagedTagsFail — sad paths", () => {
   });
 });
 
-describe("submitStagedTagsFail — tagging refusal (errorCode 4)", () => {
+describe("submitStagedTagsFail — tagging refusal (TAGGING_NOT_ALLOWED)", () => {
   const refusal = {
     status: 403,
-    responseJSON: { errorCode: 4 },
+    responseJSON: { errorCode: URLTagErrorCodes.TAGGING_NOT_ALLOWED },
   } as unknown as JQuery.jqXHR;
 
   it("closes the picker, learns via the shared handler and focuses Add tag", () => {

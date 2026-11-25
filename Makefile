@@ -357,7 +357,7 @@ test-playwright-lifecycle: _hub-capacity ## Build the derived Playwright image a
 # a stamp inside that venv, so a pin bump reaches it too; the stamp is touched only after a successful install.
 # psycopg2 is skipped: it builds from source (needs pg_config), and the pinned psycopg2-binary provides the same
 # `psycopg2` module the root conftest imports.
-HOST_STATIC_TESTS := tests/unit/test_makefile_profiles.py tests/unit/test_compose_hub.py tests/unit/test_compose_prod_key_mount.py tests/unit/test_compose_profiles.py tests/unit/test_audit_pins.py tests/unit/test_playwright_entrypoint.py tests/unit/test_worktree_script.py tests/unit/test_env_example.py tests/unit/test_notifs_key_write.py tests/unit/test_prod_deploy_key_dir.py tests/unit/test_health_token_wiring.py tests/unit/test_notifs_exchange_workflow.py tests/unit/test_notifs_resolve_release_sha.py tests/unit/test_python_version_pins.py tests/unit/test_host_venv_check.py tests/unit/test_dev_deploy_workflows.py
+HOST_STATIC_TESTS := tests/unit/test_makefile_profiles.py tests/unit/test_compose_hub.py tests/unit/test_compose_prod_key_mount.py tests/unit/test_compose_profiles.py tests/unit/test_audit_pins.py tests/unit/test_playwright_entrypoint.py tests/unit/test_worktree_script.py tests/unit/test_env_example.py tests/unit/test_notifs_key_write.py tests/unit/test_prod_deploy_key_dir.py tests/unit/test_health_token_wiring.py tests/unit/test_notifs_exchange_workflow.py tests/unit/test_notifs_resolve_release_sha.py tests/unit/test_python_version_pins.py tests/unit/test_host_venv_check.py tests/unit/test_types_staleness_parity.py tests/unit/test_dev_deploy_workflows.py
 # scripts/host_venv_check.sh deletes a primary venv/ whose Python minor differs from the mise pin (exit 3 = deleted,
 # the caller rebuilds it; any other nonzero = failed closed). Shared by _host-static-run and hooks.
 HOST_VENV_CHECK := scripts/host_venv_check.sh
@@ -513,13 +513,14 @@ typecheck: _require-tools ## Run TypeScript typecheck (app + test + node-side ts
 
 generate-types: _capacity-fresh ## Generate TypeScript API types from backend OpenAPI spec + per-event dim shapes
 	$(EXEC_WEB_AS_HOST) "$(FLASK) openapi generate --output /code/u4i/frontend/types/openapi.json --strict"
+	$(EXEC_WEB_AS_HOST) "$(FLASK) openapi generate-error-codes --output /code/u4i/frontend/types/error-codes.ts"
 	$(RUN_VITE) pnpm exec openapi-typescript frontend/types/openapi.json -o frontend/types/api.d.ts
 	$(EXEC_WEB_AS_HOST) "$(FLASK) metrics generate-dim-types --output /code/u4i/frontend/types/metrics-dimensions.d.ts"
 	$(EXEC_WEB_AS_HOST) "$(FLASK) metrics generate-dim-values --output /code/u4i/frontend/types/metrics-dim-values.ts"
 	$(EXEC_WEB_AS_HOST) "$(FLASK) metrics generate-events --output /code/u4i/frontend/types/metrics-events.ts"
 	$(EXEC_WEB_AS_HOST) "$(FLASK) metrics generate-resources --output /code/u4i/frontend/types/metrics-resources.ts"
 	$(EXEC_WEB_AS_HOST) "$(FLASK) metrics generate-flows --output /code/u4i/frontend/types/metrics-flows.ts"
-	$(RUN_VITE) pnpm exec prettier --write frontend/types/api.d.ts frontend/types/openapi.json frontend/types/metrics-dimensions.d.ts frontend/types/metrics-dim-values.ts frontend/types/metrics-events.ts frontend/types/metrics-resources.ts frontend/types/metrics-flows.ts
+	$(RUN_VITE) pnpm exec prettier --write frontend/types/api.d.ts frontend/types/openapi.json frontend/types/error-codes.ts frontend/types/metrics-dimensions.d.ts frontend/types/metrics-dim-values.ts frontend/types/metrics-events.ts frontend/types/metrics-resources.ts frontend/types/metrics-flows.ts
 
 generate-endpoints: ## Regenerate docs/endpoints/endpoint-registry.json + ENDPOINT_REGISTRY.md from the live url_map
 	$(EXEC_WEB_AS_HOST) "$(FLASK) endpoints generate --output /code/u4i/docs/endpoints/endpoint-registry.json --markdown-output /code/u4i/docs/endpoints/ENDPOINT_REGISTRY.md"

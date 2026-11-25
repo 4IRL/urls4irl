@@ -19,6 +19,7 @@ from backend.api_common.auth_decorators import (
     API_AUTH_DECORATORS,
     SESSION_AUTH_DECORATORS,
 )
+from backend.api_common.error_codes_ts import generate_error_codes_ts
 from backend.schemas.base import StatusMessageResponseSchema
 
 openapi_cli = AppGroup(
@@ -703,6 +704,26 @@ def generate_openapi_command(output: str, strict: bool) -> None:
         f"Generated OpenAPI 3.1 spec with {path_count} paths, "
         f"{schema_count} schemas → {output_path}"
     )
+
+
+@openapi_cli.command("generate-error-codes")
+@click.option(
+    "--output",
+    "output_path",
+    required=True,
+    type=click.Path(dir_okay=False, writable=True),
+    help="Target path for the generated .ts file.",
+)
+def generate_error_codes_command(output_path: str) -> None:
+    """Render `frontend/types/error-codes.ts` from the backend `*ErrorCodes` enums.
+
+    Pure walk of `ERROR_CODE_ENUMS`; reads only the enum registry (no database
+    or Redis access).
+    """
+    source = generate_error_codes_ts()
+    target = Path(output_path)
+    target.write_text(source, encoding="utf-8")
+    click.echo(f"openapi: wrote error codes → {target}")
 
 
 def register_openapi_cli(app: Flask) -> None:

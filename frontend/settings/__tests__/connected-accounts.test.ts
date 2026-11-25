@@ -1,3 +1,4 @@
+import { OAuthLinkErrorCodes } from "../../types/error-codes.js";
 import {
   createMockJqXHRChainable,
   createMockXhr,
@@ -244,7 +245,7 @@ describe("connected-accounts", () => {
       responseJSON: {
         status: "Failure",
         message: "Bad request",
-        errorCode: 5,
+        errorCode: OAuthLinkErrorCodes.INVALID_PASSWORD,
         errors: { password: [FAILURE_MESSAGE] },
       },
     });
@@ -352,7 +353,7 @@ describe("connected-accounts", () => {
       responseJSON: {
         status: "Failure",
         message: "You must keep at least one sign-in method.",
-        errorCode: 3,
+        errorCode: OAuthLinkErrorCodes.LAST_METHOD,
         errors: null,
       },
     });

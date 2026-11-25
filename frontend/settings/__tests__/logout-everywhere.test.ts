@@ -1,3 +1,4 @@
+import { LogoutEverywhereErrorCodes } from "../../types/error-codes.js";
 import {
   createMockJqXHRChainable,
   createMockXhr,
@@ -137,7 +138,7 @@ describe("logout-everywhere", () => {
       responseJSON: {
         status: "Failure",
         message: SERVICE_ERROR_MESSAGE,
-        errorCode: 1,
+        errorCode: LogoutEverywhereErrorCodes.NOT_AUTHORIZED,
       },
     });
     vi.mocked(ajaxCall).mockReturnValue(mockFail(failedXhr));

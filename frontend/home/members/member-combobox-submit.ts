@@ -47,7 +47,7 @@ type ChipSettleResult = {
   // Present only for a 400: the failure reason, carried by the chip's title
   // tooltip and reused in the batched aria-live summary.
   errorText?: string;
-  // True for a 403 errorCode 7 (the owner turned off member adds): the batch
+  // True for a 403 errorCode MEMBER_ADD_NOT_ALLOWED (the owner turned off member adds): the batch
   // learns it once, after every chip settles.
   addNotAllowed?: boolean;
 };
@@ -156,7 +156,7 @@ function submitOneChip({
         return;
       }
 
-      // errorCode 7 → this chip is rejected with the not-allowed reason; the
+      // errorCode MEMBER_ADD_NOT_ALLOWED → this chip is rejected with the not-allowed reason; the
       // batch learns it once after settle and never redirects.
       if (isMemberAddNotAllowedResponse(xhr)) {
         const errorText = APP_CONFIG.strings.MEMBER_ADD_NOT_ALLOWED;

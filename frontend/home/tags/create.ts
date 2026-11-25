@@ -22,8 +22,8 @@ import {
   getForbiddenErrorCode,
   runAsRefusal,
   showPolicyBanner,
-  UTUB_TAG_POLICY_ERROR_CODES,
 } from "./policy-banner.js";
+import { UTubTagErrorCodes } from "../../types/error-codes.js";
 import { refreshTagDeckTagCount } from "./deck.js";
 import { closeTagNameFilter, reapplyTagFilter } from "./search.js";
 import { reapplyTagSortForNonDefault } from "../urls/cards/filtering.js";
@@ -271,10 +271,7 @@ function createUTubTagFail({
 }): void {
   if (is429Handled(xhr)) return;
 
-  if (
-    getForbiddenErrorCode(xhr) ===
-    UTUB_TAG_POLICY_ERROR_CODES.TAGGING_NOT_ALLOWED
-  ) {
+  if (getForbiddenErrorCode(xhr) === UTubTagErrorCodes.TAGGING_NOT_ALLOWED) {
     handleCreateTagRefusal(utubID);
     return;
   }

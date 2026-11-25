@@ -8,6 +8,7 @@ import {
   createMockJqXHRChainable,
   createMockXhr,
 } from "../../../__tests__/helpers/mock-jquery.js";
+import { URLErrorCodes, UTubErrorCodes } from "../../../types/error-codes.js";
 import { $ } from "../../../lib/globals.js";
 import { APP_CONFIG } from "../../../lib/config.js";
 import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
@@ -697,8 +698,8 @@ describe("trash actions", () => {
     });
 
     it.each([
-      { domain: "url" as const, errorCode: 11 },
-      { domain: "utub" as const, errorCode: 4 },
+      { domain: "url" as const, errorCode: URLErrorCodes.NOT_IN_TRASH },
+      { domain: "utub" as const, errorCode: UTubErrorCodes.NOT_IN_TRASH },
     ])(
       "a $domain not-in-trash 404 warns, reloads and refreshes the count",
       ({ domain, errorCode }) => {
@@ -726,7 +727,10 @@ describe("trash actions", () => {
         domain: "url",
       });
       handleTrashActionFailure({
-        xhr: failXhr({ status: 404, responseJSON: { errorCode: 4 } }),
+        xhr: failXhr({
+          status: 404,
+          responseJSON: { errorCode: UTubErrorCodes.NOT_IN_TRASH },
+        }),
         domain: "url",
       });
       handleTrashActionFailure({
@@ -785,7 +789,7 @@ describe("trash actions", () => {
       {
         name: "404 not in Trash",
         status: 404,
-        responseJSON: { errorCode: 11 },
+        responseJSON: { errorCode: URLErrorCodes.NOT_IN_TRASH },
       },
       { name: "network failure", status: 0, responseJSON: undefined },
     ])("resolves false on $name and keeps the row", async (fixture) => {
@@ -826,7 +830,10 @@ describe("trash actions", () => {
         } as unknown as Location);
         vi.mocked(ajaxCall).mockReturnValue(
           settled({
-            fail: failXhr({ status: 400, responseJSON: { errorCode: 12 } }),
+            fail: failXhr({
+              status: 400,
+              responseJSON: { errorCode: URLErrorCodes.DESTINATION_REQUIRED },
+            }),
           }),
         );
 
@@ -854,7 +861,10 @@ describe("trash actions", () => {
       } as unknown as Location);
       vi.mocked(ajaxCall).mockReturnValue(
         settled({
-          fail: failXhr({ status: 400, responseJSON: { errorCode: 12 } }),
+          fail: failXhr({
+            status: 400,
+            responseJSON: { errorCode: URLErrorCodes.DESTINATION_REQUIRED },
+          }),
         }),
       );
 
@@ -1022,7 +1032,10 @@ describe("trash actions", () => {
       vi.mocked(isTrashOpen).mockReturnValue(false);
 
       handleTrashActionFailure({
-        xhr: failXhr({ status: 404, responseJSON: { errorCode: 11 } }),
+        xhr: failXhr({
+          status: 404,
+          responseJSON: { errorCode: URLErrorCodes.NOT_IN_TRASH },
+        }),
         domain: "url",
       });
 
@@ -1041,7 +1054,12 @@ describe("trash actions", () => {
         destUtubID: 5,
       });
       vi.mocked(isTrashOpen).mockReturnValue(false);
-      request.reject(failXhr({ status: 409, responseJSON: { errorCode: 14 } }));
+      request.reject(
+        failXhr({
+          status: 409,
+          responseJSON: { errorCode: URLErrorCodes.URL_ALREADY_IN_DESTINATION },
+        }),
+      );
 
       await expect(pendingRestore).resolves.toBe(false);
       expectSilent();
@@ -1053,7 +1071,12 @@ describe("trash actions", () => {
 
       const pendingRestore = restoreTrashedURL({ utubID: 3, utubUrlID: 11 });
       vi.mocked(isTrashOpen).mockReturnValue(false);
-      request.reject(failXhr({ status: 400, responseJSON: { errorCode: 12 } }));
+      request.reject(
+        failXhr({
+          status: 400,
+          responseJSON: { errorCode: URLErrorCodes.DESTINATION_REQUIRED },
+        }),
+      );
 
       await expect(pendingRestore).resolves.toBe(false);
       expect(loadTrashList).not.toHaveBeenCalled();

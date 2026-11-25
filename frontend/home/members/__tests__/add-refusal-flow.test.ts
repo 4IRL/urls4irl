@@ -6,6 +6,7 @@ import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
 import { createMockJqXHR } from "../../../__tests__/helpers/mock-jquery.js";
 import { makeUtubSummaryItem } from "../../../__tests__/helpers/utub-summary.js";
 import { getState, resetStore, setState } from "../../../store/app-store.js";
+import { UTubMembersErrorCodes } from "../../../types/error-codes.js";
 import { resolveUtubSettings } from "../../../types/settings.js";
 import { canAddMembers, learnPolicyOff } from "../../utubs/policy.js";
 import { updateUTubOnFindingStaleData } from "../../utubs/stale-data.js";
@@ -102,7 +103,10 @@ const $ = window.jQuery;
 const UTUB_ID = 7;
 const OWNER_ID = 1000;
 const SELF_ID = 2000;
-const NOT_ALLOWED = { status: 403, responseJSON: { errorCode: 7 } };
+const NOT_ALLOWED = {
+  status: 403,
+  responseJSON: { errorCode: UTubMembersErrorCodes.MEMBER_ADD_NOT_ALLOWED },
+};
 
 const DECK_HTML = `
   <div id="MemberDeck">

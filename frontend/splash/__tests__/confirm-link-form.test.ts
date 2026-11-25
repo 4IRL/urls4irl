@@ -1,3 +1,4 @@
+import { OAuthLinkErrorCodes } from "../../types/error-codes.js";
 import {
   createMockJqXHRChainable,
   createMockXhr,
@@ -109,7 +110,7 @@ describe("confirm-link-form", () => {
       responseJSON: {
         status: "Failure",
         message: FAILURE_MESSAGE,
-        errorCode: 5,
+        errorCode: OAuthLinkErrorCodes.INVALID_PASSWORD,
         errors: { password: [FAILURE_MESSAGE] },
       },
     });

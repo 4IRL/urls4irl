@@ -11,6 +11,7 @@ from werkzeug.exceptions import NotFound
 
 from backend import db
 from backend.api_common.responses import FlaskResponse
+from backend.members.constants import UTubMembersErrorCodes
 from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utubs import Utubs
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
@@ -480,13 +481,16 @@ def test_lock_and_reauthorize_member_add_denied_with_error_code_and_log(
 
         with app.test_request_context():
             response, status_code = _reauthorize(
-                utub, 2, UtubAccess.MEMBER_ADD, not_authorized_error_code=7
+                utub,
+                2,
+                UtubAccess.MEMBER_ADD,
+                not_authorized_error_code=UTubMembersErrorCodes.MEMBER_ADD_NOT_ALLOWED,
             )
 
         assert status_code == 403
         body = response.get_json()
         assert body[STD_JSON.MESSAGE] == UTUB_FAILURE.NOT_AUTHORIZED
-        assert body[STD_JSON.ERROR_CODE] == 7
+        assert body[STD_JSON.ERROR_CODE] == UTubMembersErrorCodes.MEMBER_ADD_NOT_ALLOWED
         assert is_string_in_logs("User=2 not member adder: UTub.id=1", caplog.records)
 
 

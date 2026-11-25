@@ -19,6 +19,10 @@ import {
 import { checkForStaleDataOn409 } from "../conflict-handler.js";
 import { handleTaggingRefusal } from "../../../tags/policy-banner.js";
 import {
+  URLErrorCodes,
+  URLTagErrorCodes,
+} from "../../../../types/error-codes.js";
+import {
   createURL,
   createURLHideInput,
   createURLShowInput,
@@ -303,7 +307,7 @@ describe("createURL - client-side validation", () => {
     });
   });
 
-  describe("createURL - tagging refusal (errorCode 18)", () => {
+  describe("createURL - tagging refusal (URLErrorCodes.TAGGING_NOT_ALLOWED)", () => {
     function submitWithStatus({
       status,
       errorCode,
@@ -343,7 +347,10 @@ describe("createURL - client-side validation", () => {
         .spyOn(window.location, "assign")
         .mockImplementation(() => {});
       try {
-        const resetStaged = submitWithStatus({ status: 403, errorCode: 18 });
+        const resetStaged = submitWithStatus({
+          status: 403,
+          errorCode: URLErrorCodes.TAGGING_NOT_ALLOWED,
+        });
 
         expect(resetStaged).toHaveBeenCalledTimes(1);
         expect($("#createURLWrap .urlTagComboboxWrap").length).toBe(0);
@@ -356,6 +363,25 @@ describe("createURL - client-side validation", () => {
         expect(call.focusTarget).toBe(urlStringInput[0]);
         expect(call.control).toBeUndefined();
         expect(locationAssignSpy).not.toHaveBeenCalled();
+      } finally {
+        locationAssignSpy.mockRestore();
+      }
+    });
+
+    it("keeps the redirect for a 403 carrying the tag enums' tagging code", () => {
+      const locationAssignSpy = vi
+        .spyOn(window.location, "assign")
+        .mockImplementation(() => {});
+      try {
+        submitWithStatus({
+          status: 403,
+          errorCode: URLTagErrorCodes.TAGGING_NOT_ALLOWED,
+        });
+
+        expect(handleTaggingRefusal).not.toHaveBeenCalled();
+        expect(locationAssignSpy).toHaveBeenCalledWith(
+          APP_CONFIG.routes.errorPage,
+        );
       } finally {
         locationAssignSpy.mockRestore();
       }
