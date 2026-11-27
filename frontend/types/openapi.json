@@ -10864,7 +10864,7 @@
             "csrfToken": []
           }
         ],
-        "description": "Partially update a UTub's per-panel settings. The members keys are owner-only. Metrics: API_HIT only (no DOMAIN event).",
+        "description": "Partially update a UTub's per-panel settings. The members keys are owner-only. Tightening who can create invite links revokes a live link whose creator is no longer allowed, and turning off co-owner previews ends a preview that is on; the response carries two always-present booleans, inviteLinkRevoked and invitePreviewEnded. Metrics: API_HIT, plus INVITE_LINK_REVOKED (reason setting_change) when a link is revoked.",
         "parameters": [
           {
             "name": "utub_id",
@@ -17428,6 +17428,16 @@
           "settings": {
             "$ref": "#/components/schemas/UtubSettings",
             "description": "Full resolved per-UTub settings (stored overrides merged over defaults)"
+          },
+          "inviteLinkRevoked": {
+            "default": false,
+            "description": "True only when this write revoked an invite link that was live before it",
+            "type": "boolean"
+          },
+          "invitePreviewEnded": {
+            "default": false,
+            "description": "True only when this write ended an invite preview that was on",
+            "type": "boolean"
           }
         },
         "required": ["utubID", "settings"],

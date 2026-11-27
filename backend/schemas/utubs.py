@@ -277,6 +277,16 @@ class UtubSettingsUpdatedResponseSchema(BaseSchema):
         alias=MODELS.SETTINGS,
         description="Full resolved per-UTub settings (stored overrides merged over defaults)",
     )
+    invite_link_revoked: bool = Field(
+        default=False,
+        alias=MODELS.INVITE_LINK_REVOKED,
+        description="True only when this write revoked an invite link that was live before it",
+    )
+    invite_preview_ended: bool = Field(
+        default=False,
+        alias=MODELS.INVITE_PREVIEW_ENDED,
+        description="True only when this write ended an invite preview that was on",
+    )
 
 
 class UtubPinUpdatedResponseSchema(BaseSchema):

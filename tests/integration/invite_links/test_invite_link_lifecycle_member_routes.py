@@ -44,7 +44,7 @@ from tests.integration.system.metrics_helpers import (
     parse_dims,
     sum_counter_values,
 )
-from tests.utils_for_test import add_invite_link, set_member_role
+from tests.utils_for_test import add_invite_link, set_member_role, set_members_settings
 
 pytestmark = pytest.mark.members
 
@@ -396,9 +396,11 @@ def test_demoting_the_owner_is_rejected_and_leaves_link(
 
 
 @pytest.mark.parametrize("target_is_co_owner", [False, True])
-def test_transfer_keeps_former_owners_link_live(
+def test_transfer_keeps_former_owners_link_live_under_default_setting(
     every_user_in_every_utub, app: Flask, target_is_co_owner: bool
 ) -> None:
+    """With the default creators setting (owner and co-owners) the former owner,
+    now a co-owner, may still create links, so the link stays unrevoked and live."""
     if target_is_co_owner:
         set_member_role(app, FIRST_UTUB_ID, SECOND_USER_ID, _CO)
     add_invite_link(app, FIRST_UTUB_ID, CREATOR_ID)
@@ -408,6 +410,75 @@ def test_transfer_keeps_former_owners_link_live(
     assert response.status_code == 200
     assert len(unrevoked(app)) == 1
     assert state_of_current(app) is InviteState.LIVE
+
+
+@pytest.mark.parametrize("creators_value", ["owner_only", "no_one"])
+def test_transfer_under_owner_only_revokes_former_owners_link_and_new_owner_creates(
+    metrics_enabled_app,
+    provide_metrics_redis,
+    every_user_in_every_utub,
+    app: Flask,
+    creators_value: str,
+) -> None:
+    """Under owner_only or no_one the demoted former owner may not create links, so
+    the transfer commit revokes theirs (role_change) and the new owner can create at once."""
+    set_members_settings(app, FIRST_UTUB_ID, {"invite_link_creators": creators_value})
+    add_invite_link(app, FIRST_UTUB_ID, CREATOR_ID)
+
+    response = _transfer(app, CREATOR_ID, SECOND_USER_ID)
+
+    assert response.status_code == 200
+    assert unrevoked(app) == []
+    if creators_value == "no_one":
+        # Under no_one the owner's link was already dead before the transfer (the
+        # setting write revokes it), so the row is revoked without a role_change metric.
+        assert (
+            sum_counter_values(provide_metrics_redis, EventName.INVITE_LINK_REVOKED)
+            == 0
+        )
+        return
+    assert _revoke_events(provide_metrics_redis) == ["role_change"]
+    with _session_as(app, SECOND_USER_ID) as (client, csrf_token):
+        created = client.post(
+            url_for(ROUTES.INVITE_LINKS.CREATE_INVITE_LINK, utub_id=FIRST_UTUB_ID),
+            json={"expires_in_days": 7},
+            headers={"X-CSRFToken": csrf_token},
+        )
+    assert created.status_code == 201
+    assert len(unrevoked(app)) == 1
+
+
+def test_transfer_under_owner_only_expired_link_revoked_without_metric(
+    metrics_enabled_app, provide_metrics_redis, every_user_in_every_utub, app: Flask
+) -> None:
+    """An already-expired link is still revoked, but it was not live so no
+    role_change metric is emitted."""
+    set_members_settings(app, FIRST_UTUB_ID, {"invite_link_creators": "owner_only"})
+    add_invite_link(
+        app,
+        FIRST_UTUB_ID,
+        CREATOR_ID,
+        expires_at=utc_now() - timedelta(days=1),
+    )
+
+    response = _transfer(app, CREATOR_ID, SECOND_USER_ID)
+
+    assert response.status_code == 200
+    assert unrevoked(app) == []
+    assert sum_counter_values(provide_metrics_redis, EventName.INVITE_LINK_REVOKED) == 0
+
+
+def test_transfer_under_owner_only_leaves_another_creators_link(
+    every_user_in_every_utub, app: Flask
+) -> None:
+    set_members_settings(app, FIRST_UTUB_ID, {"invite_link_creators": "owner_only"})
+    set_member_role(app, FIRST_UTUB_ID, THIRD_USER_ID, _CO)
+    add_invite_link(app, FIRST_UTUB_ID, THIRD_USER_ID)
+
+    response = _transfer(app, CREATOR_ID, SECOND_USER_ID)
+
+    assert response.status_code == 200
+    assert len(unrevoked(app)) == 1
 
 
 def test_transfer_then_new_owner_removes_former_owner_revokes(

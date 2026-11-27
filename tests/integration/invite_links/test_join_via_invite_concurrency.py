@@ -41,6 +41,7 @@ from tests.integration.invite_links.concurrency_helpers import (
     assert_no_server_error,
     exec_sql,
     held_lock,
+    invite_rows,
     join_all,
     max_uses,
     member_count,
@@ -212,6 +213,71 @@ def test_join_in_progress_wins_over_queued_manager(committed_invite_utub) -> Non
     assert max_uses(app, invite_id) == SEEDED_MAX_USES
     assert use_count(app, invite_id) == SEEDED_USE_COUNT + 1
     assert acceptance_count(app, invite_id) == 1
+
+
+def _prepare_tighten(
+    app: Flask, utub_id: int, user_id: int
+) -> Callable[[], ThreadResult]:
+    """A logged-in callable that sends the real settings PATCH setting ``no_one``."""
+    with app.test_request_context():
+        url = url_for(ROUTES.UTUBS.UPDATE_UTUB_SETTINGS, utub_id=utub_id)
+    return prepare_request(
+        app, user_id, "patch", url, {"members": {"invite_link_creators": "no_one"}}
+    )
+
+
+def test_join_holding_utubs_lock_wins_over_queued_tightening(
+    committed_invite_utub,
+) -> None:
+    """
+    GIVEN a live link and a holder on the Utubs row
+    WHEN a join queues first, then the tightening PATCH to no_one
+    THEN the joiner is admitted before the revoke commits, and the link ends revoked
+    """
+    app, utub_id, invite_id, user_ids = committed_invite_utub
+    tighten = _prepare_tighten(app, utub_id, user_ids[CREATOR_INDEX])
+    with held_lock(app, LOCK_UTUB_SQL, utub_id):
+        join_thread, join_box = spawn(
+            lambda: _join_worker(app, user_ids[MEMBER_INDEX], invite_id)
+        )
+        wait_until_blocked(app, [join_thread], expected=1)
+        patch_thread, patch_box = spawn(tighten)
+        wait_until_blocked(app, [join_thread, patch_thread], expected=2)
+    join_all(app, [join_thread, patch_thread])
+
+    assert join_box == [(InviteJoinOutcome.JOINED.value, utub_id)]
+    assert_no_server_error(patch_box[0])
+    assert patch_box[0][0] == 200
+    assert patch_box[0][1]["inviteLinkRevoked"] is True
+    assert member_count(app, utub_id) == 2
+    assert [revoked for _, _, revoked in invite_rows(app, utub_id)] == [True]
+
+
+def test_tightening_holding_utubs_lock_refuses_queued_join(
+    committed_invite_utub,
+) -> None:
+    """
+    GIVEN a live link and a holder on the Utubs row
+    WHEN the tightening PATCH to no_one queues first, then a join
+    THEN the join is refused (dead) and never admitted through the revoked link
+    """
+    app, utub_id, invite_id, user_ids = committed_invite_utub
+    tighten = _prepare_tighten(app, utub_id, user_ids[CREATOR_INDEX])
+    with held_lock(app, LOCK_UTUB_SQL, utub_id):
+        patch_thread, patch_box = spawn(tighten)
+        wait_until_blocked(app, [patch_thread], expected=1)
+        join_thread, join_box = spawn(
+            lambda: _join_worker(app, user_ids[MEMBER_INDEX], invite_id)
+        )
+        wait_until_blocked(app, [patch_thread, join_thread], expected=2)
+    join_all(app, [patch_thread, join_thread])
+
+    assert join_box == [(InviteJoinOutcome.DEAD.value, None)]
+    assert_no_server_error(patch_box[0])
+    assert patch_box[0][0] == 200
+    assert member_count(app, utub_id) == 1
+    assert acceptance_count(app, invite_id) == 0
+    assert [revoked for _, _, revoked in invite_rows(app, utub_id)] == [True]
 
 
 def test_double_submit_counts_once(committed_invite_utub) -> None:
