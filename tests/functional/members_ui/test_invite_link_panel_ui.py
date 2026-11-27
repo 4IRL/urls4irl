@@ -14,6 +14,7 @@ from backend.models.utub_members import Member_Role
 from backend.utils.strings.invite_link_strs import INVITE_LINK_PANEL
 from tests.functional.db_utils import (
     get_utub_this_user_created,
+    set_member_role_in_utub,
     set_utub_locked_state,
 )
 from tests.functional.locators import HomePageLocators as HPL
@@ -270,7 +271,7 @@ def test_panel_closes_when_utub_gets_locked(
     )
     expect(page.locator(HPL.INVITE_LINK_MODAL)).to_be_hidden()
     expect(page.locator(HPL.BUTTON_MEMBER_INVITE_LINK)).to_be_hidden()
-    expect(page.locator("#MemberRowActionAnnouncement")).to_have_text(
+    expect(page.locator(HPL.MEMBER_ROW_ACTION_ANNOUNCEMENT)).to_have_text(
         INVITE_LINK_PANEL.FORCED_CLOSE
     )
 
@@ -356,3 +357,86 @@ def test_hide_member_list_keeps_trigger_for_managers_and_hides_it_from_members(
     expect(page.locator(f"{HPL.MEMBER_DECK} {HPL.BADGES_MEMBERS}")).to_have_count(3)
     expect(page.locator(HPL.BUTTON_MEMBER_INVITE_LINK)).to_be_hidden()
     expect(page.locator(HPL.INVITE_LINK_MODAL)).to_be_hidden()
+
+
+def test_trigger_hidden_from_co_owner_when_only_the_owner_can_create(
+    page: Page, create_test_utubmembers, provide_app: Flask
+):
+    """
+    GIVEN a UTub whose invite links are owner-only
+    WHEN a co-owner views the Members deck
+    THEN the invite link trigger is hidden
+    """
+    app = provide_app
+    utub_id = get_utub_this_user_created(app, OWNER_ID).id
+    seed_policy(app=app, utub_id=utub_id, invite_link_creators="owner_only")
+    login_as(app=app, page=page, user_id=CO_OWNER_ID, role=Member_Role.CO_CREATOR)
+    expect(page.locator(HPL.BUTTON_MEMBER_INVITE_LINK)).to_be_hidden()
+
+
+def test_owner_sees_creator_not_allowed_copy_for_a_link_the_setting_killed(
+    page: Page, create_test_utubmembers, provide_app: Flask
+):
+    """
+    GIVEN a live co-owner link that was never revoked and an owner-only setting
+    WHEN the owner opens the panel
+    THEN the dead state gives the creator-not-allowed reason and no URL input
+    """
+    app = provide_app
+    utub_id = get_utub_this_user_created(app, OWNER_ID).id
+    set_member_role_in_utub(app, CO_OWNER_ID, utub_id, Member_Role.CO_CREATOR)
+    seed_policy(app=app, utub_id=utub_id, invite_link_creators="owner_only")
+    add_invite_link(app, utub_id, CO_OWNER_ID)
+    login_as(app=app, page=page, user_id=OWNER_ID)
+    _open_panel(page=page)
+    expect(page.locator(HPL.INVITE_LINK_MODAL_BODY)).to_contain_text(
+        INVITE_LINK_PANEL.DEAD_CREATOR_NOT_ALLOWED
+    )
+    expect(page.locator(HPL.INVITE_LINK_URL_INPUT)).to_have_count(0)
+
+
+def test_co_owner_preview_switch_is_disabled_with_the_owner_only_hint(
+    page: Page, create_test_utubmembers, provide_app: Flask
+):
+    """
+    GIVEN a live link while co-owners cannot turn on previews (the default)
+    WHEN a co-owner opens the panel
+    THEN the preview switch is aria-disabled and the owner-only hint is shown
+    """
+    app = provide_app
+    utub_id = get_utub_this_user_created(app, OWNER_ID).id
+    add_invite_link(app, utub_id, OWNER_ID)
+    login_as(app=app, page=page, user_id=CO_OWNER_ID, role=Member_Role.CO_CREATOR)
+    _open_panel(page=page)
+    expect(page.locator(HPL.INVITE_LINK_PREVIEW_SWITCH)).to_have_attribute(
+        "aria-disabled", "true"
+    )
+    expect(page.locator(HPL.INVITE_LINK_PREVIEW_OWNER_HINT)).to_have_text(
+        INVITE_LINK_PANEL.PREVIEW_OWNER_ONLY_HINT
+    )
+
+
+def test_co_owner_create_after_owner_tightens_closes_panel_with_the_refusal(
+    page: Page, create_test_utubmembers, provide_app: Flask
+):
+    """
+    GIVEN a co-owner with the empty create form open
+    WHEN the owner switches creation to owner-only and the co-owner presses Create
+    THEN the panel closes, the errorCode 7 message is announced and the trigger is
+        hidden once the UTub refreshes
+    """
+    app = provide_app
+    utub_id = login_as(
+        app=app, page=page, user_id=CO_OWNER_ID, role=Member_Role.CO_CREATOR
+    )
+    _open_panel(page=page)
+    expect(page.locator(HPL.INVITE_LINK_CREATE_BTN)).to_be_visible()
+
+    seed_policy(app=app, utub_id=utub_id, invite_link_creators="owner_only")
+    page.locator(HPL.INVITE_LINK_CREATE_BTN).click()
+
+    expect(page.locator(HPL.INVITE_LINK_MODAL)).to_be_hidden()
+    expect(page.locator(HPL.MEMBER_ROW_ACTION_ANNOUNCEMENT)).to_have_text(
+        INVITE_LINK_PANEL.CREATE_NOT_ALLOWED
+    )
+    expect(page.locator(HPL.BUTTON_MEMBER_INVITE_LINK)).to_be_hidden()

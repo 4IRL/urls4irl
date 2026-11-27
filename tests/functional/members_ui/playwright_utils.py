@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from typing import Callable
 
 from flask import Flask
-from playwright.sync_api import Locator, Page, Response, Route, expect
+from playwright.sync_api import Locator, Page, Request, Response, Route, expect
 
 from backend import db
 from backend.cli.mock_constants import USERNAME_BASE
@@ -77,14 +77,42 @@ def is_settings_patch(response: Response) -> bool:
     )
 
 
+def is_settings_patch_request(request: Request) -> bool:
+    """True for a UTub settings PATCH request."""
+    return (
+        request.method == "PATCH"
+        and _UTUB_SETTINGS_PATCH_URL_RE.search(request.url) is not None
+    )
+
+
+def fail_settings_patch(*, page: Page) -> None:
+    """Route every UTub settings PATCH to a 500 (other methods, such as the
+    resync GET on the same URL, go through to the server)."""
+
+    def _handler(route: Route) -> None:
+        if route.request.method != "PATCH":
+            route.continue_()
+            return
+        route.fulfill(
+            status=500,
+            content_type="application/json",
+            body=json.dumps({"message": "Server error", "status": "Failure"}),
+        )
+
+    page.route(_UTUB_SETTINGS_PATCH_URL_RE, _handler)
+
+
 def seed_policy(
     *,
     app: Flask,
     utub_id: int,
     co_owners_can_remove: bool = False,
     members_can_add: bool = False,
+    invite_link_creators: str = "owner_and_co_owners",
+    co_owners_can_enable_preview: bool = False,
 ) -> None:
-    """Write both member-permission switches into the UTub's settings."""
+    """Write the member-permission switches and the invite-link rows into the
+    UTub's settings (the invite rows default to the shipped defaults)."""
     set_utub_settings(
         app,
         utub_id,
@@ -92,6 +120,8 @@ def seed_policy(
             "members": {
                 "co_owners_can_remove": co_owners_can_remove,
                 "members_can_add": members_can_add,
+                "invite_link_creators": invite_link_creators,
+                "co_owners_can_enable_preview": co_owners_can_enable_preview,
             }
         },
     )
@@ -508,6 +538,13 @@ def get_invite_link_preview_row(
             invite.preview_window_days,
             invite.preview_ends_at,
         )
+
+
+def is_invite_link_revoked_in_db(*, app: Flask, invite_link_id: int) -> bool:
+    """Whether an invite link row has a `revoked_at` stamp."""
+    with app.app_context():
+        invite: Utub_Invite_Links = Utub_Invite_Links.query.get(invite_link_id)
+        return invite.revoked_at is not None
 
 
 def set_user_theme_to_system_in_db(*, app: Flask, user_id: int) -> None:
