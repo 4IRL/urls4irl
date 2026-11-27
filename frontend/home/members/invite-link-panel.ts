@@ -8,7 +8,11 @@ import { INVITE_LINK_COPY_RESULT } from "../../types/metrics-dim-values.js";
 import { AppEvents, emit as emitAppEvent } from "../../lib/event-bus.js";
 import { getState, subscribe, type AppState } from "../../store/app-store.js";
 import { InviteLinkErrorCodes } from "../../types/error-codes.js";
-import { canManageInviteLink } from "../utubs/policy.js";
+import {
+  canEnableInvitePreview,
+  canManageInviteLink,
+  learnPolicyOff,
+} from "../utubs/policy.js";
 import { updateUTubOnFindingStaleData } from "../utubs/stale-data.js";
 import { buildSwitchButton } from "../panel-settings/row-controls.js";
 import { withMemberControlFocusFallback } from "./focus-fallback.js";
@@ -50,6 +54,7 @@ const RELEVANT_KEYS: ReadonlyArray<keyof AppState> = [
   "isCurrentUserOwner",
   "isCoCreator",
   "isCurrentUTubLocked",
+  "settings",
 ];
 
 const EXPIRY_DAY_CHOICES = [1, 7, 30] as const;
@@ -313,8 +318,13 @@ export function deadReasonFor({ link }: { link: InviteLink }): string {
         template: strings.INVITE_LINK_PANEL_DEAD_USED_UP,
         values: { uses: usesLabel({ count: link.maxUses ?? link.useCount }) },
       });
-    default:
+    case "creator_not_allowed":
+      return strings.INVITE_LINK_PANEL_DEAD_CREATOR_NOT_ALLOWED;
+    case "creator_demoted":
       return strings.INVITE_LINK_PANEL_DEAD_CREATOR_DEMOTED;
+    default:
+      // A status this client does not know yet: neutral, never a wrong reason.
+      return strings.INVITE_LINK_PANEL_DEAD_UNKNOWN;
   }
 }
 
@@ -473,6 +483,9 @@ const PREVIEW_DESC_ID = "inviteLinkPreviewDesc";
 const PREVIEW_WARNING_ID = "inviteLinkPreviewWarning";
 const PREVIEW_WINDOW_SELECT_ID = "inviteLinkPreviewWindowSelect";
 const PREVIEW_WINDOW_HINT_ID = "inviteLinkPreviewWindowHint";
+// The one shared "only the owner" hint: the switch, the length select and the
+// errorCode 8 inline error all point at this string.
+const PREVIEW_OWNER_HINT_ID = "inviteLinkPreviewOwnerHint";
 const PREVIEW_WINDOW_DAY_CHOICES = [1, 3, 7] as const;
 const DAY_MS = 86_400_000;
 const PREVIEW_BLOCK_SELECTOR = `${BODY_SELECTOR} .invitePanelPreview`;
@@ -482,27 +495,101 @@ const PREVIEW_BLOCK_SELECTOR = `${BODY_SELECTOR} .invitePanelPreview`;
 // (only while it exists).
 function previewDescribedBy({
   withError,
+  hasOwnerHint,
   hasWarning,
 }: {
   withError: boolean;
+  hasOwnerHint: boolean;
   hasWarning: boolean;
 }): string {
   return [
     ...(withError ? [INLINE_ERROR_ID] : []),
     PREVIEW_DESC_ID,
+    ...(hasOwnerHint ? [PREVIEW_OWNER_HINT_ID] : []),
     ...(hasWarning ? [PREVIEW_WARNING_ID] : []),
   ].join(" ");
 }
 
-// Rewrites the live switch's aria-describedby from the DOM as it is now.
-function syncPreviewDescribedBy({ withError }: { withError: boolean }): void {
-  document.getElementById(PREVIEW_SWITCH_ID)?.setAttribute(
+// Rewrites the live switch's aria-describedby from the DOM (or the preview
+// block `root`) as it is now.
+function syncPreviewDescribedBy({
+  withError,
+  root = document,
+}: {
+  withError: boolean;
+  root?: ParentNode;
+}): void {
+  root.querySelector(`#${PREVIEW_SWITCH_ID}`)?.setAttribute(
     "aria-describedby",
     previewDescribedBy({
       withError,
-      hasWarning: document.getElementById(PREVIEW_WARNING_ID) !== null,
+      hasOwnerHint: root.querySelector(`#${PREVIEW_OWNER_HINT_ID}`) !== null,
+      hasWarning: root.querySelector(`#${PREVIEW_WARNING_ID}`) !== null,
     }),
   );
+}
+
+function setAriaDisabled({
+  element,
+  disabled,
+}: {
+  element: Element;
+  disabled: boolean;
+}): void {
+  if (disabled) element.setAttribute("aria-disabled", "true");
+  else element.removeAttribute("aria-disabled");
+}
+
+// Gives the preview block the viewer's right to turn a preview on or change its
+// length: without it the length select is aria-disabled, the switch is
+// aria-disabled while the preview is off (an on preview can still be turned
+// off), and the one shared hint exists and describes both. Idempotent; edits in
+// place so focus stays on the same control.
+function applyPreviewPermission({
+  block,
+  link,
+}: {
+  block: ParentNode;
+  link: InviteLink;
+}): void {
+  const switchButton = block.querySelector(`#${PREVIEW_SWITCH_ID}`);
+  const select = block.querySelector(`#${PREVIEW_WINDOW_SELECT_ID}`);
+  if (switchButton === null || select === null) return;
+  const allowed = canEnableInvitePreview();
+  setAriaDisabled({
+    element: switchButton,
+    disabled: !allowed && !link.previewEffectiveEnabled,
+  });
+  setAriaDisabled({ element: select, disabled: !allowed });
+  const hint = block.querySelector(`#${PREVIEW_OWNER_HINT_ID}`);
+  if (allowed) {
+    hint?.remove();
+  } else if (hint === null) {
+    const created = makeElement({
+      tag: "p",
+      id: PREVIEW_OWNER_HINT_ID,
+      className: "invitePanelHint",
+      text: APP_CONFIG.strings.INVITE_LINK_PANEL_PREVIEW_OWNER_ONLY_HINT,
+    });
+    const warning = block.querySelector(`#${PREVIEW_WARNING_ID}`);
+    if (warning !== null) warning.before(created);
+    else (block as Element).append(created);
+  }
+  syncPreviewDescribedBy({
+    withError: describedByIncludesError({ element: switchButton }),
+    root: block,
+  });
+  syncWindowDescribedBy({
+    withError: describedByIncludesError({ element: select }),
+    root: block,
+  });
+}
+
+// Re-applies the permission to the rendered block after a settings change.
+function syncPreviewPermissionInPlace(): void {
+  const block = $(PREVIEW_BLOCK_SELECTOR)[0];
+  if (block === undefined || _liveLink === null) return;
+  applyPreviewPermission({ block, link: _liveLink });
 }
 
 function previewWarningFor({ link }: { link: InviteLink }): HTMLElement | null {
@@ -651,13 +738,22 @@ function makePreviewWindowHint({
 
 // The length select's aria-describedby, one value for every writer: the inline
 // error (only while it describes the select), then the hint (only while it exists).
-function syncWindowDescribedBy({ withError }: { withError: boolean }): void {
-  const select = document.getElementById(PREVIEW_WINDOW_SELECT_ID);
+function syncWindowDescribedBy({
+  withError,
+  root = document,
+}: {
+  withError: boolean;
+  root?: ParentNode;
+}): void {
+  const select = root.querySelector(`#${PREVIEW_WINDOW_SELECT_ID}`);
   if (select === null) return;
   const ids = [
     ...(withError ? [INLINE_ERROR_ID] : []),
-    ...(document.getElementById(PREVIEW_WINDOW_HINT_ID) !== null
+    ...(root.querySelector(`#${PREVIEW_WINDOW_HINT_ID}`) !== null
       ? [PREVIEW_WINDOW_HINT_ID]
+      : []),
+    ...(root.querySelector(`#${PREVIEW_OWNER_HINT_ID}`) !== null
+      ? [PREVIEW_OWNER_HINT_ID]
       : []),
   ];
   if (ids.length === 0) select.removeAttribute("aria-describedby");
@@ -705,15 +801,8 @@ function makePreviewBlock({ link }: { link: InviteLink }): HTMLElement {
   if (windowHint !== null) block.append(windowHint);
   const warning = previewWarningFor({ link });
   if (warning !== null) block.append(warning);
-  switchButton.setAttribute(
-    "aria-describedby",
-    previewDescribedBy({ withError: false, hasWarning: warning !== null }),
-  );
-  if (windowHint !== null) {
-    block
-      .querySelector(`#${PREVIEW_WINDOW_SELECT_ID}`)
-      ?.setAttribute("aria-describedby", PREVIEW_WINDOW_HINT_ID);
-  }
+  // Sets the permission state, the owner hint and both aria-describedby values.
+  applyPreviewPermission({ block, link });
   return block;
 }
 
@@ -960,9 +1049,13 @@ function handleModalShown(): void {
 }
 
 function messageForDenied({ errorCode }: { errorCode: number | null }): string {
-  return errorCode === InviteLinkErrorCodes.UTUB_IS_LOCKED
-    ? APP_CONFIG.strings.UTUB_IS_LOCKED
-    : APP_CONFIG.strings.INVITE_LINK_PANEL_MANAGE_LOST;
+  if (errorCode === InviteLinkErrorCodes.UTUB_IS_LOCKED) {
+    return APP_CONFIG.strings.UTUB_IS_LOCKED;
+  }
+  if (errorCode === InviteLinkErrorCodes.CREATE_NOT_ALLOWED) {
+    return APP_CONFIG.strings.INVITE_LINK_PANEL_CREATE_NOT_ALLOWED;
+  }
+  return APP_CONFIG.strings.INVITE_LINK_PANEL_MANAGE_LOST;
 }
 
 // A 403/404: announce (the single announcement), close silently, then refresh
@@ -1392,6 +1485,8 @@ function refreshPreviewInPlace({ link }: { link: InviteLink }): void {
   if (warning !== null) $(PREVIEW_BLOCK_SELECTOR)[0]?.append(warning);
   syncPreviewDescribedBy({ withError });
   refreshPreviewWindowInPlace({ link });
+  const block = $(PREVIEW_BLOCK_SELECTOR)[0];
+  if (block !== undefined) applyPreviewPermission({ block, link });
 }
 
 // Refills the length options and rebuilds the hint without replacing the select.
@@ -1617,6 +1712,28 @@ function restoreForUsesBelowJoined({
   );
 }
 
+// Code 8: the co-owner lost the right to turn on previews or change their
+// length. Revert the control that sent the request, keep the panel open, learn
+// the key off at once (before the refresh, so a failed refresh still leaves the
+// controls disabled), show the shared hint as the inline error, then refresh.
+function restoreForPreviewNotAllowed({
+  field,
+  utubID,
+}: {
+  field: SaveField;
+  utubID: number;
+}): void {
+  restoreCommitted();
+  learnPolicyOff({ utubID, key: "members.co_owners_can_enable_preview" });
+  syncPreviewPermissionInPlace();
+  showInlineError({
+    message: APP_CONFIG.strings.INVITE_LINK_PANEL_PREVIEW_OWNER_ONLY_HINT,
+    describes: controlFor({ field }),
+  });
+  // A failed refresh is silent: the learned-off key already disabled the controls.
+  Promise.resolve(updateUTubOnFindingStaleData({ utubID })).catch(() => {});
+}
+
 function onSaveFailure({
   field,
   failure,
@@ -1654,6 +1771,10 @@ function onSaveFailure({
   }
   if (failure.errorCode === InviteLinkErrorCodes.USES_BELOW_JOINED) {
     restoreForUsesBelowJoined({ utubID, token });
+    return;
+  }
+  if (failure.errorCode === InviteLinkErrorCodes.PREVIEW_NOT_ALLOWED) {
+    restoreForPreviewNotAllowed({ field, utubID });
     return;
   }
   if (failure.status === 403 || failure.status === 404) {
@@ -1733,6 +1854,11 @@ function handleSelectChange(event: JQuery.ChangeEvent): void {
           ? "window"
           : null;
   if (field === null) return;
+  if (field === "window" && !canEnableInvitePreview()) {
+    // An aria-disabled native select still changes value: put it back, send nothing.
+    select.value = committedValue({ field });
+    return;
+  }
   if (_lifecycleInFlight) {
     select.value = committedValue({ field });
     return;
@@ -1914,6 +2040,8 @@ function cancelConfirm(): void {
 // is in flight (the switch stays enabled and focused, so it just ignores clicks).
 function handlePreviewSwitchClick(): void {
   if (_liveLink === null || _inFlight || _lifecycleInFlight) return;
+  // Without the right a co-owner can only turn an on preview off.
+  if (!_liveLink.previewEffectiveEnabled && !canEnableInvitePreview()) return;
   saveSetting({
     field: "preview",
     value: String(!_liveLink.previewEffectiveEnabled),
@@ -2037,6 +2165,7 @@ export function initInviteLinkPanel(): () => void {
     if (!RELEVANT_KEYS.some((key) => changedKeys.includes(key))) return;
     withMemberControlFocusFallback({ write: syncInviteLinkTrigger });
     if (_isOpen && !canManageInviteLink()) forceClosePanel();
+    else if (_isOpen) syncPreviewPermissionInPlace();
   });
   return () => {
     unsubscribeStore();

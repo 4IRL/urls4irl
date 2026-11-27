@@ -9,6 +9,7 @@ import {
   replaceExpiryDays,
   replaceInviteLink,
   revokeInviteLink,
+  updateInviteLink,
   type InviteLink,
   type InviteLinkMutationFailure,
 } from "../invite-link-client.js";
@@ -21,6 +22,8 @@ import { APP_CONFIG } from "../../../lib/config.js";
 import { getState, resetStore, setState } from "../../../store/app-store.js";
 import { updateUTubOnFindingStaleData } from "../../utubs/stale-data.js";
 import { AppEvents, emit as emitAppEvent } from "../../../lib/event-bus.js";
+import { InviteLinkErrorCodes } from "../../../types/error-codes.js";
+import { EMPTY_UTUB_SETTINGS } from "../../../types/settings.js";
 
 vi.mock("../invite-link-client.js", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../invite-link-client.js")>()),
@@ -28,6 +31,7 @@ vi.mock("../invite-link-client.js", async (importOriginal) => ({
   createInviteLink: vi.fn(),
   replaceInviteLink: vi.fn(),
   revokeInviteLink: vi.fn(),
+  updateInviteLink: vi.fn(),
 }));
 vi.mock("../../utubs/stale-data.js", () => ({
   updateUTubOnFindingStaleData: vi.fn(),
@@ -137,6 +141,7 @@ describe("invite link lifecycle (create, New link, Revoke)", () => {
       isCurrentUserOwner: true,
       isCoCreator: false,
       isCurrentUTubLocked: false,
+      settings: EMPTY_UTUB_SETTINGS,
     });
     unsubscribe = initInviteLinkPanel();
   });
@@ -437,6 +442,83 @@ describe("invite link lifecycle (create, New link, Revoke)", () => {
         });
       },
     );
+
+    describe("errorCode 7 (create not allowed)", () => {
+      const NOT_ALLOWED = InviteLinkErrorCodes.CREATE_NOT_ALLOWED;
+
+      function expectClosedWithNotAllowed() {
+        expect(isInviteLinkPanelOpen()).toBe(false);
+        expect(announcement()).toBe(
+          strings.INVITE_LINK_PANEL_CREATE_NOT_ALLOWED,
+        );
+        expect(updateUTubOnFindingStaleData).toHaveBeenCalledWith({
+          utubID: 1,
+        });
+      }
+
+      it("create closes, announces and refreshes", async () => {
+        await openWith(null);
+        vi.mocked(createInviteLink).mockRejectedValueOnce(
+          failure(403, NOT_ALLOWED),
+        );
+
+        await click("#inviteLinkCreateBtn");
+
+        expectClosedWithNotAllowed();
+        expect(announcement()).not.toBe(strings.INVITE_LINK_PANEL_MANAGE_LOST);
+        // The refresh brings the new settings: the trigger hides.
+        setState({
+          settings: {
+            ...EMPTY_UTUB_SETTINGS,
+            members: {
+              ...EMPTY_UTUB_SETTINGS.members,
+              invite_link_creators: "no_one",
+            },
+          },
+        });
+        expect($("#memberBtnInviteLink").hasClass("hidden")).toBe(true);
+      });
+
+      it("replace closes, announces and refreshes", async () => {
+        await openWith(liveLink());
+        vi.mocked(replaceInviteLink).mockRejectedValueOnce(
+          failure(403, NOT_ALLOWED),
+        );
+
+        await confirmNewLink();
+
+        expectClosedWithNotAllowed();
+      });
+
+      it("a settings edit closes, announces and refreshes", async () => {
+        await openWith(liveLink());
+        vi.mocked(updateInviteLink).mockRejectedValueOnce(
+          failure(403, NOT_ALLOWED),
+        );
+        const select = $("#inviteLinkUsesSelect")[0] as HTMLSelectElement;
+        select.value = "5";
+        select.dispatchEvent(new Event("change", { bubbles: true }));
+        await settle();
+
+        expectClosedWithNotAllowed();
+      });
+
+      it("a stale response still announces the message and refreshes", async () => {
+        await openWith(null);
+        const pending = deferred<InviteLink>();
+        vi.mocked(createInviteLink).mockReturnValue(pending.promise);
+        await click("#inviteLinkCreateBtn");
+        setState({ isCurrentUserOwner: false, isCoCreator: false });
+        await settle();
+        expect(announcement()).toBe(strings.INVITE_LINK_PANEL_FORCED_CLOSE);
+        vi.mocked(updateUTubOnFindingStaleData).mockClear();
+
+        pending.reject(failure(403, NOT_ALLOWED));
+        await settle();
+
+        expectClosedWithNotAllowed();
+      });
+    });
 
     it.each([
       ["400 code 2", failure(400, 2)],

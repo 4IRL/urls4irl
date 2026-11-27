@@ -16,8 +16,27 @@ import {
   installModalMock,
 } from "../../../__tests__/helpers/invite-modal.js";
 import { APP_CONFIG } from "../../../lib/config.js";
-import { resetStore, setState } from "../../../store/app-store.js";
+import { getState, resetStore, setState } from "../../../store/app-store.js";
 import { updateUTubOnFindingStaleData } from "../../utubs/stale-data.js";
+import {
+  EMPTY_UTUB_SETTINGS,
+  type ResolvedUtubSettings,
+} from "../../../types/settings.js";
+import { InviteLinkErrorCodes } from "../../../types/error-codes.js";
+
+function settingsWith({
+  coOwnersCanEnablePreview,
+}: {
+  coOwnersCanEnablePreview: boolean;
+}): ResolvedUtubSettings {
+  return {
+    ...EMPTY_UTUB_SETTINGS,
+    members: {
+      ...EMPTY_UTUB_SETTINGS.members,
+      co_owners_can_enable_preview: coOwnersCanEnablePreview,
+    },
+  };
+}
 
 vi.mock("../invite-link-client.js", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../invite-link-client.js")>()),
@@ -161,6 +180,7 @@ describe("invite link preview switch", () => {
       isCurrentUserOwner: true,
       isCoCreator: false,
       isCurrentUTubLocked: false,
+      settings: settingsWith({ coOwnersCanEnablePreview: false }),
     });
     unsubscribe = initInviteLinkPanel();
     changeSpy = vi.fn<(event: Event) => void>();
@@ -1065,6 +1085,241 @@ describe("invite link preview switch", () => {
       expect(updateInviteLink).not.toHaveBeenCalled();
       expect(selectEl(WINDOW_ID).value).toBe("3");
       expect(changeSpy).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("co-owner without the preview right", () => {
+    const WINDOW_ID = "inviteLinkPreviewWindowSelect";
+    const OWNER_HINT_ID = "inviteLinkPreviewOwnerHint";
+    const OWNER_HINT = strings.INVITE_LINK_PANEL_PREVIEW_OWNER_ONLY_HINT;
+    const TEN_DAYS = "2099-01-11T00:00:00Z";
+
+    function becomeCoOwner({ allowed }: { allowed: boolean }) {
+      setState({
+        isCurrentUserOwner: false,
+        isCoCreator: true,
+        settings: settingsWith({ coOwnersCanEnablePreview: allowed }),
+      });
+    }
+
+    async function pick(value: string) {
+      const select = selectEl(WINDOW_ID);
+      select.value = value;
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+      await settle();
+    }
+
+    it("renders the switch and the select aria-disabled and described by the one hint while off", async () => {
+      becomeCoOwner({ allowed: false });
+      await openWith(liveLink({ expiresAt: TEN_DAYS }));
+
+      expect(switchEl().getAttribute("aria-disabled")).toBe("true");
+      expect(selectEl(WINDOW_ID).getAttribute("aria-disabled")).toBe("true");
+      expect($(`#${OWNER_HINT_ID}`).text()).toBe(OWNER_HINT);
+      expect($(`#${OWNER_HINT_ID}`).length).toBe(1);
+      expect(switchEl().getAttribute("aria-describedby")).toBe(
+        `inviteLinkPreviewDesc ${OWNER_HINT_ID}`,
+      );
+      expect(selectEl(WINDOW_ID).getAttribute("aria-describedby")).toContain(
+        OWNER_HINT_ID,
+      );
+      expect(switchEl().hasAttribute("disabled")).toBe(false);
+    });
+
+    it("a click on the disabled switch sends nothing", async () => {
+      becomeCoOwner({ allowed: false });
+      await openWith(liveLink());
+
+      switchEl().focus();
+      await clickSwitch();
+
+      expect(updateInviteLink).not.toHaveBeenCalled();
+      expect(switchEl().getAttribute("aria-checked")).toBe("false");
+      expect(document.activeElement).toBe(switchEl());
+    });
+
+    it("keeps the switch enabled while an owner-started preview is on, and turning it off sends the request", async () => {
+      becomeCoOwner({ allowed: false });
+      await openWith(onLink({ expiresAt: TEN_DAYS }));
+
+      expect(switchEl().hasAttribute("aria-disabled")).toBe(false);
+      expect(selectEl(WINDOW_ID).getAttribute("aria-disabled")).toBe("true");
+      vi.mocked(updateInviteLink).mockResolvedValue(
+        liveLink({ expiresAt: TEN_DAYS }),
+      );
+
+      await clickSwitch();
+
+      expect(updateInviteLink).toHaveBeenCalledWith({
+        utubID: 1,
+        body: { preview_enabled: false },
+      });
+      expect(switchEl().getAttribute("aria-checked")).toBe("false");
+      expect(switchEl().getAttribute("aria-disabled")).toBe("true");
+    });
+
+    it.each([
+      ["off", () => liveLink({ expiresAt: TEN_DAYS })],
+      ["on", () => onLink({ expiresAt: TEN_DAYS })],
+    ])(
+      "a length change while the preview is %s reverts and sends nothing",
+      async (_name, makeLink) => {
+        becomeCoOwner({ allowed: false });
+        await openWith(makeLink());
+
+        await pick("7");
+
+        expect(updateInviteLink).not.toHaveBeenCalled();
+        expect(selectEl(WINDOW_ID).value).toBe("3");
+      },
+    );
+
+    it("renders everything enabled with no hint when the right is on", async () => {
+      becomeCoOwner({ allowed: true });
+      await openWith(liveLink({ expiresAt: TEN_DAYS }));
+
+      expect(switchEl().hasAttribute("aria-disabled")).toBe(false);
+      expect(selectEl(WINDOW_ID).hasAttribute("aria-disabled")).toBe(false);
+      expect(document.getElementById(OWNER_HINT_ID)).toBeNull();
+    });
+
+    it("the owner never sees the hint", async () => {
+      await openWith(liveLink({ expiresAt: TEN_DAYS }));
+
+      expect(switchEl().hasAttribute("aria-disabled")).toBe(false);
+      expect(selectEl(WINDOW_ID).hasAttribute("aria-disabled")).toBe(false);
+      expect(document.getElementById(OWNER_HINT_ID)).toBeNull();
+    });
+
+    it("errorCode 8 on the switch reverts it, keeps the panel open and disables the controls at once", async () => {
+      becomeCoOwner({ allowed: true });
+      await openWith(liveLink({ expiresAt: TEN_DAYS }));
+      vi.mocked(updateInviteLink).mockRejectedValueOnce(
+        failure(403, InviteLinkErrorCodes.PREVIEW_NOT_ALLOWED),
+      );
+      switchEl().focus();
+
+      await clickSwitch();
+
+      expect(isInviteLinkPanelOpen()).toBe(true);
+      expect(switchEl().getAttribute("aria-checked")).toBe("false");
+      expect(switchEl().getAttribute("aria-disabled")).toBe("true");
+      expect(selectEl(WINDOW_ID).getAttribute("aria-disabled")).toBe("true");
+      expect(getState().settings?.members.co_owners_can_enable_preview).toBe(
+        false,
+      );
+      expect($("#inviteLinkInlineError").text()).toBe(OWNER_HINT);
+      expect(switchEl().getAttribute("aria-describedby")).toContain(
+        "inviteLinkInlineError",
+      );
+      expect(updateUTubOnFindingStaleData).toHaveBeenCalledWith({ utubID: 1 });
+      expect(announcement()).not.toBe(strings.INVITE_LINK_PANEL_MANAGE_LOST);
+    });
+
+    it("errorCode 8 on the length select reverts it and disables the controls even when the refresh rejects", async () => {
+      becomeCoOwner({ allowed: true });
+      await openWith(onLink({ expiresAt: TEN_DAYS }));
+      vi.mocked(updateUTubOnFindingStaleData).mockRejectedValueOnce(
+        new Error("refresh failed"),
+      );
+      vi.mocked(updateInviteLink).mockRejectedValueOnce(
+        failure(403, InviteLinkErrorCodes.PREVIEW_NOT_ALLOWED),
+      );
+
+      await pick("7");
+
+      expect(updateInviteLink).toHaveBeenCalledTimes(1);
+      expect(isInviteLinkPanelOpen()).toBe(true);
+      expect(selectEl(WINDOW_ID).value).toBe("3");
+      expect(selectEl(WINDOW_ID).getAttribute("aria-disabled")).toBe("true");
+      expect(getState().settings?.members.co_owners_can_enable_preview).toBe(
+        false,
+      );
+      expect(
+        getState().learnedOffPolicies["members.co_owners_can_enable_preview"],
+      ).toBe(1);
+      expect($("#inviteLinkInlineError").text()).toBe(OWNER_HINT);
+    });
+
+    it("errorCode 8 on the switch keeps the switch and select disabled even when the refresh rejects", async () => {
+      becomeCoOwner({ allowed: true });
+      await openWith(liveLink({ expiresAt: TEN_DAYS }));
+      vi.mocked(updateUTubOnFindingStaleData).mockRejectedValueOnce(
+        new Error("refresh failed"),
+      );
+      vi.mocked(updateInviteLink).mockRejectedValueOnce(
+        failure(403, InviteLinkErrorCodes.PREVIEW_NOT_ALLOWED),
+      );
+
+      await clickSwitch();
+
+      expect(isInviteLinkPanelOpen()).toBe(true);
+      expect(switchEl().getAttribute("aria-checked")).toBe("false");
+      expect(switchEl().getAttribute("aria-disabled")).toBe("true");
+      expect(selectEl(WINDOW_ID).getAttribute("aria-disabled")).toBe("true");
+      expect($("#inviteLinkInlineError").text()).toBe(OWNER_HINT);
+    });
+
+    it("a live right change keeps focus on the length select", async () => {
+      becomeCoOwner({ allowed: false });
+      await openWith(liveLink({ expiresAt: TEN_DAYS }));
+      const select = selectEl(WINDOW_ID);
+      select.focus();
+
+      setState({ settings: settingsWith({ coOwnersCanEnablePreview: true }) });
+
+      expect(selectEl(WINDOW_ID)).toBe(select);
+      expect(document.activeElement).toBe(select);
+      expect(select.hasAttribute("aria-disabled")).toBe(false);
+    });
+
+    it("a live right change while open updates the switch, select, hint and describedby in place, keeping focus", async () => {
+      becomeCoOwner({ allowed: false });
+      await openWith(liveLink({ expiresAt: TEN_DAYS }));
+      const before = switchEl();
+      before.focus();
+
+      setState({ settings: settingsWith({ coOwnersCanEnablePreview: true }) });
+
+      expect(switchEl()).toBe(before);
+      expect(document.activeElement).toBe(before);
+      expect(before.hasAttribute("aria-disabled")).toBe(false);
+      expect(selectEl(WINDOW_ID).hasAttribute("aria-disabled")).toBe(false);
+      expect(document.getElementById(OWNER_HINT_ID)).toBeNull();
+      expect(before.getAttribute("aria-describedby")).toBe(
+        "inviteLinkPreviewDesc",
+      );
+      expect(
+        selectEl(WINDOW_ID).getAttribute("aria-describedby") ?? "",
+      ).not.toContain(OWNER_HINT_ID);
+
+      setState({ settings: settingsWith({ coOwnersCanEnablePreview: false }) });
+
+      expect(before.getAttribute("aria-disabled")).toBe("true");
+      expect(document.getElementById(OWNER_HINT_ID)).not.toBeNull();
+      expect(before.getAttribute("aria-describedby")).toBe(
+        `inviteLinkPreviewDesc ${OWNER_HINT_ID}`,
+      );
+      expect(document.activeElement).toBe(before);
+    });
+
+    it("a live right change does not cancel an in-flight save", async () => {
+      becomeCoOwner({ allowed: true });
+      await openWith(onLink({ expiresAt: TEN_DAYS }));
+      const pending = deferred<InviteLink>();
+      vi.mocked(updateInviteLink).mockReturnValueOnce(pending.promise);
+
+      await clickSwitch();
+      setState({ settings: settingsWith({ coOwnersCanEnablePreview: false }) });
+      expect(updateInviteLink).toHaveBeenCalledTimes(1);
+      expect($("#inviteLinkSaving").length).toBe(1);
+      pending.resolve(liveLink({ expiresAt: TEN_DAYS }));
+      await settle();
+
+      expect(isInviteLinkPanelOpen()).toBe(true);
+      expect(switchEl().getAttribute("aria-checked")).toBe("false");
+      expect($("#inviteLinkSaving").length).toBe(0);
+      expect(announcement()).toBe(strings.INVITE_LINK_PANEL_PREVIEW_OFF);
     });
   });
 });

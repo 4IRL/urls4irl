@@ -20,6 +20,10 @@ import {
 } from "../../../__tests__/helpers/invite-modal.js";
 import { APP_CONFIG } from "../../../lib/config.js";
 import { InviteLinkErrorCodes } from "../../../types/error-codes.js";
+import {
+  EMPTY_UTUB_SETTINGS,
+  type ResolvedUtubSettings,
+} from "../../../types/settings.js";
 import { emit } from "../../../lib/metrics-client.js";
 import { UI_EVENTS } from "../../../types/metrics-events.js";
 import { getState, resetStore, setState } from "../../../store/app-store.js";
@@ -80,12 +84,24 @@ async function settle() {
   await vi.advanceTimersByTimeAsync(0);
 }
 
+function settingsWith({
+  creators = "owner_and_co_owners",
+}: {
+  creators?: ResolvedUtubSettings["members"]["invite_link_creators"];
+} = {}): ResolvedUtubSettings {
+  return {
+    ...EMPTY_UTUB_SETTINGS,
+    members: { ...EMPTY_UTUB_SETTINGS.members, invite_link_creators: creators },
+  };
+}
+
 function becomeManager({ utubID = 1 }: { utubID?: number } = {}) {
   setState({
     activeUTubID: utubID,
     isCurrentUserOwner: true,
     isCoCreator: false,
     isCurrentUTubLocked: false,
+    settings: settingsWith(),
   });
 }
 
@@ -109,12 +125,60 @@ describe("canManageInviteLink", () => {
     isCoCreator: false,
     isCurrentUTubLocked: false,
     activeUTubID: 1 as number | null,
+    settings: settingsWith() as ResolvedUtubSettings | null,
   };
 
   it.each([
     ["owner", { isCurrentUserOwner: true }, true],
     ["co-owner", { isCoCreator: true }, true],
     ["plain member", {}, false],
+    [
+      "owner under owner_only",
+      {
+        isCurrentUserOwner: true,
+        settings: settingsWith({ creators: "owner_only" }),
+      },
+      true,
+    ],
+    [
+      "co-owner under owner_only",
+      {
+        isCoCreator: true,
+        settings: settingsWith({ creators: "owner_only" }),
+      },
+      false,
+    ],
+    [
+      "owner under no_one",
+      {
+        isCurrentUserOwner: true,
+        settings: settingsWith({ creators: "no_one" }),
+      },
+      false,
+    ],
+    [
+      "co-owner under no_one",
+      { isCoCreator: true, settings: settingsWith({ creators: "no_one" }) },
+      false,
+    ],
+    [
+      "owner with missing settings",
+      { isCurrentUserOwner: true, settings: null },
+      false,
+    ],
+    [
+      "co-owner with missing settings",
+      { isCoCreator: true, settings: null },
+      false,
+    ],
+    [
+      "owner with an unknown creators value",
+      {
+        isCurrentUserOwner: true,
+        settings: settingsWith({ creators: "everyone" as never }),
+      },
+      false,
+    ],
     [
       "locked owner",
       { isCurrentUserOwner: true, isCurrentUTubLocked: true },
@@ -141,6 +205,7 @@ describe("canManageInviteLink", () => {
         isCoCreator: undefined,
         isCurrentUTubLocked: undefined,
         activeUTubID: 1,
+        settings: settingsWith(),
       } as never),
     ).toBe(false);
     expect(
@@ -207,6 +272,32 @@ describe("invite link panel", () => {
       setState({ activeUTubID: null });
       syncInviteLinkTrigger();
       expect(trigger().hasClass("hidden")).toBe(true);
+    });
+
+    it.each([
+      ["owner", "owner_and_co_owners", true],
+      ["owner", "owner_only", true],
+      ["owner", "no_one", false],
+      ["co_owner", "owner_and_co_owners", true],
+      ["co_owner", "owner_only", false],
+      ["co_owner", "no_one", false],
+    ] as const)(
+      "the %s trigger under %s is shown: %s",
+      (role, creators, shown) => {
+        setState({
+          isCurrentUserOwner: role === "owner",
+          isCoCreator: role === "co_owner",
+          settings: settingsWith({ creators }),
+        });
+        expect(trigger().hasClass("hidden")).toBe(!shown);
+      },
+    );
+
+    it("hides the trigger when settings are missing and shows it again when they arrive", () => {
+      setState({ settings: null });
+      expect(trigger().hasClass("hidden")).toBe(true);
+      setState({ settings: settingsWith() });
+      expect(trigger().hasClass("hidden")).toBe(false);
     });
 
     it("has a native title equal to its aria-label", () => {
@@ -319,6 +410,11 @@ describe("invite link panel", () => {
         {},
         new RegExp(strings.INVITE_LINK_PANEL_DEAD_CREATOR_DEMOTED),
       ],
+      [
+        "creator_not_allowed",
+        {},
+        new RegExp(strings.INVITE_LINK_PANEL_DEAD_CREATOR_NOT_ALLOWED),
+      ],
     ] as const)(
       "renders the %s dead state with no selects",
       async (status, extra, reason) => {
@@ -336,6 +432,14 @@ describe("invite link panel", () => {
         expect(document.activeElement?.id).toBe("inviteLinkCreateBtn");
       },
     );
+
+    it("renders the neutral copy, never the demoted copy, for an unknown status", async () => {
+      await openWith(liveLink({ status: "some_future_state" as never }));
+
+      const hint = $("#inviteLinkModalBody .invitePanelHint").text();
+      expect(hint).toBe(strings.INVITE_LINK_PANEL_DEAD_UNKNOWN);
+      expect(hint).not.toBe(strings.INVITE_LINK_PANEL_DEAD_CREATOR_DEMOTED);
+    });
 
     it("announces a dead reason once on open", async () => {
       await openWith(liveLink({ status: "creator_demoted" }));
@@ -746,6 +850,28 @@ describe("invite link panel", () => {
       window.jQuery("#inviteLinkModal").trigger("hidden.bs.modal");
       expect(calls).toEqual(["hide", "show", "show"]);
       expect(isInviteLinkPanelOpen()).toBe(true);
+    });
+
+    it("closes and announces when the owner switches to owner_only under an open co-owner panel", async () => {
+      setState({ isCurrentUserOwner: false, isCoCreator: true });
+      await openWith(liveLink());
+      setState({ settings: settingsWith({ creators: "owner_only" }) });
+      await settle();
+
+      expect(isInviteLinkPanelOpen()).toBe(false);
+      expect(trigger().hasClass("hidden")).toBe(true);
+      expect(announcement().text()).toBe(
+        strings.INVITE_LINK_PANEL_FORCED_CLOSE,
+      );
+    });
+
+    it("closes an open owner panel when the setting becomes no_one", async () => {
+      await openWith(liveLink());
+      setState({ settings: settingsWith({ creators: "no_one" }) });
+      await settle();
+
+      expect(isInviteLinkPanelOpen()).toBe(false);
+      expect(trigger().hasClass("hidden")).toBe(true);
     });
 
     it("closes and announces when the UTub is locked while open", async () => {

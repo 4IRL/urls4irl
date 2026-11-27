@@ -1,6 +1,7 @@
 import {
   canAddMembers,
   canDeleteTags,
+  canEnableInvitePreview,
   canTag,
   learnPolicyOff,
 } from "../policy.js";
@@ -136,6 +137,66 @@ describe("learnPolicyOff for tags keys", () => {
     expect(state.settings?.tags.members_can_delete_tags).toBe(false);
     expect(state.settings?.tags.members_can_tag).toBe(true);
     expect(state.learnedOffPolicies["tags.members_can_delete_tags"]).toBe(1);
+  });
+});
+
+describe("canEnableInvitePreview", () => {
+  function previewSettings({ on }: { on: boolean }) {
+    return resolveUtubSettings({
+      members: { co_owners_can_enable_preview: on },
+    } as never);
+  }
+
+  it.each([
+    ["owner, right off", { isCurrentUserOwner: true }, false, true],
+    ["owner, right on", { isCurrentUserOwner: true }, true, true],
+    ["co-owner, right off", { isCoCreator: true }, false, false],
+    ["co-owner, right on", { isCoCreator: true }, true, true],
+    ["plain member, right on", {}, true, false],
+  ])("%s -> %s", (_name, role, on, expected) => {
+    expect(
+      canEnableInvitePreview({
+        isCurrentUserOwner: false,
+        isCoCreator: false,
+        ...role,
+        settings: previewSettings({ on }),
+      }),
+    ).toBe(expected);
+  });
+
+  it("denies a co-owner with missing settings", () => {
+    expect(
+      canEnableInvitePreview({
+        isCurrentUserOwner: false,
+        isCoCreator: true,
+        settings: null,
+      }),
+    ).toBe(false);
+  });
+});
+
+describe("learnPolicyOff for the preview key", () => {
+  it("turns co_owners_can_enable_preview off and records its version", () => {
+    resetStore();
+    setState({
+      activeUTubID: 7,
+      settings: resolveUtubSettings({
+        members: { co_owners_can_enable_preview: true },
+      } as never),
+    });
+
+    expect(
+      learnPolicyOff({
+        utubID: 7,
+        key: "members.co_owners_can_enable_preview",
+      }),
+    ).toBe(true);
+
+    const state = getState();
+    expect(state.settings?.members.co_owners_can_enable_preview).toBe(false);
+    expect(
+      state.learnedOffPolicies["members.co_owners_can_enable_preview"],
+    ).toBe(1);
   });
 });
 
