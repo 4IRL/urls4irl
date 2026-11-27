@@ -288,7 +288,7 @@ def statements_while(action: Any) -> list[str]:
     return statements
 
 
-def set_members_settings(app: Flask, utub_id: int, members: dict[str, bool]) -> None:
+def set_members_settings(app: Flask, utub_id: int, members: dict[str, Any]) -> None:
     """Seed a UTub's stored ``members`` settings section, in place.
 
     Args:

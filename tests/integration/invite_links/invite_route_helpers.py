@@ -12,6 +12,7 @@ from flask.wrappers import Response
 from backend import db, limiter
 from backend.invite_links.validity import InviteState, evaluate_invite
 from backend.models.utub_invite_links import Utub_Invite_Links
+from backend.models.utub_members import Member_Role, Utub_Members
 from backend.utils.datetime_utils import utc_now
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.model_strs import MODELS
@@ -21,9 +22,14 @@ from tests.integration.short_links.short_link_helpers import (
     SECOND_USER_ID,
     logged_in_as,
 )
-from tests.utils_for_test import add_invite_link
+from tests.utils_for_test import add_invite_link, set_members_settings
 
-DEAD_STATE_IDS: list[str] = ["expired", "used_up", "creator_demoted"]
+DEAD_STATE_IDS: list[str] = [
+    "expired",
+    "used_up",
+    "creator_demoted",
+    "creator_not_allowed",
+]
 EXPIRY_TOLERANCE: timedelta = timedelta(minutes=2)
 
 
@@ -60,8 +66,42 @@ def state_of_current(app: Flask, utub_id: int = FIRST_UTUB_ID) -> InviteState:
         return evaluate_invite(invite)
 
 
+_EXPECTED_DEAD_STATE: dict[str, InviteState] = {
+    "expired": InviteState.EXPIRED,
+    "used_up": InviteState.USED_UP,
+    "creator_demoted": InviteState.CREATOR_NOT_MANAGER,
+    "creator_not_allowed": InviteState.CREATOR_NOT_ALLOWED,
+}
+
+
 def seed_dead(app: Flask, state: str, use_count_when_used_up: int = 1) -> int:
-    """Seed one dead-but-unrevoked row in the first UTub, returning its id."""
+    """Seed one dead-but-unrevoked row in the first UTub, returning its id.
+
+    Asserts the row really is in the requested state before returning.
+    """
+    invite_id = _seed_dead_row(app, state, use_count_when_used_up)
+    assert state_of_current(app) is _EXPECTED_DEAD_STATE[state]
+    return invite_id
+
+
+def _make_co_owner(app: Flask, user_id: int) -> None:
+    """Make the user a co-owner of the first UTub, adding the membership if absent."""
+    with app.app_context():
+        membership = db.session.get(Utub_Members, (FIRST_UTUB_ID, user_id))
+        if membership is None:
+            db.session.add(
+                Utub_Members(
+                    utub_id=FIRST_UTUB_ID,
+                    user_id=user_id,
+                    member_role=Member_Role.CO_CREATOR,
+                )
+            )
+        else:
+            membership.member_role = Member_Role.CO_CREATOR
+        db.session.commit()
+
+
+def _seed_dead_row(app: Flask, state: str, use_count_when_used_up: int) -> int:
     if state == "expired":
         return add_invite_link(
             app, FIRST_UTUB_ID, CREATOR_ID, expires_at=utc_now() - timedelta(minutes=1)
@@ -74,6 +114,10 @@ def seed_dead(app: Flask, state: str, use_count_when_used_up: int = 1) -> int:
             max_uses=use_count_when_used_up,
             use_count=use_count_when_used_up,
         )
+    if state == "creator_not_allowed":
+        # A co-owner's link, with owner_only stored directly (no revoke).
+        _make_co_owner(app, SECOND_USER_ID)
+        set_members_settings(app, FIRST_UTUB_ID, {"invite_link_creators": "owner_only"})
     return add_invite_link(app, FIRST_UTUB_ID, SECOND_USER_ID)
 
 

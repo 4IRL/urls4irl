@@ -24,6 +24,8 @@ DEFAULT_SETTINGS_DICT: dict[str, dict[str, Any]] = {
         "co_owners_can_remove": False,
         "members_can_add": False,
         "hide_member_list": False,
+        "invite_link_creators": "owner_and_co_owners",
+        "co_owners_can_enable_preview": False,
     },
     "tags": {"members_can_tag": True, "members_can_delete_tags": True},
     "urls": dict(URLS_DEFAULTS),

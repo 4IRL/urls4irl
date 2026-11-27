@@ -32,6 +32,7 @@ INVITE_LINK_METRIC_REVOKE_REASONS: tuple[str, ...] = (
     "replaced",
     "dead_on_create",
     "role_change",
+    "setting_change",
 )
 
 INVITE_LINK_METRIC_VIEWER_STATE_VALUES: tuple[str, ...] = (
@@ -65,6 +66,8 @@ class InviteState(StrEnum):
     USED_UP = "used_up"
     # NULL creator, not a member, or demoted
     CREATOR_NOT_MANAGER = "creator_not_manager"
+    # creator is a manager but the UTub setting no longer lets them create links
+    CREATOR_NOT_ALLOWED = "creator_not_allowed"
     UTUB_TRASHED = "utub_trashed"
     UTUB_LOCKED = "utub_locked"
 
@@ -74,6 +77,7 @@ class InviteLinkStatus(StrEnum):
     EXPIRED = "expired"
     USED_UP = "used_up"
     CREATOR_DEMOTED = "creator_demoted"
+    CREATOR_NOT_ALLOWED = "creator_not_allowed"
 
 
 class InviteLinkErrorCodes(IntEnum):
@@ -83,6 +87,8 @@ class InviteLinkErrorCodes(IntEnum):
     LIVE_LINK_EXISTS = 4  # 409 on create
     DEAD_LINK_UPDATE = 5  # 409 on update
     USES_BELOW_JOINED = 6  # 400 on update
+    CREATE_NOT_ALLOWED = 7  # 403 create/replace/edit refused by the creators setting
+    PREVIEW_NOT_ALLOWED = 8  # 403 preview-on or window change refused to a co-owner
 
 
 class InviteJoinOutcome(StrEnum):

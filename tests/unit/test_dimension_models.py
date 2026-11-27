@@ -488,7 +488,8 @@ def test_invite_link_created_rejects_invalid_dims(bad_dims: dict):
 
 
 @pytest.mark.parametrize(
-    "reason", ["manual", "replaced", "dead_on_create", "role_change"]
+    "reason",
+    ["manual", "replaced", "dead_on_create", "role_change", "setting_change"],
 )
 def test_invite_link_revoked_accepts_each_reason(reason: str):
     model_class = DIMENSION_MODELS[EventName.INVITE_LINK_REVOKED]

@@ -106,6 +106,8 @@ export const InviteLinkErrorCodes = {
   LIVE_LINK_EXISTS: 4,
   DEAD_LINK_UPDATE: 5,
   USES_BELOW_JOINED: 6,
+  CREATE_NOT_ALLOWED: 7,
+  PREVIEW_NOT_ALLOWED: 8,
 } as const;
 export type InviteLinkErrorCode =
   (typeof InviteLinkErrorCodes)[keyof typeof InviteLinkErrorCodes];

@@ -30,8 +30,10 @@ from backend.utils.strings.invite_link_strs import INVITE_LINK_SUCCESS
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.model_strs import MODELS
 from tests.integration.invite_links.invite_route_helpers import (
+    DEAD_STATE_IDS,
     disable_limiter,
     enable_limiter,
+    seed_dead,
 )
 from tests.integration.short_links.short_link_helpers import (
     CREATOR_ID,
@@ -59,7 +61,6 @@ pytestmark = pytest.mark.invite_links
 SECOND_UTUB_ID: int = FIRST_UTUB_ID + 1
 COLLIDING_TOKEN: str = "Z" * 22
 EXPIRY_TOLERANCE: timedelta = timedelta(minutes=2)
-DEAD_STATE_IDS: list[str] = ["expired", "used_up", "creator_demoted"]
 
 
 def _create_url(utub_id: int = FIRST_UTUB_ID) -> str:
@@ -106,19 +107,8 @@ def _assert_no_error_code(response: Response) -> None:
     assert STD_JSON.ERROR_CODE not in body
 
 
-def _seed_dead(app: Flask, state: str) -> int:
-    """Seed one dead-but-unrevoked row in the first UTub, returning its id."""
-    if state == "expired":
-        return add_invite_link(
-            app, FIRST_UTUB_ID, CREATOR_ID, expires_at=utc_now() - timedelta(minutes=1)
-        )
-    if state == "used_up":
-        return add_invite_link(app, FIRST_UTUB_ID, CREATOR_ID, max_uses=1, use_count=1)
-    return add_invite_link(app, FIRST_UTUB_ID, SECOND_USER_ID)
-
-
 def _seed_for_case(app: Flask, case: str) -> int | None:
-    return None if case == "no_row" else _seed_dead(app, "expired")
+    return None if case == "no_row" else seed_dead(app, "expired")
 
 
 def _expires_at(response: Response) -> datetime:
@@ -356,7 +346,7 @@ def test_create_live_row_conflicts_and_is_untouched(
 def test_create_over_dead_row_revokes_it_and_creates_new(
     every_user_in_every_utub, app: Flask, state: str
 ) -> None:
-    old_id = _seed_dead(app, state)
+    old_id = seed_dead(app, state)
 
     response = _create_as(app, CREATOR_ID, {"max_uses": 5})
 
@@ -631,7 +621,7 @@ def test_create_over_dead_row_emits_dead_on_create_revoke(
     every_user_in_every_utub,
     app: Flask,
 ) -> None:
-    _seed_dead(app, "expired")
+    seed_dead(app, "expired")
 
     response = _create_as(app, CREATOR_ID)
 

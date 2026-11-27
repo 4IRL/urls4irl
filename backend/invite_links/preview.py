@@ -32,6 +32,18 @@ def compute_effective_preview(
     return EffectivePreview(enabled=enabled, ends_at=ends_at)
 
 
+def preview_is_on(invite: Utub_Invite_Links, *, now: datetime) -> bool:
+    """Whether the preview is stored-enabled with an end still in the future.
+
+    A stored-enabled preview whose window already lapsed counts as off.
+    """
+    return bool(
+        invite.preview_enabled
+        and invite.preview_ends_at is not None
+        and invite.preview_ends_at > now
+    )
+
+
 def apply_preview_change(
     invite: Utub_Invite_Links, *, enabled: bool | None, window_days: int | None
 ) -> None:
@@ -41,11 +53,7 @@ def apply_preview_change(
     has an end. "Already on" means stored-enabled with an end still in the future.
     """
     now = utc_now()
-    already_on = (
-        invite.preview_enabled
-        and invite.preview_ends_at is not None
-        and invite.preview_ends_at > now
-    )
+    already_on = preview_is_on(invite, now=now)
 
     if window_days is not None:
         invite.preview_window_days = window_days

@@ -2997,7 +2997,7 @@
             "bearerAuth": []
           }
         ],
-        "description": "Create the UTub's invite link with an expiry and an optional use limit (owner and co-owner only). A dead unrevoked link is revoked first. The new link starts with preview off.",
+        "description": "Create the UTub's invite link with an expiry and an optional use limit (owner and co-owner only). A dead unrevoked link is revoked first. The new link starts with preview off. 403 errorCode 7 when the UTub's setting does not let the caller create links.",
         "parameters": [
           {
             "name": "utub_id",
@@ -3103,7 +3103,7 @@
             "bearerAuth": []
           }
         ],
-        "description": "Change the expiry, use limit and/or logged-out preview (preview_enabled, preview_window_days of 1, 3 or 7) of the UTub's live invite link (owner and co-owner only). An absent field is unchanged; a null max_uses means unlimited; a null preview field is rejected.",
+        "description": "Change the expiry, use limit and/or logged-out preview (preview_enabled, preview_window_days of 1, 3 or 7) of the UTub's live invite link (owner and co-owner only). An absent field is unchanged; a null max_uses means unlimited; a null preview field is rejected. 403 errorCode 7 when the setting does not let the caller create links; 403 errorCode 8 when a co-owner turns the preview on or sets its window without the owner's permission.",
         "parameters": [
           {
             "name": "utub_id",
@@ -3268,7 +3268,7 @@
             "bearerAuth": []
           }
         ],
-        "description": "Revoke the UTub's invite link and create a new one with the given settings (owner and co-owner only). The new link starts with preview off.",
+        "description": "Revoke the UTub's invite link and create a new one with the given settings (owner and co-owner only). The new link starts with preview off. 403 errorCode 7 when the UTub's setting does not let the caller create links.",
         "parameters": [
           {
             "name": "utub_id",
@@ -5554,7 +5554,7 @@
             "csrfToken": []
           }
         ],
-        "description": "Create the UTub's invite link with an expiry and an optional use limit (owner and co-owner only). A dead unrevoked link is revoked first. The new link starts with preview off.",
+        "description": "Create the UTub's invite link with an expiry and an optional use limit (owner and co-owner only). A dead unrevoked link is revoked first. The new link starts with preview off. 403 errorCode 7 when the UTub's setting does not let the caller create links.",
         "parameters": [
           {
             "name": "utub_id",
@@ -5651,7 +5651,7 @@
             "csrfToken": []
           }
         ],
-        "description": "Change the expiry, use limit and/or logged-out preview (preview_enabled, preview_window_days of 1, 3 or 7) of the UTub's live invite link (owner and co-owner only). An absent field is unchanged; a null max_uses means unlimited; a null preview field is rejected.",
+        "description": "Change the expiry, use limit and/or logged-out preview (preview_enabled, preview_window_days of 1, 3 or 7) of the UTub's live invite link (owner and co-owner only). An absent field is unchanged; a null max_uses means unlimited; a null preview field is rejected. 403 errorCode 7 when the setting does not let the caller create links; 403 errorCode 8 when a co-owner turns the preview on or sets its window without the owner's permission.",
         "parameters": [
           {
             "name": "utub_id",
@@ -5798,7 +5798,7 @@
             "csrfToken": []
           }
         ],
-        "description": "Revoke the UTub's invite link and create a new one with the given settings (owner and co-owner only). The new link starts with preview off.",
+        "description": "Revoke the UTub's invite link and create a new one with the given settings (owner and co-owner only). The new link starts with preview off. 403 errorCode 7 when the UTub's setting does not let the caller create links.",
         "parameters": [
           {
             "name": "utub_id",
@@ -12408,7 +12408,7 @@
           },
           "status": {
             "$ref": "#/components/schemas/InviteLinkStatus",
-            "description": "live, expired, used_up or creator_demoted"
+            "description": "live, expired, used_up, creator_demoted or creator_not_allowed"
           },
           "expiresAt": {
             "description": "UTC ISO-8601 timestamp after which the link stops working",
@@ -12500,7 +12500,13 @@
         "type": "object"
       },
       "InviteLinkStatus": {
-        "enum": ["live", "expired", "used_up", "creator_demoted"],
+        "enum": [
+          "live",
+          "expired",
+          "used_up",
+          "creator_demoted",
+          "creator_not_allowed"
+        ],
         "type": "string"
       },
       "InviteLinkResponseSchema": {
@@ -12528,14 +12534,16 @@
       },
       "InviteLinkErrorCodes": {
         "type": "integer",
-        "enum": [1, 2, 3, 4, 5, 6],
+        "enum": [1, 2, 3, 4, 5, 6, 7, 8],
         "x-enum-varnames": [
           "INVITE_LINK_NOT_FOUND",
           "INVALID_FORM_INPUT",
           "UTUB_IS_LOCKED",
           "LIVE_LINK_EXISTS",
           "DEAD_LINK_UPDATE",
-          "USES_BELOW_JOINED"
+          "USES_BELOW_JOINED",
+          "CREATE_NOT_ALLOWED",
+          "PREVIEW_NOT_ALLOWED"
         ],
         "description": "Error codes for InviteLinkErrorCodes"
       },
@@ -13631,6 +13639,11 @@
         "required": ["utubs", "preferences"],
         "type": "object"
       },
+      "InviteLinkCreators": {
+        "description": "Who may create the UTub's invite link.",
+        "enum": ["owner_and_co_owners", "owner_only", "no_one"],
+        "type": "string"
+      },
       "MemberTagsSettings": {
         "additionalProperties": false,
         "description": "A member's private display overrides for the Tags panel of one UTub.\n\nEvery key is nullable: ``None`` means \"use my account default\".",
@@ -13788,7 +13801,7 @@
       },
       "MembersSettings": {
         "additionalProperties": false,
-        "description": "Settings for the members panel: who may remove and add members.",
+        "description": "Settings for the members panel: who may remove and add members, and invite links.",
         "properties": {
           "co_owners_can_remove": {
             "default": false,
@@ -13803,6 +13816,16 @@
           "hide_member_list": {
             "default": false,
             "description": "Whether plain members see only the owner, co-owners and themselves",
+            "type": "boolean"
+          },
+          "invite_link_creators": {
+            "$ref": "#/components/schemas/InviteLinkCreators",
+            "default": "owner_and_co_owners",
+            "description": "Who can create this UTub's invite link"
+          },
+          "co_owners_can_enable_preview": {
+            "default": false,
+            "description": "Whether co-owners can turn on the invite link preview",
             "type": "boolean"
           }
         },

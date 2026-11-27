@@ -209,7 +209,9 @@ def test_no_link_patch_not_found_with_code(every_user_in_every_utub, app: Flask)
     assert error_code_of(response) == InviteLinkErrorCodes.INVITE_LINK_NOT_FOUND
 
 
-@pytest.mark.parametrize("state", ["expired", "used_up", "creator_demoted"])
+@pytest.mark.parametrize(
+    "state", ["expired", "used_up", "creator_demoted", "creator_not_allowed"]
+)
 def test_dead_link_patch_conflict_with_code(
     every_user_in_every_utub, app: Flask, state: str
 ):

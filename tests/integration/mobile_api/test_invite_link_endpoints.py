@@ -67,6 +67,7 @@ from tests.utils_for_test import (
     lock_utub,
     remove_member,
     set_member_role,
+    set_members_settings,
     trash_utub,
 )
 
@@ -174,6 +175,7 @@ def test_parity_get_null_when_no_link(every_user_in_every_utub, app: Flask, send
         ("expired", InviteLinkStatus.EXPIRED),
         ("used_up", InviteLinkStatus.USED_UP),
         ("creator_demoted", InviteLinkStatus.CREATOR_DEMOTED),
+        ("creator_not_allowed", InviteLinkStatus.CREATOR_NOT_ALLOWED),
     ],
 )
 def test_parity_get_each_dead_status(
@@ -567,6 +569,346 @@ def test_parity_locked_utub_still_reads(
 
     assert response.status_code == 200
     assert link_of(response)[MODELS.STATUS] == InviteLinkStatus.LIVE
+
+
+# ---------------------------------------------------------------------------
+# Parity: who can create invite links, and who can turn a preview on
+# ---------------------------------------------------------------------------
+
+CREATE_NOT_ALLOWED = InviteLinkErrorCodes.CREATE_NOT_ALLOWED
+PREVIEW_NOT_ALLOWED = InviteLinkErrorCodes.PREVIEW_NOT_ALLOWED
+CREATOR_WRITE_OPS: list[str] = ["create", "update", "replace"]
+
+
+def _full_row(app: Flask) -> list[tuple]:
+    return [
+        (
+            row.token,
+            row.revoked_at,
+            row.expires_at,
+            row.max_uses,
+            row.preview_enabled,
+            row.preview_window_days,
+            row.preview_ends_at,
+        )
+        for row in rows(app)
+    ]
+
+
+def _co_owner(app: Flask) -> None:
+    set_member_role(app, FIRST_UTUB_ID, SECOND_USER_ID, Member_Role.CO_CREATOR)
+
+
+def _seed_live_preview(app: Flask, *, ends_in: timedelta) -> None:
+    add_invite_link(
+        app,
+        FIRST_UTUB_ID,
+        CREATOR_ID,
+        expires_at=utc_now() + timedelta(days=30),
+        preview_enabled=True,
+        preview_ends_at=utc_now() + ends_in,
+    )
+
+
+@pytest.mark.parametrize("op", CREATOR_WRITE_OPS)
+def test_parity_owner_only_refuses_co_owner_writes(
+    every_user_in_every_utub, app: Flask, send: Send, op: str
+):
+    _co_owner(app)
+    set_members_settings(app, FIRST_UTUB_ID, {"invite_link_creators": "owner_only"})
+    if op != "create":
+        add_invite_link(app, FIRST_UTUB_ID, CREATOR_ID, max_uses=10)
+    before = _full_row(app)
+
+    response = send(op, user_id=SECOND_USER_ID, body=DEFAULT_BODIES[op])
+
+    assert response.status_code == 403
+    assert error_code_of(response) == CREATE_NOT_ALLOWED
+    assert _full_row(app) == before
+
+
+def test_parity_owner_only_co_owner_still_reads_and_revokes(
+    every_user_in_every_utub, app: Flask, send: Send
+):
+    _co_owner(app)
+    set_members_settings(app, FIRST_UTUB_ID, {"invite_link_creators": "owner_only"})
+    add_invite_link(app, FIRST_UTUB_ID, CREATOR_ID)
+
+    assert send("get", user_id=SECOND_USER_ID).status_code == 200
+    assert send("revoke", user_id=SECOND_USER_ID).status_code == 200
+    assert unrevoked(app) == []
+
+
+@pytest.mark.parametrize("op", CREATOR_WRITE_OPS)
+def test_parity_owner_only_owner_can_write(
+    every_user_in_every_utub, app: Flask, send: Send, op: str
+):
+    set_members_settings(app, FIRST_UTUB_ID, {"invite_link_creators": "owner_only"})
+    if op != "create":
+        add_invite_link(app, FIRST_UTUB_ID, CREATOR_ID, max_uses=10)
+
+    response = send(op, body=DEFAULT_BODIES[op])
+
+    assert response.status_code in (200, 201)
+
+
+@pytest.mark.parametrize("op", CREATOR_WRITE_OPS)
+def test_parity_no_one_refuses_owner_writes_but_allows_read_and_revoke(
+    every_user_in_every_utub, app: Flask, send: Send, op: str
+):
+    set_members_settings(app, FIRST_UTUB_ID, {"invite_link_creators": "no_one"})
+    add_invite_link(app, FIRST_UTUB_ID, CREATOR_ID, max_uses=10)
+    before = _full_row(app)
+
+    response = send(op, body=DEFAULT_BODIES[op])
+
+    assert response.status_code == 403
+    assert error_code_of(response) == CREATE_NOT_ALLOWED
+    assert _full_row(app) == before
+    assert send("get").status_code == 200
+    assert send("revoke").status_code == 200
+
+
+@pytest.mark.parametrize("op", CREATOR_WRITE_OPS)
+def test_parity_unknown_stored_creators_value_denies(
+    every_user_in_every_utub, app: Flask, send: Send, op: str
+):
+    set_members_settings(app, FIRST_UTUB_ID, {"invite_link_creators": "everyone"})
+    if op != "create":
+        add_invite_link(app, FIRST_UTUB_ID, CREATOR_ID, max_uses=10)
+
+    response = send(op, body=DEFAULT_BODIES[op])
+
+    assert response.status_code == 403
+    assert error_code_of(response) == CREATE_NOT_ALLOWED
+
+
+@pytest.mark.parametrize("op", CREATOR_WRITE_OPS)
+def test_parity_defaults_let_owner_and_co_owner_write(
+    every_user_in_every_utub, app: Flask, send: Send, op: str
+):
+    _co_owner(app)
+    if op != "create":
+        add_invite_link(app, FIRST_UTUB_ID, CREATOR_ID, max_uses=10)
+
+    for user_id in (CREATOR_ID, SECOND_USER_ID):
+        response = send(op, user_id=user_id, body=DEFAULT_BODIES[op])
+        assert response.status_code in (200, 201)
+        if op == "create":
+            assert send("revoke", user_id=user_id).status_code == 200
+
+
+@pytest.mark.parametrize("op", CREATOR_WRITE_OPS)
+def test_parity_locked_utub_response_wins_over_create_not_allowed(
+    every_user_in_every_utub, app: Flask, send: Send, op: str
+):
+    set_members_settings(app, FIRST_UTUB_ID, {"invite_link_creators": "no_one"})
+    add_invite_link(app, FIRST_UTUB_ID, CREATOR_ID)
+    lock_utub(app, FIRST_UTUB_ID)
+
+    response = send(op, body=DEFAULT_BODIES[op])
+
+    assert response.status_code == 403
+    assert error_code_of(response) == InviteLinkErrorCodes.UTUB_IS_LOCKED
+
+
+@pytest.mark.parametrize("op", CREATOR_WRITE_OPS)
+def test_parity_plain_member_gets_no_code_under_any_setting(
+    every_user_in_every_utub, app: Flask, send: Send, op: str
+):
+    set_members_settings(app, FIRST_UTUB_ID, {"invite_link_creators": "owner_only"})
+    add_invite_link(app, FIRST_UTUB_ID, CREATOR_ID)
+
+    response = send(op, user_id=SECOND_USER_ID, body=DEFAULT_BODIES[op])
+
+    assert response.status_code == 403
+    assert error_code_of(response) is None
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        {"preview_enabled": True},
+        {"preview_window_days": 7},
+        {"preview_enabled": True, "preview_window_days": 7},
+    ],
+)
+def test_parity_co_owner_preview_on_or_window_refused_by_default(
+    every_user_in_every_utub, app: Flask, send: Send, body: dict[str, Any]
+):
+    _co_owner(app)
+    add_invite_link(app, FIRST_UTUB_ID, CREATOR_ID)
+    before = _full_row(app)
+
+    response = send("update", user_id=SECOND_USER_ID, body=body)
+
+    assert response.status_code == 403
+    assert error_code_of(response) == PREVIEW_NOT_ALLOWED
+    assert _full_row(app) == before
+
+
+def test_parity_co_owner_window_change_refused_while_preview_is_on(
+    every_user_in_every_utub, app: Flask, send: Send
+):
+    _co_owner(app)
+    _seed_live_preview(app, ends_in=timedelta(days=2))
+    before = _full_row(app)
+
+    response = send("update", user_id=SECOND_USER_ID, body={"preview_window_days": 7})
+
+    assert response.status_code == 403
+    assert error_code_of(response) == PREVIEW_NOT_ALLOWED
+    assert _full_row(app) == before
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        {"preview_enabled": True},
+        {"preview_window_days": 7},
+        {"preview_enabled": True, "preview_window_days": 7},
+    ],
+)
+def test_parity_co_owner_preview_allowed_when_owner_grants_it(
+    every_user_in_every_utub, app: Flask, send: Send, body: dict[str, Any]
+):
+    _co_owner(app)
+    set_members_settings(app, FIRST_UTUB_ID, {"co_owners_can_enable_preview": True})
+    add_invite_link(app, FIRST_UTUB_ID, CREATOR_ID)
+
+    response = send("update", user_id=SECOND_USER_ID, body=body)
+
+    assert response.status_code == 200
+    link = link_of(response)
+    if "preview_enabled" in body:
+        assert link[MODELS.PREVIEW_ENABLED] is True
+    if "preview_window_days" in body:
+        assert link[MODELS.PREVIEW_WINDOW_DAYS] == 7
+
+
+def test_parity_owner_can_always_turn_preview_on(
+    every_user_in_every_utub, app: Flask, send: Send
+):
+    add_invite_link(app, FIRST_UTUB_ID, CREATOR_ID)
+
+    response = send("update", body={"preview_enabled": True, "preview_window_days": 7})
+
+    assert response.status_code == 200
+    assert link_of(response)[MODELS.PREVIEW_ENABLED] is True
+
+
+def test_parity_co_owner_can_turn_owners_preview_off_under_default_creators(
+    every_user_in_every_utub, app: Flask, send: Send
+):
+    _co_owner(app)
+    _seed_live_preview(app, ends_in=timedelta(days=2))
+
+    response = send("update", user_id=SECOND_USER_ID, body={"preview_enabled": False})
+
+    assert response.status_code == 200
+    assert link_of(response)[MODELS.PREVIEW_ENABLED] is False
+
+
+def test_parity_owner_only_co_owner_cannot_end_owners_preview(
+    every_user_in_every_utub, app: Flask, send: Send
+):
+    _co_owner(app)
+    set_members_settings(app, FIRST_UTUB_ID, {"invite_link_creators": "owner_only"})
+    _seed_live_preview(app, ends_in=timedelta(days=2))
+    before = _full_row(app)
+
+    response = send("update", user_id=SECOND_USER_ID, body={"preview_enabled": False})
+
+    assert response.status_code == 403
+    assert error_code_of(response) == CREATE_NOT_ALLOWED
+    assert _full_row(app) == before
+    assert send("revoke", user_id=SECOND_USER_ID).status_code == 200
+
+
+def test_parity_co_owner_expiry_only_and_noop_preview_on_are_not_refused(
+    every_user_in_every_utub, app: Flask, send: Send
+):
+    _co_owner(app)
+    _seed_live_preview(app, ends_in=timedelta(days=2))
+
+    expiry = send("update", user_id=SECOND_USER_ID, body={"expires_in_days": 7})
+    noop = send("update", user_id=SECOND_USER_ID, body={"preview_enabled": True})
+
+    assert expiry.status_code == 200
+    assert noop.status_code == 200
+
+
+def test_parity_preview_refusal_wins_over_use_limit_error(
+    every_user_in_every_utub, app: Flask, send: Send
+):
+    _co_owner(app)
+    add_invite_link(app, FIRST_UTUB_ID, CREATOR_ID, max_uses=10, use_count=3)
+    before = _full_row(app)
+
+    response = send(
+        "update",
+        user_id=SECOND_USER_ID,
+        body={"max_uses": 1, "preview_enabled": True},
+    )
+
+    assert response.status_code == 403
+    assert error_code_of(response) == PREVIEW_NOT_ALLOWED
+    assert _full_row(app) == before
+
+
+def test_parity_mixed_expiry_and_preview_on_is_refused_whole(
+    every_user_in_every_utub, app: Flask, send: Send
+):
+    _co_owner(app)
+    add_invite_link(app, FIRST_UTUB_ID, CREATOR_ID)
+    before = _full_row(app)
+
+    response = send(
+        "update",
+        user_id=SECOND_USER_ID,
+        body={"expires_in_days": 7, "preview_enabled": True},
+    )
+
+    assert response.status_code == 403
+    assert error_code_of(response) == PREVIEW_NOT_ALLOWED
+    assert _full_row(app) == before
+
+
+def test_parity_owner_tightening_after_a_read_refuses_the_next_write(
+    every_user_in_every_utub, app: Flask, send: Send
+):
+    _co_owner(app)
+    set_members_settings(app, FIRST_UTUB_ID, {"co_owners_can_enable_preview": True})
+    add_invite_link(app, FIRST_UTUB_ID, CREATOR_ID)
+    assert send("get", user_id=SECOND_USER_ID).status_code == 200
+
+    set_members_settings(
+        app,
+        FIRST_UTUB_ID,
+        {"co_owners_can_enable_preview": False},
+    )
+    preview = send("update", user_id=SECOND_USER_ID, body={"preview_enabled": True})
+    set_members_settings(app, FIRST_UTUB_ID, {"invite_link_creators": "owner_only"})
+    expiry = send("update", user_id=SECOND_USER_ID, body={"expires_in_days": 7})
+
+    assert preview.status_code == 403
+    assert error_code_of(preview) == PREVIEW_NOT_ALLOWED
+    assert expiry.status_code == 403
+    assert error_code_of(expiry) == CREATE_NOT_ALLOWED
+
+
+def test_parity_lapsed_stored_preview_counts_as_off(
+    every_user_in_every_utub, app: Flask, send: Send
+):
+    _co_owner(app)
+    _seed_live_preview(app, ends_in=-timedelta(hours=1))
+    before = _full_row(app)
+
+    response = send("update", user_id=SECOND_USER_ID, body={"preview_enabled": True})
+
+    assert response.status_code == 403
+    assert error_code_of(response) == PREVIEW_NOT_ALLOWED
+    assert _full_row(app) == before
 
 
 # ---------------------------------------------------------------------------
