@@ -123,7 +123,8 @@ jobs:
               '
 
           # Snapshot the outgoing containers' last 24h of console output before compose recreates them, and prune
-          # snapshots older than 90 days. Failure-visible: set -e, so a failed write aborts before anything changes.
+          # snapshots older than 90 days. Failure-visible: set -e, so a failed dump aborts before anything changes;
+          # a failed prune only warns, so housekeeping never blocks a release.
           - name: Dump Pre-Deploy Logs
             run: |
               ssh -T -q -o StrictHostKeyChecking=no ${{ secrets.PROD_SSH_HOST }} '
@@ -140,7 +141,7 @@ jobs:
                   echo "skipped $container: no such container"
                 fi
               done
-              find /home/u4i/deploy-logs -maxdepth 1 -name "*.log" -mtime +90 -delete
+              find /home/u4i/deploy-logs -maxdepth 1 -type f -name "*.log" -mtime +90 -delete || echo "WARNING: pruning old deploy log dumps failed"
               '
 
           # Pull updated images, recreate if needed, run as daemon, and prune old images

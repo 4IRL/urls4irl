@@ -73,13 +73,22 @@ def _remote_script() -> str:
 
 
 def _run_remote(
-    tmp_path: Path, dump_dir: Path, present: str, fail: bool = False
+    tmp_path: Path,
+    dump_dir: Path,
+    present: str,
+    fail: bool = False,
+    prune_fails: bool = False,
 ) -> subprocess.CompletedProcess[str]:
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir(exist_ok=True)
     fake = bin_dir / "docker"
     fake.write_text(FAKE_DOCKER)
     fake.chmod(0o755)
+    if prune_fails:
+        # The script calls find only for the prune.
+        fake_find = bin_dir / "find"
+        fake_find.write_text("#!/bin/sh\nexit 1\n")
+        fake_find.chmod(0o755)
     script = _remote_script().replace(DUMP_DIR, str(dump_dir))
     env = {
         **os.environ,
@@ -244,3 +253,21 @@ def test_prunes_only_dumps_older_than_the_retention(tmp_path: Path):
     assert inside_window.exists()
     assert old_other.exists()
     assert old_nested.exists()
+
+
+def test_failing_prune_only_warns(tmp_path: Path):
+    """
+    GIVEN the prune `find` fails
+    WHEN the remote script runs
+    THEN the dumps are still written, the step succeeds and a WARNING is printed.
+    """
+    dump_dir = tmp_path / "deploy-logs"
+
+    result = _run_remote(
+        tmp_path, dump_dir, present=" ".join(CONTAINERS), prune_fails=True
+    )
+
+    assert result.returncode == 0, result.stderr
+    for container in CONTAINERS:
+        assert len(list(dump_dir.glob(f"{container}_*.log"))) == 1
+    assert "WARNING: pruning old deploy log dumps failed" in result.stdout
