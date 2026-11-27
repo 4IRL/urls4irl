@@ -50,6 +50,40 @@ describe("announceSettingsStatus", () => {
     expect(region.textContent).toBe("second");
   });
 
+  it("append joins a pending message and trims its trailing period", () => {
+    const region = mountRegion();
+
+    announceSettingsStatus({ message: "Save failed" });
+    announceSettingsStatus({ message: "Change not applied.", append: true });
+    vi.advanceTimersByTime(0);
+    expect(region.textContent).toBe("Save failed. Change not applied.");
+
+    announceSettingsStatus({ message: "Save failed." });
+    announceSettingsStatus({ message: "Change not applied.", append: true });
+    vi.advanceTimersByTime(0);
+    expect(region.textContent).toBe("Save failed. Change not applied.");
+  });
+
+  it("append with nothing pending announces the new message alone", () => {
+    const region = mountRegion();
+
+    announceSettingsStatus({ message: "Saved" });
+    vi.advanceTimersByTime(0);
+    announceSettingsStatus({ message: "Change not applied.", append: true });
+    vi.advanceTimersByTime(0);
+    expect(region.textContent).toBe("Change not applied.");
+  });
+
+  it("a call without append still replaces a pending message", () => {
+    const region = mountRegion();
+
+    announceSettingsStatus({ message: "first" });
+    announceSettingsStatus({ message: "second" });
+    announceSettingsStatus({ message: "third", append: false });
+    vi.advanceTimersByTime(0);
+    expect(region.textContent).toBe("third");
+  });
+
   it("does not throw when the live region is missing", () => {
     document.body.innerHTML = "";
     expect(() => announceSettingsStatus({ message: "Saved" })).not.toThrow();

@@ -153,6 +153,49 @@ MEMBERS_PERMISSIONS_HIDE_MEMBER_LIST_ON_NOTICE = (
 MEMBERS_PERMISSIONS_HIDE_MEMBER_LIST_OFF_NOTICE = (
     "Members can now see everyone in this UTub"
 )
+MEMBERS_PERMISSIONS_INVITE_CREATORS_LABEL = "Who can create invite links"
+MEMBERS_PERMISSIONS_INVITE_CREATORS_DESC_ALL = "Invite links let people join this UTub."
+MEMBERS_PERMISSIONS_INVITE_CREATORS_DESC_OWNER_ONLY = (
+    "Only the owner sees the invite button."
+)
+MEMBERS_PERMISSIONS_INVITE_CREATORS_DESC_NO_ONE = (
+    "No one sees the invite button. "
+    "Choose Owner and co-owners or Owner only to turn it back on."
+)
+MEMBERS_PERMISSIONS_INVITE_CREATORS_OPTION_ALL = "Owner and co-owners"
+MEMBERS_PERMISSIONS_INVITE_CREATORS_OPTION_OWNER_ONLY = "Owner only"
+MEMBERS_PERMISSIONS_INVITE_CREATORS_OPTION_NO_ONE = "No one"
+MEMBERS_PERMISSIONS_INVITE_CREATORS_WARN_OWNER_ONLY = (
+    "A link a co-owner made stops working, even if you change this back."
+)
+MEMBERS_PERMISSIONS_INVITE_CREATORS_WARN_NO_ONE = (
+    "The current link stops working, even if you change this back. "
+    "No one sees the invite button."
+)
+MEMBERS_PERMISSIONS_INVITE_CREATORS_NOTICE_ALL = (
+    "The owner and co-owners can create invite links"
+)
+MEMBERS_PERMISSIONS_INVITE_CREATORS_NOTICE_OWNER_ONLY = (
+    "Only the owner can create invite links"
+)
+MEMBERS_PERMISSIONS_INVITE_CREATORS_NOTICE_NO_ONE = "No one can create invite links"
+MEMBERS_PERMISSIONS_INVITE_CREATORS_REVOKED_OWNER_ONLY = (
+    "A co-owner's invite link stopped working"
+)
+MEMBERS_PERMISSIONS_INVITE_CREATORS_REVOKED_NO_ONE = "The invite link stopped working"
+MEMBERS_PERMISSIONS_INVITE_PREVIEW_ENDED = "The current preview ended"
+MEMBERS_PERMISSIONS_APPLY_LABEL = "Apply"
+MEMBERS_PERMISSIONS_NOT_APPLIED_YET = "Not applied yet."
+MEMBERS_PERMISSIONS_CHANGE_NOT_APPLIED = "Change not applied."
+MEMBERS_PERMISSIONS_CO_OWNERS_PREVIEW_LABEL = "Co-owners can turn on previews"
+MEMBERS_PERMISSIONS_CO_OWNERS_PREVIEW_DESC = (
+    "The owner always can. Turning this off also ends a preview that's on now. "
+    "Applies only while co-owners can create links."
+)
+MEMBERS_PERMISSIONS_CO_OWNERS_PREVIEW_ON_NOTICE = "Co-owners can now turn on previews"
+MEMBERS_PERMISSIONS_CO_OWNERS_PREVIEW_OFF_NOTICE = (
+    "Co-owners can no longer turn on previews"
+)
 MEMBERS_LIST_SORT_DESC = "In all your UTubs. The owner always stays on top."
 MEMBERS_LIST_SORT_OPTION_NAME_AZ = "Name A–Z"
 MEMBERS_LIST_SORT_OPTION_ROLE = "Role, then name"

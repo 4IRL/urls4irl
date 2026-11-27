@@ -134,6 +134,30 @@ describe("patchUtubSettings", () => {
   });
 
   describe("200", () => {
+    it("passes the invite side-effect booleans through to the result", async () => {
+      const { request, result } = startPatch({ panel: "members" });
+      request.resolve({
+        utubID: UTUB_ID,
+        settings: settingsWith(),
+        inviteLinkRevoked: true,
+        invitePreviewEnded: false,
+      });
+      expect(await result).toEqual({
+        outcome: "ok",
+        settings: getState().settings,
+        inviteLinkRevoked: true,
+        invitePreviewEnded: false,
+      });
+    });
+
+    it("adds no extras when the response carries no booleans", async () => {
+      const { request, result } = startPatch({ panel: "tags" });
+      request.resolve({ utubID: UTUB_ID, settings: settingsWith() });
+      const outcome = await result;
+      expect(outcome).not.toHaveProperty("inviteLinkRevoked");
+      expect(outcome).not.toHaveProperty("invitePreviewEnded");
+    });
+
     it("merges only the PATCHed panel key and bumps the version in one setState", async () => {
       setState({
         settings: settingsWith({ tags: { keep: 1 } as never }),

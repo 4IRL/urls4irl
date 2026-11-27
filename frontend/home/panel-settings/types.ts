@@ -16,7 +16,15 @@ import type {
 export type SectionPatch = Record<string, unknown>;
 
 export type SaveResult =
-  | { outcome: "ok"; settings?: UtubSettings; notice?: string }
+  | {
+      outcome: "ok";
+      settings?: UtubSettings;
+      notice?: string;
+      /** Absent means false. */
+      inviteLinkRevoked?: boolean;
+      /** Absent means false. */
+      invitePreviewEnded?: boolean;
+    }
   | { outcome: "stale"; failed: boolean; notice?: string }
   | { outcome: "error"; resync?: boolean; notice?: string }
   | { outcome: "locked" | "forbidden" | "gone" | "invalid" };
