@@ -2,8 +2,17 @@ from backend import db
 from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.app_logger import safe_add_many_logs
 from backend.extensions.metrics.writer import record_event
+from backend.invite_links.constants import InviteState
+from backend.invite_links.guards import lock_current_invite_for_update
+from backend.invite_links.permissions import can_create_invite_links
+from backend.invite_links.services.lifecycle import (
+    emit_role_change_revokes,
+    revoke_invite_link_created_by,
+)
+from backend.invite_links.validity import evaluate_invite
 from backend.members.constants import UTubMembersErrorCodes
 from backend.metrics.events import EventName
+from backend.models.utub_invite_links import Utub_Invite_Links
 from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utubs import Utubs
 from backend.schemas.errors import build_message_error_response
@@ -28,6 +37,11 @@ def transfer_ownership(*, new_owner_id: int, current_utub: Utubs) -> FlaskRespon
     reassigned creator), and the flush guarantees the demotion reaches the DB
     before the promotion, since the single-CREATOR unique index is checked per
     statement.
+
+    When the UTub's invite-link creators rule no longer lets a co-owner create
+    links (``owner_only``), the outgoing owner's unrevoked link is revoked in the
+    same transaction (``role_change`` metric after the commit), so the new owner
+    can create a fresh link at once. Under the default the link stays live.
 
     Args:
         new_owner_id (int): The ID of the member to promote to UTub owner
@@ -78,11 +92,32 @@ def transfer_ownership(*, new_owner_id: int, current_utub: Utubs) -> FlaskRespon
     # then promote the new one. The single-CREATOR unique index is checked per
     # statement and the unit of work orders UPDATEs by primary key, so without
     # the flush a lower-id promotion would reach the DB before the demotion.
+    # Judge liveness before the demotion: only a link that was live counts toward
+    # the role_change metric (an expired or used-up row is still revoked, silently).
+    current_invite: Utub_Invite_Links | None = lock_current_invite_for_update(
+        utub_id=current_utub.id
+    )
+    link_was_live: bool = (
+        current_invite is not None
+        and current_invite.created_by == outgoing_owner_id
+        and evaluate_invite(current_invite) == InviteState.LIVE
+    )
+
     current_utub.utub_creator = new_owner_id
     outgoing_owner_membership.member_role = Member_Role.CO_CREATOR
     db.session.flush()
     new_owner_membership.member_role = Member_Role.CREATOR
     current_utub.set_last_updated()
+    # The outgoing owner is now a co-owner: under owner_only their link is dead,
+    # so revoke it in this transaction (the Utubs lock is held).
+    revoked_invite = False
+    if not can_create_invite_links(utub=current_utub, role=Member_Role.CO_CREATOR):
+        revoked_invite = (
+            revoke_invite_link_created_by(
+                utub_id=current_utub.id, creator_id=outgoing_owner_id
+            )
+            and link_was_live
+        )
     db.session.commit()
 
     safe_add_many_logs(
@@ -94,6 +129,7 @@ def transfer_ownership(*, new_owner_id: int, current_utub: Utubs) -> FlaskRespon
         ]
     )
     record_event(EventName.OWNERSHIP_TRANSFERRED)
+    emit_role_change_revokes(int(revoked_invite))
 
     return APIResponse(
         message=MEMBER_SUCCESS.OWNERSHIP_TRANSFERRED,

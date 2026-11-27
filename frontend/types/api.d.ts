@@ -1992,7 +1992,7 @@ export interface paths {
     delete?: never;
     options?: never;
     head?: never;
-    /** @description Partially update a UTub's per-panel settings. The members keys are owner-only. Metrics: API_HIT only (no DOMAIN event). */
+    /** @description Partially update a UTub's per-panel settings. The members keys are owner-only. Tightening who can create invite links revokes a live link whose creator is no longer allowed, and turning off co-owner previews ends a preview that is on; the response carries two always-present booleans, inviteLinkRevoked and invitePreviewEnded. Metrics: API_HIT, plus INVITE_LINK_REVOKED (reason setting_change) when a link is revoked. */
     patch: operations["updateUtubSettings"];
     trace?: never;
   };
@@ -5015,6 +5015,16 @@ export interface components {
       utubID: number;
       /** @description Full resolved per-UTub settings (stored overrides merged over defaults) */
       settings: components["schemas"]["UtubSettings"];
+      /**
+       * @description True only when this write revoked an invite link that was live before it
+       * @default false
+       */
+      inviteLinkRevoked: boolean;
+      /**
+       * @description True only when this write ended an invite preview that was on
+       * @default false
+       */
+      invitePreviewEnded: boolean;
     };
     /**
      * @description The caller's own per-panel view-override patch. Values are validated and

@@ -366,7 +366,7 @@ def update_utub_desc(
     error_message=UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_SETTINGS,
     error_code=UTubErrorCodes.INVALID_FORM_INPUT,
     tags=[OPEN_API.UTUBS],
-    description="Partially update a UTub's per-panel settings. The members keys are owner-only. Metrics: API_HIT only (no DOMAIN event).",
+    description="Partially update a UTub's per-panel settings. The members keys are owner-only. Tightening who can create invite links revokes a live link whose creator is no longer allowed, and turning off co-owner previews ends a preview that is on; the response carries two always-present booleans, inviteLinkRevoked and invitePreviewEnded. Metrics: API_HIT, plus INVITE_LINK_REVOKED (reason setting_change) when a link is revoked.",
     status_codes={
         200: UtubSettingsUpdatedResponseSchema,
         400: ErrorResponse,

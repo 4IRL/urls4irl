@@ -3,6 +3,12 @@ from typing import Any
 from backend import db
 from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.app_logger import safe_add_log, safe_add_many_logs
+from backend.extensions.metrics.writer import record_event
+from backend.invite_links.services.setting_effects import (
+    InviteSettingEffects,
+    apply_invite_setting_effects,
+)
+from backend.metrics.events import EventName
 from backend.models.utubs import Utubs
 from backend.schemas.errors import build_field_error_response
 from backend.schemas.utub_settings import (
@@ -58,10 +64,18 @@ def update_utub_settings_if_changed(
             status_code=400,
         )
 
+    effects = InviteSettingEffects()
     if utub_settings_overrides_changed(raw_settings, new_overrides):
         # Reassign a new dict, never mutate in place (no MutableDict).
         current_utub.settings = new_overrides
+        # Same transaction as the write: a failure here stores nothing.
+        effects = apply_invite_setting_effects(current_utub, before=raw_settings)
         db.session.commit()
+        if effects.link_revoked:
+            record_event(
+                EventName.INVITE_LINK_REVOKED,
+                dimensions={"reason": "setting_change"},
+            )
         safe_add_many_logs(
             [
                 "User updated UTub settings",
@@ -76,5 +90,7 @@ def update_utub_settings_if_changed(
         data=UtubSettingsUpdatedResponseSchema(
             utub_id=current_utub.id,
             settings=resolved_settings,
+            invite_link_revoked=effects.link_revoked,
+            invite_preview_ended=effects.preview_ended,
         )
     ).to_response()
