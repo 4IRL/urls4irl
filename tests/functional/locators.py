@@ -131,6 +131,26 @@ class HomePageLocators(GenericPageLocator):
     )
     MEMBERS_PERMISSIONS_MEMBERS_ADD_SWITCH = "#membersPermissionsMembersAddSwitch"
     MEMBERS_PERMISSIONS_HIDE_LIST_SWITCH = "#membersPermissionsHideListSwitch"
+    # Owner's "Who can create invite links" select, its staged warning, the
+    # "Not applied yet." text and the Apply button (popover or sheet, whichever
+    # is open; the section renders once).
+    MEMBERS_PERMISSIONS_INVITE_CREATORS_SELECT = (
+        "#membersPermissionsInviteCreatorsSelect"
+    )
+    MEMBERS_PERMISSIONS_INVITE_CREATORS_DESC = "#membersPermissionsInviteCreatorsDesc"
+    MEMBERS_PERMISSIONS_INVITE_CREATORS_WARNING = (
+        "#membersPermissionsInviteCreatorsWarning"
+    )
+    MEMBERS_PERMISSIONS_INVITE_CREATORS_NOT_APPLIED = (
+        "#membersPermissionsInviteCreatorsNotApplied"
+    )
+    MEMBERS_PERMISSIONS_INVITE_CREATORS_APPLY = (
+        "#membersPermissionsInviteCreatorsApplyButton"
+    )
+    MEMBERS_PERMISSIONS_CO_OWNERS_PREVIEW_SWITCH = (
+        "#membersPermissionsCoOwnersPreviewSwitch"
+    )
+    MEMBERS_PERMISSIONS_STATUS = "#panelSettingsStatus-members-permissions"
     MEMBER_DECK_COUNT = "#MemberDeckCount"
     UTUB_ROW_COUNT_NUMBERS = ".UTubRowCountNum"
     MEMBERS_PERMISSIONS_SECTION = (
@@ -704,6 +724,7 @@ class HomePageLocators(GenericPageLocator):
     INVITE_LINK_USES_SELECT = "#inviteLinkUsesSelect"
     INVITE_LINK_PREVIEW_SWITCH = "#inviteLinkPreviewSwitch"
     INVITE_LINK_PREVIEW_WINDOW_SELECT = "#inviteLinkPreviewWindowSelect"
+    INVITE_LINK_PREVIEW_OWNER_HINT = "#inviteLinkPreviewOwnerHint"
     INVITE_LINK_PREVIEW_WINDOW_HINT = "#inviteLinkPreviewWindowHint"
     INVITE_LINK_PREVIEW_WARNING = "#inviteLinkPreviewWarning"
     INVITE_LINK_NEW_BTN = "#inviteLinkNewBtn"
