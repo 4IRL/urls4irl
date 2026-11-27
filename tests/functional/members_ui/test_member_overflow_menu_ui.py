@@ -161,18 +161,24 @@ def test_overflow_settings_item_opens_the_members_gear_popover(
     """
     GIVEN the narrow Members row with the overflow menu open
     WHEN the owner picks "Members settings"
-    THEN the menu closes and the settings popover opens next to the overflow button
+    THEN the menu closes, the settings dialog opens centered in the viewport and
+        Escape returns focus to the overflow button
     """
     _narrow_login(app=provide_app, page=page)
     page.locator(HPL.BUTTON_MEMBER_OVERFLOW).click()
     page.locator(HPL.MEMBER_OVERFLOW_SETTINGS).click()
     expect(page.locator(HPL.MEMBER_OVERFLOW_MENU)).to_be_hidden()
     expect(page.locator(HPL.PANEL_SETTINGS_POPOVER)).to_be_visible()
-    popover = page.locator(HPL.PANEL_SETTINGS_POPOVER).bounding_box()
-    overflow = page.locator(HPL.BUTTON_MEMBER_OVERFLOW).bounding_box()
-    assert popover is not None and overflow is not None
-    assert popover["x"] >= 0 and popover["x"] + popover["width"] <= 1280, popover
-    assert popover["y"] >= overflow["y"], (popover, overflow)
+    dialog = page.locator(HPL.PANEL_SETTINGS_POPOVER).bounding_box()
+    viewport = page.viewport_size
+    assert dialog is not None and viewport is not None
+    center_x = dialog["x"] + dialog["width"] / 2
+    center_y = dialog["y"] + dialog["height"] / 2
+    assert abs(center_x - viewport["width"] / 2) <= 2, dialog
+    assert abs(center_y - viewport["height"] / 2) <= 2, dialog
+    page.keyboard.press("Escape")
+    expect(page.locator(HPL.PANEL_SETTINGS_POPOVER)).to_be_hidden()
+    expect(page.locator(HPL.BUTTON_MEMBER_OVERFLOW)).to_be_focused()
 
 
 def test_invite_modal_opens_from_narrow_row_and_returns_focus(

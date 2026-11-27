@@ -524,3 +524,35 @@ def test_transfer_modal_cancel_closes_and_restores_focus(
 
     # Focus returns to the Members gear that opened the modal.
     expect(page.locator(HPL.BUTTON_MEMBER_SETTINGS_GEAR)).to_be_focused()
+
+
+def test_transfer_handoff_leaves_scroll_lock_to_bootstrap(
+    page: Page,
+    create_test_utubmembers,
+    provide_app: Flask,
+):
+    """
+    GIVEN the Members settings dialog (which locks page scroll)
+    WHEN Transfer ownership is opened, then cancelled
+    THEN while the transfer modal is open the body carries Bootstrap's
+        modal-open and not the settings lock class, and after cancel neither
+    """
+    app = provide_app
+    user_id = 1
+    utub_user_created = get_utub_this_user_created(app, user_id)
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=user_id, utub_name=utub_user_created.name
+    )
+
+    open_transfer_ownership_picker(page=page)
+    expect(page.locator(HPL.TRANSFER_OWNER_MODAL)).to_be_visible()
+    body_classes = page.evaluate("() => Array.from(document.body.classList)")
+    assert "modal-open" in body_classes, body_classes
+    assert "panelSettingsBodyLock" not in body_classes, body_classes
+
+    wait_then_click_element(page=page, css_selector=HPL.TRANSFER_OWNER_CANCEL)
+    wait_until_hidden(page=page, css_selector=HPL.TRANSFER_OWNER_MODAL)
+    # Bootstrap drops modal-open only after its fade-out completes.
+    page.wait_for_function("() => !document.body.classList.contains('modal-open')")
+    body_classes = page.evaluate("() => Array.from(document.body.classList)")
+    assert "panelSettingsBodyLock" not in body_classes, body_classes

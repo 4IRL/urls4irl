@@ -637,126 +637,385 @@ def test_revealed_gears_do_not_overflow_or_wrap_headers_at_left_panel_minimum(
         assert metrics["distinctTops"] == 1, metrics
 
 
+_CENTERING_TOLERANCE_PX = 2
+_BODY_LOCK_CLASS = "panelSettingsBodyLock"
+_DIALOG_ROOT_Z_INDEX = 1045
+_BOOTSTRAP_MODAL_Z_INDEX = 1050
+_TALL_CONTENT_PX = 3000
+
+
+def _open_gear_dialog(page: Page, gear_selector: str) -> str:
+    """Open a deck's settings dialog and return the selector of the visible
+    opener: the gear, or #memberBtnOverflow when the Members gear is folded
+    into the overflow menu at this width."""
+    opener = gear_selector
+    if gear_selector == HPL.BUTTON_MEMBER_SETTINGS_GEAR:
+        if page.locator(gear_selector).is_visible():
+            wait_then_click_element(page=page, css_selector=gear_selector)
+        else:
+            opener = HPL.BUTTON_MEMBER_OVERFLOW
+            wait_then_click_element(page=page, css_selector=opener)
+            wait_then_click_element(
+                page=page, css_selector=HPL.MEMBER_OVERFLOW_SETTINGS
+            )
+    else:
+        wait_then_click_element(page=page, css_selector=gear_selector)
+    expect(page.locator(HPL.PANEL_SETTINGS_POPOVER)).to_be_visible()
+    return opener
+
+
+def _dialog_geometry(page: Page) -> dict:
+    return page.evaluate(
+        """(selector) => {
+            const rect = document.querySelector(selector).getBoundingClientRect();
+            return {
+                top: rect.top, bottom: rect.bottom, left: rect.left, right: rect.right,
+                centerX: rect.left + rect.width / 2,
+                centerY: rect.top + rect.height / 2,
+                innerWidth: window.innerWidth,
+                innerHeight: window.innerHeight,
+            };
+        }""",
+        HPL.PANEL_SETTINGS_POPOVER,
+    )
+
+
+def _assert_dialog_centered_in_viewport(page: Page) -> None:
+    geometry = _dialog_geometry(page)
+    assert (
+        abs(geometry["centerX"] - geometry["innerWidth"] / 2) <= _CENTERING_TOLERANCE_PX
+    ), geometry
+    assert (
+        abs(geometry["centerY"] - geometry["innerHeight"] / 2)
+        <= _CENTERING_TOLERANCE_PX
+    ), geometry
+    _assert_dialog_inside_viewport(geometry)
+
+
+def _assert_dialog_inside_viewport(geometry: dict) -> None:
+    assert geometry["top"] >= 0 and geometry["left"] >= 0, geometry
+    assert geometry["bottom"] <= geometry["innerHeight"], geometry
+    assert geometry["right"] <= geometry["innerWidth"], geometry
+
+
+def _hit_test(page: Page, *, selector: str, within_root: str) -> dict:
+    """What `document.elementFromPoint` finds at the center of `selector`."""
+    return page.evaluate(
+        """({ selector, withinRoot }) => {
+            const target = document.querySelector(selector);
+            const rect = target.getBoundingClientRect();
+            const hit = document.elementFromPoint(
+                rect.left + rect.width / 2, rect.top + rect.height / 2
+            );
+            const root = document.querySelector(withinRoot);
+            return {
+                width: rect.width,
+                hitIsTarget: hit === target || target.contains(hit),
+                hitInRoot: !!hit && root.contains(hit),
+                hitInMainPanel: !!hit && !!hit.closest('main#mainPanel'),
+            };
+        }""",
+        {"selector": selector, "withinRoot": within_root},
+    )
+
+
+def _assert_dialog_closed_and_page_interactive(page: Page) -> None:
+    expect(page.locator(HPL.PANEL_SETTINGS_POPOVER)).to_be_hidden()
+    expect(page.locator(HPL.MAIN_PANEL)).not_to_have_attribute("inert", "")
+
+
+def _body_lock_state(page: Page) -> dict:
+    return page.evaluate(
+        """(lockClass) => ({
+            hasClass: document.body.classList.contains(lockClass),
+            overflow: getComputedStyle(document.body).overflow,
+        })""",
+        _BODY_LOCK_CLASS,
+    )
+
+
+@pytest.mark.parametrize("viewport_width", [1280, 992])
 @pytest.mark.parametrize(
     "gear_selector",
     [
         HPL.BUTTON_UTUB_SETTINGS_GEAR,
         HPL.BUTTON_MEMBER_SETTINGS_GEAR,
         HPL.BUTTON_TAG_SETTINGS_GEAR,
+        HPL.BUTTON_URL_SETTINGS_GEAR,
     ],
 )
-def test_opened_popover_never_covers_its_gear_and_stays_in_viewport(
+def test_opened_dialog_is_centered_in_viewport_and_covers_its_opener(
     page: Page,
     create_test_utubmembers,
     provide_app: Flask,
     gear_selector: str,
+    viewport_width: int,
 ):
     """
-    GIVEN an owned UTub at a 1280x900 desktop viewport
-    WHEN a deck's gear is clicked to open the popover
-    THEN the popover's box does not intersect the gear's box and lies inside the
-        viewport (top-deck gears open below, the low Tags gear flips above)
+    GIVEN an owned UTub at a desktop viewport (1280 and the 992 boundary)
+    WHEN a deck's settings are opened
+    THEN the dialog is centered within 2px on both axes and inside the viewport,
+        a point over the visible opener hits the root (backdrop or dialog), not
+        the opener or #mainPanel, and the dialog's center hits the dialog.
+        Failure hints: off-center usually means a stale vite-build; a hit on the
+        gear means inert/backdrop/z-index regressed; the sheet at 992 means the
+        breakpoint is off by one.
     """
-    page.set_viewport_size({"width": 1280, "height": 900})
+    page.set_viewport_size({"width": viewport_width, "height": 900})
     _login_and_select_owned_utub(provide_app, page)
 
-    if gear_selector == HPL.BUTTON_MEMBER_SETTINGS_GEAR:
-        # At 1280px the Members gear is folded into the overflow menu: the popover
-        # opens from its menu item and anchors to the visible overflow button.
-        gear_selector = HPL.BUTTON_MEMBER_OVERFLOW
-        wait_then_click_element(page=page, css_selector=gear_selector)
-        wait_then_click_element(page=page, css_selector=HPL.MEMBER_OVERFLOW_SETTINGS)
-    else:
-        wait_then_click_element(page=page, css_selector=gear_selector)
-    expect(page.locator(HPL.PANEL_SETTINGS_POPOVER)).to_be_visible()
+    opener = _open_gear_dialog(page, gear_selector)
+    expect(page.locator(HPL.PANEL_SETTINGS_SHEET)).to_be_hidden()
+    _assert_dialog_centered_in_viewport(page)
 
-    geometry = page.evaluate(
-        """({ gearSelector, popoverSelector }) => {
-            const gear = document.querySelector(gearSelector).getBoundingClientRect();
-            const popover = document.querySelector(popoverSelector).getBoundingClientRect();
-            return {
-                gear: { top: gear.top, bottom: gear.bottom, left: gear.left, right: gear.right },
-                popover: {
-                    top: popover.top, bottom: popover.bottom,
-                    left: popover.left, right: popover.right,
-                },
-                innerWidth: window.innerWidth,
-                innerHeight: window.innerHeight,
-            };
-        }""",
-        {
-            "gearSelector": gear_selector,
-            "popoverSelector": HPL.PANEL_SETTINGS_POPOVER,
-        },
+    opener_hit = _hit_test(page, selector=opener, within_root=HPL.PANEL_SETTINGS_ROOT)
+    assert opener_hit["width"] > 0, opener_hit
+    assert opener_hit["hitInRoot"], opener_hit
+    assert not opener_hit["hitIsTarget"], opener_hit
+    assert not opener_hit["hitInMainPanel"], opener_hit
+
+    dialog_hit = _hit_test(
+        page,
+        selector=HPL.PANEL_SETTINGS_POPOVER,
+        within_root=HPL.PANEL_SETTINGS_POPOVER,
     )
-    gear, popover = geometry["gear"], geometry["popover"]
-    intersects = (
-        popover["left"] < gear["right"]
-        and popover["right"] > gear["left"]
-        and popover["top"] < gear["bottom"]
-        and popover["bottom"] > gear["top"]
-    )
-    assert not intersects, geometry
-    assert popover["top"] >= 0 and popover["left"] >= 0, geometry
-    assert popover["bottom"] <= geometry["innerHeight"], geometry
-    assert popover["right"] <= geometry["innerWidth"], geometry
+    assert dialog_hit["hitInRoot"], dialog_hit
 
 
-def test_popover_placed_by_test_stays_in_viewport_scrolls_and_layers_correctly(
+def test_dialog_is_fixed_scrolls_its_body_under_a_fixed_header_and_layers_above_overlays(
     page: Page, create_test_utubmembers, provide_app: Flask
 ):
     """
-    GIVEN the popover is un-hidden and positioned by the test under a gear
-        with tall placeholder content
-    WHEN its geometry and stacking are measured
-    THEN it fits the viewport, scrolls (overflow-y auto) and sits between the
-        tag-sheet peek and the lowest bulk-actions overlay in z-index
+    GIVEN the UTubs settings dialog opened with a real gear click
+    WHEN tall test-only content is injected into its body and the body scrolled
+    THEN the dialog is position: fixed, the body is the overflow-y: auto scroll
+        container, the header does not move, and the root sits at z-index 1045
     """
     _login_and_select_owned_utub(provide_app, page)
-    _reveal_gears(page)
-    expect(page.locator(HPL.BUTTON_UTUB_SETTINGS_GEAR)).to_be_visible()
+    _open_gear_dialog(page, HPL.BUTTON_UTUB_SETTINGS_GEAR)
 
-    geometry = page.evaluate(
-        """({ gearSelector, popoverSelector, rootSelector }) => {
-            const gear = document.querySelector(gearSelector);
-            const popover = document.querySelector(popoverSelector);
-            const root = document.querySelector(rootSelector);
-            popover.classList.remove('hidden');
-            popover.innerHTML = '<div style="height: 3000px">tall placeholder</div>';
-            const gearRect = gear.getBoundingClientRect();
-            popover.style.top = gearRect.bottom + 'px';
-            popover.style.left = (gearRect.right - popover.offsetWidth) + 'px';
-            const popoverRect = popover.getBoundingClientRect();
-            const rootZIndex = getComputedStyle(root).zIndex;
+    page.evaluate(
+        """({ bodySelector, height }) => {
+            const body = document.querySelector(bodySelector);
+            const filler = document.createElement('div');
+            filler.style.height = height + 'px';
+            body.appendChild(filler);
+        }""",
+        {
+            "bodySelector": HPL.PANEL_SETTINGS_POPOVER_BODY,
+            "height": _TALL_CONTENT_PX,
+        },
+    )
+    metrics = page.evaluate(
+        """({ dialogSelector, bodySelector, headerSelector, rootSelector }) => {
+            const body = document.querySelector(bodySelector);
+            const headerTopBefore = document.querySelector(headerSelector)
+                .getBoundingClientRect().top;
+            body.scrollTop = body.scrollHeight;
             return {
-                hasHiddenClass: popover.classList.contains('hidden'),
-                height: popoverRect.height,
-                bottom: popoverRect.bottom,
-                innerHeight: window.innerHeight,
-                overflowY: getComputedStyle(popover).overflowY,
-                scrollHeight: popover.scrollHeight,
-                clientHeight: popover.clientHeight,
-                position: getComputedStyle(popover).position,
-                rootZIndex,
+                position: getComputedStyle(document.querySelector(dialogSelector)).position,
+                overflowY: getComputedStyle(body).overflowY,
+                scrollHeight: body.scrollHeight,
+                clientHeight: body.clientHeight,
+                scrollTop: body.scrollTop,
+                headerTopBefore,
+                headerTopAfter: document.querySelector(headerSelector)
+                    .getBoundingClientRect().top,
+                rootZIndex: getComputedStyle(document.querySelector(rootSelector)).zIndex,
             };
         }""",
         {
-            "gearSelector": HPL.BUTTON_UTUB_SETTINGS_GEAR,
-            "popoverSelector": HPL.PANEL_SETTINGS_POPOVER,
+            "dialogSelector": HPL.PANEL_SETTINGS_POPOVER,
+            "bodySelector": HPL.PANEL_SETTINGS_POPOVER_BODY,
+            "headerSelector": HPL.PANEL_SETTINGS_POPOVER_HEADER,
             "rootSelector": HPL.PANEL_SETTINGS_ROOT,
         },
     )
-
-    assert geometry["hasHiddenClass"] is False
-    assert geometry["position"] == "fixed"
-    assert geometry["height"] <= geometry["innerHeight"], geometry
-    assert geometry["bottom"] <= geometry["innerHeight"], geometry
-    assert geometry["overflowY"] == "auto"
-    assert geometry["scrollHeight"] > geometry["clientHeight"], geometry
-    # The root is fixed, so it is its own stacking context: the popover's
-    # effective layer is the root's z-index.
-    root_z_index = int(geometry["rootZIndex"])
+    assert metrics["position"] == "fixed", metrics
+    assert metrics["overflowY"] == "auto", metrics
+    assert metrics["scrollHeight"] > metrics["clientHeight"], metrics
+    assert metrics["scrollTop"] > 0, metrics
+    assert metrics["headerTopAfter"] == metrics["headerTopBefore"], metrics
+    assert int(metrics["rootZIndex"]) == _DIALOG_ROOT_Z_INDEX, metrics
     assert (
-        _TAG_SHEET_PEEK_Z_INDEX < root_z_index < _LOWEST_BULK_ACTIONS_OVERLAY_Z_INDEX
-    ), geometry
-    expect(page.locator(HPL.PANEL_SETTINGS_POPOVER)).to_be_visible()
+        _TAG_SHEET_PEEK_Z_INDEX < int(metrics["rootZIndex"]) < _BOOTSTRAP_MODAL_Z_INDEX
+    ), metrics
+    expect(page.locator(HPL.PANEL_SETTINGS_POPOVER_HEADER)).to_be_visible()
+
+
+def test_backdrop_click_closes_dialog_restores_gear_focus_and_keeps_selection(
+    page: Page, create_test_utubmembers, provide_app: Flask
+):
+    """
+    GIVEN the UTubs settings dialog is open
+    WHEN the dimmed area at (5, 5) is clicked
+    THEN it closes, focus lands on the gear and the selected UTub is unchanged
+    """
+    utub_id = _login_and_select_owned_utub(provide_app, page)
+    selected = page.locator(HPL.SELECTOR_SELECTED_UTUB)
+    expect(selected).to_have_count(1)
+    selected_id = selected.get_attribute("utubid")
+    _open_gear_dialog(page, HPL.BUTTON_UTUB_SETTINGS_GEAR)
+
+    page.mouse.click(5, 5)
+
+    _assert_dialog_closed_and_page_interactive(page)
+    expect(page.locator(HPL.BUTTON_UTUB_SETTINGS_GEAR)).to_be_focused()
+    expect(page.locator(HPL.SELECTOR_SELECTED_UTUB)).to_have_count(1)
+    assert selected_id == str(utub_id)
+    assert page.locator(HPL.SELECTOR_SELECTED_UTUB).get_attribute("utubid") == str(
+        utub_id
+    )
+
+
+def test_close_button_closes_dialog_and_restores_gear_focus(
+    page: Page, create_test_utubmembers, provide_app: Flask
+):
+    """
+    GIVEN the UTubs settings dialog is open
+    WHEN its close button is clicked
+    THEN it closes with focus on the gear
+    """
+    _login_and_select_owned_utub(provide_app, page)
+    _open_gear_dialog(page, HPL.BUTTON_UTUB_SETTINGS_GEAR)
+    expect(page.locator(HPL.PANEL_SETTINGS_POPOVER_TITLE)).not_to_be_empty()
+
+    wait_then_click_element(page=page, css_selector=HPL.PANEL_SETTINGS_POPOVER_CLOSE)
+
+    _assert_dialog_closed_and_page_interactive(page)
+    expect(page.locator(HPL.BUTTON_UTUB_SETTINGS_GEAR)).to_be_focused()
+
+
+def test_dialog_traps_focus_and_keeps_the_background_inert(
+    page: Page, create_test_utubmembers, provide_app: Flask
+):
+    """
+    GIVEN the UTubs settings dialog is open
+    WHEN Tab is pressed 8 times and the gear is focused programmatically
+    THEN focus stays inside the dialog, the gear stays unfocused, #mainPanel and
+        the navbar are inert, and neither is inert after Escape
+    """
+    _login_and_select_owned_utub(provide_app, page)
+    _open_gear_dialog(page, HPL.BUTTON_UTUB_SETTINGS_GEAR)
+
+    for _ in range(8):
+        page.keyboard.press("Tab")
+        inside = page.evaluate(
+            "(sel) => document.querySelector(sel).contains(document.activeElement)",
+            HPL.PANEL_SETTINGS_POPOVER,
+        )
+        assert inside
+
+    expect(page.locator(HPL.MAIN_PANEL)).to_have_attribute("inert", "")
+    navbar_inert = page.evaluate(
+        "() => !!document.querySelector('nav').closest('[inert]')"
+    )
+    assert navbar_inert
+
+    page.locator(HPL.BUTTON_UTUB_SETTINGS_GEAR).evaluate("el => el.focus()")
+    expect(page.locator(HPL.BUTTON_UTUB_SETTINGS_GEAR)).not_to_be_focused()
+
+    page.keyboard.press("Escape")
+    _assert_dialog_closed_and_page_interactive(page)
+    assert not page.evaluate("() => !!document.querySelector('nav').closest('[inert]')")
+    expect(page.locator(HPL.BUTTON_UTUB_SETTINGS_GEAR)).to_be_focused()
+
+
+def test_dialog_in_short_viewport_stays_inside_it_and_scrolls_its_body(
+    page: Page, create_test_utubmembers, provide_app: Flask
+):
+    """
+    GIVEN a 1280x420 viewport
+    WHEN the UTubs dialog is opened with 3000px of test-only body content
+    THEN the dialog stays inside the viewport, its body scrolls and the header
+        does not move
+    """
+    page.set_viewport_size({"width": 1280, "height": 420})
+    _login_and_select_owned_utub(provide_app, page)
+    _open_gear_dialog(page, HPL.BUTTON_UTUB_SETTINGS_GEAR)
+    page.evaluate(
+        """({ bodySelector, height }) => {
+            const filler = document.createElement('div');
+            filler.style.height = height + 'px';
+            document.querySelector(bodySelector).appendChild(filler);
+        }""",
+        {
+            "bodySelector": HPL.PANEL_SETTINGS_POPOVER_BODY,
+            "height": _TALL_CONTENT_PX,
+        },
+    )
+    _assert_dialog_inside_viewport(_dialog_geometry(page))
+    header_top_before = page.evaluate(
+        "(sel) => document.querySelector(sel).getBoundingClientRect().top",
+        HPL.PANEL_SETTINGS_POPOVER_HEADER,
+    )
+    scroll = page.evaluate(
+        """(sel) => {
+            const body = document.querySelector(sel);
+            const scrollable = body.scrollHeight > body.clientHeight;
+            body.scrollTop = body.scrollHeight;
+            return { scrollable, scrollTop: body.scrollTop };
+        }""",
+        HPL.PANEL_SETTINGS_POPOVER_BODY,
+    )
+    assert scroll["scrollable"], scroll
+    assert scroll["scrollTop"] > 0, scroll
+    header_top_after = page.evaluate(
+        "(sel) => document.querySelector(sel).getBoundingClientRect().top",
+        HPL.PANEL_SETTINGS_POPOVER_HEADER,
+    )
+    assert header_top_after == header_top_before
+
+
+@pytest.mark.parametrize("close_route", ["backdrop", "close_button", "escape"])
+def test_dialog_locks_page_scroll_until_it_closes(
+    page: Page, create_test_utubmembers, provide_app: Flask, close_route: str
+):
+    """
+    GIVEN a test-only 3000px spacer so the page would otherwise scroll
+    WHEN the dialog is open, then closed via each route
+    THEN the body lock class and computed overflow: hidden are present only
+        while open, a wheel over the backdrop leaves scrollY unchanged, and after
+        the close a wheel scrolls the page (the lock was released)
+    """
+    _login_and_select_owned_utub(provide_app, page)
+    page.evaluate(
+        """(height) => {
+            const spacer = document.createElement('div');
+            spacer.id = 'testScrollSpacer';
+            spacer.style.height = height + 'px';
+            document.body.appendChild(spacer);
+        }""",
+        _TALL_CONTENT_PX,
+    )
+    closed_state = _body_lock_state(page)
+    assert not closed_state["hasClass"], closed_state
+    assert closed_state["overflow"] != "hidden", closed_state
+
+    _open_gear_dialog(page, HPL.BUTTON_UTUB_SETTINGS_GEAR)
+    open_state = _body_lock_state(page)
+    assert open_state["hasClass"], open_state
+    assert open_state["overflow"] == "hidden", open_state
+
+    page.mouse.move(5, 5)
+    page.mouse.wheel(0, 600)
+    page.wait_for_timeout(150)
+    assert page.evaluate("() => window.scrollY") == 0
+
+    if close_route == "backdrop":
+        page.mouse.click(5, 5)
+    elif close_route == "close_button":
+        wait_then_click_element(
+            page=page, css_selector=HPL.PANEL_SETTINGS_POPOVER_CLOSE
+        )
+    else:
+        page.keyboard.press("Escape")
+    expect(page.locator(HPL.PANEL_SETTINGS_POPOVER)).to_be_hidden()
+
+    after_state = _body_lock_state(page)
+    assert not after_state["hasClass"], after_state
+    assert after_state["overflow"] != "hidden", after_state
+
+    page.mouse.move(5, 5)
+    page.mouse.wheel(0, 600)
+    page.wait_for_function("() => window.scrollY > 0")
