@@ -175,7 +175,17 @@ export function patchUtubSettings({
         settings: merged,
         settingsVersion: current.settingsVersion + 1,
       });
-      resolve({ outcome: "ok", settings: merged });
+      const extras: {
+        inviteLinkRevoked?: boolean;
+        invitePreviewEnded?: boolean;
+      } = {};
+      if (typeof response.inviteLinkRevoked === "boolean") {
+        extras.inviteLinkRevoked = response.inviteLinkRevoked;
+      }
+      if (typeof response.invitePreviewEnded === "boolean") {
+        extras.invitePreviewEnded = response.invitePreviewEnded;
+      }
+      resolve({ outcome: "ok", settings: merged, ...extras });
     });
 
     request.fail((xhr: JQuery.jqXHR) => {
