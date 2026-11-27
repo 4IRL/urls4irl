@@ -1858,6 +1858,7 @@ def test_host_static_still_runs_its_host_pytest_line() -> None:
     for notifs_test in (
         "tests/unit/test_notifs_key_write.py",
         "tests/unit/test_prod_deploy_key_dir.py",
+        "tests/unit/test_prod_deploy_log_dump.py",
         "tests/unit/test_notifs_exchange_workflow.py",
         "tests/unit/test_notifs_resolve_release_sha.py",
     ):

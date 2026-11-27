@@ -128,6 +128,7 @@ jobs:
             run: |
               ssh -T -q -o StrictHostKeyChecking=no ${{ secrets.PROD_SSH_HOST }} '
               set -e
+              umask 077
               mkdir -p /home/u4i/deploy-logs
               stamp="$(date -u +%Y%m%dT%H%M%SZ)"
               for container in u4i-prod-flask u4i-prod-workflow; do

@@ -7,6 +7,7 @@ dump directory pointed at a tmp path, so the real text that ships is what gets e
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 import time
 from pathlib import Path
@@ -33,9 +34,11 @@ BUILD_STEP_NAME: str = "Build Docker Network"
 DUMP_DIR: str = "/home/u4i/deploy-logs"
 CONTAINERS: tuple[str, ...] = ("u4i-prod-flask", "u4i-prod-workflow")
 PRUNE_DAYS: int = 90
+SECONDS_PER_DAY: int = 86400
 
-# `container inspect <name>` succeeds only for names listed in FAKE_PRESENT; `logs` prints one stdout and one
-# stderr line so the test can see both streams land in the dump.
+# `container inspect <name>` succeeds only for names listed in FAKE_PRESENT; `logs` records its argv to
+# FAKE_ARGV_LOG, exits 1 when FAKE_LOGS_FAIL is set, and otherwise prints one stdout and one stderr line so
+# the test can see both streams land in the dump.
 FAKE_DOCKER: str = """#!/bin/sh
 case "$1" in
   container)
@@ -43,6 +46,8 @@ case "$1" in
     exit 1
     ;;
   logs)
+    echo "$*" >> "$FAKE_ARGV_LOG"
+    if [ -n "$FAKE_LOGS_FAIL" ]; then exit 1; fi
     echo "stdout line"
     echo "stderr line" >&2
     ;;
@@ -63,11 +68,12 @@ def _index(name: str) -> int:
 
 def _remote_script() -> str:
     run = _steps()[_index(DUMP_STEP_NAME)]["run"]
+    assert run.count("'") == 2, "the remote script must not contain single quotes"
     return run.split("'", 2)[1]
 
 
 def _run_remote(
-    tmp_path: Path, dump_dir: Path, present: str
+    tmp_path: Path, dump_dir: Path, present: str, fail: bool = False
 ) -> subprocess.CompletedProcess[str]:
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir(exist_ok=True)
@@ -79,6 +85,8 @@ def _run_remote(
         **os.environ,
         "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}",
         "FAKE_PRESENT": present,
+        "FAKE_ARGV_LOG": str(tmp_path / "docker-argv.log"),
+        "FAKE_LOGS_FAIL": "1" if fail else "",
     }
     return subprocess.run(
         ["bash", "-c", script], env=env, capture_output=True, text=True, check=False
@@ -131,11 +139,45 @@ def test_dumps_both_streams_of_every_present_container(tmp_path: Path):
     result = _run_remote(tmp_path, dump_dir, present=" ".join(CONTAINERS))
 
     assert result.returncode == 0, result.stderr
+    stamps = set()
     for container in CONTAINERS:
         dumps = list(dump_dir.glob(f"{container}_*.log"))
         assert len(dumps) == 1
+        match = re.fullmatch(rf"{container}_(\d{{8}}T\d{{6}}Z)\.log", dumps[0].name)
+        assert match, dumps[0].name
+        stamps.add(match.group(1))
         assert dumps[0].read_text().splitlines() == ["stdout line", "stderr line"]
         assert f"dumped {container}: 2 lines" in result.stdout
+    assert len(stamps) == 1
+    recorded = (tmp_path / "docker-argv.log").read_text().splitlines()
+    assert recorded == [f"logs --timestamps --since=24h {name}" for name in CONTAINERS]
+
+
+def test_no_containers_skips_both_and_succeeds(tmp_path: Path):
+    """
+    GIVEN neither app container exists (a fresh host)
+    WHEN the remote script runs
+    THEN both are reported as skipped and the step succeeds.
+    """
+    result = _run_remote(tmp_path, tmp_path / "deploy-logs", present="")
+
+    assert result.returncode == 0, result.stderr
+    for container in CONTAINERS:
+        assert f"skipped {container}: no such container" in result.stdout
+
+
+def test_failing_docker_logs_aborts_the_step(tmp_path: Path):
+    """
+    GIVEN `docker logs` fails
+    WHEN the remote script runs
+    THEN it exits non-zero before reaching the second container.
+    """
+    result = _run_remote(
+        tmp_path, tmp_path / "deploy-logs", present=" ".join(CONTAINERS), fail=True
+    )
+
+    assert result.returncode != 0
+    assert "u4i-prod-workflow" not in result.stdout
 
 
 def test_missing_container_is_skipped_not_fatal(tmp_path: Path):
@@ -166,6 +208,7 @@ def test_unwritable_dump_dir_fails_the_step(tmp_path: Path):
     result = _run_remote(tmp_path, blocker, present=" ".join(CONTAINERS))
 
     assert result.returncode != 0
+    assert "dumped" not in result.stdout
 
 
 def test_prunes_only_dumps_older_than_the_retention(tmp_path: Path):
@@ -178,13 +221,26 @@ def test_prunes_only_dumps_older_than_the_retention(tmp_path: Path):
     dump_dir.mkdir()
     old = dump_dir / "u4i-prod-flask_20260101T000000Z.log"
     recent = dump_dir / "u4i-prod-flask_20261120T000000Z.log"
-    old.write_text("old")
-    recent.write_text("recent")
-    stale = time.time() - (PRUNE_DAYS + 5) * 86400
-    os.utime(old, (stale, stale))
+    inside_window = dump_dir / "u4i-prod-flask_20260901T000000Z.log"
+    old_other = dump_dir / "notes.txt"
+    subdir = dump_dir / "archive"
+    subdir.mkdir()
+    old_nested = subdir / "u4i-prod-flask_20260101T000000Z.log"
+    for path in (old, recent, inside_window, old_other, old_nested):
+        path.write_text(path.name)
+    now = time.time()
+    stale = now - (PRUNE_DAYS + 5) * SECONDS_PER_DAY
+    for path in (old, old_other, old_nested):
+        os.utime(path, (stale, stale))
+    inside = now - (PRUNE_DAYS - 5) * SECONDS_PER_DAY
+    os.utime(inside_window, (inside, inside))
 
     result = _run_remote(tmp_path, dump_dir, present="")
 
     assert result.returncode == 0, result.stderr
+    assert f"-mtime +{PRUNE_DAYS}" in _remote_script()
     assert not old.exists()
     assert recent.exists()
+    assert inside_window.exists()
+    assert old_other.exists()
+    assert old_nested.exists()
