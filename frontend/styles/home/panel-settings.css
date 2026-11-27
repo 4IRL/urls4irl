@@ -431,6 +431,38 @@ h3.panelSettingsRowTitle {
     position: relative;
 }
 
+.panelSettingsStaged {
+    flex: 0 0 100%;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.75rem;
+    min-width: 0;
+}
+
+.panelSettingsStagedWarning {
+    flex: 1 1 14rem;
+    min-width: 0;
+    margin: 0;
+    padding: 0.4rem 0.6rem;
+    font-size: 0.85rem;
+    color: var(--textPrimary);
+    border-left: 3px solid var(--memberOutsiderAmber);
+    background: var(--memberOutsiderAmberTint);
+    overflow-wrap: anywhere;
+}
+
+.panelSettingsStagedNote {
+    color: var(--cardURLTextColor);
+    font-size: 0.85rem;
+}
+
+.panelSettingsApply {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0 1rem;
+}
+
 .panelSettingsSelectWrap::after {
     content: "";
     position: absolute;
