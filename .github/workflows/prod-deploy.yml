@@ -25,8 +25,6 @@ on:
         required: true
       PROD_DB_PASSWORD:
         required: true
-      PROD_LOG_DIRECTORY:
-        required: true
       REDIS_PASSWORD:
         required: true
       MAILJET_API_KEY:
@@ -124,12 +122,33 @@ jobs:
               bash /home/u4i/notifs-key-write.sh --check /home/u4i/notifs-key || exit 1
               '
 
+          # Snapshot the outgoing containers' last 24h of console output before compose recreates them, and prune
+          # snapshots older than 90 days. Failure-visible: set -e, so a failed dump aborts before anything changes;
+          # a failed prune only warns, so housekeeping never blocks a release.
+          - name: Dump Pre-Deploy Logs
+            run: |
+              ssh -T -q -o StrictHostKeyChecking=no ${{ secrets.PROD_SSH_HOST }} '
+              set -e
+              umask 077
+              mkdir -p /home/u4i/deploy-logs
+              stamp="$(date -u +%Y%m%dT%H%M%SZ)"
+              for container in u4i-prod-flask u4i-prod-workflow; do
+                dump="/home/u4i/deploy-logs/${container}_${stamp}.log"
+                if docker container inspect "$container" > /dev/null 2>&1; then
+                  docker logs --timestamps --since=24h "$container" > "$dump" 2>&1
+                  echo "dumped $container: $(wc -l < "$dump") lines to $dump"
+                else
+                  echo "skipped $container: no such container"
+                fi
+              done
+              find /home/u4i/deploy-logs -maxdepth 1 -type f -name "*.log" -mtime +90 -delete || echo "WARNING: pruning old deploy log dumps failed"
+              '
+
           # Pull updated images, recreate if needed, run as daemon, and prune old images
           - name: Build Docker Network
             run: |
               ssh -T -q -o StrictHostKeyChecking=no ${{ secrets.PROD_SSH_HOST }} '
               cd /home/u4i/;
-              docker logs --since=24h u4i-prod-flask &> "${{ secrets.PROD_LOG_DIRECTORY }}log_$(date +%Y%m%d_%H%M%S).txt";
               echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin;
               docker compose -f compose.yaml pull;
               mkdir -p ./secrets/;

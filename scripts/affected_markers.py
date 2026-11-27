@@ -289,6 +289,7 @@ HOST_STATIC_GLOBS: tuple[str, ...] = (
     ".github/workflows/prod-deploy.yml",
     "tests/unit/test_notifs_key_write.py",
     "tests/unit/test_prod_deploy_key_dir.py",
+    "tests/unit/test_prod_deploy_log_dump.py",
     ".github/workflows/notifs-exchange.yml",
     ".notifs/manifest.json",
     "scripts/notifs-resolve-release-sha.sh",
