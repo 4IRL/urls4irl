@@ -150,6 +150,8 @@
     overscroll-behavior: contain;
 }
 
+/* #bulkActionBar .bulkTagBanner (1049) cannot paint over this dialog only because
+   the bulk bar (1036) creates its own stacking context; re-check if that changes. */
 #panelSettingsRoot.panelSettingsRoot--modal {
     z-index: 1045;
 }
@@ -166,6 +168,7 @@ body.panelSettingsBodyLock {
     outline: 2px solid var(--deckSelectionGreen);
     outline-offset: -2px;
 }
+
 /* -------------------------- Mobile bottom sheet --------------------------- */
 
 /* While the sheet is open the root rises above the open Tag sheet (1040) and its

@@ -353,6 +353,9 @@ def test_opening_panel_closes_open_gear_popover(
     assert not reach["focusMoved"] and not reach["focusedTrigger"], reach
     assert not reach["hitIsTrigger"] and reach["hitInRoot"], reach
     expect(trigger).not_to_be_focused()
+    # Chromium fires a DOM click() on an inert trigger, so this proves the silent
+    # forced close on INVITE_PANEL_OPENED end to end (the vitest describe covers
+    # the same contract at unit level).
     page.evaluate(
         "(sel) => document.querySelector(sel).click()",
         HPL.BUTTON_MEMBER_INVITE_LINK,
@@ -360,9 +363,6 @@ def test_opening_panel_closes_open_gear_popover(
     expect(page.locator(HPL.INVITE_LINK_MODAL)).to_be_visible()
     expect(page.locator(HPL.PANEL_SETTINGS_POPOVER)).to_be_hidden()
     expect(page.locator(HPL.MAIN_PANEL)).not_to_have_attribute("inert", "")
-    # Chromium fires a DOM click() on an inert trigger, so this proves the silent
-    # forced close on INVITE_PANEL_OPENED end to end (the vitest describe covers
-    # the same contract at unit level).
 
 
 def test_hide_member_list_keeps_trigger_for_managers_and_hides_it_from_members(

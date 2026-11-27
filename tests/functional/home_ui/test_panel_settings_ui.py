@@ -63,7 +63,6 @@ _AT_DESKTOP_WIDTH_PX = 992
 # Lowest bulk-actions overlay z-index and the tag-sheet peek z-index that the
 # settings shell must sit between (see styles/home/panel-settings.css).
 _TAG_SHEET_PEEK_Z_INDEX = 30
-_LOWEST_BULK_ACTIONS_OVERLAY_Z_INDEX = 1036
 
 
 # Every deck's panel now registers a section (Tags gained "Your tags" with the
@@ -851,7 +850,7 @@ def test_backdrop_click_closes_dialog_restores_gear_focus_and_keeps_selection(
     WHEN the dimmed area at (5, 5) is clicked
     THEN it closes, focus lands on the gear and the selected UTub is unchanged
     """
-    utub_id = _login_and_select_owned_utub(provide_app, page)
+    _login_and_select_owned_utub(provide_app, page)
     selected = page.locator(HPL.SELECTOR_SELECTED_UTUB)
     expect(selected).to_have_count(1)
     selected_id = selected.get_attribute("utubid")
@@ -862,9 +861,8 @@ def test_backdrop_click_closes_dialog_restores_gear_focus_and_keeps_selection(
     _assert_dialog_closed_and_page_interactive(page)
     expect(page.locator(HPL.BUTTON_UTUB_SETTINGS_GEAR)).to_be_focused()
     expect(page.locator(HPL.SELECTOR_SELECTED_UTUB)).to_have_count(1)
-    assert selected_id == str(utub_id)
-    assert page.locator(HPL.SELECTOR_SELECTED_UTUB).get_attribute("utubid") == str(
-        utub_id
+    assert (
+        page.locator(HPL.SELECTOR_SELECTED_UTUB).get_attribute("utubid") == selected_id
     )
 
 

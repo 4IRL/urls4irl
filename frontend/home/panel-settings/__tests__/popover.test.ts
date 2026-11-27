@@ -74,7 +74,7 @@ vi.mock("../../tags/sheet.js", () => ({
 // Call-through wrappers: every export behaves as the real one unless a test arms
 // a failure (mockImplementationOnce / mockImplementation); mockReset restores
 // the call-through. Used by the open-time failure tests.
-vi.mock("../modal-chrome", async (importOriginal) => {
+vi.mock("../modal-chrome.js", async (importOriginal) => {
   const actual = await importOriginal<Record<string, unknown>>();
   return Object.fromEntries(
     Object.entries(actual).map(([name, value]) => [
@@ -83,7 +83,7 @@ vi.mock("../modal-chrome", async (importOriginal) => {
     ]),
   );
 });
-vi.mock("../registry", async (importOriginal) => {
+vi.mock("../registry.js", async (importOriginal) => {
   const actual = await importOriginal<Record<string, unknown>>();
   return Object.fromEntries(
     Object.entries(actual).map(([name, value]) => [

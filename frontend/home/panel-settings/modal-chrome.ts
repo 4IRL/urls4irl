@@ -28,8 +28,8 @@ function backdropElement(): HTMLElement | null {
 
 /** Inerts every body child except the settings root; idempotent while applied. */
 export function applyInert(): void {
-  const root = document.querySelector<HTMLElement>(ROOT_SELECTOR);
   if (_inertRecords.length > 0) return;
+  const root = document.querySelector<HTMLElement>(ROOT_SELECTOR);
   for (const child of Array.from(document.body.children)) {
     if (child === root || NON_INERT_TAGS.has(child.tagName)) continue;
     _inertRecords.push({
