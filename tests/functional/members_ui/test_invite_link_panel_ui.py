@@ -317,18 +317,52 @@ def test_opening_panel_closes_open_gear_popover(
     """
     GIVEN the owner with the Members gear popover open
     WHEN they open the invite link modal from the keyboard
-    THEN the popover is closed and the modal is shown
+    THEN the invite trigger is unreachable (inert, unfocusable, covered by the
+        dialog root) while the dialog is open
     """
     login_as(app=provide_app, page=page, user_id=OWNER_ID)
     page.locator(HPL.BUTTON_MEMBER_SETTINGS_GEAR).click()
     expect(page.locator(HPL.PANEL_SETTINGS_POPOVER)).to_be_visible()
 
-    # Keyboard open: not an outside click, so the popover's own dismissal
-    # cannot be what hides it.
-    page.locator(HPL.BUTTON_MEMBER_INVITE_LINK).focus()
-    page.keyboard.press("Enter")
+    trigger = page.locator(HPL.BUTTON_MEMBER_INVITE_LINK)
+    reach = page.evaluate(
+        """({ triggerSelector, rootSelector }) => {
+            const trigger = document.querySelector(triggerSelector);
+            const rect = trigger.getBoundingClientRect();
+            const hit = document.elementFromPoint(
+                rect.left + rect.width / 2, rect.top + rect.height / 2
+            );
+            const before = document.activeElement;
+            trigger.focus();
+            return {
+                width: rect.width,
+                inert: !!trigger.closest('[inert]'),
+                focusMoved: document.activeElement !== before,
+                focusedTrigger: document.activeElement === trigger,
+                hitIsTrigger: hit === trigger || trigger.contains(hit),
+                hitInRoot: !!hit && document.querySelector(rootSelector).contains(hit),
+            };
+        }""",
+        {
+            "triggerSelector": HPL.BUTTON_MEMBER_INVITE_LINK,
+            "rootSelector": HPL.PANEL_SETTINGS_ROOT,
+        },
+    )
+    assert reach["width"] > 0, reach
+    assert reach["inert"], reach
+    assert not reach["focusMoved"] and not reach["focusedTrigger"], reach
+    assert not reach["hitIsTrigger"] and reach["hitInRoot"], reach
+    expect(trigger).not_to_be_focused()
+    # Chromium fires a DOM click() on an inert trigger, so this proves the silent
+    # forced close on INVITE_PANEL_OPENED end to end (the vitest describe covers
+    # the same contract at unit level).
+    page.evaluate(
+        "(sel) => document.querySelector(sel).click()",
+        HPL.BUTTON_MEMBER_INVITE_LINK,
+    )
     expect(page.locator(HPL.INVITE_LINK_MODAL)).to_be_visible()
     expect(page.locator(HPL.PANEL_SETTINGS_POPOVER)).to_be_hidden()
+    expect(page.locator(HPL.MAIN_PANEL)).not_to_have_attribute("inert", "")
 
 
 def test_hide_member_list_keeps_trigger_for_managers_and_hides_it_from_members(

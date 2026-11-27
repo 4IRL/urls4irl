@@ -38,9 +38,18 @@ export const FIXTURE = `
     aria-label="URLs settings" aria-haspopup="dialog" aria-expanded="false"
     aria-controls="panelSettingsPopover"></button>
   <button id="outside" type="button">outside</button>
+  <main id="mainPanel"></main>
   <div id="panelSettingsRoot">
     <div id="panelSettingsPopover" class="panelSettingsPopover hidden"
-      role="dialog" tabindex="-1"></div>
+      role="dialog" aria-modal="true" aria-labelledby="panelSettingsPopoverTitle"
+      tabindex="-1">
+      <div id="panelSettingsPopoverHeader" class="panelSettingsPopoverHeader">
+        <h2 id="panelSettingsPopoverTitle" class="panelSettingsPopoverTitle"></h2>
+        <button id="panelSettingsPopoverClose" class="panelSettingsPopoverClose"
+          type="button" aria-label="Close"></button>
+      </div>
+      <div id="panelSettingsPopoverBody" class="panelSettingsPopoverBody"></div>
+    </div>
     <div id="panelSettingsBackdrop" class="panelSettingsBackdrop hidden" aria-hidden="true"></div>
     <div id="panelSettingsSheet" class="panelSettingsSheet hidden" role="dialog"
       aria-modal="true" aria-labelledby="panelSettingsSheetTitle" tabindex="-1">

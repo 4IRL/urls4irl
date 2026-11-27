@@ -172,8 +172,35 @@ def test_home_page_renders_settings_shell_mount_outside_main(
     popover = parser.elements["panelSettingsPopover"]
     assert popover.get("role") == "dialog"
     assert popover.get("tabindex") == "-1"
-    assert "aria-modal" not in popover
+    assert popover.get("aria-modal") == "true"
+    assert popover.get("aria-labelledby") == "panelSettingsPopoverTitle"
+    assert "aria-label" not in popover
     assert "hidden" not in popover
+
+    # Header (title, close) then body, in DOM order, all inside the dialog.
+    header_at = html.index('id="panelSettingsPopoverHeader"')
+    title_at = html.index('id="panelSettingsPopoverTitle"')
+    close_at = html.index('id="panelSettingsPopoverClose"')
+    body_at = html.index('id="panelSettingsPopoverBody"')
+    assert header_at < title_at < close_at < body_at
+    assert parser.parents["panelSettingsPopoverHeader"].get("id") == (
+        "panelSettingsPopover"
+    )
+    assert parser.parents["panelSettingsPopoverBody"].get("id") == (
+        "panelSettingsPopover"
+    )
+    assert parser.parents["panelSettingsPopoverTitle"].get("id") == (
+        "panelSettingsPopoverHeader"
+    )
+    assert parser.parents["panelSettingsPopoverClose"].get("id") == (
+        "panelSettingsPopoverHeader"
+    )
+    popover_close = parser.elements["panelSettingsPopoverClose"]
+    assert popover_close.get("type") == "button"
+    assert popover_close.get("aria-label") == UI_TEST_STRINGS.PANEL_SETTINGS_CLOSE
+    assert re.search(r'<h2[^>]*id="panelSettingsPopoverTitle"[^>]*>\s*</h2>', html), (
+        "popover title must be an empty h2"
+    )
     for element_id in (
         "panelSettingsPopover",
         "panelSettingsBackdrop",

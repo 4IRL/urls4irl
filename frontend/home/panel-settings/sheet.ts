@@ -4,6 +4,12 @@ import {
   resolveExpandableSheetRelease,
 } from "../../logic/tag-sheet-snap.js";
 import { isTagSheetSelfBackPending } from "../tags/sheet.js";
+import {
+  applyInert,
+  hideBackdrop,
+  restoreInert,
+  showBackdrop,
+} from "./modal-chrome.js";
 
 // The mobile bottom-sheet chrome for the panel settings shell: backdrop, sheet,
 // inert background and drag-to-dismiss. It knows nothing about sections; the
@@ -30,14 +36,7 @@ const ROOT_SHEET_CLASS = "panelSettingsRoot--sheet";
 const SHEET_OPEN_CLASS = "panelSettingsSheet--open";
 const SHEET_DRAGGING_CLASS = "panelSettingsSheet--dragging";
 const SHEET_EXPANDED_CLASS = "panelSettingsSheet--expanded";
-const BACKDROP_SHOW_CLASS = "panelSettingsBackdrop--show";
 const BOUND_ATTRIBUTE = "data-sheet-bound";
-const INERT_ATTRIBUTE = "inert";
-const NON_INERT_TAGS: ReadonlySet<string> = new Set([
-  "SCRIPT",
-  "STYLE",
-  "TEMPLATE",
-]);
 const SETTINGS_HISTORY_KEY = "panelSettingsSheetOpen";
 export const SELF_BACK_TIMEOUT_MS = 1500;
 // Movement below this is a tap, not a drag.
@@ -48,11 +47,6 @@ export const EXPANDED_HEIGHT_FRACTION = 0.95;
 // Fallback to drop the settle's inline height when no transition runs
 // (reduced motion); a little over the 0.3s CSS transition.
 export const SETTLE_MS = 350;
-
-interface InertRecord {
-  element: Element;
-  wasInert: boolean;
-}
 
 interface DragState {
   pointerId: number;
@@ -72,7 +66,6 @@ interface DragState {
 type CloseHandler = (kind: CloseKind) => void;
 
 let _closeHandler: CloseHandler | null = null;
-let _inertRecords: InertRecord[] = [];
 let _drag: DragState | null = null;
 let _baseState: unknown = null;
 let _selfClosingViaBack = false;
@@ -116,33 +109,6 @@ function backdropElement(): HTMLElement | null {
 
 function rootElement(): HTMLElement | null {
   return document.querySelector<HTMLElement>(ROOT_SELECTOR);
-}
-
-// ------------------------------------------------------------------- inert
-
-function applyInert(): void {
-  const root = rootElement();
-  if (_inertRecords.length > 0) return;
-  for (const child of Array.from(document.body.children)) {
-    if (child === root || NON_INERT_TAGS.has(child.tagName)) continue;
-    _inertRecords.push({
-      element: child,
-      wasInert: child.hasAttribute(INERT_ATTRIBUTE),
-    });
-    child.setAttribute(INERT_ATTRIBUTE, "");
-  }
-}
-
-// Reverse order of application: restores exactly each element's prior state.
-function restoreInert(): void {
-  for (const record of _inertRecords.reverse()) {
-    if (record.wasInert) {
-      record.element.setAttribute(INERT_ATTRIBUTE, "");
-    } else {
-      record.element.removeAttribute(INERT_ATTRIBUTE);
-    }
-  }
-  _inertRecords = [];
 }
 
 // -------------------------------------------------------------------- drag
@@ -413,12 +379,10 @@ export function openSettingsSheet({ title }: { title: string }): HTMLElement {
   applyInert();
   rootElement()?.classList.add(ROOT_SHEET_CLASS);
 
-  const backdrop = backdropElement();
-  backdrop?.classList.remove(HIDDEN_CLASS);
   sheet.classList.remove(HIDDEN_CLASS);
   // Commit the resting (off-screen) styles so the next class change transitions.
   void sheet.offsetHeight;
-  backdrop?.classList.add(BACKDROP_SHOW_CLASS);
+  showBackdrop();
   sheet.classList.add(SHEET_OPEN_CLASS);
   return body;
 }
@@ -434,9 +398,7 @@ function hideSurface(): void {
     sheet.classList.remove(SHEET_OPEN_CLASS);
     sheet.classList.add(HIDDEN_CLASS);
   }
-  const backdrop = backdropElement();
-  backdrop?.classList.remove(BACKDROP_SHOW_CLASS);
-  backdrop?.classList.add(HIDDEN_CLASS);
+  hideBackdrop();
   teardownDrag();
   restoreInert();
   rootElement()?.classList.remove(ROOT_SHEET_CLASS);
