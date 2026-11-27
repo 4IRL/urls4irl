@@ -3,8 +3,10 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   applyInert,
   hideBackdrop,
+  lockBodyScroll,
   restoreInert,
   showBackdrop,
+  unlockBodyScroll,
 } from "../modal-chrome.js";
 
 function el(id: string): HTMLElement {
@@ -62,6 +64,21 @@ describe("modal-chrome", () => {
     restoreInert();
 
     expect(inertIds()).toEqual(["pageFooter"]);
+  });
+
+  it("locks and unlocks body scroll with a body class only, idempotently", () => {
+    lockBodyScroll();
+    lockBodyScroll();
+    expect(document.body.classList.contains("panelSettingsBodyLock")).toBe(
+      true,
+    );
+    expect(document.body.style.overflow).toBe("");
+
+    unlockBodyScroll();
+    unlockBodyScroll();
+    expect(document.body.classList.contains("panelSettingsBodyLock")).toBe(
+      false,
+    );
   });
 
   it("toggles the backdrop classes", () => {

@@ -7,6 +7,7 @@ import { fitUTubHeaderAndSubheader } from "../../utubs/header-fit.js";
 import { hideTooltip } from "../../../lib/tooltips.js";
 import {
   EMPTY_MEMBER_SETTINGS,
+  type PanelId,
   type ResolvedUtubSettings,
 } from "../../../types/settings.js";
 import { announceSettingsStatus } from "../announce.js";
@@ -17,10 +18,11 @@ import {
   initPopover,
   rerenderSectionIfIdle,
 } from "../popover.js";
+import { applyInert, lockBodyScroll, showBackdrop } from "../modal-chrome.js";
 import { DEBOUNCE_MS } from "../queue.js";
-import { _resetRegistryForTests } from "../registry.js";
+import { _resetRegistryForTests, getSections } from "../registry.js";
 import { isPanelSettingsBusy, isPanelSettingsOpen } from "../state.js";
-import type { SectionContext, SectionPatch } from "../types.js";
+import type { PanelSection, SectionContext, SectionPatch } from "../types.js";
 import type { BreakpointMock, Harness } from "./helpers.js";
 import {
   FIXTURE,
@@ -69,8 +71,34 @@ vi.mock("../../tags/sheet.js", () => ({
   isTagSheetOpen: () => false,
   isTagSheetSelfBackPending: () => false,
 }));
+// Call-through wrappers: every export behaves as the real one unless a test arms
+// a failure (mockImplementationOnce / mockImplementation); mockReset restores
+// the call-through. Used by the open-time failure tests.
+vi.mock("../modal-chrome", async (importOriginal) => {
+  const actual = await importOriginal<Record<string, unknown>>();
+  return Object.fromEntries(
+    Object.entries(actual).map(([name, value]) => [
+      name,
+      typeof value === "function" ? vi.fn(value as () => unknown) : value,
+    ]),
+  );
+});
+vi.mock("../registry", async (importOriginal) => {
+  const actual = await importOriginal<Record<string, unknown>>();
+  return Object.fromEntries(
+    Object.entries(actual).map(([name, value]) => [
+      name,
+      typeof value === "function" ? vi.fn(value as () => unknown) : value,
+    ]),
+  );
+});
+
 function popover(): HTMLElement {
   return el("panelSettingsPopover");
+}
+
+function closeButton(): HTMLElement {
+  return el("panelSettingsPopoverClose");
 }
 
 function toggleOf(sectionId: string): HTMLButtonElement {
@@ -236,8 +264,12 @@ describe("panel settings popover", () => {
 
       expect(isOpen()).toBe(true);
       expect(gear("urls").getAttribute("aria-expanded")).toBe("true");
-      expect(popover().getAttribute("aria-label")).toBe("URLs settings");
-      expect(popover().hasAttribute("aria-labelledby")).toBe(false);
+      expect(popover().getAttribute("aria-modal")).toBe("true");
+      expect(popover().getAttribute("aria-labelledby")).toBe(
+        "panelSettingsPopoverTitle",
+      );
+      expect(popover().hasAttribute("aria-label")).toBe(false);
+      expect(el("panelSettingsPopoverTitle").textContent).toBe("URLs settings");
       expect(isPanelSettingsOpen()).toBe(true);
       expect(isPanelSettingsBusy()).toBe(true);
     });
@@ -424,17 +456,20 @@ describe("panel settings popover", () => {
 
       expect(gear("urls").getAttribute("aria-expanded")).toBe("false");
       expect(gear("members").getAttribute("aria-expanded")).toBe("true");
-      expect(popover().getAttribute("aria-label")).toBe("Members settings");
+      expect(el("panelSettingsPopoverTitle").textContent).toBe(
+        "Members settings",
+      );
       expect(isOpen()).toBe(true);
       expect(announced()).toBe("");
     });
 
-    it("drops a stale aria-label when the opening gear has none", () => {
+    it("empties a stale title when the opening gear has none", () => {
       setupUrls();
       openGear("urls");
       openGear("urls");
       gear("urls").removeAttribute("aria-label");
       openGear("urls");
+      expect(el("panelSettingsPopoverTitle").textContent).toBe("");
       expect(popover().hasAttribute("aria-label")).toBe(false);
     });
 
@@ -461,86 +496,6 @@ describe("panel settings popover", () => {
       openGear("urls");
       openGear("urls");
       expect(announced()).toBe("");
-    });
-  });
-
-  describe("positioning", () => {
-    function placeGear({
-      right,
-      bottom,
-    }: {
-      right: number;
-      bottom: number;
-    }): void {
-      vi.spyOn(gear("urls"), "getBoundingClientRect").mockReturnValue({
-        right,
-        bottom,
-        left: right - 30,
-        top: bottom - 30,
-        width: 30,
-        height: 30,
-        x: right - 30,
-        y: bottom - 30,
-        toJSON: () => ({}),
-      });
-    }
-
-    function sizePopover({
-      width,
-      height,
-    }: {
-      width: number;
-      height: number;
-    }): void {
-      Object.defineProperty(popover(), "offsetWidth", {
-        configurable: true,
-        value: width,
-      });
-      Object.defineProperty(popover(), "offsetHeight", {
-        configurable: true,
-        value: height,
-      });
-    }
-
-    beforeEach(() => {
-      initPopover();
-      registerControlled();
-      selectUTub();
-      Object.defineProperty(window, "innerWidth", {
-        configurable: true,
-        value: 1280,
-      });
-      Object.defineProperty(window, "innerHeight", {
-        configurable: true,
-        value: 800,
-      });
-      sizePopover({ width: 340, height: 200 });
-    });
-
-    it("sits below the gear, right edges aligned", () => {
-      placeGear({ right: 900, bottom: 100 });
-      openGear("urls");
-      expect(popover().style.left).toBe("560px");
-      expect(popover().style.top).toBe("106px");
-    });
-
-    it("clamps left into the viewport and flips above a low gear", () => {
-      placeGear({ right: 100, bottom: 790 });
-      openGear("urls");
-      expect(popover().style.left).toBe("8px");
-      // gear top 760 - gap 6 - height 200: above the gear, never over it.
-      expect(popover().style.top).toBe("554px");
-      expect(popover().style.maxHeight).toBe("");
-    });
-
-    it("repositions on window resize", () => {
-      placeGear({ right: 900, bottom: 100 });
-      openGear("urls");
-
-      placeGear({ right: 700, bottom: 120 });
-      window.dispatchEvent(new Event("resize"));
-      expect(popover().style.left).toBe("360px");
-      expect(popover().style.top).toBe("126px");
     });
   });
 
@@ -664,14 +619,15 @@ describe("panel settings popover", () => {
       toggleOf("sort").focus();
 
       const event = pressKey({ key: "Tab", target: toggleOf("sort") });
-      // The group toggle, this toggle and the sibling's toggle and input are
-      // the visible focusables; Tab from the last wraps to the group toggle.
+      // The close button, group toggle, this toggle and the sibling's toggle and
+      // input are the visible focusables; Tab from the last wraps to the close
+      // button.
       expect(event.defaultPrevented).toBe(false);
       toggleOf("sibling").focus();
       el("sibling-input").focus();
       const wrap = pressKey({ key: "Tab", target: el("sibling-input") });
       expect(wrap.defaultPrevented).toBe(true);
-      expect(document.activeElement).toBe(groupToggleOf("utub"));
+      expect(document.activeElement).toBe(closeButton());
     });
 
     it("focuses the first control of the first expanded section on open", () => {
@@ -879,9 +835,9 @@ describe("panel settings popover", () => {
 
       el("sort-input").focus();
       const event = pressKey({ key: "Tab", target: el("sort-input") });
-      // The group toggle and the input are the only focusables.
+      // The close button, the group toggle and the input are the only focusables.
       expect(event.defaultPrevented).toBe(true);
-      expect(document.activeElement).toBe(groupToggleOf("utub"));
+      expect(document.activeElement).toBe(closeButton());
     });
 
     it("keeps the section expanded even when storage says collapsed", () => {
@@ -1108,9 +1064,10 @@ describe("panel settings popover", () => {
       groupToggleOf("user").focus();
 
       const event = pressKey({ key: "Tab", target: groupToggleOf("user") });
-      // Visible focusables: utub group toggle, sort toggle and input, user toggle.
+      // Visible focusables: close button, utub group toggle, sort toggle and
+      // input, user toggle.
       expect(event.defaultPrevented).toBe(true);
-      expect(document.activeElement).toBe(groupToggleOf("utub"));
+      expect(document.activeElement).toBe(closeButton());
     });
 
     it("focuses the first control of the first expanded parent on open", () => {
@@ -1156,11 +1113,11 @@ describe("panel settings popover", () => {
     it("wraps Shift+Tab from the first parent toggle onto the last visible control", () => {
       setupBoth();
       groupToggleOf("user").click();
-      groupToggleOf("utub").focus();
+      closeButton().focus();
       const event = pressKey({
         key: "Tab",
         shiftKey: true,
-        target: groupToggleOf("utub"),
+        target: closeButton(),
       });
 
       expect(event.defaultPrevented).toBe(true);
@@ -1448,21 +1405,21 @@ describe("panel settings popover", () => {
       openGear("urls");
     }
 
-    it("wraps Tab from the last control to the first (the parent toggle)", () => {
+    it("wraps Tab from the last control to the first (the close button)", () => {
       setupTwoControls();
       el("last-input").focus();
       const event = pressKey({ key: "Tab", target: el("last-input") });
       expect(event.defaultPrevented).toBe(true);
-      expect(document.activeElement).toBe(groupToggleOf("utub"));
+      expect(document.activeElement).toBe(closeButton());
     });
 
-    it("wraps Shift+Tab from the first control (the parent toggle) to the last", () => {
+    it("wraps Shift+Tab from the first control (the close button) to the last", () => {
       setupTwoControls();
-      groupToggleOf("utub").focus();
+      closeButton().focus();
       const event = pressKey({
         key: "Tab",
         shiftKey: true,
-        target: groupToggleOf("utub"),
+        target: closeButton(),
       });
       expect(event.defaultPrevented).toBe(true);
       expect(document.activeElement).toBe(el("last-input"));
@@ -1475,7 +1432,7 @@ describe("panel settings popover", () => {
       expect(event.defaultPrevented).toBe(false);
     });
 
-    it("wraps between the parent toggle and the lone section toggle when the body has no control", () => {
+    it("wraps between the close button and the lone section toggle when the body has no control", () => {
       initPopover();
       registerControlled({
         render: vi.fn(({ container }) => {
@@ -1487,7 +1444,7 @@ describe("panel settings popover", () => {
 
       const event = pressKey({ key: "Tab", target: toggleOf("sort") });
       expect(event.defaultPrevented).toBe(true);
-      expect(document.activeElement).toBe(groupToggleOf("utub"));
+      expect(document.activeElement).toBe(closeButton());
     });
 
     it("Escape closes, prevents default and returns focus to the gear", () => {
@@ -1515,7 +1472,7 @@ describe("panel settings popover", () => {
       el("last-input").focus();
       const event = pressKey({ key: "Tab", target: el("last-input") });
       expect(event.defaultPrevented).toBe(true);
-      expect(document.activeElement).toBe(groupToggleOf("utub"));
+      expect(document.activeElement).toBe(closeButton());
     });
 
     it("ignores other keys and Escape when closed", () => {
@@ -1592,61 +1549,346 @@ describe("panel settings popover", () => {
     });
   });
 
-  describe("outside pointerdown", () => {
+  describe("open-time failure", () => {
+    const INJECTED = "injected open failure";
+
     beforeEach(() => {
       initPopover();
       registerControlled();
       selectUTub();
-      openGear("urls");
     });
 
-    function pointerDown(target: HTMLElement): void {
-      target.dispatchEvent(new Event("pointerdown", { bubbles: true }));
+    afterEach(() => {
+      vi.mocked(applyInert).mockReset();
+      vi.mocked(showBackdrop).mockReset();
+      vi.mocked(lockBodyScroll).mockReset();
+      vi.mocked(getSections).mockReset();
+    });
+
+    // happy-dom rethrows a click listener's error out of dispatchEvent.
+    function openGearCapturingError(panel: string): unknown {
+      try {
+        openGear(panel);
+      } catch (error) {
+        return error;
+      }
+      return null;
     }
 
-    it("closes when the pointer goes down outside", () => {
-      pointerDown(el("outside"));
+    function expectFullyTornDown(): void {
+      expect(isOpen()).toBe(false);
+      expect(el("panelSettingsBackdrop").classList.contains("hidden")).toBe(
+        true,
+      );
+      expect(el("mainPanel").hasAttribute("inert")).toBe(false);
+      expect(document.body.classList.contains("panelSettingsBodyLock")).toBe(
+        false,
+      );
+      expect(
+        el("panelSettingsRoot").classList.contains("panelSettingsRoot--modal"),
+      ).toBe(false);
+      expect(gear("urls").getAttribute("aria-expanded")).toBe("false");
+      expect(document.activeElement).toBe(gear("urls"));
+      vi.advanceTimersByTime(0);
+      expect(isPanelSettingsOpen()).toBe(false);
+    }
+
+    const chromeSteps: Array<{
+      name: string;
+      fn: () => void;
+    }> = [
+      { name: "applyInert", fn: applyInert },
+      { name: "showBackdrop", fn: showBackdrop },
+      { name: "lockBodyScroll", fn: lockBodyScroll },
+    ];
+
+    it.each(chromeSteps)(
+      "tears everything down and rethrows when $name throws after applying",
+      async ({ name, fn }) => {
+        const actual =
+          await vi.importActual<Record<string, () => void>>(
+            "../modal-chrome.js",
+          );
+        vi.mocked(fn).mockImplementationOnce(() => {
+          actual[name]();
+          throw new Error(INJECTED);
+        });
+
+        const error = openGearCapturingError("urls");
+
+        expect(vi.mocked(fn)).toHaveBeenCalled();
+        expect(error).toBeInstanceOf(Error);
+        expect((error as Error).message).toBe(INJECTED);
+        expectFullyTornDown();
+      },
+    );
+
+    it("tears everything down and rethrows when rendering the sections throws", async () => {
+      const actual = await vi.importActual<{
+        getSections: (panel: PanelId) => PanelSection[];
+      }>("../registry.js");
+      // openPopover reads the sections once before `_current` is set (the empty
+      // guard); the second read is inside renderAllSections, after it.
+      vi.mocked(getSections).mockClear();
+      let calls = 0;
+      vi.mocked(getSections).mockImplementation((panel: PanelId) => {
+        calls += 1;
+        if (calls === 2) throw new Error(INJECTED);
+        return actual.getSections(panel);
+      });
+
+      const error = openGearCapturingError("urls");
+
+      expect(calls).toBeGreaterThanOrEqual(2);
+      expect((error as Error).message).toBe(INJECTED);
+      expectFullyTornDown();
+    });
+  });
+
+  describe("backdrop and close button", () => {
+    beforeEach(() => {
+      initPopover();
+      registerControlled();
+      selectUTub();
+    });
+
+    function backdrop(): HTMLElement {
+      return el("panelSettingsBackdrop");
+    }
+
+    it("closes silently on a backdrop click, with focus on the gear", () => {
+      openGear("urls");
+      backdrop().click();
       expect(isOpen()).toBe(false);
       expect(announced()).toBe("");
-    });
-
-    it("closes even when the target stops pointerdown propagation (a row-menu kebab)", () => {
-      el("outside").addEventListener("pointerdown", (event) => {
-        event.stopPropagation();
-      });
-      pointerDown(el("outside"));
-      expect(isOpen()).toBe(false);
-    });
-
-    it("stays open for a drag that starts inside and is released outside", () => {
-      pointerDown(el("sort-input"));
-      el("outside").dispatchEvent(new Event("pointerup", { bubbles: true }));
-      el("outside").dispatchEvent(new Event("click", { bubbles: true }));
-      expect(isOpen()).toBe(true);
-    });
-
-    it("returns focus to the gear when the click lands on blank space", () => {
-      pointerDown(document.body);
-      expect(isOpen()).toBe(false);
-      vi.advanceTimersByTime(0);
       expect(document.activeElement).toBe(gear("urls"));
     });
 
-    it("leaves focus on a focusable control that took it from the click", () => {
-      pointerDown(el("outside"));
-      el("outside").focus();
-      vi.advanceTimersByTime(0);
-      expect(document.activeElement).toBe(el("outside"));
-    });
-
-    it("stays open for a pointerdown inside the popover", () => {
-      pointerDown(el("sort-input"));
+    it("stays open for a click on the dialog itself", () => {
+      openGear("urls");
+      popover().click();
+      el("sort-input").click();
       expect(isOpen()).toBe(true);
     });
 
-    it("ignores gear pointerdowns (the gear click toggles)", () => {
-      pointerDown(gear("urls"));
+    it("closes exactly once per backdrop click on the desktop dialog", () => {
+      openGear("urls");
+      const focus = vi.spyOn(gear("urls"), "focus");
+      backdrop().click();
+      expect(focus).toHaveBeenCalledTimes(1);
+    });
+
+    it("closes exactly once per backdrop click on the sheet", () => {
+      breakpoint.cross({ matches: true });
+      openGear("urls");
+      const back = vi.spyOn(history, "back").mockImplementation(() => {});
+      const focus = vi.spyOn(gear("urls"), "focus");
+      backdrop().click();
+      expect(isOpen()).toBe(false);
+      expect(focus).toHaveBeenCalledTimes(1);
+      expect(back).toHaveBeenCalledTimes(1);
+      back.mockRestore();
+    });
+
+    it("does not double-bind the backdrop after a re-init", () => {
+      initPopover();
+      openGear("urls");
+      const focus = vi.spyOn(gear("urls"), "focus");
+      backdrop().click();
+      expect(focus).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not double-bind the close button after a re-init", () => {
+      initPopover();
+      openGear("urls");
+      const focus = vi.spyOn(gear("urls"), "focus");
+      closeButton().click();
+      expect(focus).toHaveBeenCalledTimes(1);
+    });
+
+    it("closes on the close button, with focus on the gear", () => {
+      openGear("urls");
+      closeButton().click();
+      expect(isOpen()).toBe(false);
+      expect(announced()).toBe("");
+      expect(document.activeElement).toBe(gear("urls"));
+    });
+  });
+
+  describe("modal dialog chrome", () => {
+    function setupUrls(): void {
+      initPopover();
+      registerControlled();
+      selectUTub();
+    }
+
+    function expectClosedChrome(): void {
+      expect(isOpen()).toBe(false);
+      expect(el("panelSettingsBackdrop").classList.contains("hidden")).toBe(
+        true,
+      );
+      expect(
+        el("panelSettingsRoot").classList.contains("panelSettingsRoot--modal"),
+      ).toBe(false);
+      expect(el("mainPanel").hasAttribute("inert")).toBe(false);
+      expect(document.body.classList.contains("panelSettingsBodyLock")).toBe(
+        false,
+      );
+    }
+
+    it("shows the backdrop, inerts the page but not the root or live region", () => {
+      setupUrls();
+      openGear("urls");
       expect(isOpen()).toBe(true);
+      expect(el("panelSettingsBackdrop").classList.contains("hidden")).toBe(
+        false,
+      );
+      expect(
+        el("panelSettingsRoot").classList.contains("panelSettingsRoot--modal"),
+      ).toBe(true);
+      expect(el("mainPanel").hasAttribute("inert")).toBe(true);
+      expect(el("panelSettingsRoot").hasAttribute("inert")).toBe(false);
+      expect(el("PanelSettingsAnnouncement").closest("[inert]")).toBeNull();
+      expect(document.body.classList.contains("panelSettingsBodyLock")).toBe(
+        true,
+      );
+    });
+
+    it("renders sections into the body and keeps the header on re-render", () => {
+      setupUrls();
+      openGear("urls");
+      const body = el("panelSettingsPopoverBody");
+      expect(body.querySelector("#sort-input")).not.toBeNull();
+      expect(el("panelSettingsPopoverHeader").parentElement).toBe(popover());
+      setState({ isCurrentUTubLocked: true });
+      expect(body.querySelector("#sort-input")).not.toBeNull();
+      expect(el("panelSettingsPopoverHeader")).toBe(
+        popover().firstElementChild,
+      );
+      expect(el("panelSettingsPopoverTitle").textContent).toBe("URLs settings");
+    });
+
+    it("never sets inline position styles", () => {
+      setupUrls();
+      openGear("urls");
+      expect(popover().style.left).toBe("");
+      expect(popover().style.top).toBe("");
+      expect(popover().style.maxHeight).toBe("");
+    });
+
+    it("never touches history", () => {
+      setupUrls();
+      const push = vi.spyOn(history, "pushState");
+      const back = vi.spyOn(history, "back");
+      openGear("urls");
+      openGear("urls");
+      expect(push).not.toHaveBeenCalled();
+      expect(back).not.toHaveBeenCalled();
+      push.mockRestore();
+      back.mockRestore();
+    });
+
+    it("clears inert before focus lands on the gear", () => {
+      setupUrls();
+      openGear("urls");
+      let inertAtFocus: boolean | null = null;
+      vi.spyOn(gear("urls"), "focus").mockImplementation(() => {
+        inertAtFocus = el("mainPanel").hasAttribute("inert");
+      });
+      closeButton().click();
+      expect(inertAtFocus).toBe(false);
+    });
+
+    it("is a silent no-op when the title markup is missing", () => {
+      setupUrls();
+      el("panelSettingsPopoverTitle").remove();
+      expect(() => openGear("urls")).not.toThrow();
+      expect(gear("urls").getAttribute("aria-expanded")).toBe("false");
+      expectClosedChrome();
+    });
+
+    it("is a silent no-op when the body markup is missing", () => {
+      setupUrls();
+      el("panelSettingsPopoverBody").remove();
+      expect(() => openGear("urls")).not.toThrow();
+      expect(gear("urls").getAttribute("aria-expanded")).toBe("false");
+      expectClosedChrome();
+    });
+
+    it("leaves one inert record set and one lock after a gear switch", () => {
+      initPopover();
+      registerControlled();
+      registerControlled({ id: "members-pref", panel: "members" });
+      selectUTub();
+      openGear("urls");
+      openGear("members");
+      expect(el("panelSettingsBackdrop").classList.contains("hidden")).toBe(
+        false,
+      );
+      expect(el("mainPanel").hasAttribute("inert")).toBe(true);
+      expect(document.body.classList.contains("panelSettingsBodyLock")).toBe(
+        true,
+      );
+      closeButton().click();
+      expectClosedChrome();
+    });
+
+    it("tears everything down on re-init with the dialog open", () => {
+      setupUrls();
+      openGear("urls");
+      initPopover();
+      expectClosedChrome();
+      expect(gear("urls").getAttribute("aria-expanded")).toBe("false");
+    });
+
+    it("tears everything down on a Bootstrap modal opening", () => {
+      setupUrls();
+      openGear("urls");
+      $(document).trigger("show.bs.modal");
+      expectClosedChrome();
+    });
+
+    it("tears everything down on every close kind", () => {
+      setupUrls();
+      // user (gear toggle)
+      openGear("urls");
+      openGear("urls");
+      expectClosedChrome();
+      // forced
+      openGear("urls");
+      emit(AppEvents.TRASH_OPENED);
+      expectClosedChrome();
+      // closePanelSettings
+      openGear("urls");
+      closePanelSettings();
+      expectClosedChrome();
+      // breakpoint cross
+      openGear("urls");
+      breakpoint.cross({ matches: true });
+      expectClosedChrome();
+      breakpoint.cross({ matches: false });
+      // resetPopover
+      openGear("urls");
+      resetPopover();
+      expectClosedChrome();
+    });
+
+    it("has released the lock and inert when the transfer handoff closes", () => {
+      initPopover();
+      registerControlled({ id: "members-pref", panel: "members" });
+      selectUTub();
+      openGear("members");
+      closePanelSettings();
+      expectClosedChrome();
+    });
+
+    it("INVITE_PANEL_OPENED leaves the page interactive", () => {
+      initPopover();
+      registerControlled({ id: "members-pref", panel: "members" });
+      selectUTub();
+      openGear("members");
+      emit(AppEvents.INVITE_PANEL_OPENED);
+      expectClosedChrome();
     });
   });
 
@@ -2188,9 +2430,13 @@ describe("panel settings popover", () => {
     });
 
     it("leaves focus alone when it moved elsewhere", () => {
-      el("outside").focus();
+      // The page is inert while the dialog is open, so the stand-in lives in
+      // the (never inert) settings root.
+      const elsewhere = document.createElement("button");
+      el("panelSettingsRoot").append(elsewhere);
+      elsewhere.focus();
       emit(AppEvents.TRASH_OPENED);
-      expect(document.activeElement).toBe(el("outside"));
+      expect(document.activeElement).toBe(elsewhere);
     });
 
     it("closePanelSettings closes the open surface silently and returns focus to the gear", () => {
@@ -2685,7 +2931,7 @@ describe("panel settings popover", () => {
 
       expect(announced()).toBe("Sort: Couldn't save");
       expect(harness.section.render).toHaveBeenCalledTimes(rendersBefore);
-      expect(popover().childElementCount).toBe(0);
+      expect(el("panelSettingsPopoverBody").childElementCount).toBe(0);
     });
 
     it("announces a late save with a notice once, with title, Saved and notice", async () => {
@@ -2703,7 +2949,7 @@ describe("panel settings popover", () => {
 
       expect(announceSettingsStatus).toHaveBeenCalledTimes(1);
       expect(announced()).toBe("Sort: Saved. Reset to https.");
-      expect(popover().childElementCount).toBe(0);
+      expect(el("panelSettingsPopoverBody").childElementCount).toBe(0);
     });
 
     it("stays silent for a late plain save", async () => {
@@ -2733,7 +2979,7 @@ describe("panel settings popover", () => {
 
       harness.pending[0].resolve({ outcome: "locked" });
       await settle();
-      expect(popover().childElementCount).toBe(0);
+      expect(el("panelSettingsPopoverBody").childElementCount).toBe(0);
     });
   });
 

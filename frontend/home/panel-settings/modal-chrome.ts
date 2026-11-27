@@ -7,6 +7,7 @@ const BACKDROP_SELECTOR = "#panelSettingsBackdrop";
 
 const HIDDEN_CLASS = "hidden";
 const BACKDROP_SHOW_CLASS = "panelSettingsBackdrop--show";
+const BODY_LOCK_CLASS = "panelSettingsBodyLock";
 const INERT_ATTRIBUTE = "inert";
 const NON_INERT_TAGS: ReadonlySet<string> = new Set([
   "SCRIPT",
@@ -58,6 +59,19 @@ export function showBackdrop(): void {
   backdrop.classList.remove(HIDDEN_CLASS);
   void backdrop.offsetHeight;
   backdrop.classList.add(BACKDROP_SHOW_CLASS);
+}
+
+/**
+ * Freezes page scroll while the desktop dialog is open. A body class only
+ * (never inline overflow), so Bootstrap's saved/restored body styles and its
+ * modal-open class are never disturbed. Idempotent.
+ */
+export function lockBodyScroll(): void {
+  document.body.classList.add(BODY_LOCK_CLASS);
+}
+
+export function unlockBodyScroll(): void {
+  document.body.classList.remove(BODY_LOCK_CLASS);
 }
 
 export function hideBackdrop(): void {

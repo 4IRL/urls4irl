@@ -1,5 +1,5 @@
 /*
- * Panel settings: the header gear and the desktop settings popover.
+ * Panel settings: the header gear and the desktop centered settings dialog.
  * Markup: components/home/PanelSettingsGear.html (one gear per deck header) and the
  * #panelSettingsRoot mount in pages/home.html. Behaviour: the settings shell (TS).
  * Tokens only, so every rule flips with the app-wide theme.
@@ -76,23 +76,86 @@
 
 /* ------------------------------ Popover card ------------------------------ */
 
-/* Above in-flow content, the member row menu (20) and the tag-sheet peek (30);
-   below the 1036 bulk-actions bar/picker, the 1039 tag-sheet backdrop and the
-   1040 overlays. The shell positions it next to the opening gear. */
+/* Desktop settings dialog, centered in the viewport. z-index 1 paints and
+   hit-tests it above the shared backdrop inside the root's stacking context; the
+   root itself rises to 1045 while it is open (panelSettingsRoot--modal below). The
+   header stays put and the body scrolls under it. */
 .panelSettingsPopover {
     position: fixed;
-    width: 340px;
-    max-width: calc(100vw - 16px);
-    /* Fallback only: positionPopover sets an inline max-height from the room
-       beside the gear whenever the card would otherwise cover it. */
-    max-height: calc(100dvh - 112px);
-    overflow-y: auto;
-    padding: 4px 16px;
+    z-index: 1;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 480px;
+    max-width: calc(100vw - 32px);
+    max-height: 85dvh;
+    display: flex;
+    flex-direction: column;
+    padding: 0;
     background: var(--panelBackgroundColor);
     color: var(--textPrimary);
     border: 1px solid var(--borderColor);
-    border-radius: var(--radius-sm);
-    box-shadow: var(--shadow-md);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+}
+
+.panelSettingsPopoverHeader {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.25rem 0.5rem 0.25rem 1rem;
+    border-bottom: 2px solid var(--contentTopBorder);
+}
+
+.panelSettingsPopoverTitle {
+    margin: 0;
+    color: var(--deckHeaderGreen);
+    font-size: 1.25rem;
+    font-weight: 500;
+}
+
+.panelSettingsPopoverClose {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    color: var(--textPrimary);
+    cursor: pointer;
+}
+
+.panelSettingsPopoverClose:focus-visible {
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: -2px;
+}
+
+.panelSettingsPopoverBody {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 0 1rem 1rem;
+}
+
+/* While the dialog is open the root rises above the bulk bar, Tag sheet and other
+   overlays (1036-1040), still under Bootstrap modals (1050+). The page behind is
+   inert and does not scroll. */
+#panelSettingsRoot {
+    overscroll-behavior: contain;
+}
+
+#panelSettingsRoot.panelSettingsRoot--modal {
+    z-index: 1045;
+}
+
+body.panelSettingsBodyLock {
+    overflow: hidden;
 }
 
 .panelSettingsPopover:focus {
@@ -103,7 +166,6 @@
     outline: 2px solid var(--deckSelectionGreen);
     outline-offset: -2px;
 }
-
 /* -------------------------- Mobile bottom sheet --------------------------- */
 
 /* While the sheet is open the root rises above the open Tag sheet (1040) and its
@@ -120,6 +182,7 @@
     opacity: 0;
     /* A touch drag on the dimmed page must not scroll the document behind. */
     touch-action: none;
+    overscroll-behavior: contain;
     transition: opacity 0.3s ease;
 }
 
@@ -386,7 +449,7 @@ h3.panelSettingsRowTitle {
     margin-top: 2px;
 }
 
-/* The in-popover listbox flows in place under its toggle (the popover scrolls
+/* The in-dialog listbox flows in place under its toggle (the dialog body scrolls
    inside its max-height). */
 .panelSettingsRow > .urlSchemeListbox {
     flex: 0 0 100%;

@@ -12,7 +12,14 @@ import { dismissActiveTip, maybeShowNextTip } from "../onboarding/nudges.js";
 import { fitUTubHeaderAndSubheader } from "../utubs/header-fit.js";
 import { announceSettingsStatus } from "./announce.js";
 import { canWriteSection, isSectionVisible } from "./permissions.js";
-import { computePopoverPlacement } from "./placement.js";
+import {
+  applyInert,
+  hideBackdrop,
+  lockBodyScroll,
+  restoreInert,
+  showBackdrop,
+  unlockBodyScroll,
+} from "./modal-chrome.js";
 import { createSaveQueue } from "./queue.js";
 import type { SaveQueue } from "./queue.js";
 import { getSections, isKnownPanel } from "./registry.js";
@@ -41,12 +48,15 @@ const SHEET_ID = "panelSettingsSheet";
 const POPOVER_SELECTOR = `#${POPOVER_ID}`;
 const SHEET_SELECTOR = `#${SHEET_ID}`;
 const SHEET_CLOSE_SELECTOR = "#panelSettingsSheetClose";
+const ROOT_SELECTOR = "#panelSettingsRoot";
+const POPOVER_TITLE_SELECTOR = "#panelSettingsPopoverTitle";
+const POPOVER_BODY_SELECTOR = "#panelSettingsPopoverBody";
+const POPOVER_CLOSE_SELECTOR = "#panelSettingsPopoverClose";
+const ROOT_MODAL_CLASS = "panelSettingsRoot--modal";
 const GEAR_SELECTOR = ".panelSettingsGear";
 const KEYDOWN_NAMESPACE = "keydown.panelSettings";
 const MODAL_NAMESPACE = "show.bs.modal.panelSettings";
 const HIDDEN_CLASS = "hidden";
-const VIEWPORT_MARGIN_PX = 8;
-const GEAR_GAP_PX = 6;
 // How long "Saved" stays in the status slot before it clears.
 const SAVED_DWELL_MS = 1500;
 // How often a "saving" indicator checks whether the queue has gone idle (the
@@ -67,12 +77,6 @@ const FOCUS_FALLBACK_SELECTORS: Readonly<Record<PanelId, readonly string[]>> = {
   members: ["#memberBtnOverflow", "#MemberDeckHeaderAndCaret"],
   tags: ["#TagDeckHeaderAndCaret"],
   urls: ["#urlBtnCreate", "#urlBtnMultiSelect"],
-};
-
-// The Members title row collapses its gear into the overflow menu when narrow
-// (display:none). A popover opened from the menu anchors to the overflow button.
-const OVERFLOW_ANCHOR_SELECTORS: Readonly<Partial<Record<PanelId, string>>> = {
-  members: "#memberBtnOverflow",
 };
 
 // Below the breakpoint the Tag deck lives in the Tag sheet, whose handle is the
@@ -133,7 +137,7 @@ type Surface = "popover" | "sheet";
 interface OpenPopover {
   /** Which surface renders this open settings view. */
   surface: Surface;
-  /** Render target: the popover element, or the sheet body. */
+  /** Render target: the dialog body, or the sheet body. */
   container: HTMLElement;
   panel: PanelId;
   gear: HTMLElement;
@@ -168,6 +172,10 @@ let _lastIsLocked = false;
 
 function popoverElement(): HTMLElement | null {
   return document.querySelector<HTMLElement>(POPOVER_SELECTOR);
+}
+
+function rootElement(): HTMLElement | null {
+  return document.querySelector<HTMLElement>(ROOT_SELECTOR);
 }
 
 function sheetElement(): HTMLElement | null {
@@ -712,10 +720,6 @@ function createEntry({
     const collapsed = !entry.collapsed;
     applyCollapsed({ entry, collapsed });
     rememberCollapsed({ sectionId: section.id, collapsed });
-    // Expanding can grow the popover past the viewport edge.
-    if (_current?.surface === "popover") {
-      positionPopover({ gear: _current.gear });
-    }
   });
 
   wrapper.addEventListener("focusin", (event) => {
@@ -833,10 +837,6 @@ function createGroupEntry({
     const collapsed = !group.collapsed;
     applyGroupCollapsed({ group, collapsed });
     rememberCollapsed({ sectionId: groupKey({ scope }), collapsed });
-    // Expanding can grow the popover past the viewport edge.
-    if (_current?.surface === "popover") {
-      positionPopover({ gear: _current.gear });
-    }
   });
 
   popover.groups.set(scope, group);
@@ -1139,43 +1139,25 @@ function buildSink(): QueueSink {
   };
 }
 
-// -------------------------------------------------------------- position
+// ---------------------------------------------------------- dialog chrome
 
-// The gear itself, or its overflow-menu button when the gear is not rendered.
-function anchorFor({ gear }: { gear: HTMLElement }): HTMLElement {
-  if (gear.offsetParent !== null) return gear;
-  const panel = gear.dataset.panel;
-  const selector = isKnownPanel(panel)
-    ? OVERFLOW_ANCHOR_SELECTORS[panel]
-    : undefined;
-  const anchor =
-    selector === undefined
-      ? null
-      : document.querySelector<HTMLElement>(selector);
-  return anchor !== null && anchor.offsetParent !== null ? anchor : gear;
+// Modal chrome of the desktop dialog. Applied inside openPopover's try (after
+// `_current` is set), so any throw reaches the single teardown below.
+function applyDesktopChrome(): void {
+  rootElement()?.classList.add(ROOT_MODAL_CLASS);
+  showBackdrop();
+  applyInert();
+  lockBodyScroll();
 }
 
-function positionPopover({ gear }: { gear: HTMLElement }): void {
-  const element = popoverElement();
-  if (!element) return;
-  // Reset the inline cap so the natural height is measured on every call
-  // (resize, section toggles); the synchronous re-measure paints once.
-  element.style.maxHeight = "";
-  const rect = anchorFor({ gear }).getBoundingClientRect();
-  const placement = computePopoverPlacement({
-    gearRect: rect,
-    width: element.offsetWidth,
-    naturalHeight: element.offsetHeight,
-    viewportWidth: window.innerWidth,
-    viewportHeight: window.innerHeight,
-    margin: VIEWPORT_MARGIN_PX,
-    gap: GEAR_GAP_PX,
-  });
-  if (placement.maxHeight !== null) {
-    element.style.maxHeight = `${placement.maxHeight}px`;
-  }
-  element.style.left = `${placement.left}px`;
-  element.style.top = `${placement.top}px`;
+// The single desktop teardown: unconditional and idempotent. Inert is restored
+// by the caller's order (before focus returns to the gear).
+function teardownDesktopChrome(): void {
+  popoverElement()?.classList.add(HIDDEN_CLASS);
+  hideBackdrop();
+  rootElement()?.classList.remove(ROOT_MODAL_CLASS);
+  unlockBodyScroll();
+  restoreInert();
 }
 
 // ------------------------------------------------------------ open/close
@@ -1238,6 +1220,18 @@ function openPopover({ gear }: { gear: HTMLElement }): void {
   // A sheet close or Tag sheet close is still unwinding its history entry: the
   // tap is dropped (before any internal close) and stays dropped.
   if (surface === "sheet" && isPanelSettingsSheetSelfBackPending()) return;
+  // Desktop: a dialog without its title or body markup is a silent no-op,
+  // resolved before any side effect so nothing needs undoing.
+  const titleElement = element.querySelector<HTMLElement>(
+    POPOVER_TITLE_SELECTOR,
+  );
+  const bodyElement = element.querySelector<HTMLElement>(POPOVER_BODY_SELECTOR);
+  if (
+    surface === "popover" &&
+    (titleElement === null || bodyElement === null)
+  ) {
+    return;
+  }
 
   if (_current !== null) {
     // Switching popovers is a quiet user close; the sheet's gears are inert while
@@ -1264,10 +1258,9 @@ function openPopover({ gear }: { gear: HTMLElement }): void {
     // The sheet is labelled by its title element, which carries the gear label.
     container = openSettingsSheet({ title: label ?? "" });
   } else {
-    element.removeAttribute("aria-labelledby");
-    element.removeAttribute("aria-label");
-    if (label) element.setAttribute("aria-label", label);
-    container = element;
+    // The dialog is named through its static aria-labelledby title.
+    if (titleElement) titleElement.textContent = label ?? "";
+    container = bodyElement ?? element;
   }
   const popover: OpenPopover = {
     surface,
@@ -1282,10 +1275,13 @@ function openPopover({ gear }: { gear: HTMLElement }): void {
   setPanelSettingsOpen({ open: true });
 
   try {
+    if (surface === "popover") {
+      // Chrome first, inside the try, so the catch's full teardown covers it.
+      applyDesktopChrome();
+      element.classList.remove(HIDDEN_CLASS);
+    }
     container.replaceChildren();
-    if (surface === "popover") element.classList.remove(HIDDEN_CLASS);
     renderAllSections({ popover });
-    if (surface === "popover") positionPopover({ gear });
 
     const first = initialFocusTarget({ popover });
     const fallback =
@@ -1295,10 +1291,9 @@ function openPopover({ gear }: { gear: HTMLElement }): void {
     // The sheet is fixed-position: never let focus scroll the page behind it.
     (first ?? fallback).focus({ preventScroll: surface === "sheet" });
   } catch (error) {
-    // An inert page with a half-rendered sheet would lock the user in.
-    if (surface === "sheet") {
-      closePopover({ kind: "forced", restoreFocus: false });
-    }
+    // An inert page with a half-rendered surface would lock the user in. The
+    // desktop open came from the gear, so focus goes back to it.
+    closePopover({ kind: "forced", restoreFocus: surface === "popover" });
     throw error;
   }
 }
@@ -1337,7 +1332,7 @@ function closePopover({
   if (popover.surface === "sheet") {
     closeSettingsSheet({ kind });
   } else {
-    element.classList.add(HIDDEN_CLASS);
+    teardownDesktopChrome();
   }
   popover.gear.setAttribute("aria-expanded", "false");
 
@@ -1546,28 +1541,8 @@ function onSectionsChanged(): void {
   renderAllSections({ popover });
 }
 
-function onPointerDown(event: Event): void {
-  const popover = _current;
-  const element = surfaceElement();
-  if (popover === null || !element) return;
-  // The sheet's outside is its backdrop, which closes it through its own click.
-  if (popover.surface === "sheet") return;
-  const target = event.target;
-  if (!(target instanceof Node)) return;
-  if (element.contains(target)) return;
-  // Gear clicks are handled by the gear's own click (toggle / switch).
-  if (target instanceof Element && target.closest(GEAR_SELECTOR)) return;
-  const { gear, panel } = popover;
-  closePopover({ kind: "user", restoreFocus: false });
-  // The browser's default mousedown focus handling runs after this capture
-  // handler, so restore afterwards, and only if nothing took focus (a clicked
-  // control keeps it; blank space leaves the body).
-  setTimeout(() => {
-    const active = document.activeElement;
-    if (active === null || active === document.body) {
-      restoreFocusTo({ gear, panel });
-    }
-  }, 0);
+function onPopoverCloseClick(): void {
+  closePopover({ kind: "user" });
 }
 
 function onEscape(event: JQuery.TriggeredEvent): void {
@@ -1606,12 +1581,6 @@ function onBreakpointChange(): void {
   recomputeGears();
 }
 
-function onResize(): void {
-  if (_current !== null && _current.surface === "popover") {
-    positionPopover({ gear: _current.gear });
-  }
-}
-
 // ------------------------------------------------------------ lifecycle
 
 function disposeAll(): void {
@@ -1626,9 +1595,13 @@ export function resetPopover(): void {
   _closeFlagTimer = null;
   if (_current !== null) {
     for (const entry of _current.entries.values()) teardownEntry({ entry });
+    _current.gear.setAttribute("aria-expanded", "false");
     _current = null;
   }
   resetSettingsSheet();
+  // Unconditional and idempotent: the sheet reset above already hid the shared
+  // backdrop and restored inert, but the dialog and the scroll lock are ours.
+  teardownDesktopChrome();
   _queue = null;
   clearForcedReadOnly();
   _breakpointQuery = null;
@@ -1665,12 +1638,15 @@ export function initPopover(): void {
   }
   registerSettingsSheetCloseHandler((kind) => closePopover({ kind }));
 
-  document.addEventListener("pointerdown", onPointerDown, true);
-  _disposers.push(() =>
-    document.removeEventListener("pointerdown", onPointerDown, true),
+  const closeButton = document.querySelector<HTMLElement>(
+    POPOVER_CLOSE_SELECTOR,
   );
-  window.addEventListener("resize", onResize);
-  _disposers.push(() => window.removeEventListener("resize", onResize));
+  if (closeButton) {
+    closeButton.addEventListener("click", onPopoverCloseClick);
+    _disposers.push(() =>
+      closeButton.removeEventListener("click", onPopoverCloseClick),
+    );
+  }
 
   $(document).off(KEYDOWN_NAMESPACE).on(KEYDOWN_NAMESPACE, onEscape);
   $(document).off(MODAL_NAMESPACE).on(MODAL_NAMESPACE, closeAnyOpen);

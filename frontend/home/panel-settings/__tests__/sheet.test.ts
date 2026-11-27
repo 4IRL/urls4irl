@@ -243,7 +243,7 @@ describe("panel settings mobile sheet", () => {
       }
     });
 
-    it("opens the popover at or above the breakpoint and leaves the sheet hidden", () => {
+    it("opens the dialog at or above the breakpoint and leaves the sheet hidden", () => {
       breakpoint.cross({ matches: false });
       initPopover();
       registerControlled();
@@ -252,8 +252,9 @@ describe("panel settings mobile sheet", () => {
 
       expect(isPopoverOpen()).toBe(true);
       expect(isSheetOpen()).toBe(false);
-      expect(backdrop().classList.contains("hidden")).toBe(true);
-      expect(inertBodyChildren()).toEqual([]);
+      // The shared backdrop and the inert page belong to the desktop dialog too.
+      expect(backdrop().classList.contains("hidden")).toBe(false);
+      expect(inertBodyChildren()).not.toEqual([]);
     });
 
     it("sets the dialog state on the sheet, backdrop and root", () => {
