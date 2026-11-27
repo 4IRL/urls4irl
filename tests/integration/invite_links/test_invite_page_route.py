@@ -164,6 +164,10 @@ def _dead_creator_demoted(app: Flask) -> str:
     return _token_of(app, seed_dead(app, "creator_demoted"))
 
 
+def _dead_creator_not_allowed(app: Flask) -> str:
+    return _token_of(app, seed_dead(app, "creator_not_allowed"))
+
+
 DEAD_CASES: list = [
     pytest.param(_dead_unknown, id="unknown"),
     pytest.param(_dead_malformed, id="malformed"),
@@ -173,6 +177,7 @@ DEAD_CASES: list = [
     pytest.param(_dead_trashed, id="trashed"),
     pytest.param(_dead_locked, id="locked"),
     pytest.param(_dead_creator_demoted, id="creator_demoted"),
+    pytest.param(_dead_creator_not_allowed, id="creator_not_allowed"),
 ]
 
 

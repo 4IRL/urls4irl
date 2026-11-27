@@ -17,9 +17,14 @@ from backend.invite_links.constants import (
     InviteLinkErrorCodes,
 )
 from backend.invite_links.guards import lock_current_invite_for_update
+from backend.invite_links.permissions import (
+    can_create_invite_links,
+    can_enable_invite_preview,
+)
 from backend.invite_links.preview import (
     apply_preview_change,
     compute_effective_preview,
+    preview_is_on,
 )
 from backend.invite_links.token_generator import generate_invite_token
 from backend.invite_links.validity import (
@@ -29,6 +34,7 @@ from backend.invite_links.validity import (
 )
 from backend.metrics.events import EventName
 from backend.models.utub_invite_links import Utub_Invite_Links
+from backend.models.utub_members import Member_Role
 from backend.models.utubs import Utubs
 from backend.schemas.errors import build_message_error_response
 from backend.schemas.invite_links import InviteLinkResponseSchema, InviteLinkSchema
@@ -43,7 +49,7 @@ from backend.utils.strings.invite_link_strs import (
     INVITE_LINK_SUCCESS,
 )
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
-from backend.utubs.guards import UtubAccess, lock_and_reauthorize
+from backend.utubs.guards import UtubAccess, get_fresh_membership, lock_and_reauthorize
 
 
 class InsertFailure(StrEnum):
@@ -107,6 +113,39 @@ def lock_manager_and_reauthorize(current_utub: Utubs) -> FlaskResponse | None:
         required_access=UtubAccess.MANAGER,
         error_code=InviteLinkErrorCodes.UTUB_IS_LOCKED,
     )
+
+
+def _caller_role(current_utub: Utubs) -> Member_Role | None:
+    """The caller's fresh role in the (already locked) UTub, or None."""
+    membership = get_fresh_membership(utub_id=current_utub.id, user_id=current_user.id)
+    return None if membership is None else membership.member_role
+
+
+def _refuse_if_creation_not_allowed(
+    current_utub: Utubs, role: Member_Role | None
+) -> FlaskResponse | None:
+    """403 ``CREATE_NOT_ALLOWED`` when the creators setting excludes the caller.
+
+    Call right after ``lock_manager_and_reauthorize`` succeeds so the rule is read
+    on the locked row. Rolls back before returning the error; None means allowed.
+    """
+    if can_create_invite_links(utub=current_utub, role=role):
+        return None
+    db.session.rollback()
+    return build_message_error_response(
+        message=INVITE_LINK_FAILURE.CREATE_NOT_ALLOWED,
+        error_code=InviteLinkErrorCodes.CREATE_NOT_ALLOWED,
+        status_code=403,
+    )
+
+
+def _update_needs_preview_right(
+    update: UpdateInviteLinkRequest, *, on_now: bool
+) -> bool:
+    """Whether the body turns the preview on or sets a preview window."""
+    if "preview_window_days" in update.model_fields_set:
+        return True
+    return update.preview_enabled is True and not on_now
 
 
 def revoke_invite_row(invite: Utub_Invite_Links) -> None:
@@ -189,6 +228,12 @@ def create_invite_link_for_utub(
     if auth_error is not None:
         db.session.rollback()
         return auth_error
+
+    not_allowed: FlaskResponse | None = _refuse_if_creation_not_allowed(
+        current_utub, _caller_role(current_utub)
+    )
+    if not_allowed is not None:
+        return not_allowed
 
     # Capture ids up front: commit and rollback both expire the instances.
     user_id: int = current_user.id
@@ -277,6 +322,13 @@ def update_invite_link_for_utub(
         db.session.rollback()
         return auth_error
 
+    role: Member_Role | None = _caller_role(current_utub)
+    not_allowed: FlaskResponse | None = _refuse_if_creation_not_allowed(
+        current_utub, role
+    )
+    if not_allowed is not None:
+        return not_allowed
+
     user_id: int = current_user.id
     utub_id: int = current_utub.id
 
@@ -289,6 +341,16 @@ def update_invite_link_for_utub(
             message=INVITE_LINK_FAILURE.DEAD_LINK_UPDATE,
             error_code=InviteLinkErrorCodes.DEAD_LINK_UPDATE,
             status_code=409,
+        )
+
+    if _update_needs_preview_right(
+        update, on_now=preview_is_on(invite, now=utc_now())
+    ) and not can_enable_invite_preview(utub=current_utub, role=role):
+        db.session.rollback()
+        return build_message_error_response(
+            message=INVITE_LINK_FAILURE.PREVIEW_NOT_ALLOWED,
+            error_code=InviteLinkErrorCodes.PREVIEW_NOT_ALLOWED,
+            status_code=403,
         )
 
     if update.max_uses is not None and update.max_uses < invite.use_count:
@@ -345,6 +407,12 @@ def replace_invite_link_for_utub(
     if auth_error is not None:
         db.session.rollback()
         return auth_error
+
+    not_allowed: FlaskResponse | None = _refuse_if_creation_not_allowed(
+        current_utub, _caller_role(current_utub)
+    )
+    if not_allowed is not None:
+        return not_allowed
 
     user_id: int = current_user.id
     utub_id: int = current_utub.id

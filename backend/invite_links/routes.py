@@ -304,7 +304,8 @@ def get_invite_link(utub_id: int, current_utub: Utubs) -> FlaskResponse:
     description=(
         "Create the UTub's invite link with an expiry and an optional use limit "
         "(owner and co-owner only). A dead unrevoked link is revoked first. The new "
-        "link starts with preview off."
+        "link starts with preview off. "
+        "403 errorCode 7 when the UTub's setting does not let the caller create links."
     ),
     status_codes={
         201: InviteLinkResponseSchema,
@@ -352,7 +353,10 @@ def create_invite_link(
         "Change the expiry, use limit and/or logged-out preview (preview_enabled, "
         "preview_window_days of 1, 3 or 7) of the UTub's live invite link "
         "(owner and co-owner only). An absent field is unchanged; a null "
-        "max_uses means unlimited; a null preview field is rejected."
+        "max_uses means unlimited; a null preview field is rejected. "
+        "403 errorCode 7 when the setting does not let the caller create links; "
+        "403 errorCode 8 when a co-owner turns the preview on or sets its window "
+        "without the owner's permission."
     ),
     status_codes={
         200: InviteLinkResponseSchema,
@@ -391,7 +395,8 @@ def update_invite_link(
     tags=[OPEN_API.MEMBERS],
     description=(
         "Revoke the UTub's invite link and create a new one with the given "
-        "settings (owner and co-owner only). The new link starts with preview off."
+        "settings (owner and co-owner only). The new link starts with preview off. "
+        "403 errorCode 7 when the UTub's setting does not let the caller create links."
     ),
     status_codes={
         201: InviteLinkResponseSchema,

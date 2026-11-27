@@ -101,7 +101,9 @@ def test_branch4_stores_live_invite_both_forms(
         assert _stored_ref(app, identity) == invite_id
 
 
-@pytest.mark.parametrize("state", ["expired", "used_up", "revoked"])
+@pytest.mark.parametrize(
+    "state", ["expired", "used_up", "revoked", "creator_not_allowed"]
+)
 def test_branch4_stores_dead_invite(
     app, every_user_makes_a_unique_utub, load_register_page, monkeypatch, state
 ):

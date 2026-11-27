@@ -80,6 +80,7 @@ describe("Members permissions settings section", () => {
         settings: {
           ...EMPTY_UTUB_SETTINGS,
           members: {
+            ...EMPTY_UTUB_SETTINGS.members,
             co_owners_can_remove: true,
             members_can_add: false,
             hide_member_list: true,

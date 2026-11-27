@@ -165,6 +165,8 @@ describe("getSelectedUTubInfo — out-of-order UTub responses", () => {
         co_owners_can_remove: false,
         members_can_add: false,
         hide_member_list: false,
+        invite_link_creators: "owner_and_co_owners",
+        co_owners_can_enable_preview: false,
       },
       tags: { members_can_tag: true, members_can_delete_tags: true },
       urls: {

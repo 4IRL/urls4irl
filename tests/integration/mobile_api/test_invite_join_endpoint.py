@@ -228,7 +228,7 @@ def _dead_token(app: Flask, reason: str) -> str:
         return UNKNOWN_TOKEN
     if reason == "revoked":
         return _live_link(app, revoked=True)[1]
-    if reason in ("expired", "used_up", "creator_demoted"):
+    if reason in ("expired", "used_up", "creator_demoted", "creator_not_allowed"):
         return _token_of(app, seed_dead(app, reason))
     if reason == "trashed":
         token = _live_link(app)[1]
@@ -250,6 +250,7 @@ def _dead_token(app: Flask, reason: str) -> str:
         "expired",
         "used_up",
         "creator_demoted",
+        "creator_not_allowed",
         "trashed",
         "locked",
     ],

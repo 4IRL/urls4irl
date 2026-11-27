@@ -594,13 +594,13 @@ export interface paths {
     /** @description Get the UTub's current invite link and its status, or null when there is none (owner and co-owner only). Includes the stored and effective preview values; a new link starts with preview off. */
     get: operations["apiV1GetInviteLink"];
     put?: never;
-    /** @description Create the UTub's invite link with an expiry and an optional use limit (owner and co-owner only). A dead unrevoked link is revoked first. The new link starts with preview off. */
+    /** @description Create the UTub's invite link with an expiry and an optional use limit (owner and co-owner only). A dead unrevoked link is revoked first. The new link starts with preview off. 403 errorCode 7 when the UTub's setting does not let the caller create links. */
     post: operations["apiV1CreateInviteLink"];
     /** @description Revoke the UTub's invite link (owner and co-owner only) */
     delete: operations["apiV1RevokeInviteLink"];
     options?: never;
     head?: never;
-    /** @description Change the expiry, use limit and/or logged-out preview (preview_enabled, preview_window_days of 1, 3 or 7) of the UTub's live invite link (owner and co-owner only). An absent field is unchanged; a null max_uses means unlimited; a null preview field is rejected. */
+    /** @description Change the expiry, use limit and/or logged-out preview (preview_enabled, preview_window_days of 1, 3 or 7) of the UTub's live invite link (owner and co-owner only). An absent field is unchanged; a null max_uses means unlimited; a null preview field is rejected. 403 errorCode 7 when the setting does not let the caller create links; 403 errorCode 8 when a co-owner turns the preview on or sets its window without the owner's permission. */
     patch: operations["apiV1UpdateInviteLink"];
     trace?: never;
   };
@@ -613,7 +613,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** @description Revoke the UTub's invite link and create a new one with the given settings (owner and co-owner only). The new link starts with preview off. */
+    /** @description Revoke the UTub's invite link and create a new one with the given settings (owner and co-owner only). The new link starts with preview off. 403 errorCode 7 when the UTub's setting does not let the caller create links. */
     post: operations["apiV1ReplaceInviteLink"];
     delete?: never;
     options?: never;
@@ -976,13 +976,13 @@ export interface paths {
     /** @description Get the UTub's current invite link and its status, or null when there is none (owner and co-owner only). Includes the stored and effective preview values; a new link starts with preview off. */
     get: operations["getInviteLink"];
     put?: never;
-    /** @description Create the UTub's invite link with an expiry and an optional use limit (owner and co-owner only). A dead unrevoked link is revoked first. The new link starts with preview off. */
+    /** @description Create the UTub's invite link with an expiry and an optional use limit (owner and co-owner only). A dead unrevoked link is revoked first. The new link starts with preview off. 403 errorCode 7 when the UTub's setting does not let the caller create links. */
     post: operations["createInviteLink"];
     /** @description Revoke the UTub's invite link (owner and co-owner only) */
     delete: operations["revokeInviteLink"];
     options?: never;
     head?: never;
-    /** @description Change the expiry, use limit and/or logged-out preview (preview_enabled, preview_window_days of 1, 3 or 7) of the UTub's live invite link (owner and co-owner only). An absent field is unchanged; a null max_uses means unlimited; a null preview field is rejected. */
+    /** @description Change the expiry, use limit and/or logged-out preview (preview_enabled, preview_window_days of 1, 3 or 7) of the UTub's live invite link (owner and co-owner only). An absent field is unchanged; a null max_uses means unlimited; a null preview field is rejected. 403 errorCode 7 when the setting does not let the caller create links; 403 errorCode 8 when a co-owner turns the preview on or sets its window without the owner's permission. */
     patch: operations["updateInviteLink"];
     trace?: never;
   };
@@ -995,7 +995,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** @description Revoke the UTub's invite link and create a new one with the given settings (owner and co-owner only). The new link starts with preview off. */
+    /** @description Revoke the UTub's invite link and create a new one with the given settings (owner and co-owner only). The new link starts with preview off. 403 errorCode 7 when the UTub's setting does not let the caller create links. */
     post: operations["replaceInviteLink"];
     delete?: never;
     options?: never;
@@ -2479,7 +2479,7 @@ export interface components {
     InviteLinkSchema: {
       /** @description The 22-character invite token */
       token: string;
-      /** @description live, expired, used_up or creator_demoted */
+      /** @description live, expired, used_up, creator_demoted or creator_not_allowed */
       status: components["schemas"]["InviteLinkStatus"];
       /**
        * Format: date-time
@@ -2509,7 +2509,12 @@ export interface components {
       previewEffectiveEndsAt: string | null;
     };
     /** @enum {string} */
-    InviteLinkStatus: "live" | "expired" | "used_up" | "creator_demoted";
+    InviteLinkStatus:
+      | "live"
+      | "expired"
+      | "used_up"
+      | "creator_demoted"
+      | "creator_not_allowed";
     /** @description Envelope for the invite link routes; ``inviteLink`` is null when none exists. */
     InviteLinkResponseSchema: {
       /**
@@ -2524,7 +2529,7 @@ export interface components {
      * @description Error codes for InviteLinkErrorCodes
      * @enum {integer}
      */
-    InviteLinkErrorCodes: 1 | 2 | 3 | 4 | 5 | 6;
+    InviteLinkErrorCodes: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
     InviteLinkSettingsRequest: {
       /**
        * @description Days until the link expires: 1, 7 or 30
@@ -3034,6 +3039,11 @@ export interface components {
       preferences: components["schemas"]["UtubListPreferencesSchema"];
     };
     /**
+     * @description Who may create the UTub's invite link.
+     * @enum {string}
+     */
+    InviteLinkCreators: "owner_and_co_owners" | "owner_only" | "no_one";
+    /**
      * @description A member's private display overrides for the Tags panel of one UTub.
      *
      *     Every key is nullable: ``None`` means "use my account default".
@@ -3110,7 +3120,7 @@ export interface components {
        */
       disable_swipe_delete: boolean;
     };
-    /** @description Settings for the members panel: who may remove and add members. */
+    /** @description Settings for the members panel: who may remove and add members, and invite links. */
     MembersSettings: {
       /**
        * @description Whether co-owners can remove plain members from this UTub
@@ -3127,6 +3137,16 @@ export interface components {
        * @default false
        */
       hide_member_list: boolean;
+      /**
+       * @description Who can create this UTub's invite link
+       * @default owner_and_co_owners
+       */
+      invite_link_creators: components["schemas"]["InviteLinkCreators"];
+      /**
+       * @description Whether co-owners can turn on the invite link preview
+       * @default false
+       */
+      co_owners_can_enable_preview: boolean;
     };
     /** @description The viewer's six resolved all-UTubs tag display defaults. */
     TagDisplayDefaultsSchema: {

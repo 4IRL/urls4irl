@@ -18,7 +18,7 @@ class InviteLinkSchema(BaseSchema):
     token: str = Field(alias=MODELS.TOKEN, description="The 22-character invite token")
     status: InviteLinkStatus = Field(
         alias=MODELS.STATUS,
-        description="live, expired, used_up or creator_demoted",
+        description="live, expired, used_up, creator_demoted or creator_not_allowed",
     )
     expires_at: datetime = Field(
         alias=MODELS.EXPIRES_AT,

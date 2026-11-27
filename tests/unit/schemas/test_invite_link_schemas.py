@@ -318,6 +318,7 @@ _EXPECTED_STATUS: dict[InviteState, InviteLinkStatus | None] = {
     InviteState.EXPIRED: InviteLinkStatus.EXPIRED,
     InviteState.USED_UP: InviteLinkStatus.USED_UP,
     InviteState.CREATOR_NOT_MANAGER: InviteLinkStatus.CREATOR_DEMOTED,
+    InviteState.CREATOR_NOT_ALLOWED: InviteLinkStatus.CREATOR_NOT_ALLOWED,
     InviteState.REVOKED: None,
     InviteState.UTUB_TRASHED: None,
 }

@@ -245,6 +245,92 @@ def test_precedence(
         assert evaluate_invite(invite) is expected
 
 
+def _store_members_settings(members: object) -> None:
+    utub = db.session.get(Utubs, UTUB_ID)
+    assert utub is not None
+    utub.settings = {"members": members}
+    db.session.commit()
+
+
+@pytest.mark.parametrize(
+    "role, stored, expected",
+    [
+        (Member_Role.CO_CREATOR, {"invite_link_creators": "owner_only"}, "not_allowed"),
+        (Member_Role.CO_CREATOR, {"invite_link_creators": "no_one"}, "not_allowed"),
+        (Member_Role.CREATOR, {"invite_link_creators": "no_one"}, "not_allowed"),
+        (Member_Role.CREATOR, {"invite_link_creators": "owner_only"}, "live"),
+        (
+            Member_Role.CO_CREATOR,
+            {"invite_link_creators": "owner_and_co_owners"},
+            "live",
+        ),
+        (Member_Role.CO_CREATOR, {}, "live"),
+        (Member_Role.CREATOR, {"invite_link_creators": "bogus"}, "not_allowed"),
+        (Member_Role.CO_CREATOR, {"invite_link_creators": 5}, "not_allowed"),
+        (Member_Role.CREATOR, {"invite_link_creators": None}, "not_allowed"),
+        (Member_Role.CREATOR, "not-a-dict", "not_allowed"),
+    ],
+)
+def test_creator_not_allowed_follows_stored_rule(
+    app: Flask,
+    every_user_makes_a_unique_utub,
+    role: Member_Role,
+    stored: object,
+    expected: str,
+) -> None:
+    """
+    GIVEN a link whose creator is a manager and a raw stored creators rule
+    WHEN it is evaluated
+    THEN it is CREATOR_NOT_ALLOWED unless the rule explicitly allows the role;
+         an unknown raw rule denies every role (fail closed)
+    """
+    with app.app_context():
+        _set_creator_role(role)
+        invite_id = _make_invite().id
+        _store_members_settings(stored)
+        state = evaluate_invite(db.session.get(Utub_Invite_Links, invite_id))
+        if expected == "live":
+            assert state is InviteState.LIVE
+        else:
+            assert state is InviteState.CREATOR_NOT_ALLOWED
+            assert not is_invite_live(state)
+
+
+def test_relaxing_rule_makes_not_revoked_link_live_again(
+    app: Flask, every_user_makes_a_unique_utub
+) -> None:
+    """
+    GIVEN a not-revoked co-owner link made dead by owner_only
+    WHEN the stored rule is relaxed to owner_and_co_owners
+    THEN validity reports LIVE (the never-revives guarantee is Step 4's revoke)
+    """
+    with app.app_context():
+        _set_creator_role(Member_Role.CO_CREATOR)
+        invite_id = _make_invite().id
+        _store_members_settings({"invite_link_creators": "owner_only"})
+        invite = db.session.get(Utub_Invite_Links, invite_id)
+        assert evaluate_invite(invite) is InviteState.CREATOR_NOT_ALLOWED
+        _store_members_settings({"invite_link_creators": "owner_and_co_owners"})
+        invite = db.session.get(Utub_Invite_Links, invite_id)
+        assert evaluate_invite(invite) is InviteState.LIVE
+
+
+def test_demoted_creator_keeps_creator_not_manager_under_restrictive_rule(
+    app: Flask, every_user_makes_a_unique_utub
+) -> None:
+    """
+    GIVEN a demoted creator while the rule is no_one
+    WHEN the link is evaluated
+    THEN the more specific CREATOR_NOT_MANAGER wins
+    """
+    with app.app_context():
+        invite_id = _make_invite().id
+        _set_creator_role(Member_Role.MEMBER)
+        _store_members_settings({"invite_link_creators": "no_one"})
+        invite = db.session.get(Utub_Invite_Links, invite_id)
+        assert evaluate_invite(invite) is InviteState.CREATOR_NOT_MANAGER
+
+
 def test_evaluate_writes_nothing(app: Flask, every_user_makes_a_unique_utub) -> None:
     """
     GIVEN a live link

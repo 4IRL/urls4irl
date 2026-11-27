@@ -11,6 +11,7 @@ default later reaches every UTub that never overrode it.
 
 from __future__ import annotations
 
+from enum import StrEnum
 from typing import Any, ClassVar, Self, cast
 
 from pydantic import (
@@ -61,11 +62,25 @@ class UtubsSettings(SettingsSection):
     """Settings for the UTub panel (no settings yet)."""
 
 
+class InviteLinkCreators(StrEnum):
+    """Who may create the UTub's invite link."""
+
+    OWNER_AND_CO_OWNERS = "owner_and_co_owners"
+    OWNER_ONLY = "owner_only"
+    NO_ONE = "no_one"
+
+
 class MembersSettings(SettingsSection):
-    """Settings for the members panel: who may remove and add members."""
+    """Settings for the members panel: who may remove and add members, and invite links."""
 
     OWNER_ONLY_KEYS: ClassVar[frozenset[str]] = frozenset(
-        {"co_owners_can_remove", "members_can_add", "hide_member_list"}
+        {
+            "co_owners_can_remove",
+            "members_can_add",
+            "hide_member_list",
+            "invite_link_creators",
+            "co_owners_can_enable_preview",
+        }
     )
 
     co_owners_can_remove: bool = Field(
@@ -79,6 +94,14 @@ class MembersSettings(SettingsSection):
     hide_member_list: bool = Field(
         default=False,
         description="Whether plain members see only the owner, co-owners and themselves",
+    )
+    invite_link_creators: InviteLinkCreators = Field(
+        default=InviteLinkCreators.OWNER_AND_CO_OWNERS,
+        description="Who can create this UTub's invite link",
+    )
+    co_owners_can_enable_preview: bool = Field(
+        default=False,
+        description="Whether co-owners can turn on the invite link preview",
     )
 
 

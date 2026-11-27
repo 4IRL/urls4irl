@@ -1015,7 +1015,14 @@ def test_plain_member_cannot_patch_allow_short_links(
 # Owner-only members keys
 # --------------------------------------------------------------------------
 
-MEMBERS_KEYS = ("co_owners_can_remove", "members_can_add", "hide_member_list")
+MEMBERS_KEYS = (
+    "co_owners_can_remove",
+    "members_can_add",
+    "hide_member_list",
+    "co_owners_can_enable_preview",
+)
+CREATORS_KEY = "invite_link_creators"
+CREATORS_VALUES = ("owner_and_co_owners", "owner_only", "no_one")
 
 
 def _assert_not_authorized(response: TestResponse) -> None:
@@ -1272,7 +1279,90 @@ def test_detail_payload_shows_members_keys_false_by_default(
         "co_owners_can_remove": False,
         "members_can_add": False,
         "hide_member_list": False,
+        "invite_link_creators": "owner_and_co_owners",
+        "co_owners_can_enable_preview": False,
     }
+
+
+@pytest.mark.parametrize("value", CREATORS_VALUES)
+def test_owner_can_set_invite_link_creators(
+    add_multiple_users_to_utub_without_logging_in,
+    login_first_user_without_register,
+    value,
+):
+    """
+    GIVEN the UTub owner
+    WHEN they PATCH invite_link_creators to a valid value
+    THEN 200 with all members keys resolved, and only the sent key is stored
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+
+    response = _patch(app, client, csrf_token, {"members": {CREATORS_KEY: value}})
+
+    assert response.status_code == 200
+    assert response.json[MODELS.SETTINGS]["members"] == {
+        **DEFAULT_SETTINGS_DICT["members"],
+        CREATORS_KEY: value,
+    }
+    assert _stored_settings(app) == {"members": {CREATORS_KEY: value}}
+    assert _get_detail_settings(app, client)["members"][CREATORS_KEY] == value
+
+
+def test_co_owner_cannot_patch_invite_link_creators(
+    add_multiple_users_to_utub_without_logging_in, app
+):
+    """
+    GIVEN a co-owner
+    WHEN they PATCH invite_link_creators
+    THEN 403 NOT_AUTHORIZED with no errorCode and nothing stored
+    """
+    _seed_roles(app)
+
+    with _client_for(app, CO_OWNER_ID) as (client, csrf_token):
+        response = _patch(
+            app, client, csrf_token, {"members": {CREATORS_KEY: "no_one"}}
+        )
+
+    _assert_not_authorized(response)
+    assert _stored_settings(app) is None
+
+
+def test_co_owner_invalid_invite_link_creators_is_role_403_not_400(
+    add_multiple_users_to_utub_without_logging_in, app
+):
+    """
+    GIVEN a co-owner
+    WHEN they PATCH an invalid invite_link_creators value
+    THEN the role 403 wins over validation and nothing is stored
+    """
+    _seed_roles(app)
+
+    with _client_for(app, CO_OWNER_ID) as (client, csrf_token):
+        response = _patch(
+            app, client, csrf_token, {"members": {CREATORS_KEY: "everyone"}}
+        )
+
+    _assert_not_authorized(response)
+    assert _stored_settings(app) is None
+
+
+@pytest.mark.parametrize("bad_value", ["everyone", 3, True, None, ["no_one"]])
+def test_owner_invalid_invite_link_creators_returns_400(
+    add_multiple_users_to_utub_without_logging_in,
+    login_first_user_without_register,
+    bad_value,
+):
+    """
+    GIVEN the owner
+    WHEN they PATCH invite_link_creators with an unknown value or a non-string
+    THEN 400 naming members.invite_link_creators and nothing stored
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+
+    response = _patch(app, client, csrf_token, {"members": {CREATORS_KEY: bad_value}})
+
+    _assert_400(response, {"members.invite_link_creators"})
+    assert _stored_settings(app) is None
 
 
 # --------------------------------------------------------------------------

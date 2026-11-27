@@ -113,6 +113,15 @@ class INVITE_LINK_PANEL:
         "This link stopped working because the person who made it is no longer "
         "an owner or co-owner."
     )
+    DEAD_CREATOR_NOT_ALLOWED = (
+        "This link stopped working because its creator is no longer allowed "
+        "to create invite links."
+    )
+    DEAD_UNKNOWN = "This invite link no longer works."
+    CREATE_NOT_ALLOWED = "You can no longer create invite links in this UTub."
+    PREVIEW_OWNER_ONLY_HINT = (
+        "Only the UTub owner can turn on previews or change their length."
+    )
     FORCED_CLOSE = (
         "The invite link panel closed because you can no longer manage this "
         "UTub's invite link."
@@ -188,6 +197,8 @@ DEAD_LINK_UPDATE_MESSAGE = (
 USES_BELOW_JOINED_MESSAGE = (
     "The use limit can't be lower than the number of people who already joined."
 )
+CREATE_NOT_ALLOWED_MESSAGE = "You can't create or change invite links in this UTub."
+PREVIEW_NOT_ALLOWED_MESSAGE = "Only the UTub owner can turn on previews."
 
 
 class INVITE_LINK_FAILURE(FAILURE_GENERAL):
@@ -197,3 +208,5 @@ class INVITE_LINK_FAILURE(FAILURE_GENERAL):
     LIVE_LINK_EXISTS = LIVE_LINK_EXISTS_MESSAGE
     DEAD_LINK_UPDATE = DEAD_LINK_UPDATE_MESSAGE
     USES_BELOW_JOINED = USES_BELOW_JOINED_MESSAGE
+    CREATE_NOT_ALLOWED = CREATE_NOT_ALLOWED_MESSAGE
+    PREVIEW_NOT_ALLOWED = PREVIEW_NOT_ALLOWED_MESSAGE

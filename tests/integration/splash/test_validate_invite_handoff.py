@@ -201,7 +201,9 @@ def _assert_validated_and_not_joined(
     assert count_counter_keys(metrics_redis, EventName.EMAIL_VERIFIED) == 1
 
 
-@pytest.mark.parametrize("state", ["live", "revoked", "expired", "used_up"])
+@pytest.mark.parametrize(
+    "state", ["live", "revoked", "expired", "used_up", "creator_not_allowed"]
+)
 def test_validation_redirects_to_invite(
     metrics_enabled_app,
     provide_metrics_redis,
