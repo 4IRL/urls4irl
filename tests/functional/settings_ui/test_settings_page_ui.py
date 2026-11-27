@@ -844,11 +844,30 @@ def _fill_delete_modal_and_recompute_gate(
     computed from the intended pair and a fill that did not take fails here,
     naming the field, instead of surfacing later as a stale button state.
     """
-    confirm_username_input.fill(username)
-    current_password_input.fill(password)
-    expect(confirm_username_input).to_have_value(username)
-    expect(current_password_input).to_have_value(password)
+    _fill_until_value_lands(confirm_username_input, username)
+    _fill_until_value_lands(current_password_input, password)
     _recompute_delete_gate(confirm_username_input)
+
+
+def _fill_until_value_lands(field: Locator, value: str, attempts: int = 4) -> None:
+    """Fill `field` and confirm the value took, re-filling a dropped attempt.
+
+    Under full-suite load a `fill` (notably the empty fill, which only selects
+    and deletes) was observed to be dropped, leaving the previous value for the
+    whole default expect timeout. No app code restores the value, so the likely
+    cause is a focus transfer (Bootstrap modal focus) racing the fill; the
+    bounded short-timeout retry makes that deterministic. The final attempt
+    uses the default timeout so a real failure still names the field.
+    """
+    for _ in range(attempts - 1):
+        field.fill(value)
+        try:
+            expect(field).to_have_value(value, timeout=1500)
+            return
+        except AssertionError:
+            continue
+    field.fill(value)
+    expect(field).to_have_value(value)
 
 
 def test_logout_everywhere_happy_path_redirects_to_splash(
