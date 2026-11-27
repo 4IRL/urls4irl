@@ -60,6 +60,32 @@ describe("resolveIncomingSettings — per-key independence", () => {
     expect(resolved.members.members_can_add).toBe(true);
   });
 
+  it("forces an in-flight co_owners_can_enable_preview: true back to false after the learn", () => {
+    resetStore();
+    setState({
+      activeUTubID: 1,
+      settings: resolveUtubSettings({
+        members: { co_owners_can_enable_preview: true },
+      } as never),
+    });
+    const captured = captureSettingsVersions();
+    learnPolicyOff({ utubID: 1, key: "members.co_owners_can_enable_preview" });
+    const { forceOffKeys } = shouldKeepSettings({
+      selectedUTub: SELECTED,
+      captured,
+    });
+
+    const resolved = resolveIncomingSettings({
+      settings: {
+        members: { co_owners_can_enable_preview: true },
+      } as UtubDetail["settings"],
+      forceOffKeys,
+    });
+
+    expect(forceOffKeys).toEqual(["members.co_owners_can_enable_preview"]);
+    expect(resolved.members.co_owners_can_enable_preview).toBe(false);
+  });
+
   it("forces nothing when no key is listed", () => {
     const resolved = resolveIncomingSettings({
       settings: ALL_ON,

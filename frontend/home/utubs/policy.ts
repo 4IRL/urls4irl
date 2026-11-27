@@ -7,6 +7,7 @@ export const LEARNABLE_POLICY_KEYS = [
   "urls.allow_short_links",
   "members.members_can_add",
   "members.co_owners_can_remove",
+  "members.co_owners_can_enable_preview",
   "tags.members_can_tag",
   "tags.members_can_delete_tags",
 ] as const;
@@ -52,6 +53,9 @@ export function learnPolicyOff({
     case "members.co_owners_can_remove":
       nextSettings.members.co_owners_can_remove = false;
       break;
+    case "members.co_owners_can_enable_preview":
+      nextSettings.members.co_owners_can_enable_preview = false;
+      break;
     case "tags.members_can_tag":
       nextSettings.tags.members_can_tag = false;
       break;
@@ -82,9 +86,10 @@ export function canAddMembers(
   );
 }
 
-// Whether the viewer may manage the active UTub's invite link: an owner or
-// co-owner of an unlocked UTub. Fails closed: a missing or non-true flag, or no
-// active UTub, means false.
+// Whether the viewer may create (and so manage) the active UTub's invite link:
+// an owner or co-owner of an unlocked UTub whose role the "who can create"
+// setting allows (mirrors the server rule). Fails closed: missing settings, an
+// unknown value, a missing or non-true flag, or no active UTub means false.
 export function canManageInviteLink(
   state: Pick<
     AppState,
@@ -92,13 +97,36 @@ export function canManageInviteLink(
     | "isCoCreator"
     | "isCurrentUTubLocked"
     | "activeUTubID"
+    | "settings"
   > = getState(),
 ): boolean {
+  if (
+    state.isCurrentUTubLocked !== false ||
+    state.activeUTubID === null ||
+    state.activeUTubID === undefined
+  ) {
+    return false;
+  }
+  const creators = state.settings?.members?.invite_link_creators;
+  if (state.isCurrentUserOwner === true) {
+    return creators === "owner_and_co_owners" || creators === "owner_only";
+  }
+  if (state.isCoCreator === true) return creators === "owner_and_co_owners";
+  return false;
+}
+
+// Whether the viewer may turn an invite link's preview on or change its length:
+// the owner always, a co-owner only while the setting is exactly true.
+export function canEnableInvitePreview(
+  state: Pick<
+    AppState,
+    "isCurrentUserOwner" | "isCoCreator" | "settings"
+  > = getState(),
+): boolean {
+  if (state.isCurrentUserOwner === true) return true;
   return (
-    (state.isCurrentUserOwner === true || state.isCoCreator === true) &&
-    state.isCurrentUTubLocked === false &&
-    state.activeUTubID !== null &&
-    state.activeUTubID !== undefined
+    state.isCoCreator === true &&
+    state.settings?.members?.co_owners_can_enable_preview === true
   );
 }
 

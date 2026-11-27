@@ -21,6 +21,7 @@ import { emit as emitMetric } from "../../../lib/metrics-client.js";
 import { UI_EVENTS } from "../../../types/metrics-events.js";
 import { resetStore, setState } from "../../../store/app-store.js";
 import { updateUTubOnFindingStaleData } from "../../utubs/stale-data.js";
+import { EMPTY_UTUB_SETTINGS } from "../../../types/settings.js";
 
 vi.mock("../invite-link-client.js", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../invite-link-client.js")>()),
@@ -136,6 +137,7 @@ describe("invite link settings saves and copy", () => {
       isCurrentUserOwner: true,
       isCoCreator: false,
       isCurrentUTubLocked: false,
+      settings: EMPTY_UTUB_SETTINGS,
     });
     unsubscribe = initInviteLinkPanel();
     // Counts native `change` events: a programmatic restore must fire none.

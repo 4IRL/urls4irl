@@ -243,6 +243,9 @@ export function resolveIncomingSettings({
       case "members.co_owners_can_remove":
         members.co_owners_can_remove = false;
         break;
+      case "members.co_owners_can_enable_preview":
+        members.co_owners_can_enable_preview = false;
+        break;
       case "tags.members_can_tag":
         tags.members_can_tag = false;
         break;
