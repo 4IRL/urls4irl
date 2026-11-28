@@ -150,10 +150,21 @@ def main() -> int:
             requested_epoch = consume_trigger_request(redis_client=redis_client)
             if requested_epoch is None:
                 return 0
-            lock_acquired = acquire_trigger_lock(redis_client=redis_client)
         except redis.exceptions.RedisError as redis_error:
             logger.error(
                 "cannot poll the backup trigger in metrics Redis: %s", redis_error
+            )
+            return 1
+
+        try:
+            lock_acquired = acquire_trigger_lock(redis_client=redis_client)
+        except redis.exceptions.RedisError as redis_error:
+            # The flag was already consumed (GETDEL), so this trigger is lost.
+            logger.error(
+                "backup trigger (requested at epoch %s) dropped: cannot acquire "
+                "the trigger lock in metrics Redis (%s); it must be re-triggered",
+                requested_epoch,
+                redis_error,
             )
             return 1
 
