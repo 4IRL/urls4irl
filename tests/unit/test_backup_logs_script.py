@@ -102,6 +102,27 @@ def test_reuses_the_archive_when_an_earlier_run_already_compressed_it(
     )
 
 
+def test_a_fresh_log_overwrites_a_stale_archive(tmp_path: Path, log_file: Path):
+    """
+    GIVEN a stale archive (different content) and a fresh uncompressed log
+    WHEN backup-logs.sh is sourced
+    THEN the fresh log wins: the archive is rewritten, verified, and the log removed.
+    """
+    compressed = Path(f"{log_file}.gz")
+    compressed.write_bytes(gzip.compress(b"stale archive content\n"))
+    log_file.write_text(LOG_TEXT)
+
+    result = _source_backup_logs(tmp_path, log_file)
+
+    assert "SOURCED_OK" in result.stdout, result.stdout + result.stderr
+    assert "Success: Compressed logs on host" in result.stdout
+    assert gzip.decompress(compressed.read_bytes()).decode() == LOG_TEXT
+    assert not log_file.exists()
+    assert f"verify-dump --path {compressed} --min-size 0" in _maintenance_calls(
+        tmp_path
+    )
+
+
 def test_fails_when_neither_the_log_nor_its_archive_exists(
     tmp_path: Path, log_file: Path
 ):
