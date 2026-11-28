@@ -93,6 +93,63 @@ def test_ping_success_url_headers_and_log(
     )
 
 
+def test_ping_sends_an_explicit_user_agent(configured: Path, urlopen: MagicMock):
+    """
+    GIVEN a configured production environment
+    WHEN a ping is sent
+    THEN it carries the module's own User-Agent, never urllib's default
+    "Python-urllib/x.y", which Cloudflare blocks with a 403 (error 1010) before
+    Access sees the request (#1058).
+    """
+    notifs_hub.ping("daily_backup")
+    user_agent = _sent_request(urlopen).get_header("User-agent")
+    assert user_agent == notifs_hub.USER_AGENT
+    assert not user_agent.startswith("Python-urllib")
+
+
+class _RecordingHttpsHandler(urllib.request.HTTPSHandler):
+    """Answers every https request with a 200 and records the headers as sent.
+
+    Subclasses HTTPSHandler so ``build_opener`` replaces the real one (no network),
+    and its inherited request preprocessing still adds the opener's default headers.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.sent_headers: list[dict[str, str]] = []
+
+    def https_open(self, request: urllib.request.Request) -> urllib.response.addinfourl:
+        self.sent_headers.append(dict(request.header_items()))
+        response = urllib.response.addinfourl(
+            io.BytesIO(b""), email.message.Message(), request.full_url, 200
+        )
+        response.msg = "OK"  # type: ignore[attr-defined]
+        return response
+
+
+def test_ping_user_agent_survives_the_real_opener(
+    configured: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """
+    GIVEN the real redirect-refusing opener, with only the network replaced
+    WHEN a ping is sent
+    THEN exactly one User-Agent goes out and it is the module's own, so the
+    opener's "Python-urllib" default never reaches Cloudflare.
+    """
+    recorder = _RecordingHttpsHandler()
+    real_build_opener = urllib.request.build_opener
+    monkeypatch.setattr(
+        "urllib.request.build_opener",
+        lambda *handlers: real_build_opener(*handlers, recorder),
+    )
+    assert notifs_hub.ping("daily_backup") is True
+    [headers] = recorder.sent_headers
+    user_agents = [
+        value for name, value in headers.items() if name.lower() == "user-agent"
+    ]
+    assert user_agents == [notifs_hub.USER_AGENT]
+
+
 def test_ping_fail_url(configured: Path, urlopen: MagicMock, capsys):
     """
     GIVEN a configured production environment
