@@ -45,6 +45,9 @@ KEY_FILE_NAME: str = "delivery_key"
 ACCESS_CLIENT_ID_FILE_NAME: str = "access_client_id"
 ACCESS_CLIENT_SECRET_FILE_NAME: str = "access_client_secret"
 MASK: str = "***"
+# Cloudflare blocks urllib's default "Python-urllib/x.y" User-Agent with a 403
+# (error 1010) before Access sees the request (#1058), so every ping names itself.
+USER_AGENT: str = f"{APP_ID}-notifs-hub/1"
 
 
 class Credentials(NamedTuple):
@@ -171,6 +174,7 @@ def ping(
                 "CF-Access-Client-Id": credentials.access_client_id,
                 "CF-Access-Client-Secret": credentials.access_client_secret,
                 "Authorization": f"Bearer {credentials.key}",
+                "User-Agent": USER_AGENT,
             },
         )
         opener = urllib.request.build_opener(_RefuseRedirects)

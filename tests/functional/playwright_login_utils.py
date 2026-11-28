@@ -52,6 +52,7 @@ def login_user_and_select_utub_by_utubid_mobile(
     wait_then_click_element(
         page=page, css_selector=f"{HPL.SELECTORS_UTUB}[utubid='{utub_id}']"
     )
+    assert_panel_visibility_mobile(page=page, visible_deck=Decks.URLS)
 
 
 def login_user_select_utub_by_id_and_url_by_id(
