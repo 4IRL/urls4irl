@@ -144,11 +144,31 @@ def main() -> int:
 
     redis_client = redis.Redis.from_url(metrics_redis_uri)
     try:
-        requested_epoch = consume_trigger_request(redis_client=redis_client)
-        if requested_epoch is None:
-            return 0
+        # Log Redis outages through the timestamped logger: an uncaught traceback
+        # in backup-trigger.log carries no time, so it cannot be dated (#1060).
+        try:
+            requested_epoch = consume_trigger_request(redis_client=redis_client)
+            if requested_epoch is None:
+                return 0
+        except redis.exceptions.RedisError as redis_error:
+            logger.error(
+                "cannot poll the backup trigger in metrics Redis: %s", redis_error
+            )
+            return 1
 
-        if not acquire_trigger_lock(redis_client=redis_client):
+        try:
+            lock_acquired = acquire_trigger_lock(redis_client=redis_client)
+        except redis.exceptions.RedisError as redis_error:
+            # The flag was already consumed (GETDEL), so this trigger is lost.
+            logger.error(
+                "backup trigger (requested at epoch %s) dropped: cannot acquire "
+                "the trigger lock in metrics Redis (%s); it must be re-triggered",
+                requested_epoch,
+                redis_error,
+            )
+            return 1
+
+        if not lock_acquired:
             logger.warning(
                 "backup trigger (requested at epoch %s) skipped: a triggered "
                 "backup is already in flight",

@@ -11,16 +11,19 @@ The web-side flag-setting endpoint is covered in test_admin_ops_actions.py.
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 import pytest
 from redis import Redis
+from redis.exceptions import ConnectionError as RedisConnectionError
 
 from backend.utils.strings.metrics_strs import METRICS_REDIS
 from scripts.backup_sentinel import stamp_backup_success
 from scripts.run_backup_if_requested import (
     acquire_trigger_lock,
     consume_trigger_request,
+    main,
     release_trigger_lock,
     resolve_backup_script_path,
     run_backup_pipeline,
@@ -159,3 +162,89 @@ def test_run_backup_pipeline_invokes_bash_with_script_path(
     assert captured_argv == [["/bin/bash", "/app/daily-docker.sh"]]
     assert captured_env[0] is not None
     assert captured_env[0]["BACKUP_TRIGGER_SOURCE"] == "manual"
+
+
+def test_main_logs_an_unreachable_metrics_redis_and_exits_nonzero(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+):
+    """
+    GIVEN a metrics Redis that cannot be reached
+    WHEN the poller's main() runs
+    THEN it logs the error through the timestamped logger (not a bare traceback,
+         #1060), never starts a backup, and exits 1.
+    """
+
+    class _UnreachableRedis:
+        def getdel(self, name: str) -> None:
+            raise RedisConnectionError(
+                "Error -2 connecting to redis-metrics:6379. Name or service not known."
+            )
+
+        def close(self) -> None:
+            pass
+
+    def _fail_if_run(**_kwargs: object) -> int:
+        raise AssertionError("no backup may start without the trigger flag")
+
+    monkeypatch.setenv("METRICS_REDIS_URI", "redis://redis-metrics:6379/0")
+    monkeypatch.setattr(
+        "scripts.run_backup_if_requested.redis.Redis.from_url",
+        lambda _uri: _UnreachableRedis(),
+    )
+    monkeypatch.setattr(
+        "scripts.run_backup_if_requested.run_backup_pipeline", _fail_if_run
+    )
+
+    with caplog.at_level(logging.ERROR, logger="backup_trigger_poller"):
+        exit_code = main()
+
+    assert exit_code == 1
+    assert any(
+        "cannot poll the backup trigger in metrics Redis" in record.getMessage()
+        and "redis-metrics:6379" in record.getMessage()
+        for record in caplog.records
+    )
+
+
+def test_main_logs_a_dropped_trigger_when_the_lock_acquire_fails(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+):
+    """
+    GIVEN a trigger flag that is consumed and then a lock SET that hits a Redis outage
+    WHEN the poller's main() runs
+    THEN it logs a dropped-trigger error naming the requested epoch, never starts
+         a backup, and exits 1.
+    """
+
+    class _LockFailsRedis:
+        def getdel(self, name: str) -> str:
+            return _TEST_FLAG_VALUE
+
+        def set(self, *_args: object, **_kwargs: object) -> None:
+            raise RedisConnectionError("Connection reset by peer")
+
+        def close(self) -> None:
+            pass
+
+    def _fail_if_run(**_kwargs: object) -> int:
+        raise AssertionError("no backup may start when the lock is not acquired")
+
+    monkeypatch.setenv("METRICS_REDIS_URI", "redis://redis-metrics:6379/0")
+    monkeypatch.setattr(
+        "scripts.run_backup_if_requested.redis.Redis.from_url",
+        lambda _uri: _LockFailsRedis(),
+    )
+    monkeypatch.setattr(
+        "scripts.run_backup_if_requested.run_backup_pipeline", _fail_if_run
+    )
+
+    with caplog.at_level(logging.ERROR, logger="backup_trigger_poller"):
+        exit_code = main()
+
+    assert exit_code == 1
+    assert any(
+        "dropped" in record.getMessage()
+        and _TEST_FLAG_VALUE in record.getMessage()
+        and "re-triggered" in record.getMessage()
+        for record in caplog.records
+    )
